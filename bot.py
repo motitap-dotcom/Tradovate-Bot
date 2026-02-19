@@ -225,7 +225,8 @@ class TradovateBot:
         signal = None
         if hasattr(strategy, "on_price"):
             if hasattr(strategy, "update_vwap"):
-                # VWAP strategy
+                # VWAP strategy — pass current timestamp for cooldown tracking
+                strategy._current_time = current
                 signal = strategy.on_price(price, high, low, volume)
             else:
                 # ORB strategy
@@ -341,12 +342,14 @@ class TradovateBot:
                 # Periodic status update
                 status = self.risk.status()
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | locked=%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
                     status["open_contracts"],
                     status["max_contracts"],
+                    status["trades_today"],
+                    status["max_daily_trades"],
                     status["locked"],
                 )
 

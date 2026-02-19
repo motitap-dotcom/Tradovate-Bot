@@ -51,12 +51,17 @@ class RiskManager:
         # Open position tracking
         self.open_contracts: int = 0
 
+        # Daily trade counter (safety cap)
+        self.max_daily_trades: int = config.MAX_DAILY_TRADES
+        self.trades_today: int = 0
+
         logger.info(
-            "RiskManager initialized | account=%s | max_dd=%s | daily_limit=%s | brake=%.0f%%",
+            "RiskManager initialized | account=%s | max_dd=%s | daily_limit=%s | brake=%.0f%% | max_trades/day=%d",
             self.account_size,
             self.max_trailing_drawdown,
             self.daily_loss_limit,
             self.brake_pct * 100,
+            self.max_daily_trades,
         )
 
     # ─────────────────────────────────────────
@@ -141,6 +146,7 @@ class RiskManager:
             self.today = today
             self.day_start_balance = self.current_balance
             self.day_pnl = 0.0
+            self.trades_today = 0
             self.trading_locked = False
             self.lock_reason = ""
 
@@ -163,6 +169,11 @@ class RiskManager:
         if self.open_contracts >= self.max_contracts:
             return False, (
                 f"Max contracts reached: {self.open_contracts}/{self.max_contracts}"
+            )
+
+        if self.trades_today >= self.max_daily_trades:
+            return False, (
+                f"Daily trade cap reached: {self.trades_today}/{self.max_daily_trades}"
             )
 
         return True, "OK"
@@ -229,6 +240,7 @@ class RiskManager:
     def register_open(self, qty: int):
         """Track that we opened positions."""
         self.open_contracts += qty
+        self.trades_today += 1
 
     def register_close(self, qty: int):
         """Track that we closed positions."""
@@ -256,6 +268,8 @@ class RiskManager:
             ),
             "open_contracts": self.open_contracts,
             "max_contracts": self.max_contracts,
+            "trades_today": self.trades_today,
+            "max_daily_trades": self.max_daily_trades,
             "locked": self.trading_locked,
             "lock_reason": self.lock_reason,
         }

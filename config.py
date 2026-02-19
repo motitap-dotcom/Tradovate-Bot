@@ -72,7 +72,11 @@ CHALLENGE_SETTINGS = {
 ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 
 # Emergency brake: stop trading at this % of the daily loss limit
-DAILY_LOSS_BRAKE_PCT = 0.70  # 70% — lock trading before hitting the limit
+# Lowered from 70% to 60% to compensate for increased trade frequency
+DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
+
+# Hard cap: max total trades per day across all symbols (safety net)
+MAX_DAILY_TRADES = 12
 
 # ─────────────────────────────────────────────
 # Contract Specifications
@@ -86,8 +90,10 @@ CONTRACT_SPECS = {
         "point_value": 20.00,
         "strategy": "ORB",
         "enabled": True,
-        # ORB strategy params
-        "orb_window_minutes": 5,
+        # Dual ORB windows: 5-min (aggressive) + 15-min (conservative, stronger signal)
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,            # max trades across all ORB windows
+        "orb_cooldown_minutes": 15,     # min time between ORB trades
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
@@ -100,7 +106,9 @@ CONTRACT_SPECS = {
         "point_value": 50.00,
         "strategy": "ORB",
         "enabled": True,
-        "orb_window_minutes": 5,
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,
+        "orb_cooldown_minutes": 15,
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
@@ -118,6 +126,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 2,  # allow 2 longs + 2 shorts per day
+        "vwap_cooldown_minutes": 30,         # min 30 min between same-direction trades
     },
     "CL": {
         "name": "WTI Crude Oil",
@@ -131,6 +141,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
     },
     "SI": {
         "name": "Silver (COMEX)",
@@ -144,6 +156,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 1,  # conservative: 1 per direction
+        "vwap_cooldown_minutes": 60,
     },
     "NG": {
         "name": "Henry Hub Natural Gas",
@@ -157,6 +171,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.060,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 1,
+        "vwap_cooldown_minutes": 60,
     },
 }
 
@@ -176,7 +192,8 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # Position Sizing
 # ─────────────────────────────────────────────
 # Max risk per trade as % of daily loss budget
-RISK_PER_TRADE_PCT = 0.02  # 2% of account per trade
+# Lowered from 2% to 1.5% to compensate for increased trade frequency
+RISK_PER_TRADE_PCT = 0.015  # 1.5% of account per trade
 
 # ─────────────────────────────────────────────
 # Logging

@@ -2,7 +2,10 @@
 Trading Strategies
 ===================
 ORB (Opening Range Breakout) — for equity index futures (NQ, ES).
+  Now supports dual time windows (5-min + 15-min) for higher frequency.
+
 VWAP Momentum — for commodity futures (GC, CL, SI, NG).
+  Now supports multiple trades per direction with cooldown.
 
 Each strategy class produces a Signal (Buy/Sell/None) with
 stop-loss and take-profit prices, ready to be sent as a bracket order.
@@ -10,7 +13,7 @@ stop-loss and take-profit prices, ready to be sent as a bracket order.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from enum import Enum
 from typing import Optional
 
@@ -43,49 +46,126 @@ class TradeSignal:
 
 
 # ─────────────────────────────────────────────
-# ORB Strategy (5-minute Opening Range Breakout)
+# Single ORB Window (internal helper)
+# ─────────────────────────────────────────────
+
+
+class _ORBWindow:
+    """Tracks one opening range window and detects breakouts."""
+
+    def __init__(self, window_minutes: int, open_time: time):
+        self.window_minutes = window_minutes
+        self.open_time = open_time
+        self.range_high: Optional[float] = None
+        self.range_low: Optional[float] = None
+        self.range_set: bool = False
+        self.breakout_fired: bool = False
+        self.prices: list[float] = []
+
+    def reset(self):
+        self.range_high = None
+        self.range_low = None
+        self.range_set = False
+        self.breakout_fired = False
+        self.prices = []
+
+    def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
+        """
+        Feed a price. Returns 'long', 'short', or None.
+        Only fires once per window.
+        """
+        if self.breakout_fired:
+            return None
+
+        open_seconds = self.open_time.hour * 3600 + self.open_time.minute * 60
+        current_seconds = (
+            current_time.hour * 3600
+            + current_time.minute * 60
+            + current_time.second
+        )
+        elapsed = (current_seconds - open_seconds) / 60
+
+        # Phase 1: Accumulate range
+        if not self.range_set:
+            if 0 <= elapsed < self.window_minutes:
+                self.prices.append(high)
+                self.prices.append(low)
+                return None
+
+            if elapsed >= self.window_minutes and self.prices:
+                self.range_high = max(self.prices)
+                self.range_low = min(self.prices)
+                self.range_set = True
+                logger.info(
+                    "ORB %d-min range: high=%.2f low=%.2f size=%.2f",
+                    self.window_minutes,
+                    self.range_high,
+                    self.range_low,
+                    self.range_high - self.range_low,
+                )
+                # Fall through to check breakout
+
+        if not self.range_set:
+            return None
+
+        # Phase 2: Breakout detection
+        if price > self.range_high:
+            self.breakout_fired = True
+            return "long"
+        if price < self.range_low:
+            self.breakout_fired = True
+            return "short"
+
+        return None
+
+
+# ─────────────────────────────────────────────
+# ORB Strategy — Dual Window
 # ─────────────────────────────────────────────
 
 
 class ORBStrategy:
     """
-    Opening Range Breakout for NQ / ES.
+    Dual-window Opening Range Breakout for NQ / ES.
 
-    1. Record the high and low of the first N minutes after market open (9:30 ET).
-    2. Enter long on a candle close above the range high.
-    3. Enter short on a candle close below the range low.
-    4. Stop loss at the opposite side of the range.
-    5. Take profit at configured risk/reward ratio.
-    6. Only one trade per day per symbol.
+    Window 1 (5-min): Fast, aggressive breakout — fires first.
+    Window 2 (15-min): Wider range, stronger confirmation — fires later.
+
+    Each window can produce one breakout. Total trades capped at max_orb_trades.
+    A cooldown period separates consecutive trades.
     """
 
     def __init__(self, symbol: str):
         self.symbol = symbol
         spec = config.CONTRACT_SPECS[symbol]
-        self.orb_minutes: int = spec["orb_window_minutes"]
+
         self.stop_points: float = spec["stop_loss_points"]
         self.tp_points: float = spec["take_profit_points"]
         self.rr_ratio: float = spec["risk_reward_ratio"]
         self.point_value: float = spec["point_value"]
-
-        # State
-        self.range_high: Optional[float] = None
-        self.range_low: Optional[float] = None
-        self.range_set: bool = False
-        self.trade_taken: bool = False
-        self.prices_in_range: list[float] = []
+        self.max_trades: int = spec.get("max_orb_trades", 2)
+        self.cooldown_minutes: int = spec.get("orb_cooldown_minutes", 15)
 
         # Parse market open time
         h, m = config.MARKET_OPEN_ET.split(":")
-        self.open_time = time(int(h), int(m))
+        open_time = time(int(h), int(m))
+
+        # Create one _ORBWindow per configured window size
+        windows = spec.get("orb_windows", [5])
+        self.windows: list[_ORBWindow] = [
+            _ORBWindow(w, open_time) for w in windows
+        ]
+
+        # Trade state
+        self.trades_taken: int = 0
+        self.last_trade_time: Optional[datetime] = None
 
     def reset(self):
         """Reset state for a new trading day."""
-        self.range_high = None
-        self.range_low = None
-        self.range_set = False
-        self.trade_taken = False
-        self.prices_in_range = []
+        for w in self.windows:
+            w.reset()
+        self.trades_taken = 0
+        self.last_trade_time = None
 
     def on_price(
         self, price: float, timestamp: datetime, high: float, low: float
@@ -94,112 +174,78 @@ class ORBStrategy:
         Feed a price tick or candle.
         Returns a TradeSignal if a breakout is detected, else None.
         """
-        if self.trade_taken:
+        if self.trades_taken >= self.max_trades:
             return None
+
+        # Cooldown check
+        if self.last_trade_time is not None:
+            elapsed = (timestamp - self.last_trade_time).total_seconds() / 60
+            if elapsed < self.cooldown_minutes:
+                return None
 
         current_time = timestamp.time()
 
-        # Phase 1: Building the opening range
-        if not self.range_set:
-            open_seconds = (
-                self.open_time.hour * 3600 + self.open_time.minute * 60
-            )
-            current_seconds = (
-                current_time.hour * 3600
-                + current_time.minute * 60
-                + current_time.second
-            )
-            elapsed_minutes = (current_seconds - open_seconds) / 60
+        # Try each window (shorter windows fire earlier)
+        for window in self.windows:
+            direction = window.feed(price, high, low, current_time)
+            if direction is None:
+                continue
 
-            if 0 <= elapsed_minutes < self.orb_minutes:
-                self.prices_in_range.append(high)
-                self.prices_in_range.append(low)
-                return None
-
-            if elapsed_minutes >= self.orb_minutes and self.prices_in_range:
-                self.range_high = max(self.prices_in_range)
-                self.range_low = min(self.prices_in_range)
-                self.range_set = True
-                range_size = self.range_high - self.range_low
-                logger.info(
-                    "ORB %s range set: high=%.2f low=%.2f size=%.2f pts",
-                    self.symbol,
-                    self.range_high,
-                    self.range_low,
-                    range_size,
+            # Build signal
+            if direction == "long":
+                stop = window.range_low
+                stop_distance = price - stop
+                if stop_distance > self.stop_points:
+                    stop = price - self.stop_points
+                    stop_distance = self.stop_points
+                tp = price + (stop_distance * self.rr_ratio)
+                sig_dir = Direction.LONG
+                reason = (
+                    f"ORB-{window.window_minutes}m long breakout "
+                    f"above {window.range_high:.2f}"
                 )
-                # Fall through to check breakout on this candle
+            else:  # short
+                stop = window.range_high
+                stop_distance = stop - price
+                if stop_distance > self.stop_points:
+                    stop = price + self.stop_points
+                    stop_distance = self.stop_points
+                tp = price - (stop_distance * self.rr_ratio)
+                sig_dir = Direction.SHORT
+                reason = (
+                    f"ORB-{window.window_minutes}m short breakout "
+                    f"below {window.range_low:.2f}"
+                )
 
-        if not self.range_set:
-            return None
-
-        # Phase 2: Check for breakout
-        range_size = self.range_high - self.range_low
-
-        # Long breakout: candle closes above the range high
-        if price > self.range_high:
-            stop = self.range_low  # opposite side of range
-            stop_distance = price - stop
-
-            # Use configured stop if range is too wide
-            if stop_distance > self.stop_points:
-                stop = price - self.stop_points
-                stop_distance = self.stop_points
-
-            tp = price + (stop_distance * self.rr_ratio)
-            self.trade_taken = True
+            self.trades_taken += 1
+            self.last_trade_time = timestamp
 
             logger.info(
-                "ORB %s LONG breakout at %.2f | SL=%.2f TP=%.2f",
+                "ORB %s %s at %.2f | window=%dm | trade %d/%d | SL=%.2f TP=%.2f",
                 self.symbol,
+                direction.upper(),
                 price,
+                window.window_minutes,
+                self.trades_taken,
+                self.max_trades,
                 stop,
                 tp,
             )
             return TradeSignal(
                 symbol=self.symbol,
-                direction=Direction.LONG,
-                entry_price=None,  # market order
-                stop_loss=stop,
-                take_profit=tp,
-                qty=0,  # will be set by risk manager
-                reason=f"ORB long breakout above {self.range_high:.2f}",
-            )
-
-        # Short breakout: candle closes below the range low
-        if price < self.range_low:
-            stop = self.range_high
-            stop_distance = stop - price
-
-            if stop_distance > self.stop_points:
-                stop = price + self.stop_points
-                stop_distance = self.stop_points
-
-            tp = price - (stop_distance * self.rr_ratio)
-            self.trade_taken = True
-
-            logger.info(
-                "ORB %s SHORT breakout at %.2f | SL=%.2f TP=%.2f",
-                self.symbol,
-                price,
-                stop,
-                tp,
-            )
-            return TradeSignal(
-                symbol=self.symbol,
-                direction=Direction.SHORT,
+                direction=sig_dir,
                 entry_price=None,
                 stop_loss=stop,
                 take_profit=tp,
-                qty=0,
-                reason=f"ORB short breakout below {self.range_low:.2f}",
+                qty=0,  # set by risk manager
+                reason=reason,
             )
 
         return None
 
 
 # ─────────────────────────────────────────────
-# VWAP Momentum Strategy
+# VWAP Momentum Strategy — Multi-trade with cooldown
 # ─────────────────────────────────────────────
 
 
@@ -207,12 +253,9 @@ class VWAPStrategy:
     """
     VWAP Crossing / Momentum strategy for commodities (GC, CL, SI, NG).
 
-    1. Calculate running VWAP from session start.
-    2. Enter long when price crosses above VWAP with volume confirmation.
-    3. Enter short when price crosses below VWAP.
-    4. Stop loss just beyond VWAP.
-    5. Take profit at configured risk/reward ratio.
-    6. Maximum one trade per direction per day.
+    Now supports multiple trades per direction with a cooldown period.
+    This safely increases frequency: each subsequent crossover must be
+    a fresh move separated by at least vwap_cooldown_minutes.
     """
 
     def __init__(self, symbol: str):
@@ -224,9 +267,13 @@ class VWAPStrategy:
         self.point_value: float = spec["point_value"]
         self.confirmation_candles: int = spec.get("vwap_confirmation_candles", 1)
 
+        # Multi-trade settings
+        self.max_per_direction: int = spec.get("max_vwap_trades_per_direction", 2)
+        self.cooldown_minutes: int = spec.get("vwap_cooldown_minutes", 30)
+
         # VWAP calculation state
         self._cum_vol: float = 0.0
-        self._cum_tp_vol: float = 0.0  # cumulative (typical_price * volume)
+        self._cum_tp_vol: float = 0.0
         self.vwap: Optional[float] = None
 
         # Crossover tracking
@@ -235,8 +282,11 @@ class VWAPStrategy:
         self._cross_below_count: int = 0
 
         # Trade tracking
-        self.long_taken: bool = False
-        self.short_taken: bool = False
+        self.long_count: int = 0
+        self.short_count: int = 0
+        self.last_long_time: Optional[datetime] = None
+        self.last_short_time: Optional[datetime] = None
+        self._current_time: Optional[datetime] = None  # set by bot on each tick
 
     def reset(self):
         """Reset for a new trading day."""
@@ -246,23 +296,40 @@ class VWAPStrategy:
         self._prev_price = None
         self._cross_above_count = 0
         self._cross_below_count = 0
-        self.long_taken = False
-        self.short_taken = False
+        self.long_count = 0
+        self.short_count = 0
+        self.last_long_time = None
+        self.last_short_time = None
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
-        """
-        Update the running VWAP with a new bar.
-        Call this for every candle/bar during the session.
-        """
+        """Update the running VWAP with a new bar."""
         if volume <= 0:
             return
-
         typical_price = (high + low + close) / 3.0
         self._cum_vol += volume
         self._cum_tp_vol += typical_price * volume
-
         if self._cum_vol > 0:
             self.vwap = self._cum_tp_vol / self._cum_vol
+
+    def _long_allowed(self) -> bool:
+        """Check if a new long trade is allowed (count + cooldown)."""
+        if self.long_count >= self.max_per_direction:
+            return False
+        if self.last_long_time and self._current_time:
+            elapsed = (self._current_time - self.last_long_time).total_seconds() / 60
+            if elapsed < self.cooldown_minutes:
+                return False
+        return True
+
+    def _short_allowed(self) -> bool:
+        """Check if a new short trade is allowed (count + cooldown)."""
+        if self.short_count >= self.max_per_direction:
+            return False
+        if self.last_short_time and self._current_time:
+            elapsed = (self._current_time - self.last_short_time).total_seconds() / 60
+            if elapsed < self.cooldown_minutes:
+                return False
+        return True
 
     def on_price(
         self, price: float, high: float, low: float, volume: float
@@ -271,7 +338,6 @@ class VWAPStrategy:
         Feed a candle close price + OHLCV data.
         Returns a TradeSignal if a confirmed VWAP crossover is detected.
         """
-        # Update VWAP
         self.update_vwap(high, low, price, volume)
 
         if self.vwap is None or self._prev_price is None:
@@ -287,15 +353,18 @@ class VWAPStrategy:
 
             if (
                 self._cross_above_count >= self.confirmation_candles
-                and not self.long_taken
+                and self._long_allowed()
             ):
                 stop = self.vwap - self.stop_points
                 tp = price + self.tp_points
-                self.long_taken = True
+                self.long_count += 1
+                self.last_long_time = self._current_time
+                self._cross_above_count = 0  # reset for potential next trade
 
                 logger.info(
-                    "VWAP %s LONG cross at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
+                    "VWAP %s LONG #%d at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
                     self.symbol,
+                    self.long_count,
                     price,
                     self.vwap,
                     stop,
@@ -308,7 +377,10 @@ class VWAPStrategy:
                     stop_loss=stop,
                     take_profit=tp,
                     qty=0,
-                    reason=f"VWAP long crossover at {price:.4f} (VWAP={self.vwap:.4f})",
+                    reason=(
+                        f"VWAP long #{self.long_count} at {price:.4f} "
+                        f"(VWAP={self.vwap:.4f})"
+                    ),
                 )
 
         # Detect crossover below VWAP
@@ -318,15 +390,18 @@ class VWAPStrategy:
 
             if (
                 self._cross_below_count >= self.confirmation_candles
-                and not self.short_taken
+                and self._short_allowed()
             ):
                 stop = self.vwap + self.stop_points
                 tp = price - self.tp_points
-                self.short_taken = True
+                self.short_count += 1
+                self.last_short_time = self._current_time
+                self._cross_below_count = 0
 
                 logger.info(
-                    "VWAP %s SHORT cross at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
+                    "VWAP %s SHORT #%d at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
                     self.symbol,
+                    self.short_count,
                     price,
                     self.vwap,
                     stop,
@@ -339,10 +414,12 @@ class VWAPStrategy:
                     stop_loss=stop,
                     take_profit=tp,
                     qty=0,
-                    reason=f"VWAP short crossover at {price:.4f} (VWAP={self.vwap:.4f})",
+                    reason=(
+                        f"VWAP short #{self.short_count} at {price:.4f} "
+                        f"(VWAP={self.vwap:.4f})"
+                    ),
                 )
         else:
-            # No crossover — reset counters
             if price > self.vwap:
                 self._cross_below_count = 0
             else:
