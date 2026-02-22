@@ -17,16 +17,21 @@ import hashlib
 import hmac as hmac_mod
 import json
 import logging
+import os
 import threading
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 import requests
 import websocket
 
 import config
+
+# File for persisting auth tokens between restarts
+_TOKEN_FILE = Path(__file__).parent / ".tradovate_token.json"
 
 # ─────────────────────────────────────────────
 # Tradovate Web Auth Helpers
@@ -99,20 +104,42 @@ class TradovateAPI:
     def authenticate(self) -> bool:
         """
         Obtain access tokens from Tradovate.
-        If tokens were pre-injected via set_token(), skips the API auth
-        and just fetches account info.
+
+        Auth priority:
+        1. Pre-injected token (via set_token())
+        2. Saved token from previous session (auto-renewed)
+        3. Web-style auth (username + password, no CID)
+        4. API-key auth (CID + Secret)
+
         Returns True on success.
         """
+        # 0. Token from environment variable (manual override)
+        if config.TRADOVATE_ACCESS_TOKEN and not self.access_token:
+            logger.info("Using token from TRADOVATE_ACCESS_TOKEN env var")
+            self.access_token = config.TRADOVATE_ACCESS_TOKEN
+
+        # 1. Pre-injected token
         if self.access_token:
-            logger.info("Using pre-injected auth token (browser login)")
+            logger.info("Using pre-injected auth token")
             self._fetch_account_id()
+            self._save_token()
             return True
+
+        # 2. Try saved token from file
+        if self._load_token():
+            logger.info("Loaded saved token, attempting renewal...")
+            if self.renew_token():
+                logger.info("Saved token renewed successfully")
+                self._fetch_account_id()
+                self._save_token()
+                return True
+            logger.warning("Saved token expired, trying fresh auth...")
 
         url = f"{self.base_url}/auth/accesstokenrequest"
 
-        # Try web-style auth first (no CID/Secret needed).
-        # Falls back to API-key auth if web auth fails.
+        # 3. Web-style auth (no CID/Secret needed)
         data = self._try_web_auth(url)
+        # 4. API-key auth
         if data is None:
             data = self._try_api_auth(url)
         if data is None:
@@ -136,9 +163,48 @@ class TradovateAPI:
             "Authenticated as %s (userId=%s)", self.account_spec, self.user_id
         )
 
-        # Fetch account ID
         self._fetch_account_id()
+        self._save_token()
         return True
+
+    # ── Token persistence ──
+
+    def _save_token(self):
+        """Save current auth tokens to file for reuse between restarts."""
+        if not self.access_token:
+            return
+        data = {
+            "accessToken": self.access_token,
+            "mdAccessToken": self.md_access_token,
+            "userId": self.user_id,
+            "accountSpec": self.account_spec,
+            "accountId": self.account_id,
+            "expirationTime": self.token_expiry.isoformat() if self.token_expiry else None,
+            "savedAt": datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            _TOKEN_FILE.write_text(json.dumps(data, indent=2))
+            logger.debug("Token saved to %s", _TOKEN_FILE)
+        except OSError as e:
+            logger.warning("Could not save token: %s", e)
+
+    def _load_token(self) -> bool:
+        """Load saved auth tokens from file. Returns True if loaded."""
+        if not _TOKEN_FILE.exists():
+            return False
+        try:
+            data = json.loads(_TOKEN_FILE.read_text())
+            self.access_token = data.get("accessToken")
+            self.md_access_token = data.get("mdAccessToken")
+            self.user_id = data.get("userId")
+            self.account_spec = data.get("accountSpec")
+            self.account_id = data.get("accountId")
+            if data.get("expirationTime"):
+                self.token_expiry = datetime.fromisoformat(data["expirationTime"])
+            return bool(self.access_token)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Could not load saved token: %s", e)
+            return False
 
     def _try_web_auth(self, url: str) -> Optional[dict]:
         """
@@ -215,19 +281,8 @@ class TradovateAPI:
             pass
 
         # Attempt to complete verification with just the ticket
-        verify_payload = {
-            "name": original_payload["name"],
-            "password": original_payload["password"],
-            "enc": original_payload.get("enc", True),
-            "appId": original_payload["appId"],
-            "appVersion": original_payload["appVersion"],
-            "deviceId": original_payload["deviceId"],
-            "cid": original_payload.get("cid", 0),
-            "sec": original_payload.get("sec", ""),
-            "p-ticket": p_ticket,
-        }
-        if original_payload.get("organization"):
-            verify_payload["organization"] = original_payload["organization"]
+        verify_payload = dict(original_payload)
+        verify_payload["p-ticket"] = p_ticket
 
         try:
             resp = requests.post(url, json=verify_payload, timeout=30)
@@ -294,6 +349,7 @@ class TradovateAPI:
                     data["expirationTime"].replace("Z", "+00:00")
                 )
             logger.info("Token renewed. Expires: %s", self.token_expiry)
+            self._save_token()
             return True
         except requests.RequestException as e:
             logger.error("Token renewal failed: %s", e)

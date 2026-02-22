@@ -23,6 +23,7 @@ env/
 .env
 credentials.json
 api_keys.json
+.tradovate_token.json
 
 # Logs
 logs/

@@ -20,6 +20,11 @@ TRADOVATE_CID = int(os.getenv("TRADOVATE_CID", "0"))
 TRADOVATE_SECRET = os.getenv("TRADOVATE_SECRET", "")
 TRADOVATE_DEVICE_ID = os.getenv("TRADOVATE_DEVICE_ID", "tradovate-bot-001")
 
+# Manual token override — paste from browser DevTools to skip CAPTCHA.
+# After first use, the bot saves the token to .tradovate_token.json
+# and renews it automatically. You only need this once.
+TRADOVATE_ACCESS_TOKEN = os.getenv("TRADOVATE_ACCESS_TOKEN", "")
+
 # ─────────────────────────────────────────────
 # Environment: "demo" or "live"
 # ─────────────────────────────────────────────

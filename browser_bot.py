@@ -224,7 +224,13 @@ class BrowserTokenHarvester:
     # ─── Auto-Login ─────────────────────────────
 
     def _auto_login(self, page: Page):
-        """Try to auto-fill and submit the login form."""
+        """
+        Auto-fill and submit the login form.
+
+        For prop firm accounts (FundedNext etc.), also selects the
+        organization from the dropdown before filling credentials.
+        CAPTCHA is shown after submission — the user solves it manually.
+        """
         username = config.TRADOVATE_USERNAME
         password = config.TRADOVATE_PASSWORD
 
@@ -236,8 +242,16 @@ class BrowserTokenHarvester:
 
         logger.info("Attempting auto-login for: %s", username)
 
+        # Wait for login page to fully render
+        page.wait_for_timeout(3_000)
+
+        # ── Select organization (for prop firm accounts) ──
+        org = config.TRADOVATE_ORGANIZATION
+        if org:
+            self._select_organization(page, org)
+            page.wait_for_timeout(1_000)
+
         # Multiple selector strategies for the login form.
-        # Tradovate's web UI may use different selectors depending on version.
         selector_strategies = [
             {
                 "user": 'input[name="name"]',
@@ -263,7 +277,6 @@ class BrowserTokenHarvester:
 
         for strategy in selector_strategies:
             try:
-                # Wait briefly for the fields to render
                 user_field = page.query_selector(strategy["user"])
                 pass_field = page.query_selector(strategy["pass"])
 
@@ -272,19 +285,16 @@ class BrowserTokenHarvester:
 
                 logger.info("Found login form with: %s", strategy["user"])
 
-                # Fill credentials
                 user_field.click()
                 user_field.fill(username)
 
                 pass_field.click()
                 pass_field.fill(password)
 
-                # Submit
                 btn = page.query_selector(strategy["btn"])
                 if btn:
                     btn.click()
                 else:
-                    # Try text-based button selectors
                     for text in ["Log In", "Login", "Sign In", "Submit"]:
                         btn = page.query_selector(
                             f'button:has-text("{text}")'
@@ -295,7 +305,10 @@ class BrowserTokenHarvester:
                     else:
                         page.keyboard.press("Enter")
 
-                logger.info("Login form submitted. Waiting for auth...")
+                logger.info("Login form submitted.")
+                logger.info(
+                    "If a CAPTCHA appears, please solve it in the browser window."
+                )
                 page.wait_for_timeout(5_000)
                 return
 
@@ -307,6 +320,51 @@ class BrowserTokenHarvester:
             "Could not find login form automatically. "
             "Please log in manually in the browser window."
         )
+
+    def _select_organization(self, page: Page, org: str):
+        """Select the prop firm organization in the login dropdown."""
+        try:
+            # Look for organization/institution link or dropdown
+            for selector in [
+                'a:has-text("institution")',
+                'a:has-text("organization")',
+                'a:has-text("Institution")',
+                'button:has-text("institution")',
+                '[data-testid="institution-link"]',
+            ]:
+                el = page.query_selector(selector)
+                if el:
+                    el.click()
+                    logger.info("Clicked institution/organization link")
+                    page.wait_for_timeout(1_000)
+                    break
+
+            # Try to find and fill organization field
+            for selector in [
+                'input[name="organization"]',
+                'input[placeholder*="institution" i]',
+                'input[placeholder*="organization" i]',
+            ]:
+                el = page.query_selector(selector)
+                if el:
+                    el.fill(org)
+                    logger.info("Filled organization: %s", org)
+                    page.wait_for_timeout(500)
+                    # Select from autocomplete if present
+                    suggestion = page.query_selector(
+                        f'li:has-text("{org}"), [role="option"]:has-text("{org}")'
+                    )
+                    if suggestion:
+                        suggestion.click()
+                    else:
+                        page.keyboard.press("Enter")
+                    return
+
+            logger.info(
+                "Organization field not found — it may not be needed for this login page"
+            )
+        except Exception as e:
+            logger.debug("Organization selection failed: %s", e)
 
 
 # ─────────────────────────────────────────────
@@ -369,6 +427,8 @@ def main():
             user_id=tokens.get("userId"),
             expiration_time=tokens.get("expirationTime"),
         )
+        # Save token to file so bot.py can reuse it without browser
+        bot.api._save_token()
     else:
         bot = TradovateBot(dry_run=True)
 
