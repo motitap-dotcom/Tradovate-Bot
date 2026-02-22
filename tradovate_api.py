@@ -12,6 +12,9 @@ References:
   - https://github.com/cullen-b/Tradovate-Python-Client
 """
 
+import base64
+import hashlib
+import hmac as hmac_mod
 import json
 import logging
 import threading
@@ -24,6 +27,35 @@ import requests
 import websocket
 
 import config
+
+# ─────────────────────────────────────────────
+# Tradovate Web Auth Helpers
+# ─────────────────────────────────────────────
+# Reverse-engineered from the Tradovate web trader JS bundle.
+# The web app encrypts the password and computes an HMAC before
+# sending the auth request. This lets us authenticate using only
+# username + password (no CID/Secret needed).
+
+_HMAC_KEY = "1259-11e7-485a-aeae-9b6016579351"
+_WEB_APP_ID = "tradovate_trader(web)"
+_WEB_APP_VERSION = "3.260220.0"
+_HMAC_FIELDS = ["chl", "deviceId", "name", "password", "appId"]
+
+
+def _encrypt_password(name: str, password: str) -> str:
+    """Tradovate's client-side password encoding (btoa of shifted+reversed)."""
+    offset = len(name) % len(password)
+    rearranged = password[offset:] + password[:offset]
+    reversed_pw = rearranged[::-1]
+    return base64.b64encode(reversed_pw.encode()).decode()
+
+
+def _compute_hmac_sec(payload: dict) -> str:
+    """Compute the HMAC-SHA256 'sec' field from the auth payload."""
+    message = "".join(str(payload.get(f, "")) for f in _HMAC_FIELDS)
+    return hmac_mod.new(
+        _HMAC_KEY.encode(), message.encode(), hashlib.sha256
+    ).hexdigest()
 
 logger = logging.getLogger(__name__)
 
@@ -77,21 +109,13 @@ class TradovateAPI:
             return True
 
         url = f"{self.base_url}/auth/accesstokenrequest"
-        payload = {
-            "name": config.TRADOVATE_USERNAME,
-            "password": config.TRADOVATE_PASSWORD,
-            "appId": config.TRADOVATE_APP_ID,
-            "appVersion": "1.0",
-            "cid": config.TRADOVATE_CID,
-            "sec": config.TRADOVATE_SECRET,
-            "deviceId": config.TRADOVATE_DEVICE_ID,
-        }
-        try:
-            resp = requests.post(url, json=payload, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-        except requests.RequestException as e:
-            logger.error("Authentication failed: %s", e)
+
+        # Try web-style auth first (no CID/Secret needed).
+        # Falls back to API-key auth if web auth fails.
+        data = self._try_web_auth(url)
+        if data is None:
+            data = self._try_api_auth(url)
+        if data is None:
             return False
 
         if "accessToken" not in data:
@@ -115,6 +139,73 @@ class TradovateAPI:
         # Fetch account ID
         self._fetch_account_id()
         return True
+
+    def _try_web_auth(self, url: str) -> Optional[dict]:
+        """
+        Authenticate using the same mechanism as the Tradovate web trader.
+        No CID/Secret required — uses password encryption + HMAC.
+        """
+        name = config.TRADOVATE_USERNAME
+        password = config.TRADOVATE_PASSWORD
+        if not name or not password:
+            return None
+
+        # Build payload with original password (HMAC uses original)
+        payload = {
+            "name": name,
+            "password": password,
+            "appId": _WEB_APP_ID,
+            "appVersion": _WEB_APP_VERSION,
+            "deviceId": config.TRADOVATE_DEVICE_ID,
+            "cid": 0,
+            "chl": "",
+        }
+        # Compute HMAC with original password
+        payload["sec"] = _compute_hmac_sec(payload)
+        # Encrypt password for transmission
+        payload["password"] = _encrypt_password(name, password)
+        payload["enc"] = True
+
+        try:
+            logger.info("Trying web-style authentication (no CID needed)...")
+            resp = requests.post(url, json=payload, timeout=30)
+            data = resp.json()
+            if "accessToken" in data:
+                logger.info("Web auth succeeded")
+                return data
+            error = data.get("errorText", "")
+            logger.info("Web auth response: %s", error)
+        except requests.RequestException as e:
+            logger.warning("Web auth request failed: %s", e)
+        return None
+
+    def _try_api_auth(self, url: str) -> Optional[dict]:
+        """Authenticate using traditional API key auth (CID + Secret)."""
+        if not config.TRADOVATE_SECRET:
+            logger.info("No API secret configured, skipping API-key auth")
+            return None
+
+        payload = {
+            "name": config.TRADOVATE_USERNAME,
+            "password": config.TRADOVATE_PASSWORD,
+            "appId": config.TRADOVATE_APP_ID or _WEB_APP_ID,
+            "appVersion": "1.0",
+            "cid": config.TRADOVATE_CID,
+            "sec": config.TRADOVATE_SECRET,
+            "deviceId": config.TRADOVATE_DEVICE_ID,
+        }
+        try:
+            logger.info("Trying API-key authentication...")
+            resp = requests.post(url, json=payload, timeout=30)
+            data = resp.json()
+            if "accessToken" in data:
+                logger.info("API-key auth succeeded")
+                return data
+            error = data.get("errorText", "")
+            logger.error("API-key auth failed: %s", error)
+        except requests.RequestException as e:
+            logger.error("API-key auth request failed: %s", e)
+        return None
 
     def renew_token(self) -> bool:
         """Renew the access token before it expires."""
