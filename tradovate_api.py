@@ -44,11 +44,38 @@ class TradovateAPI:
     # Authentication
     # ─────────────────────────────────────────
 
+    def set_token(
+        self,
+        access_token: str,
+        md_access_token: Optional[str] = None,
+        user_id: Optional[int] = None,
+        expiration_time: Optional[str] = None,
+    ):
+        """
+        Inject auth tokens from an external source (e.g. browser login).
+        Call this before authenticate() to skip the CID/Secret auth flow.
+        """
+        self.access_token = access_token
+        self.md_access_token = md_access_token
+        self.user_id = user_id
+        if expiration_time:
+            self.token_expiry = datetime.fromisoformat(
+                expiration_time.replace("Z", "+00:00")
+            )
+        logger.info("External tokens injected (userId=%s)", self.user_id)
+
     def authenticate(self) -> bool:
         """
         Obtain access tokens from Tradovate.
+        If tokens were pre-injected via set_token(), skips the API auth
+        and just fetches account info.
         Returns True on success.
         """
+        if self.access_token:
+            logger.info("Using pre-injected auth token (browser login)")
+            self._fetch_account_id()
+            return True
+
         url = f"{self.base_url}/auth/accesstokenrequest"
         payload = {
             "name": config.TRADOVATE_USERNAME,

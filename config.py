@@ -67,6 +67,15 @@ CHALLENGE_SETTINGS = {
         "close_by_et": "15:00",           # 4:00 PM CT = 3:00 PM CT for cutoff
         "drawdown_trails_unrealized": False,  # Topstep trails EOD balance only
     },
+    "fundednext": {
+        "account_size": 50_000,
+        "max_trailing_drawdown": 2_500,
+        "daily_loss_limit": 2_500,        # FundedNext Futures daily limit
+        "profit_target": 5_000,
+        "max_contracts": 10,
+        "close_by_et": "16:59",           # 4:59 PM ET
+        "drawdown_trails_unrealized": True,
+    },
 }
 
 ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
