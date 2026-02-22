@@ -45,9 +45,12 @@ WS_MARKET_URL = _URLS[ENVIRONMENT]["ws_market"]
 # ─────────────────────────────────────────────
 # Prop Firm Challenge Settings
 # ─────────────────────────────────────────────
-PROP_FIRM = os.getenv("PROP_FIRM", "apex")  # "apex" or "topstep"
+PROP_FIRM = os.getenv("PROP_FIRM", "apex")  # "apex", "topstep", or "fundednext"
 
-# Apex 50K defaults
+# Tradovate organization name (required for prop firm accounts)
+# Each prop firm has its own org name that must be sent with auth requests.
+TRADOVATE_ORGANIZATION = os.getenv("TRADOVATE_ORGANIZATION", "")
+
 CHALLENGE_SETTINGS = {
     "apex": {
         "account_size": 50_000,
@@ -57,6 +60,7 @@ CHALLENGE_SETTINGS = {
         "max_contracts": 10,              # minis
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,  # Apex trails intraday unrealized peaks
+        "organization": "",               # Tradovate org name
     },
     "topstep": {
         "account_size": 50_000,
@@ -66,6 +70,7 @@ CHALLENGE_SETTINGS = {
         "max_contracts": 5,
         "close_by_et": "15:00",           # 4:00 PM CT = 3:00 PM CT for cutoff
         "drawdown_trails_unrealized": False,  # Topstep trails EOD balance only
+        "organization": "",
     },
     "fundednext": {
         "account_size": 50_000,
@@ -75,8 +80,13 @@ CHALLENGE_SETTINGS = {
         "max_contracts": 10,
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
+        "organization": "funded-next",    # FundedNext's Tradovate org
     },
 }
+
+# Override organization from env if set, otherwise use the prop firm default
+if not TRADOVATE_ORGANIZATION:
+    TRADOVATE_ORGANIZATION = CHALLENGE_SETTINGS.get(PROP_FIRM, {}).get("organization", "")
 
 ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 

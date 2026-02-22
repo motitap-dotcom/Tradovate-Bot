@@ -143,14 +143,13 @@ class TradovateAPI:
     def _try_web_auth(self, url: str) -> Optional[dict]:
         """
         Authenticate using the same mechanism as the Tradovate web trader.
-        No CID/Secret required — uses password encryption + HMAC.
+        No CID/Secret required — just username, password, and organization.
         """
         name = config.TRADOVATE_USERNAME
         password = config.TRADOVATE_PASSWORD
         if not name or not password:
             return None
 
-        # Build payload with original password (HMAC uses original)
         payload = {
             "name": name,
             "password": password,
@@ -158,25 +157,94 @@ class TradovateAPI:
             "appVersion": _WEB_APP_VERSION,
             "deviceId": config.TRADOVATE_DEVICE_ID,
             "cid": 0,
-            "chl": "",
         }
-        # Compute HMAC with original password
-        payload["sec"] = _compute_hmac_sec(payload)
-        # Encrypt password for transmission
-        payload["password"] = _encrypt_password(name, password)
-        payload["enc"] = True
+        # Organization is required for prop firm accounts (e.g. FundedNext)
+        org = config.TRADOVATE_ORGANIZATION
+        if org:
+            payload["organization"] = org
 
         try:
-            logger.info("Trying web-style authentication (no CID needed)...")
+            logger.info(
+                "Trying web-style authentication (no CID needed)%s...",
+                f" org={org}" if org else "",
+            )
             resp = requests.post(url, json=payload, timeout=30)
             data = resp.json()
             if "accessToken" in data:
                 logger.info("Web auth succeeded")
                 return data
+
+            # Handle p-ticket (device verification / CAPTCHA required)
+            if "p-ticket" in data:
+                return self._handle_p_ticket(url, data, payload)
+
             error = data.get("errorText", "")
             logger.info("Web auth response: %s", error)
         except requests.RequestException as e:
             logger.warning("Web auth request failed: %s", e)
+        return None
+
+    def _handle_p_ticket(
+        self, url: str, ticket_data: dict, original_payload: dict
+    ) -> Optional[dict]:
+        """
+        Handle Tradovate's p-ticket device verification flow.
+
+        On first login from a new device, Tradovate returns a p-ticket
+        and may require CAPTCHA. For headless operation, we attempt to
+        complete verification without CAPTCHA. If CAPTCHA is required,
+        the user must use browser_bot.py instead.
+        """
+        p_ticket = ticket_data["p-ticket"]
+        p_time = ticket_data.get("p-time", 15)
+        needs_captcha = ticket_data.get("p-captcha", False)
+
+        logger.info(
+            "Device verification required (p-ticket received, captcha=%s, timeout=%ss)",
+            needs_captcha,
+            p_time,
+        )
+
+        if needs_captcha:
+            logger.warning(
+                "CAPTCHA required for first login from this device. "
+                "Please run browser_bot.py to complete login via browser, "
+                "or log in once at https://trader.tradovate.com"
+            )
+            # Try without captcha anyway — some accounts don't enforce it
+            pass
+
+        # Attempt to complete verification with just the ticket
+        verify_payload = {
+            "name": original_payload["name"],
+            "password": original_payload["password"],
+            "enc": original_payload.get("enc", True),
+            "appId": original_payload["appId"],
+            "appVersion": original_payload["appVersion"],
+            "deviceId": original_payload["deviceId"],
+            "cid": original_payload.get("cid", 0),
+            "sec": original_payload.get("sec", ""),
+            "p-ticket": p_ticket,
+        }
+        if original_payload.get("organization"):
+            verify_payload["organization"] = original_payload["organization"]
+
+        try:
+            resp = requests.post(url, json=verify_payload, timeout=30)
+            data = resp.json()
+            if "accessToken" in data:
+                logger.info("Device verification succeeded (no captcha needed)")
+                return data
+            error = data.get("errorText", "")
+            if "p-ticket" in data:
+                logger.warning(
+                    "Still requires verification. Use browser_bot.py for first login."
+                )
+            else:
+                logger.info("Verification response: %s", error)
+        except requests.RequestException as e:
+            logger.warning("Verification request failed: %s", e)
+
         return None
 
     def _try_api_auth(self, url: str) -> Optional[dict]:
@@ -194,6 +262,10 @@ class TradovateAPI:
             "sec": config.TRADOVATE_SECRET,
             "deviceId": config.TRADOVATE_DEVICE_ID,
         }
+        org = config.TRADOVATE_ORGANIZATION
+        if org:
+            payload["organization"] = org
+
         try:
             logger.info("Trying API-key authentication...")
             resp = requests.post(url, json=payload, timeout=30)
@@ -201,6 +273,8 @@ class TradovateAPI:
             if "accessToken" in data:
                 logger.info("API-key auth succeeded")
                 return data
+            if "p-ticket" in data:
+                return self._handle_p_ticket(url, data, payload)
             error = data.get("errorText", "")
             logger.error("API-key auth failed: %s", error)
         except requests.RequestException as e:
