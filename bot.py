@@ -23,6 +23,7 @@ from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller
 from trade_journal import TradeJournal
+from auto_tuner import AutoTuner
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -375,6 +376,14 @@ class TradovateBot:
                                 t["symbol"], 0, 0, exit_reason="force_close"
                             )
                     self.risk.end_of_day_update(self.risk.current_balance)
+                    # Run auto-tuner at end of day
+                    try:
+                        tuner = AutoTuner(self.journal)
+                        adjustments = tuner.run()
+                        if adjustments:
+                            logger.info("Auto-tuner made %d adjustments for next session", len(adjustments))
+                    except Exception as e:
+                        logger.warning("Auto-tuner error: %s", e)
                     self.running = False
                     break
 
