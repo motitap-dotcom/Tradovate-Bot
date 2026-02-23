@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tradovate Bot Dashboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+h1 { font-size: 1.5em; color: #58a6ff; }
+.header-time { color: #8b949e; font-size: 0.85em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+.card h2 { font-size: 0.9em; color: #8b949e; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.big-number { font-size: 2.2em; font-weight: 700; }
+.green { color: #3fb950; }
+.red { color: #f85149; }
+.yellow { color: #d29922; }
+.blue { color: #58a6ff; }
+.gray { color: #8b949e; }
+.row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #21262d; }
+.row:last-child { border-bottom: none; }
+.label { color: #8b949e; }
+.value { font-weight: 600; }
+.status-badge { display: inline-block; padding: 4px 14px; border-radius: 16px; font-size: 0.85em; font-weight: 700; }
+.status-badge.running { background: #0e4429; color: #3fb950; border: 1px solid #238636; }
+.status-badge.stopped { background: #490d0d; color: #f85149; border: 1px solid #da3633; }
+.progress-bar { background: #21262d; border-radius: 6px; height: 12px; margin-top: 10px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 6px; transition: width 0.3s; }
+.progress-label { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.85em; }
+.lessons { list-style: none; }
+.lessons li { padding: 10px 14px; margin-bottom: 8px; background: #1c2128; border-radius: 6px; border-right: 3px solid #58a6ff; font-size: 0.9em; line-height: 1.6; }
+.log { background: #0d1117; border-radius: 6px; padding: 12px; font-family: 'Fira Code', 'Courier New', monospace; font-size: 0.72em; max-height: 350px; overflow-y: auto; direction: ltr; text-align: left; line-height: 1.7; }
+.log .err { color: #f85149; }
+.log .warn { color: #d29922; }
+.log .info { color: #6e7681; }
+.log .signal { color: #3fb950; font-weight: 600; }
+.trades-table { width: 100%; border-collapse: collapse; font-size: 0.85em; direction: ltr; text-align: left; }
+.trades-table th { text-align: left; padding: 8px; color: #8b949e; border-bottom: 2px solid #30363d; font-weight: 600; }
+.trades-table td { padding: 8px; border-bottom: 1px solid #21262d; }
+.trades-table tr:hover { background: #1c2128; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 600; }
+.badge.buy { background: #0e4429; color: #3fb950; }
+.badge.sell { background: #490d0d; color: #f85149; }
+.tuner-item { padding: 10px; margin-bottom: 6px; background: #1c2128; border-radius: 6px; font-size: 0.85em; }
+.tuner-item .param { color: #d29922; font-weight: 600; }
+.tuner-item .reason { color: #8b949e; font-size: 0.9em; margin-top: 4px; }
+.symbol-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.symbol-card { text-align: center; padding: 14px 10px; background: #0d1117; border-radius: 8px; border: 1px solid #21262d; }
+.symbol-card .sym { font-size: 0.85em; color: #8b949e; font-weight: 600; }
+.symbol-card .stat { font-size: 1.3em; font-weight: 700; margin: 4px 0; }
+.symbol-card .detail { font-size: 0.8em; color: #8b949e; }
+.activity-item { padding: 6px 0; border-bottom: 1px solid #21262d; font-size: 0.85em; direction: ltr; text-align: left; }
+.activity-item:last-child { border-bottom: none; }
+.act-signal { color: #3fb950; }
+.act-lock { color: #f85149; }
+.act-exit { color: #d29922; }
+.refresh-info { text-align: center; color: #484f58; font-size: 0.8em; margin-top: 16px; padding: 10px; }
+.refresh-info a { color: #58a6ff; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>Tradovate Bot Dashboard</h1>
+  <div class="header-time" id="header-time"></div>
+</div>
+
+<!-- Top cards -->
+<div class="grid">
+  <div class="card" id="status-card"></div>
+  <div class="card" id="balance-card"></div>
+  <div class="card" id="challenge-card"></div>
+</div>
+
+<!-- Symbol Performance -->
+<div class="card" style="margin-bottom:16px" id="symbols-card"></div>
+
+<!-- Journal + Lessons -->
+<div class="grid">
+  <div class="card" id="journal-card"></div>
+  <div class="card" id="lessons-card"></div>
+</div>
+
+<!-- Recent Trades -->
+<div class="card" style="margin-bottom:16px" id="trades-card"></div>
+
+<!-- Tuner + Activity -->
+<div class="grid">
+  <div class="card" id="tuner-card"></div>
+  <div class="card" id="activity-card"></div>
+</div>
+
+<!-- Log -->
+<div class="card" style="margin-bottom:16px" id="log-card"></div>
+
+<div class="refresh-info" id="refresh-info"></div>
+</div>
+
+<script>
+const DATA = {"generated_at": "2026-02-23T12:01:44.293837+00:00", "bot": {"running": true, "pid": 16862}, "token": {"status": "valid", "minutes_remaining": 61}, "trading": {"timestamp": "2026-02-23 12:01:20", "balance": 50000.0, "day_pnl": 0.0, "to_floor": 2500.0, "open_contracts": 0, "max_contracts": 10, "trades_today": 0, "max_trades": 12, "locked": false}, "journal": {"summary": {}, "trades": [], "lessons": []}, "tuner": [], "log": ["2026-02-23 11:43:37,497 [INFO] bot: Entering main loop...", "2026-02-23 11:43:37,497 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:43:43,463 [ERROR] tradovate_api: Market data WebSocket error: Handshake status 403 Forbidden -+-+- {'date': 'Mon, 23 Feb 2026 11:43:43 GMT', 'connection': 'close', 'content-length': '0'} -+-+- b''", "2026-02-23 11:43:43,463 [ERROR] websocket: Handshake status 403 Forbidden -+-+- {'date': 'Mon, 23 Feb 2026 11:43:43 GMT', 'connection': 'close', 'content-length': '0'} -+-+- b'' - goodbye", "2026-02-23 11:43:43,463 [WARNING] tradovate_api: Market data WebSocket closed: None None", "2026-02-23 11:44:07,601 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:44:37,983 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:45:08,275 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:45:38,597 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:46:08,883 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:46:39,128 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:47:09,546 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:47:39,862 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:48:09,953 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:48:40,183 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:49:11,454 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:49:41,660 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:50:11,931 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:50:42,229 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:51:12,618 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:51:42,863 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:52:13,080 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:52:43,280 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:53:13,688 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:53:43,914 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:54:14,236 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:54:45,223 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:55:15,541 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:55:45,822 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:56:16,129 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:56:46,576 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:57:17,018 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:57:47,633 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:58:18,038 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:58:48,309 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:59:18,587 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 11:59:49,098 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 12:00:19,884 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 12:00:50,093 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False", "2026-02-23 12:01:20,202 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"], "activity": []};
+
+function fmt(n, d=2) { return Number(n||0).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+function pnlC(v) { return (v||0) >= 0 ? 'green' : 'red'; }
+function pnlS(v) { return (v||0) >= 0 ? '+' : ''; }
+
+function render() {
+  const d = DATA;
+  const bot = d.bot || {};
+  const tok = d.token || {};
+  const t = d.trading || {};
+  const j = d.journal || {};
+  const sum = j.summary || {};
+
+  // Generated time
+  const genTime = new Date(d.generated_at);
+  document.getElementById('header-time').textContent =
+    'Updated: ' + genTime.toLocaleString('he-IL', {timeZone: 'Asia/Jerusalem'});
+
+  // Status card
+  document.getElementById('status-card').innerHTML = `
+    <h2>Bot Status</h2>
+    <div style="text-align:center;margin:10px 0">
+      <span class="status-badge ${bot.running ? 'running' : 'stopped'}">
+        ${bot.running ? '\u25CF RUNNING' : '\u25CF STOPPED'}
+      </span>
+    </div>
+    <div class="row"><span class="label">PID</span><span class="value">${bot.pid || '-'}</span></div>
+    <div class="row"><span class="label">Token</span>
+      <span class="value ${tok.status === 'valid' ? 'green' : 'red'}">${tok.status} (${tok.minutes_remaining || 0} min)</span></div>
+    <div class="row"><span class="label">Trades Today</span><span class="value">${t.trades_today || 0}/${t.max_trades || 12}</span></div>
+    <div class="row"><span class="label">Open Contracts</span><span class="value">${t.open_contracts || 0}/${t.max_contracts || 10}</span></div>
+    ${t.locked ? '<div style="text-align:center;margin-top:10px"><span class="status-badge stopped">TRADING LOCKED</span></div>' : ''}
+  `;
+
+  // Balance card
+  const bal = t.balance || 50000;
+  const pnl = t.day_pnl || 0;
+  const floor = t.to_floor || 0;
+  document.getElementById('balance-card').innerHTML = `
+    <h2>Account Balance</h2>
+    <div class="big-number" style="text-align:center;margin:8px 0">$${fmt(bal)}</div>
+    <div class="row"><span class="label">Day P&L</span>
+      <span class="value ${pnlC(pnl)}">${pnlS(pnl)}$${fmt(pnl)}</span></div>
+    <div class="row"><span class="label">To Drawdown Floor</span>
+      <span class="value ${floor < 500 ? 'red' : floor < 1000 ? 'yellow' : 'green'}">$${fmt(floor)}</span></div>
+    <div class="row"><span class="label">Last Update</span>
+      <span class="value gray">${t.timestamp || 'N/A'}</span></div>
+  `;
+
+  // Challenge progress
+  const profit = bal - 50000;
+  const target = 5000;
+  const pct = Math.max(0, Math.min(100, (profit / target) * 100));
+  const barColor = profit >= 0 ? '#3fb950' : '#f85149';
+  document.getElementById('challenge-card').innerHTML = `
+    <h2>FundedNext Challenge</h2>
+    <div class="row"><span class="label">Starting Balance</span><span class="value">$50,000</span></div>
+    <div class="row"><span class="label">Profit Target</span><span class="value">$5,000</span></div>
+    <div class="row"><span class="label">Current Profit</span>
+      <span class="value ${pnlC(profit)}">${pnlS(profit)}$${fmt(profit)}</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${Math.max(0,pct)}%;background:${barColor}"></div></div>
+    <div class="progress-label"><span>${fmt(pct,1)}% complete</span><span>$${fmt(Math.max(0,5000-profit),0)} remaining</span></div>
+    <div style="margin-top:10px">
+      <div class="row"><span class="label">Max Trailing DD</span><span class="value">$2,500</span></div>
+      <div class="row"><span class="label">Daily Loss Limit</span><span class="value">$2,500</span></div>
+      <div class="row"><span class="label">Close By</span><span class="value">4:59 PM ET</span></div>
+    </div>
+  `;
+
+  // Symbol performance
+  const bySym = j.by_symbol || {};
+  if (Object.keys(bySym).length > 0) {
+    let symHtml = '<h2>Performance by Symbol</h2><div class="symbol-grid">';
+    for (const [sym, s] of Object.entries(bySym)) {
+      const wr = s.trades > 0 ? ((s.wins / s.trades) * 100).toFixed(0) : '0';
+      symHtml += `<div class="symbol-card">
+        <div class="sym">${sym}</div>
+        <div class="stat ${pnlC(s.pnl)}">${pnlS(s.pnl)}$${fmt(s.pnl)}</div>
+        <div class="detail">${s.trades} trades | ${wr}% WR</div>
+      </div>`;
+    }
+    symHtml += '</div>';
+    document.getElementById('symbols-card').innerHTML = symHtml;
+  } else {
+    document.getElementById('symbols-card').innerHTML = '<h2>Performance by Symbol</h2><div class="gray">No completed trades yet</div>';
+  }
+
+  // Journal summary
+  if (sum.total_trades > 0) {
+    document.getElementById('journal-card').innerHTML = `
+      <h2>Trade Journal Summary</h2>
+      <div class="row"><span class="label">Total Trades</span><span class="value">${sum.total_trades}</span></div>
+      <div class="row"><span class="label">Win Rate</span>
+        <span class="value ${(sum.win_rate||0) >= 0.5 ? 'green' : 'yellow'}">${((sum.win_rate||0)*100).toFixed(0)}%</span></div>
+      <div class="row"><span class="label">Wins / Losses</span>
+        <span class="value"><span class="green">${sum.wins||0}W</span> / <span class="red">${sum.losses||0}L</span></span></div>
+      <div class="row"><span class="label">Total P&L</span>
+        <span class="value ${pnlC(sum.total_pnl)}">${pnlS(sum.total_pnl)}$${fmt(sum.total_pnl)}</span></div>
+      <div class="row"><span class="label">Profit Factor</span><span class="value">${fmt(sum.profit_factor||0)}</span></div>
+      <div class="row"><span class="label">Expectancy</span>
+        <span class="value ${pnlC(sum.expectancy)}">${pnlS(sum.expectancy)}$${fmt(sum.expectancy)}/trade</span></div>
+      <div class="row"><span class="label">Avg R-Multiple</span><span class="value">${fmt(sum.avg_r_multiple||0)}R</span></div>
+      <div class="row"><span class="label">Best Trade</span><span class="value green">+$${fmt(sum.best_trade||0)}</span></div>
+      <div class="row"><span class="label">Worst Trade</span><span class="value red">$${fmt(sum.worst_trade||0)}</span></div>
+    `;
+  } else {
+    document.getElementById('journal-card').innerHTML = '<h2>Trade Journal Summary</h2><div class="gray" style="padding:20px;text-align:center">No closed trades yet. Waiting for market open...</div>';
+  }
+
+  // Lessons
+  const lessons = j.lessons || [];
+  if (lessons.length > 0 && !lessons[0].includes('Not enough trades')) {
+    document.getElementById('lessons-card').innerHTML =
+      '<h2>Lessons & Recommendations</h2><ul class="lessons">' +
+      lessons.map(l => `<li>${l}</li>`).join('') + '</ul>';
+  } else {
+    document.getElementById('lessons-card').innerHTML = '<h2>Lessons & Recommendations</h2><div class="gray" style="padding:20px;text-align:center">Lessons will appear after enough trades are completed</div>';
+  }
+
+  // Recent trades table
+  const trades = j.recent_trades || [];
+  if (trades.length > 0) {
+    let thtml = '<h2>Recent Trades</h2><table class="trades-table"><tr><th>Date</th><th>Symbol</th><th>Dir</th><th>Qty</th><th>Entry</th><th>Exit</th><th>P&L</th><th>R</th><th>Reason</th></tr>';
+    for (const tr of [...trades].reverse()) {
+      const pnl = tr.pnl || 0;
+      const dir = (tr.direction||'Buy') === 'Buy' ? 'buy' : 'sell';
+      thtml += `<tr>
+        <td>${(tr.date||'').slice(5)}</td>
+        <td><strong>${tr.symbol}</strong></td>
+        <td><span class="badge ${dir}">${tr.direction||'?'}</span></td>
+        <td>${tr.qty||1}</td>
+        <td>${fmt(tr.entry_price||0)}</td>
+        <td>${fmt(tr.exit_price||0)}</td>
+        <td class="${pnlC(pnl)}">${pnlS(pnl)}$${fmt(pnl)}</td>
+        <td>${fmt(tr.r_multiple||0,1)}R</td>
+        <td class="gray">${tr.exit_reason||'-'}</td>
+      </tr>`;
+    }
+    thtml += '</table>';
+    document.getElementById('trades-card').innerHTML = thtml;
+  } else {
+    document.getElementById('trades-card').innerHTML = '<h2>Recent Trades</h2><div class="gray" style="padding:20px;text-align:center">No trades recorded yet</div>';
+  }
+
+  // Auto-tuner
+  const tuner = d.tuner || [];
+  if (tuner.length > 0) {
+    let tHtml = '<h2>Auto-Tuner Adjustments</h2>';
+    for (const a of [...tuner].reverse()) {
+      tHtml += `<div class="tuner-item">
+        <span class="param">${a.symbol}.${a.param}</span>: ${a.old_value} \u2192 <span class="${a.applied ? 'green' : 'yellow'}">${a.new_value}</span>
+        <div class="reason">${a.reason}</div>
+      </div>`;
+    }
+    document.getElementById('tuner-card').innerHTML = tHtml;
+  } else {
+    document.getElementById('tuner-card').innerHTML = '<h2>Auto-Tuner Adjustments</h2><div class="gray" style="padding:20px;text-align:center">No adjustments made yet</div>';
+  }
+
+  // Activity
+  const activity = d.activity || [];
+  if (activity.length > 0) {
+    let aHtml = '<h2>Recent Activity</h2>';
+    for (const line of activity) {
+      const short = line.length > 20 ? line.slice(20) : line;
+      let cls = '';
+      if (line.includes('SIGNAL:') || line.includes('ENTRY')) cls = 'act-signal';
+      else if (line.includes('LOCKED')) cls = 'act-lock';
+      else if (line.includes('EXIT') || line.includes('Force')) cls = 'act-exit';
+      aHtml += `<div class="activity-item ${cls}">${short}</div>`;
+    }
+    document.getElementById('activity-card').innerHTML = aHtml;
+  } else {
+    document.getElementById('activity-card').innerHTML = '<h2>Recent Activity</h2><div class="gray" style="padding:20px;text-align:center">No trading activity yet</div>';
+  }
+
+  // Log
+  const logLines = d.log || [];
+  if (logLines.length > 0) {
+    let lHtml = '<h2>Bot Log (Latest)</h2><div class="log">';
+    for (const line of logLines) {
+      let cls = 'info';
+      if (line.includes('[ERROR]')) cls = 'err';
+      else if (line.includes('[WARNING]')) cls = 'warn';
+      else if (line.includes('SIGNAL:')) cls = 'signal';
+      lHtml += `<div class="${cls}">${line.replace(/</g, '&lt;')}</div>`;
+    }
+    lHtml += '</div>';
+    document.getElementById('log-card').innerHTML = lHtml;
+    const logEl = document.querySelector('.log');
+    if (logEl) logEl.scrollTop = logEl.scrollHeight;
+  } else {
+    document.getElementById('log-card').innerHTML = '<h2>Bot Log</h2><div class="gray" style="padding:20px;text-align:center">No log entries</div>';
+  }
+
+  // Refresh info
+  document.getElementById('refresh-info').innerHTML =
+    `Static snapshot generated at ${genTime.toLocaleString('he-IL', {timeZone: 'Asia/Jerusalem'})} (Israel time)<br>` +
+    `<span style="font-size:0.9em">This page shows data from the last publish. Reload the page to check for updates.</span>`;
+}
+
+render();
+</script>
+</body>
+</html>
