@@ -18,10 +18,12 @@ import sys
 import time
 from datetime import datetime, timezone, timedelta
 
+import requests
+
 import config
 from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
-from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller
+from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 
@@ -81,6 +83,9 @@ class TradovateBot:
         # Track daily trades for logging
         self.trades_today: list[dict] = []
 
+        # Last candle timestamp per contract from warmup (to avoid replaying in poller)
+        self._warmup_last_ts: dict[str, int] = {}
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -106,6 +111,9 @@ class TradovateBot:
 
         # Initialize strategies
         self._init_strategies()
+
+        # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
+        self._warm_up_strategies()
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -180,6 +188,95 @@ class TradovateBot:
             )
 
     # ─────────────────────────────────────────
+    # Strategy warmup (late-start recovery)
+    # ─────────────────────────────────────────
+
+    def _warm_up_strategies(self):
+        """
+        Fetch today's 1-min candles from Yahoo Finance and feed them to
+        strategies so they can build state (ORB ranges, VWAP levels) even
+        when the bot starts after market open.  No signals are executed.
+        """
+        for symbol, contract_name in self.contract_map.items():
+            root = contract_name[:-2] if len(contract_name) > 2 else contract_name
+            yahoo_sym = YAHOO_SYMBOLS.get(root)
+            if not yahoo_sym:
+                continue
+
+            strategy = self.strategies.get(symbol)
+            if not strategy:
+                continue
+
+            try:
+                url = (
+                    f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}"
+                    f"?interval=1m&range=1d"
+                )
+                resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                if resp.status_code != 200:
+                    logger.warning("Warmup: Yahoo returned %d for %s", resp.status_code, yahoo_sym)
+                    continue
+
+                data = resp.json()
+                result = data.get("chart", {}).get("result", [{}])[0]
+                timestamps = result.get("timestamp") or []
+                quotes = result.get("indicators", {}).get("quote", [{}])[0]
+
+                highs = quotes.get("high", [])
+                lows = quotes.get("low", [])
+                closes = quotes.get("close", [])
+                volumes = quotes.get("volume", [])
+
+                fed = 0
+                for i, ts in enumerate(timestamps):
+                    c = closes[i] if i < len(closes) else None
+                    h = highs[i] if i < len(highs) else None
+                    l = lows[i] if i < len(lows) else None
+                    v = volumes[i] if i < len(volumes) else 0
+
+                    if c is None or h is None or l is None:
+                        continue
+
+                    candle_time = datetime.fromtimestamp(ts, tz=ET)
+
+                    # Feed to strategy state WITHOUT executing signals
+                    if hasattr(strategy, "update_vwap"):
+                        # VWAP: build cumulative VWAP from per-bar data
+                        strategy._current_time = candle_time
+                        strategy.update_vwap(h, l, c, v or 0)
+                        strategy._prev_price = c
+                    else:
+                        # ORB: feed candles to build the opening range
+                        for window in getattr(strategy, "windows", []):
+                            if not window.range_set:
+                                window.feed(c, h, l, candle_time.time())
+
+                    fed += 1
+
+                # Remember last candle so REST poller skips replayed data
+                if timestamps:
+                    self._warmup_last_ts[contract_name] = timestamps[-1]
+
+                logger.info(
+                    "Warmed up %s with %d candles | strategy=%s",
+                    symbol, fed, type(strategy).__name__,
+                )
+
+                # Log built ranges / VWAP
+                for w in getattr(strategy, "windows", []):
+                    if w.range_set:
+                        logger.info(
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f)",
+                            w.window_minutes, w.range_low, w.range_high,
+                            w.range_high - w.range_low,
+                        )
+                if hasattr(strategy, "vwap") and strategy.vwap:
+                    logger.info("  VWAP: %.4f", strategy.vwap)
+
+            except Exception as e:
+                logger.warning("Warmup failed for %s: %s", symbol, e)
+
+    # ─────────────────────────────────────────
     # Market data
     # ─────────────────────────────────────────
 
@@ -199,6 +296,8 @@ class TradovateBot:
                 logger.warning("WebSocket init failed (%s), falling back to REST polling", e)
 
         poller = RestMarketDataPoller()
+        # Seed with warmup timestamps so poller skips already-processed candles
+        poller._last_ts.update(self._warmup_last_ts)
         poller.start()
         logger.info("Market data via REST polling (Yahoo Finance)")
         return poller

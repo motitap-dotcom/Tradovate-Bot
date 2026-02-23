@@ -888,10 +888,11 @@ class MarketDataStream:
 # ─────────────────────────────────────────────
 
 # Yahoo Finance symbol mapping for futures front-month
-_YAHOO_SYMBOLS = {
+YAHOO_SYMBOLS = {
     "NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F",
     "SI": "SI=F", "NG": "NG=F",
 }
+_YAHOO_SYMBOLS = YAHOO_SYMBOLS  # backward compat
 
 
 class RestMarketDataPoller:
@@ -910,6 +911,7 @@ class RestMarketDataPoller:
         self._symbols: dict[str, str] = {}  # contract_name -> yahoo symbol
         self._thread: Optional[threading.Thread] = None
         self._should_run = False
+        self._last_ts: dict[str, int] = {}  # last processed candle timestamp per symbol
 
     def start(self):
         """Start polling in a background thread."""
@@ -952,22 +954,14 @@ class RestMarketDataPoller:
             time.sleep(self.POLL_INTERVAL)
 
     def _fetch_and_dispatch(self):
-        """Fetch quotes from Yahoo Finance and dispatch to callbacks."""
+        """Fetch 1-min candles from Yahoo Finance and dispatch new bars to callbacks."""
         if not self._symbols:
             return
 
-        yahoo_syms = list(set(self._symbols.values()))
-        sym_str = ",".join(yahoo_syms)
+        headers = {"User-Agent": "Mozilla/5.0"}
 
-        try:
-            url = (
-                f"https://query1.finance.yahoo.com/v8/finance/chart/{sym_str}"
-                f"?interval=1m&range=1d"
-            )
-            headers = {"User-Agent": "Mozilla/5.0"}
-
-            # Fetch each symbol individually (batch not supported by v8 chart)
-            for contract_name, yahoo_sym in list(self._symbols.items()):
+        for contract_name, yahoo_sym in list(self._symbols.items()):
+            try:
                 chart_url = (
                     f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}"
                     f"?interval=1m&range=1d"
@@ -978,30 +972,51 @@ class RestMarketDataPoller:
 
                 data = resp.json()
                 result = data.get("chart", {}).get("result", [{}])[0]
-                meta = result.get("meta", {})
-                price = meta.get("regularMarketPrice", 0)
-                high = meta.get("regularMarketDayHigh", price)
-                low = meta.get("regularMarketDayLow", price)
-                volume = meta.get("regularMarketVolume", 0)
+                timestamps = result.get("timestamp") or []
+                quotes = result.get("indicators", {}).get("quote", [{}])[0]
 
-                if price <= 0:
+                highs = quotes.get("high", [])
+                lows = quotes.get("low", [])
+                closes = quotes.get("close", [])
+                volumes = quotes.get("volume", [])
+
+                if not timestamps or not closes:
                     continue
 
-                # Build quote dict matching the format _on_quote() expects
-                quote = {
-                    "trade": {"price": price, "size": volume},
-                    "bid": {"price": price},
-                    "high": {"price": high},
-                    "low": {"price": low},
-                }
-
-                # Dispatch to callbacks
+                # Only dispatch candles newer than the last one we processed
+                last_ts = self._last_ts.get(contract_name, 0)
                 cbs = self._callbacks.get(contract_name, [])
-                for cb in cbs:
-                    try:
-                        cb(contract_name, quote)
-                    except Exception as e:
-                        logger.error("Quote callback error for %s: %s", contract_name, e)
+                if not cbs:
+                    continue
 
-        except requests.RequestException as e:
-            logger.warning("Yahoo Finance request failed: %s", e)
+                for i, ts in enumerate(timestamps):
+                    if ts <= last_ts:
+                        continue
+
+                    c = closes[i] if i < len(closes) else None
+                    h = highs[i] if i < len(highs) else None
+                    l = lows[i] if i < len(lows) else None
+                    v = volumes[i] if i < len(volumes) else 0
+
+                    if c is None or h is None or l is None:
+                        continue
+
+                    quote = {
+                        "trade": {"price": c, "size": v or 0},
+                        "bid": {"price": c},
+                        "high": {"price": h},
+                        "low": {"price": l},
+                    }
+
+                    for cb in cbs:
+                        try:
+                            cb(contract_name, quote)
+                        except Exception as e:
+                            logger.error("Quote callback error for %s: %s", contract_name, e)
+
+                self._last_ts[contract_name] = timestamps[-1]
+
+            except requests.RequestException as e:
+                logger.warning("Yahoo Finance request failed for %s: %s", yahoo_sym, e)
+            except Exception as e:
+                logger.error("REST poller error for %s: %s", contract_name, e)
