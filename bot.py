@@ -457,6 +457,9 @@ class TradovateBot:
         """
         logger.info("Entering main loop...")
 
+        # Track known fills to detect new ones
+        self._known_fill_ids: set = set()
+
         while self.running:
             try:
                 current = now_et()
@@ -486,7 +489,12 @@ class TradovateBot:
                     self.running = False
                     break
 
-                # Periodic status update
+                # Update balance from API FIRST (before logging status)
+                if not self.dry_run:
+                    self._sync_balance()
+                    self._sync_fills()
+
+                # Periodic status update (now reflects real balance)
                 status = self.risk.status()
                 logger.info(
                     "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s",
@@ -500,10 +508,6 @@ class TradovateBot:
                     status["locked"],
                 )
 
-                # Update balance from API
-                if not self.dry_run:
-                    self._sync_balance()
-
                 time.sleep(30)  # Status update every 30 seconds
 
             except KeyboardInterrupt:
@@ -514,17 +518,107 @@ class TradovateBot:
 
         self.stop()
 
+    def _sync_fills(self):
+        """Check positions and fills to close journal trades and update contract count."""
+        try:
+            positions = self.api.get_positions()
+            # Build map of symbol -> net position from API
+            open_symbols = set()
+            total_open = 0
+            for p in positions:
+                net = abs(p.get("netPos", 0))
+                if net > 0:
+                    total_open += net
+                    # Map contract name back to base symbol
+                    # Position has contractId; we need to match to our contract_map
+                    open_symbols.add(p.get("contractId"))
+
+            # Update open contract count from API (more accurate than internal tracking)
+            self.risk.open_contracts = total_open
+
+            # Check for closed positions: if a journal trade's symbol has netPos=0, close it
+            # Build set of base symbols with open positions
+            open_base_symbols = set()
+            for symbol, contract_name in self.contract_map.items():
+                for p in positions:
+                    if abs(p.get("netPos", 0)) > 0:
+                        # Check if this position's bought/sold values match our contract
+                        # Use the simpler approach: check if position has net > 0
+                        # and was traded today (tradeDate matches)
+                        if p.get("bought", 0) > 0 or p.get("sold", 0) > 0:
+                            open_base_symbols.add(symbol)
+
+            # Close journal trades where position is now flat
+            for trade_info in self.trades_today:
+                journal_id = trade_info.get("journal_id")
+                sym = trade_info.get("symbol")
+                if not journal_id or trade_info.get("_closed"):
+                    continue
+
+                # Check if this symbol's position is flat (netPos == 0)
+                symbol_flat = True
+                for p in positions:
+                    if abs(p.get("netPos", 0)) > 0:
+                        # Check if this is our symbol's position by matching bought/sold activity
+                        bought = p.get("bought", 0)
+                        sold = p.get("sold", 0)
+                        if bought > 0 or sold > 0:
+                            # This position is still active for some symbol
+                            # Match by checking contract_map
+                            contract_name = self.contract_map.get(sym, "")
+                            # Can't easily match contractId to name via API without extra calls
+                            # Use the simpler heuristic: if any position has netPos != 0,
+                            # check if it's for this symbol
+                            symbol_flat = False
+
+                if symbol_flat:
+                    # Position closed - calculate P&L from API fills
+                    fills = self.api.get_fills()
+                    entry_dir = trade_info.get("direction", "Buy")
+                    contract_name = self.contract_map.get(sym, "")
+                    spec = config.CONTRACT_SPECS.get(sym, {})
+                    point_value = spec.get("point_value", 1)
+
+                    # Calculate P&L from bought/sold values in position
+                    pnl = 0
+                    for p in positions:
+                        bought_val = p.get("boughtValue", 0)
+                        sold_val = p.get("soldValue", 0)
+                        bought_qty = p.get("bought", 0)
+                        sold_qty = p.get("sold", 0)
+                        if bought_qty > 0 and sold_qty > 0:
+                            # P&L = (sold_value - bought_value) * point_value
+                            # Values are in points, so multiply by point_value
+                            pnl_points = sold_val - bought_val
+                            pnl = pnl_points * point_value
+
+                    # Get approximate exit price from latest fills
+                    exit_price = 0
+                    for f in reversed(fills):
+                        if f.get("action") != entry_dir:
+                            exit_price = f.get("price", 0)
+                            break
+
+                    self.journal.record_exit_by_symbol(
+                        sym, exit_price, pnl, exit_reason="bracket_fill"
+                    )
+                    self.risk.register_close(trade_info.get("qty", 1))
+                    trade_info["_closed"] = True
+                    logger.info("Position closed for %s | P&L=%.2f", sym, pnl)
+
+        except Exception as e:
+            logger.error("Fill sync error: %s", e)
+
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
         try:
             snapshot = self.api.get_cash_balance()
-            if snapshot and "amount" in snapshot:
-                balance = snapshot["amount"]
-                positions = self.api.get_positions()
-                unrealized = sum(
-                    p.get("unrealizedPnl", 0) for p in positions
-                )
-                self.risk.update_balance(balance, unrealized)
+            if snapshot:
+                # API returns totalCashValue (realized) and openPnL (unrealized)
+                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq") or snapshot.get("amount")
+                if balance is not None:
+                    unrealized = snapshot.get("openPnL", 0.0)
+                    self.risk.update_balance(balance, unrealized)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 

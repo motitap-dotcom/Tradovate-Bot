@@ -28,17 +28,62 @@ OUTPUT_DIR = os.path.join(BOT_DIR, ".gh-pages")
 
 def collect_data() -> dict:
     """Collect all dashboard data into a single dict."""
+    trading = _last_status()
+
+    # Enrich trading data with live API balance if token is available
+    api_balance = _api_balance()
+    if api_balance:
+        trading["balance"] = api_balance.get("totalCashValue", trading.get("balance", 50000))
+        trading["day_pnl"] = api_balance.get("totalCashValue", 50000) - api_balance.get("totalCashValueSOD", 50000) + api_balance.get("openPnL", 0)
+        # Distance to floor = equity - (peak - max_dd)
+        equity = api_balance.get("netLiq", trading.get("balance", 50000))
+        trading["to_floor"] = equity - (50000 - 2500)  # drawdown floor starts at account_size - max_dd
+        trading["api_live"] = True
+
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "bot": _bot_status(),
         "token": _token_status(),
-        "trading": _last_status(),
+        "trading": trading,
         "journal": _journal_data(),
         "tuner": _tuner_data(),
         "log": _recent_log(),
         "activity": _recent_activity(),
     }
     return data
+
+
+def _api_balance() -> dict:
+    """Fetch live balance from Tradovate API using saved token."""
+    if not os.path.exists(TOKEN_FILE):
+        return {}
+    try:
+        import requests
+        with open(TOKEN_FILE) as f:
+            t = json.load(f)
+        token = t.get("accessToken", "")
+        account_id = t.get("accountId")
+        if not token or not account_id:
+            return {}
+
+        # Check if token is expired
+        exp = t.get("expirationTime", "")
+        if exp:
+            exp_dt = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) > exp_dt:
+                return {}
+
+        resp = requests.post(
+            "https://demo.tradovateapi.com/v1/cashBalance/getcashbalancesnapshot",
+            json={"accountId": account_id},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+    return {}
 
 
 def _bot_status() -> dict:
