@@ -527,7 +527,7 @@ def publish():
 
 
 def _push_gh_pages(html_path: str):
-    """Copy index.html to docs/ in the current branch for GitHub Pages."""
+    """Copy index.html to docs/ and push to current branch."""
     docs_dir = os.path.join(BOT_DIR, "docs")
     os.makedirs(docs_dir, exist_ok=True)
 
@@ -538,8 +538,49 @@ def _push_gh_pages(html_path: str):
     with open(os.path.join(docs_dir, ".nojekyll"), "w") as f:
         f.write("")
 
-    print(f"  Dashboard written to docs/index.html")
-    print(f"  To view: enable GitHub Pages from 'docs' folder in repo settings")
+    # Auto-commit and push if in loop mode
+    if "--loop" in sys.argv:
+        try:
+            subprocess.run(
+                ["git", "add", "docs/index.html", "docs/.nojekyll"],
+                check=True, capture_output=True, cwd=BOT_DIR
+            )
+            # Check if there are changes
+            status = subprocess.run(
+                ["git", "diff", "--cached", "--quiet"],
+                capture_output=True, cwd=BOT_DIR
+            )
+            if status.returncode != 0:
+                # There are staged changes
+                ts = datetime.now(timezone.utc).strftime('%H:%M UTC')
+                subprocess.run(
+                    ["git", "-c", "commit.gpgsign=false",
+                     "commit", "-m", f"Dashboard update {ts}"],
+                    check=True, capture_output=True, cwd=BOT_DIR
+                )
+                # Get current branch
+                branch = subprocess.check_output(
+                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                    text=True, cwd=BOT_DIR
+                ).strip()
+                for attempt in range(4):
+                    result = subprocess.run(
+                        ["git", "push", "-u", "origin", branch],
+                        capture_output=True, text=True, cwd=BOT_DIR
+                    )
+                    if result.returncode == 0:
+                        print(f"  Pushed to {branch}")
+                        return
+                    wait = 2 ** (attempt + 1)
+                    print(f"  Push attempt {attempt+1} failed, retrying in {wait}s...")
+                    time.sleep(wait)
+                print(f"  Push failed after retries")
+            else:
+                print(f"  No changes to push")
+        except Exception as e:
+            print(f"  Git push error: {e}")
+    else:
+        print(f"  Dashboard written to docs/index.html")
 
 
 def main():
