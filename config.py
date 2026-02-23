@@ -85,7 +85,7 @@ CHALLENGE_SETTINGS = {
         "max_contracts": 10,
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
-        "organization": "funded-next",    # FundedNext's Tradovate org
+        "organization": "",               # FundedNext uses empty string (NOT "funded-next")
     },
 }
 

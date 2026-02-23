@@ -222,17 +222,18 @@ class TradovateAPI:
             "appId": _WEB_APP_ID,
             "appVersion": _WEB_APP_VERSION,
             "deviceId": config.TRADOVATE_DEVICE_ID,
-            "cid": 0,
+            "cid": 8,
+            "sec": "",
+            # Always include organization — some prop firms (e.g. FundedNext)
+            # require an empty string; omitting the field entirely fails.
+            "organization": config.TRADOVATE_ORGANIZATION,
         }
-        # Organization is required for prop firm accounts (e.g. FundedNext)
-        org = config.TRADOVATE_ORGANIZATION
-        if org:
-            payload["organization"] = org
 
         try:
+            org = config.TRADOVATE_ORGANIZATION
             logger.info(
                 "Trying web-style authentication (no CID needed)%s...",
-                f" org={org}" if org else "",
+                f" org=\"{org}\"" if org else "",
             )
             resp = requests.post(url, json=payload, timeout=30)
             data = resp.json()
@@ -259,28 +260,48 @@ class TradovateAPI:
         On first login from a new device, Tradovate returns a p-ticket
         and may require CAPTCHA. For headless operation, we attempt to
         complete verification without CAPTCHA. If CAPTCHA is required,
-        the user must use browser_bot.py instead.
+        the user must obtain a token via browser.
         """
         p_ticket = ticket_data["p-ticket"]
         p_time = ticket_data.get("p-time", 15)
         needs_captcha = ticket_data.get("p-captcha", False)
 
         logger.info(
-            "Device verification required (p-ticket received, captcha=%s, timeout=%ss)",
+            "Credentials accepted! Device verification required "
+            "(p-ticket received, captcha=%s, timeout=%ss)",
             needs_captcha,
             p_time,
         )
 
         if needs_captcha:
             logger.warning(
-                "CAPTCHA required for first login from this device. "
-                "Please run browser_bot.py to complete login via browser, "
-                "or log in once at https://trader.tradovate.com"
+                "\n"
+                "╔══════════════════════════════════════════════════════╗\n"
+                "║  CAPTCHA REQUIRED — one-time setup needed           ║\n"
+                "║                                                      ║\n"
+                "║  Your credentials are CORRECT, but Tradovate         ║\n"
+                "║  requires a CAPTCHA for first-time API login.        ║\n"
+                "║                                                      ║\n"
+                "║  To fix this (choose one):                           ║\n"
+                "║                                                      ║\n"
+                "║  Option 1: Run get_token.py on a PC with a browser   ║\n"
+                "║    $ python get_token.py                             ║\n"
+                "║                                                      ║\n"
+                "║  Option 2: Get token manually from browser:          ║\n"
+                "║    1. Log into https://trader.tradovate.com          ║\n"
+                "║    2. Open DevTools (F12) → Application tab          ║\n"
+                "║    3. Local Storage → find 'accessToken' value       ║\n"
+                "║    4. Paste into .env as TRADOVATE_ACCESS_TOKEN=...  ║\n"
+                "║                                                      ║\n"
+                "║  After first setup, the bot auto-renews the token.   ║\n"
+                "╚══════════════════════════════════════════════════════╝"
             )
-            # Try without captcha anyway — some accounts don't enforce it
-            pass
 
-        # Attempt to complete verification with just the ticket
+        # Wait for p-time and attempt verification with just the ticket
+        import time as _time
+        logger.info("Waiting %d seconds before verification attempt...", p_time)
+        _time.sleep(p_time + 1)
+
         verify_payload = dict(original_payload)
         verify_payload["p-ticket"] = p_ticket
 
@@ -288,15 +309,15 @@ class TradovateAPI:
             resp = requests.post(url, json=verify_payload, timeout=30)
             data = resp.json()
             if "accessToken" in data:
-                logger.info("Device verification succeeded (no captcha needed)")
+                logger.info("Device verification succeeded!")
                 return data
-            error = data.get("errorText", "")
             if "p-ticket" in data:
-                logger.warning(
-                    "Still requires verification. Use browser_bot.py for first login."
+                logger.info(
+                    "Verification still pending (captcha required). "
+                    "Use get_token.py or browser to obtain initial token."
                 )
             else:
-                logger.info("Verification response: %s", error)
+                logger.info("Verification response: %s", data.get("errorText", data))
         except requests.RequestException as e:
             logger.warning("Verification request failed: %s", e)
 
@@ -316,10 +337,8 @@ class TradovateAPI:
             "cid": config.TRADOVATE_CID,
             "sec": config.TRADOVATE_SECRET,
             "deviceId": config.TRADOVATE_DEVICE_ID,
+            "organization": config.TRADOVATE_ORGANIZATION,
         }
-        org = config.TRADOVATE_ORGANIZATION
-        if org:
-            payload["organization"] = org
 
         try:
             logger.info("Trying API-key authentication...")

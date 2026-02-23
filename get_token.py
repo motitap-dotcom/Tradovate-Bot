@@ -30,8 +30,9 @@ def main():
     prop_firm = os.getenv("PROP_FIRM", "")
 
     # Determine organization
-    org_map = {"fundednext": "funded-next"}
-    org = os.getenv("TRADOVATE_ORGANIZATION", "") or org_map.get(prop_firm, "")
+    # FundedNext uses empty string (NOT "funded-next") for Tradovate auth
+    org_map = {"fundednext": ""}
+    org = os.getenv("TRADOVATE_ORGANIZATION", org_map.get(prop_firm, ""))
 
     url = "https://trader.tradovate.com" if env == "live" else "https://demo.tradovatetrader.com"
 
