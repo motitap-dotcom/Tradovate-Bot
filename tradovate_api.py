@@ -213,24 +213,28 @@ class TradovateAPI:
         """
         Authenticate using the same mechanism as the Tradovate web trader.
         No CID/Secret required — just username, password, and organization.
+        Password is encrypted and HMAC sec is computed to match the web app.
         """
         name = config.TRADOVATE_USERNAME
         password = config.TRADOVATE_PASSWORD
         if not name or not password:
             return None
 
+        encrypted_pw = _encrypt_password(name, password)
         payload = {
             "name": name,
-            "password": password,
+            "password": encrypted_pw,
             "appId": _WEB_APP_ID,
             "appVersion": _WEB_APP_VERSION,
             "deviceId": config.TRADOVATE_DEVICE_ID,
             "cid": 8,
             "sec": "",
+            "chl": "",
             # Always include organization — some prop firms (e.g. FundedNext)
             # require an empty string; omitting the field entirely fails.
             "organization": config.TRADOVATE_ORGANIZATION,
         }
+        payload["sec"] = _compute_hmac_sec(payload)
 
         try:
             org = config.TRADOVATE_ORGANIZATION

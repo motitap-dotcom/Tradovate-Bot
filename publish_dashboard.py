@@ -239,6 +239,7 @@ def generate_html(data: dict) -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="60">
 <title>Tradovate Bot Dashboard</title>
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -533,10 +534,22 @@ function render() {{
     document.getElementById('log-card').innerHTML = '<h2>Bot Log</h2><div class="gray" style="padding:20px;text-align:center">No log entries</div>';
   }}
 
-  // Refresh info
-  document.getElementById('refresh-info').innerHTML =
-    `Static snapshot generated at ${{genTime.toLocaleString('he-IL', {{timeZone: 'Asia/Jerusalem'}})}} (Israel time)<br>` +
-    `<span style="font-size:0.9em">This page shows data from the last publish. Reload the page to check for updates.</span>`;
+  // Refresh info with countdown
+  const refreshSeconds = 60;
+  let countdown = refreshSeconds;
+  function updateCountdown() {{
+    const now = new Date();
+    const age = Math.floor((now - genTime) / 1000);
+    const stale = age > 120;
+    document.getElementById('refresh-info').innerHTML =
+      `<span style="color:${{stale ? '#f85149' : '#3fb950'}}">\\u25CF</span> ` +
+      `Updated ${{age < 60 ? age + 's ago' : Math.floor(age/60) + 'm ago'}} ` +
+      `(${{genTime.toLocaleString('he-IL', {{timeZone: 'Asia/Jerusalem'}})}}) ` +
+      `| Auto-refresh in ${{countdown}}s`;
+    countdown = Math.max(0, countdown - 1);
+  }}
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
 }}
 
 render();

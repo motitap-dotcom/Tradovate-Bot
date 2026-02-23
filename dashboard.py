@@ -103,6 +103,33 @@ def _get_recent_log(lines=30):
         return []
 
 
+def _get_api_balance():
+    """Fetch live balance from Tradovate API using saved token."""
+    if not os.path.exists(TOKEN_FILE):
+        return None
+    try:
+        import requests
+        with open(TOKEN_FILE) as f:
+            t = json.load(f)
+        token = t.get("accessToken", "")
+        account_id = t.get("accountId")
+        if not token or not account_id:
+            return None
+        resp = requests.post(
+            "https://demo.tradovateapi.com/v1/cashBalance/getcashbalancesnapshot",
+            json={"accountId": account_id},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if not data.get("errorText"):
+                return data
+    except Exception:
+        pass
+    return None
+
+
 def _get_prices():
     """Get current futures prices from Yahoo Finance."""
     import requests
@@ -144,6 +171,18 @@ def api_status():
     running, pid = _is_bot_running()
     status = _get_last_status()
     token = _get_token_info()
+
+    # Enrich with live API balance when token is valid
+    if token.get("status") == "valid":
+        api_bal = _get_api_balance()
+        if api_bal:
+            status["balance"] = api_bal.get("totalCashValue", status.get("balance", 50000))
+            sod = api_bal.get("totalCashValue", 50000)
+            status["day_pnl"] = sod - 50000 + api_bal.get("openPnL", 0)
+            equity = api_bal.get("netLiq", status.get("balance", 50000))
+            status["to_floor"] = equity - (50000 - 2500)
+            status["api_live"] = True
+
     return jsonify({
         "bot": {"running": running, "pid": pid},
         "token": token,
@@ -363,8 +402,10 @@ async function updateStatus() {
 
   const bal = t.balance || 50000;
   const pnl = t.day_pnl || 0;
+  const source = t.api_live ? '<span class="green" style="font-size:0.7em">LIVE API</span>' : '<span class="yellow" style="font-size:0.7em">FROM LOG</span>';
   document.getElementById('balance-info').innerHTML = `
     <div class="big-number">$${fmt(bal)}</div>
+    <div style="text-align:center;margin:4px 0">${source}</div>
     <div style="margin-top:8px">
       <div class="row"><span class="label">Day P&L</span>
         <span class="value ${pnlClass(pnl)}">${pnlSign(pnl)}$${fmt(pnl)}</span></div>
