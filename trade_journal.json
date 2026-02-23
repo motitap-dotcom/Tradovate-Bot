@@ -1,0 +1,51 @@
+{
+  "trades": [
+    {
+      "id": "NQ_20260223_152328",
+      "symbol": "NQ",
+      "direction": "Sell",
+      "entry_price": 0,
+      "qty": 1,
+      "strategy": "ORBStrategy",
+      "reason": "ORB-5m short breakout below 24970.50",
+      "stop_loss": 24897.25,
+      "take_profit": 24822.25,
+      "entry_time": "2026-02-23T15:23:28.536939+00:00",
+      "entry_hour_et": 10,
+      "date": "2026-02-23",
+      "exit_price": null,
+      "pnl": null,
+      "exit_reason": null,
+      "exit_time": null,
+      "status": "open"
+    },
+    {
+      "id": "ES_20260223_152328",
+      "symbol": "ES",
+      "direction": "Sell",
+      "entry_price": 0,
+      "qty": 2,
+      "strategy": "ORBStrategy",
+      "reason": "ORB-5m short breakout below 6906.75",
+      "stop_loss": 6882.75,
+      "take_profit": 6864.75,
+      "entry_time": "2026-02-23T15:23:28.922200+00:00",
+      "entry_hour_et": 10,
+      "date": "2026-02-23",
+      "exit_price": null,
+      "pnl": null,
+      "exit_reason": null,
+      "exit_time": null,
+      "status": "open"
+    }
+  ],
+  "daily_notes": {},
+  "summary": {
+    "total_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "win_rate": 0,
+    "total_pnl": 0
+  },
+  "updated_at": "2026-02-23T15:23:28.922249+00:00"
+}
