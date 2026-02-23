@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Bot Status Dashboard
-====================
-Quick visual status of the trading bot.
+Bot Status Dashboard (Terminal)
+================================
+Rich terminal dashboard for the trading bot.
 
 Usage:
     python status.py          # One-time snapshot
     python status.py --watch  # Live refresh every 10s
+    python status.py --full   # Full report with journal + prices
 """
 
 import json
@@ -21,10 +22,39 @@ BOT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BOT_DIR, "bot.log")
 TOKEN_FILE = os.path.join(BOT_DIR, ".tradovate_token.json")
 JOURNAL_FILE = os.path.join(BOT_DIR, "trade_journal.json")
+TUNER_LOG = os.path.join(BOT_DIR, "tuner_log.json")
+
+# ANSI colors
+G = "\033[32m"   # green
+R = "\033[31m"   # red
+Y = "\033[33m"   # yellow
+B = "\033[34m"   # blue
+C = "\033[36m"   # cyan
+DIM = "\033[2m"  # dim
+BOLD = "\033[1m"
+X = "\033[0m"    # reset
+BG_G = "\033[42m\033[30m"  # green background
+BG_R = "\033[41m\033[37m"  # red background
+
+W = 58  # dashboard width
 
 
-def is_bot_running() -> tuple[bool, int]:
-    """Check if bot.py process is alive."""
+def _bar(pct, width=30):
+    """Render a progress bar."""
+    filled = int(pct / 100 * width)
+    bar = "█" * filled + "░" * (width - filled)
+    color = G if pct > 0 else R
+    return f"{color}{bar}{X} {pct:.1f}%"
+
+
+def _pnl(val):
+    """Format P&L with color."""
+    s = "+" if val >= 0 else ""
+    c = G if val >= 0 else R
+    return f"{c}{s}${val:,.2f}{X}"
+
+
+def is_bot_running():
     try:
         out = subprocess.check_output(
             ["pgrep", "-f", "bot.py"], text=True, stderr=subprocess.DEVNULL
@@ -35,8 +65,7 @@ def is_bot_running() -> tuple[bool, int]:
         return False, 0
 
 
-def get_last_status() -> dict:
-    """Parse the most recent status line from bot.log."""
+def get_last_status():
     result = {
         "balance": 0, "day_pnl": 0, "to_floor": 0,
         "contracts": "0/0", "trades": "0/0", "locked": "False",
@@ -44,8 +73,6 @@ def get_last_status() -> dict:
     }
     if not os.path.exists(LOG_FILE):
         return result
-
-    # Read last 50 lines efficiently
     try:
         out = subprocess.check_output(
             ["tail", "-50", LOG_FILE], text=True, stderr=subprocess.DEVNULL
@@ -78,8 +105,7 @@ def get_last_status() -> dict:
     return result
 
 
-def get_recent_signals() -> list[str]:
-    """Get recent trade signals from log."""
+def get_recent_activity():
     if not os.path.exists(LOG_FILE):
         return []
     try:
@@ -88,16 +114,14 @@ def get_recent_signals() -> list[str]:
         )
     except subprocess.CalledProcessError:
         return []
-
-    signals = []
+    items = []
     for line in out.strip().split("\n"):
-        if any(kw in line for kw in ["Signal:", "LOCKED", "bracket order", "Force close"]):
-            signals.append(line.strip())
-    return signals[-5:]  # Last 5
+        if any(kw in line for kw in ["SIGNAL:", "LOCKED", "bracket order", "Force close", "Journal: ENTRY", "Journal: EXIT"]):
+            items.append(line.strip())
+    return items[-8:]
 
 
-def get_token_status() -> tuple[str, float]:
-    """Check token expiration."""
+def get_token_status():
     if not os.path.exists(TOKEN_FILE):
         return "missing", 0
     try:
@@ -115,108 +139,226 @@ def get_token_status() -> tuple[str, float]:
         return "error", 0
 
 
-def get_journal_summary() -> dict:
-    """Get trade journal stats."""
+def get_journal():
     if not os.path.exists(JOURNAL_FILE):
         return {}
     try:
         with open(JOURNAL_FILE) as f:
-            journal = json.load(f)
-        return journal.get("summary", {})
+            return json.load(f)
     except Exception:
         return {}
 
 
-def display():
-    """Print status dashboard."""
+def get_prices():
+    """Fetch current futures prices."""
+    try:
+        import requests
+        symbols = {"NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F"}
+        prices = {}
+        for name, sym in symbols.items():
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1m&range=1d"
+            resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
+            if resp.status_code == 200:
+                meta = resp.json()["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice", 0)
+                prev = meta.get("chartPreviousClose", price)
+                prices[name] = {"price": price, "change": price - prev}
+        return prices
+    except Exception:
+        return {}
+
+
+def get_tuner_adjustments():
+    if not os.path.exists(TUNER_LOG):
+        return []
+    try:
+        with open(TUNER_LOG) as f:
+            return json.load(f)[-5:]
+    except Exception:
+        return []
+
+
+def display(full=False):
+    """Print the dashboard."""
     running, pid = is_bot_running()
     status = get_last_status()
     token_status, token_mins = get_token_status()
-    signals = get_recent_signals()
-    journal = get_journal_summary()
+    activity = get_recent_activity()
+    journal_data = get_journal()
+    journal = journal_data.get("summary", {})
 
     now_utc = datetime.now(timezone.utc).strftime("%H:%M UTC")
 
-    # Clear screen for --watch mode
-    if "--watch" in sys.argv:
+    if "--watch" in sys.argv or "--full" in sys.argv:
         print("\033[2J\033[H", end="")
 
-    print("=" * 55)
-    print("  TRADOVATE BOT STATUS")
-    print("=" * 55)
+    # Header
+    print(f"{BOLD}{'=' * W}{X}")
+    print(f"{BOLD}  TRADOVATE BOT DASHBOARD{X}")
+    print(f"{'=' * W}")
 
-    # Bot process
+    # Status row
     if running:
-        print(f"  Process:  RUNNING (PID {pid})")
+        bot_st = f"{BG_G} RUNNING {X} PID {pid}"
     else:
-        print(f"  Process:  STOPPED")
+        bot_st = f"{BG_R} STOPPED {X}"
 
-    # Token
     if token_status == "valid":
-        print(f"  Token:    OK ({token_mins:.0f} min remaining)")
+        tok_st = f"{G}OK{X} ({token_mins:.0f}m)"
     elif token_status == "EXPIRED":
-        print(f"  Token:    EXPIRED!")
+        tok_st = f"{R}EXPIRED{X}"
     else:
-        print(f"  Token:    {token_status}")
+        tok_st = f"{Y}{token_status}{X}"
 
-    # Data freshness
     age = status["age_seconds"]
-    if age < 60:
-        freshness = f"{age:.0f}s ago"
-    elif age < 3600:
-        freshness = f"{age/60:.0f}m ago"
-    else:
-        freshness = "stale"
-    print(f"  Data:     {freshness} ({now_utc})")
+    freshness = f"{age:.0f}s" if age < 60 else f"{age/60:.0f}m" if age < 3600 else "stale"
 
-    print("-" * 55)
+    print(f"  Bot: {bot_st}  |  Token: {tok_st}  |  Data: {freshness}")
 
-    # Balance
+    # Balance section
+    print(f"{'-' * W}")
     balance = status["balance"]
     day_pnl = status["day_pnl"]
-    pnl_sign = "+" if day_pnl >= 0 else ""
-    pnl_color = "\033[32m" if day_pnl >= 0 else "\033[31m"
-    reset = "\033[0m"
+    to_floor = status["to_floor"]
 
-    print(f"  Balance:  ${balance:,.2f}")
-    print(f"  Day P&L:  {pnl_color}{pnl_sign}${day_pnl:,.2f}{reset}")
-    print(f"  To Floor: ${status['to_floor']:,.2f}")
-    print(f"  Contracts:{status['contracts']}  |  Trades: {status['trades']}")
+    print(f"  {BOLD}Balance:    ${balance:>12,.2f}{X}")
+    print(f"  Day P&L:  {_pnl(day_pnl):>22}")
+    floor_color = R if to_floor < 500 else Y if to_floor < 1000 else G
+    print(f"  To Floor: {floor_color}${to_floor:>12,.2f}{X}")
 
+    # Challenge progress
+    profit = balance - 50000
+    target = 5000
+    pct = max(0, (profit / target) * 100) if target else 0
+    print(f"  Progress: {_bar(min(100, pct))}")
+
+    # Trading stats
+    print(f"{'-' * W}")
+    print(f"  Contracts: {status['contracts']}  |  Trades: {status['trades']}", end="")
     if status["locked"] == "True":
-        print(f"  \033[31m** TRADING LOCKED **\033[0m")
+        print(f"  | {R}{BOLD}LOCKED{X}", end="")
+    print()
+
+    # Market prices (if --full)
+    if full:
+        print(f"{'-' * W}")
+        print(f"  {DIM}Market Prices:{X}")
+        prices = get_prices()
+        if prices:
+            parts = []
+            for sym, d in prices.items():
+                chg = d["change"]
+                c = G if chg >= 0 else R
+                s = "+" if chg >= 0 else ""
+                parts.append(f"  {sym}: ${d['price']:>10,.2f} {c}{s}{chg:,.2f}{X}")
+            # Print in 2 columns
+            for i in range(0, len(parts), 2):
+                row = parts[i]
+                if i + 1 < len(parts):
+                    row = f"{parts[i]:<35}{parts[i+1]}"
+                print(row)
+        else:
+            print(f"  {DIM}(unavailable){X}")
 
     # Journal summary
-    if journal:
-        print("-" * 55)
+    if journal and journal.get("total_trades", 0) > 0:
+        print(f"{'-' * W}")
         total = journal.get("total_trades", 0)
         wins = journal.get("wins", 0)
+        losses = journal.get("losses", 0)
         wr = journal.get("win_rate", 0)
         total_pnl = journal.get("total_pnl", 0)
-        print(f"  Journal:  {total} trades | WR: {wr:.0%} | Total: ${total_pnl:+,.2f}")
+        pf = journal.get("profit_factor", 0)
+        exp = journal.get("expectancy", 0)
 
-    # Recent signals
-    if signals:
-        print("-" * 55)
-        print("  Recent Activity:")
-        for s in signals:
-            # Trim timestamp prefix for readability
-            short = s[20:] if len(s) > 20 else s
-            print(f"    {short[:70]}")
+        wr_color = G if wr >= 0.5 else Y if wr >= 0.4 else R
+        print(f"  {BOLD}Journal:{X}  {total} trades  |  {wr_color}{wr:.0%} WR{X}  ({wins}W/{losses}L)")
+        print(f"  Total: {_pnl(total_pnl)}  |  PF: {pf:.2f}  |  Exp: {_pnl(exp)}/trade")
 
-    print("=" * 55)
+        # Per-symbol breakdown (if full)
+        if full:
+            trades_list = journal_data.get("trades", [])
+            by_sym = {}
+            for t in trades_list:
+                if t.get("status") == "closed" and t.get("pnl") is not None:
+                    sym = t["symbol"]
+                    by_sym.setdefault(sym, []).append(t["pnl"])
+            if by_sym:
+                print(f"  {'Symbol':<8} {'Trades':>6} {'WR':>6} {'P&L':>12}")
+                for sym in sorted(by_sym):
+                    pnls = by_sym[sym]
+                    w = len([p for p in pnls if p > 0])
+                    total_p = sum(pnls)
+                    wr_s = w / len(pnls) if pnls else 0
+                    print(f"  {sym:<8} {len(pnls):>6} {wr_s:>5.0%} {_pnl(total_p):>22}")
+
+    # Lessons (if full)
+    if full:
+        try:
+            from trade_journal import TradeJournal
+            tj = TradeJournal()
+            lessons = tj.generate_lessons()
+            if lessons and lessons[0] != "Not enough trades yet (need at least 3 closed trades for analysis).":
+                print(f"{'-' * W}")
+                print(f"  {BOLD}Lessons:{X}")
+                for i, lesson in enumerate(lessons, 1):
+                    # Wrap long lines
+                    print(f"  {C}{i}.{X} {lesson[:70]}")
+                    if len(lesson) > 70:
+                        print(f"     {lesson[70:]}")
+        except Exception:
+            pass
+
+    # Auto-tuner adjustments (if full)
+    if full:
+        adjustments = get_tuner_adjustments()
+        if adjustments:
+            print(f"{'-' * W}")
+            print(f"  {BOLD}Auto-Tuner:{X}")
+            for a in adjustments[-3:]:
+                sym = a.get("symbol", "?")
+                param = a.get("param", "?")
+                old = a.get("old_value", "?")
+                new = a.get("new_value", "?")
+                print(f"  {Y}{sym}.{param}{X}: {old} -> {G}{new}{X}")
+                print(f"    {DIM}{a.get('reason', '')}{X}")
+
+    # Recent activity
+    if activity:
+        print(f"{'-' * W}")
+        print(f"  {BOLD}Recent Activity:{X}")
+        for line in activity[-5:]:
+            # Color code by type
+            short = line[20:] if len(line) > 20 else line
+            if "SIGNAL:" in short or "ENTRY" in short:
+                print(f"  {G}>{X} {short[:68]}")
+            elif "LOCKED" in short:
+                print(f"  {R}!{X} {short[:68]}")
+            elif "EXIT" in short:
+                if "WIN" in short:
+                    print(f"  {G}${X} {short[:68]}")
+                elif "LOSS" in short:
+                    print(f"  {R}${X} {short[:68]}")
+                else:
+                    print(f"  {Y}${X} {short[:68]}")
+            else:
+                print(f"  {DIM}  {short[:68]}{X}")
+
+    print(f"{'=' * W}")
+    print(f"  {DIM}{now_utc} | Refresh: python status.py{X}")
 
 
 def main():
+    full = "--full" in sys.argv
     if "--watch" in sys.argv:
         try:
             while True:
-                display()
+                display(full=full)
                 time.sleep(10)
         except KeyboardInterrupt:
             pass
     else:
-        display()
+        display(full=full)
 
 
 if __name__ == "__main__":
