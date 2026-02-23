@@ -22,6 +22,7 @@ import config
 from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller
+from trade_journal import TradeJournal
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -66,6 +67,7 @@ class TradovateBot:
         self.dry_run = dry_run
         self.api = TradovateAPI()
         self.risk = RiskManager()
+        self.journal = TradeJournal()
         self.md_stream: MarketDataStream = None
         self.running = False
 
@@ -316,6 +318,16 @@ class TradovateBot:
 
         if result:
             self.risk.register_open(signal.qty)
+            trade_id = self.journal.record_entry(
+                symbol=signal.symbol,
+                direction=signal.direction.value,
+                entry_price=signal.entry_price or 0,
+                qty=signal.qty,
+                strategy=type(self.strategies.get(signal.symbol, "")).__name__,
+                reason=signal.reason,
+                stop_loss=signal.stop_loss,
+                take_profit=signal.take_profit,
+            )
             self.trades_today.append(
                 {
                     "time": now_et().isoformat(),
@@ -326,9 +338,10 @@ class TradovateBot:
                     "target": signal.take_profit,
                     "reason": signal.reason,
                     "order_id": result.get("id"),
+                    "journal_id": trade_id,
                 }
             )
-            logger.info("Order placed: %s", result.get("id"))
+            logger.info("Order placed: %s (journal: %s)", result.get("id"), trade_id)
         else:
             logger.error("Order placement failed for %s", signal.symbol)
 
@@ -355,6 +368,12 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
+                    # Record force-close exits in journal
+                    for t in self.trades_today:
+                        if t.get("journal_id"):
+                            self.journal.record_exit_by_symbol(
+                                t["symbol"], 0, 0, exit_reason="force_close"
+                            )
                     self.risk.end_of_day_update(self.risk.current_balance)
                     self.running = False
                     break
