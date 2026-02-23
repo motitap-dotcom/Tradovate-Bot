@@ -685,9 +685,16 @@ class TradovateAPI:
                 continue
             action = "Sell" if net_pos > 0 else "Buy"
             qty = abs(net_pos)
-            symbol = pos.get("contractId")
-            self.place_market_order(str(symbol), action, qty)
-            logger.info("Closing position: %s %d on contractId %s", action, qty, symbol)
+            contract_id = pos.get("contractId")
+            # Look up contract name from ID (placeorder needs the name, not the numeric ID)
+            contract = self._get(f"/contract/item?id={contract_id}")
+            if contract and contract.get("name"):
+                symbol = contract["name"]
+            else:
+                logger.error("Could not resolve contractId %s to name, skipping", contract_id)
+                continue
+            self.place_market_order(symbol, action, qty)
+            logger.info("Closing position: %s %d %s (contractId=%s)", action, qty, symbol, contract_id)
         return True
 
     # ─────────────────────────────────────────

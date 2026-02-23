@@ -83,6 +83,10 @@ class TradovateBot:
         # Track daily trades for logging
         self.trades_today: list[dict] = []
 
+        # Global cooldown: minimum seconds between any two order placements
+        self._min_order_gap_seconds: int = 30
+        self._last_order_time: float = 0
+
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
@@ -250,6 +254,16 @@ class TradovateBot:
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
+                            elif not window.breakout_fired:
+                                # Range is set — check if price already broke out
+                                # during warmup. Mark as fired so we don't trigger
+                                # a stale breakout on the first live tick.
+                                if c > window.range_high or c < window.range_low:
+                                    window.breakout_fired = True
+                                    logger.debug(
+                                        "Warmup: consumed stale %s ORB %dm breakout at %.2f",
+                                        symbol, window.window_minutes, c,
+                                    )
 
                     fed += 1
 
@@ -363,6 +377,15 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
+        # Global cooldown: prevent rapid-fire orders across all symbols
+        elapsed = time.time() - self._last_order_time
+        if elapsed < self._min_order_gap_seconds:
+            logger.info(
+                "Signal for %s deferred: global cooldown (%ds remaining)",
+                signal.symbol, int(self._min_order_gap_seconds - elapsed),
+            )
+            return
+
         ok, reason = self.risk.can_trade()
         if not ok:
             logger.warning("Signal rejected by risk manager: %s", reason)
@@ -417,6 +440,7 @@ class TradovateBot:
         )
 
         if result:
+            self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
@@ -522,31 +546,34 @@ class TradovateBot:
         """Check positions and fills to close journal trades and update contract count."""
         try:
             positions = self.api.get_positions()
-            # Build map of symbol -> net position from API
-            open_symbols = set()
+
+            # Build contractId -> base symbol mapping from our contract_map
+            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
+            # We need to match position contractId (int) to our symbols.
+            # Resolve this once and cache it.
+            if not hasattr(self, "_contract_id_to_symbol"):
+                self._contract_id_to_symbol = {}
+            # Lazily build the mapping from API contract lookups
+            for symbol, contract_name in self.contract_map.items():
+                if symbol not in [v for v in self._contract_id_to_symbol.values()]:
+                    contract = self.api.find_contract(contract_name)
+                    if contract:
+                        self._contract_id_to_symbol[contract["id"]] = symbol
+
+            # Count total open contracts from API (authoritative)
             total_open = 0
+            # Track which base symbols have open positions
+            open_base_symbols = set()
             for p in positions:
                 net = abs(p.get("netPos", 0))
                 if net > 0:
                     total_open += net
-                    # Map contract name back to base symbol
-                    # Position has contractId; we need to match to our contract_map
-                    open_symbols.add(p.get("contractId"))
+                    cid = p.get("contractId")
+                    base_sym = self._contract_id_to_symbol.get(cid)
+                    if base_sym:
+                        open_base_symbols.add(base_sym)
 
-            # Update open contract count from API (more accurate than internal tracking)
             self.risk.open_contracts = total_open
-
-            # Check for closed positions: if a journal trade's symbol has netPos=0, close it
-            # Build set of base symbols with open positions
-            open_base_symbols = set()
-            for symbol, contract_name in self.contract_map.items():
-                for p in positions:
-                    if abs(p.get("netPos", 0)) > 0:
-                        # Check if this position's bought/sold values match our contract
-                        # Use the simpler approach: check if position has net > 0
-                        # and was traded today (tradeDate matches)
-                        if p.get("bought", 0) > 0 or p.get("sold", 0) > 0:
-                            open_base_symbols.add(symbol)
 
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:
@@ -555,56 +582,14 @@ class TradovateBot:
                 if not journal_id or trade_info.get("_closed"):
                     continue
 
-                # Check if this symbol's position is flat (netPos == 0)
-                symbol_flat = True
-                for p in positions:
-                    if abs(p.get("netPos", 0)) > 0:
-                        # Check if this is our symbol's position by matching bought/sold activity
-                        bought = p.get("bought", 0)
-                        sold = p.get("sold", 0)
-                        if bought > 0 or sold > 0:
-                            # This position is still active for some symbol
-                            # Match by checking contract_map
-                            contract_name = self.contract_map.get(sym, "")
-                            # Can't easily match contractId to name via API without extra calls
-                            # Use the simpler heuristic: if any position has netPos != 0,
-                            # check if it's for this symbol
-                            symbol_flat = False
-
-                if symbol_flat:
-                    # Position closed - calculate P&L from API fills
-                    fills = self.api.get_fills()
-                    entry_dir = trade_info.get("direction", "Buy")
-                    contract_name = self.contract_map.get(sym, "")
-                    spec = config.CONTRACT_SPECS.get(sym, {})
-                    point_value = spec.get("point_value", 1)
-
-                    # Calculate P&L from bought/sold values in position
-                    pnl = 0
-                    for p in positions:
-                        bought_val = p.get("boughtValue", 0)
-                        sold_val = p.get("soldValue", 0)
-                        bought_qty = p.get("bought", 0)
-                        sold_qty = p.get("sold", 0)
-                        if bought_qty > 0 and sold_qty > 0:
-                            # P&L = (sold_value - bought_value) * point_value
-                            # Values are in points, so multiply by point_value
-                            pnl_points = sold_val - bought_val
-                            pnl = pnl_points * point_value
-
-                    # Get approximate exit price from latest fills
-                    exit_price = 0
-                    for f in reversed(fills):
-                        if f.get("action") != entry_dir:
-                            exit_price = f.get("price", 0)
-                            break
-
+                if sym not in open_base_symbols:
+                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
                     self.journal.record_exit_by_symbol(
-                        sym, exit_price, pnl, exit_reason="bracket_fill"
+                        sym, 0, 0, exit_reason="bracket_fill"
                     )
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info("Position closed for %s | P&L=%.2f", sym, pnl)
+                    logger.info("Position closed for %s (flat)", sym)
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
@@ -614,11 +599,16 @@ class TradovateBot:
         try:
             snapshot = self.api.get_cash_balance()
             if snapshot:
-                # API returns totalCashValue (realized) and openPnL (unrealized)
-                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq") or snapshot.get("amount")
+                if snapshot.get("errorText"):
+                    logger.warning("Cash balance error: %s", snapshot["errorText"])
+                    return
+                # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
+                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
                 if balance is not None:
                     unrealized = snapshot.get("openPnL", 0.0)
                     self.risk.update_balance(balance, unrealized)
+                else:
+                    logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 

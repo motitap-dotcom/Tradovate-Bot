@@ -270,6 +270,8 @@ class VWAPStrategy:
         # Multi-trade settings
         self.max_per_direction: int = spec.get("max_vwap_trades_per_direction", 2)
         self.cooldown_minutes: int = spec.get("vwap_cooldown_minutes", 30)
+        # Minimum time between ANY trades (regardless of direction) to prevent whipsaw
+        self.min_trade_gap_minutes: int = 5
 
         # VWAP calculation state
         self._cum_vol: float = 0.0
@@ -286,6 +288,7 @@ class VWAPStrategy:
         self.short_count: int = 0
         self.last_long_time: Optional[datetime] = None
         self.last_short_time: Optional[datetime] = None
+        self.last_any_trade_time: Optional[datetime] = None  # cross-direction cooldown
         self._current_time: Optional[datetime] = None  # set by bot on each tick
 
     def reset(self):
@@ -300,6 +303,7 @@ class VWAPStrategy:
         self.short_count = 0
         self.last_long_time = None
         self.last_short_time = None
+        self.last_any_trade_time = None
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
         """Update the running VWAP with a new bar."""
@@ -344,6 +348,13 @@ class VWAPStrategy:
             self._prev_price = price
             return None
 
+        # Cross-direction cooldown: prevent whipsaw (e.g. SHORT then LONG in seconds)
+        if self.last_any_trade_time and self._current_time:
+            gap = (self._current_time - self.last_any_trade_time).total_seconds() / 60
+            if gap < self.min_trade_gap_minutes:
+                self._prev_price = price
+                return None
+
         signal = None
 
         # Detect crossover above VWAP
@@ -359,6 +370,7 @@ class VWAPStrategy:
                 tp = price + self.tp_points
                 self.long_count += 1
                 self.last_long_time = self._current_time
+                self.last_any_trade_time = self._current_time
                 self._cross_above_count = 0  # reset for potential next trade
 
                 logger.info(
@@ -396,6 +408,7 @@ class VWAPStrategy:
                 tp = price - self.tp_points
                 self.short_count += 1
                 self.last_short_time = self._current_time
+                self.last_any_trade_time = self._current_time
                 self._cross_below_count = 0
 
                 logger.info(

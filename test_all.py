@@ -229,7 +229,7 @@ def test_suggest_contract():
         assert contract["name"] == "NQH6"
 
 
-@test("Place bracket order sends correct OSO payload")
+@test("Place bracket order sends correct placeorder + placeOCO payload")
 def test_place_bracket():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -237,11 +237,11 @@ def test_place_bracket():
     api.account_id = 1
     api.account_spec = "DEMO"
 
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {"id": 777, "ordStatus": "Accepted"}
-    mock_resp.raise_for_status = MagicMock()
+    # First call returns entry order, second call returns OCO
+    entry_resp = {"orderId": 100}
+    oco_resp = {"orderId": 200, "ocoId": 201}
 
-    with patch("requests.post", return_value=mock_resp) as mock_post:
+    with patch.object(api, "_post", side_effect=[entry_resp, oco_resp]) as mock_post:
         result = api.place_bracket_order(
             symbol="NQH6",
             action="Buy",
@@ -252,19 +252,30 @@ def test_place_bracket():
             order_type="Market",
         )
         assert result is not None
-        assert result["ordStatus"] == "Accepted"
+        assert result["orderId"] == 100
+        assert result["slOrderId"] == 200
+        assert result["tpOrderId"] == 201
 
-        # Verify payload structure
-        call_kwargs = mock_post.call_args
-        payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
-        assert payload["action"] == "Buy"
-        assert payload["orderType"] == "Market"
-        assert payload["isAutomated"] is True
-        assert "bracket1" in payload  # Stop loss
-        assert "bracket2" in payload  # Take profit
-        assert payload["bracket1"]["action"] == "Sell"  # Opposite
-        assert payload["bracket1"]["orderType"] == "Stop"
-        assert payload["bracket2"]["orderType"] == "Limit"
+        # Verify two calls: placeorder then placeOCO
+        assert mock_post.call_count == 2
+        entry_call = mock_post.call_args_list[0]
+        oco_call = mock_post.call_args_list[1]
+
+        # Entry order
+        assert entry_call[0][0] == "/order/placeorder"
+        entry_payload = entry_call[0][1]
+        assert entry_payload["action"] == "Buy"
+        assert entry_payload["orderType"] == "Market"
+        assert entry_payload["isAutomated"] is True
+
+        # OCO (SL + TP)
+        assert oco_call[0][0] == "/order/placeOCO"
+        oco_payload = oco_call[0][1]
+        assert oco_payload["action"] == "Sell"  # Opposite of entry
+        assert oco_payload["orderType"] == "Stop"
+        assert oco_payload["stopPrice"] == 21000.0
+        assert oco_payload["other"]["orderType"] == "Limit"
+        assert oco_payload["other"]["price"] == 21100.0
 
 
 @test("Cancel all orders iterates working orders")
@@ -300,15 +311,24 @@ def test_close_all():
         {"contractId": 300, "netPos": 0},    # Flat -> skip
     ]
 
+    # Mock _get to return contract name lookups for contractId resolution
+    def mock_get(endpoint):
+        if "id=100" in endpoint:
+            return {"id": 100, "name": "NQH6"}
+        if "id=200" in endpoint:
+            return {"id": 200, "name": "ESH6"}
+        return None
+
     with patch.object(api, "get_positions", return_value=positions):
-        with patch.object(api, "place_market_order") as mock_order:
-            api.close_all_positions()
-            assert mock_order.call_count == 2
-            # Check actions: Sell for long position, Buy for short
-            calls = [str(c) for c in mock_order.call_args_list]
-            joined = " ".join(calls)
-            assert "Sell" in joined, f"Should sell long position, got: {calls}"
-            assert "Buy" in joined, f"Should buy short position, got: {calls}"
+        with patch.object(api, "_get", side_effect=mock_get):
+            with patch.object(api, "place_market_order") as mock_order:
+                api.close_all_positions()
+                assert mock_order.call_count == 2
+                # Check actions: Sell for long position, Buy for short
+                calls = [str(c) for c in mock_order.call_args_list]
+                joined = " ".join(calls)
+                assert "Sell" in joined, f"Should sell long position, got: {calls}"
+                assert "Buy" in joined, f"Should buy short position, got: {calls}"
 
 
 @test("Token auto-renewal when close to expiry")
