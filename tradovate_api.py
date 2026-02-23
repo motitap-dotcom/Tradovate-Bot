@@ -142,6 +142,9 @@ class TradovateAPI:
         # 4. API-key auth
         if data is None:
             data = self._try_api_auth(url)
+        # 5. Direct browser login (handles CAPTCHA automatically)
+        if data is None:
+            data = self._try_browser_auth()
         if data is None:
             return False
 
@@ -274,33 +277,35 @@ class TradovateAPI:
         )
 
         if needs_captcha:
+            logger.info(
+                "CAPTCHA required for device verification. "
+                "Attempting browser-based login..."
+            )
+            # Try automated browser login (bypasses CAPTCHA)
+            browser_data = self._try_browser_auth()
+            if browser_data:
+                return browser_data
+
             logger.warning(
                 "\n"
                 "╔══════════════════════════════════════════════════════════╗\n"
-                "║  CAPTCHA REQUIRED — one-time setup needed                ║\n"
+                "║  CAPTCHA REQUIRED — browser auto-login also failed       ║\n"
                 "║                                                          ║\n"
-                "║  Credentials are CORRECT but Tradovate requires           ║\n"
-                "║  reCAPTCHA v2 (sitekey: 6Ld7FAoTAAAAA...) on first       ║\n"
-                "║  login from a new device.                                 ║\n"
-                "║                                                          ║\n"
-                "║  To fix (choose one):                                     ║\n"
-                "║                                                          ║\n"
-                "║  Option 1 (easiest): Run get_token.py on your PC         ║\n"
+                "║  To fix: Run get_token.py on a machine with a display   ║\n"
                 "║    $ python get_token.py                                 ║\n"
                 "║                                                          ║\n"
-                "║  Option 2: Get token from browser DevTools:              ║\n"
+                "║  Or get token from browser DevTools:                     ║\n"
                 "║    1. Log into https://trader.tradovate.com              ║\n"
                 "║    2. Open DevTools (F12) → Network tab                  ║\n"
-                "║    3. Filter by 'Fetch/XHR', click any request           ║\n"
-                "║    4. In Headers, copy the 'Authorization: Bearer ...'   ║\n"
-                "║    5. Paste token into .env:                             ║\n"
-                "║       TRADOVATE_ACCESS_TOKEN=<paste_here>                ║\n"
+                "║    3. Copy 'Authorization: Bearer ...' header            ║\n"
+                "║    4. Paste into .env: TRADOVATE_ACCESS_TOKEN=<token>    ║\n"
                 "║                                                          ║\n"
                 "║  After first setup, the bot auto-renews the token.       ║\n"
                 "╚══════════════════════════════════════════════════════════╝"
             )
+            return None
 
-        # Wait for p-time and attempt verification with just the ticket
+        # No CAPTCHA needed — wait for p-time and verify with ticket
         import time as _time
         logger.info("Waiting %d seconds before verification attempt...", p_time)
         _time.sleep(p_time + 1)
@@ -323,6 +328,118 @@ class TradovateAPI:
                 logger.info("Verification response: %s", data.get("errorText", data))
         except requests.RequestException as e:
             logger.warning("Verification request failed: %s", e)
+
+        return None
+
+    def _try_browser_auth(self) -> Optional[dict]:
+        """
+        Authenticate via headless browser (Playwright).
+
+        Uses the actual Tradovate web login page. This bypasses the API
+        CAPTCHA requirement because a real browser session is used.
+        Requires playwright to be installed.
+        """
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            logger.info("Playwright not installed, skipping browser auth")
+            return None
+
+        # Detect proxy from environment
+        proxy_url = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+        proxy_cfg = None
+        if proxy_url:
+            import re as _re
+            m = _re.match(r"http://([^:]+):([^@]+)@([^:]+):(\d+)", proxy_url)
+            if m:
+                proxy_cfg = {
+                    "server": f"http://{m.group(3)}:{m.group(4)}",
+                    "username": m.group(1),
+                    "password": m.group(2),
+                }
+
+        trader_url = (
+            "https://trader.tradovate.com"
+            if config.ENVIRONMENT == "live"
+            else "https://demo.tradovatetrader.com"
+        )
+
+        captured: dict = {}
+
+        def _on_response(response):
+            if captured:
+                return
+            try:
+                ct = response.headers.get("content-type", "")
+                if "json" not in ct:
+                    return
+                data = response.json()
+                if isinstance(data, dict) and "accessToken" in data:
+                    captured.update(data)
+            except Exception:
+                pass
+
+        logger.info("Attempting browser-based login at %s ...", trader_url)
+        try:
+            with sync_playwright() as pw:
+                launch_args = {
+                    "headless": True,
+                    "args": [
+                        "--no-sandbox",
+                        "--disable-blink-features=AutomationControlled",
+                    ],
+                }
+                if proxy_cfg:
+                    launch_args["proxy"] = proxy_cfg
+
+                browser = pw.chromium.launch(**launch_args)
+                ctx = browser.new_context(
+                    viewport={"width": 1920, "height": 1080},
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/121.0.0.0 Safari/537.36"
+                    ),
+                    ignore_https_errors=True,
+                )
+                ctx.add_init_script(
+                    "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
+                )
+                page = ctx.new_page()
+                page.on("response", _on_response)
+
+                page.goto(trader_url, timeout=60000, wait_until="domcontentloaded")
+                page.wait_for_timeout(10000)
+
+                # Fill login form
+                text_input = page.query_selector('input[type="text"]')
+                pass_input = page.query_selector('input[type="password"]')
+                if text_input and pass_input:
+                    text_input.fill(config.TRADOVATE_USERNAME)
+                    pass_input.fill(config.TRADOVATE_PASSWORD)
+                    page.wait_for_timeout(500)
+
+                    # Click login button
+                    for btn in page.query_selector_all("button"):
+                        if "login" in (btn.inner_text() or "").lower():
+                            btn.click()
+                            break
+                    else:
+                        page.keyboard.press("Enter")
+
+                    # Wait for token capture
+                    for _ in range(30):
+                        if captured:
+                            break
+                        page.wait_for_timeout(1000)
+
+                browser.close()
+
+            if captured and "accessToken" in captured:
+                logger.info("Browser auth succeeded! userId=%s", captured.get("userId"))
+                return captured
+        except Exception as e:
+            logger.warning("Browser auth failed: %s", e)
 
         return None
 
