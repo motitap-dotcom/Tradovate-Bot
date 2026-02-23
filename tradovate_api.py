@@ -276,25 +276,28 @@ class TradovateAPI:
         if needs_captcha:
             logger.warning(
                 "\n"
-                "╔══════════════════════════════════════════════════════╗\n"
-                "║  CAPTCHA REQUIRED — one-time setup needed           ║\n"
-                "║                                                      ║\n"
-                "║  Your credentials are CORRECT, but Tradovate         ║\n"
-                "║  requires a CAPTCHA for first-time API login.        ║\n"
-                "║                                                      ║\n"
-                "║  To fix this (choose one):                           ║\n"
-                "║                                                      ║\n"
-                "║  Option 1: Run get_token.py on a PC with a browser   ║\n"
-                "║    $ python get_token.py                             ║\n"
-                "║                                                      ║\n"
-                "║  Option 2: Get token manually from browser:          ║\n"
-                "║    1. Log into https://trader.tradovate.com          ║\n"
-                "║    2. Open DevTools (F12) → Application tab          ║\n"
-                "║    3. Local Storage → find 'accessToken' value       ║\n"
-                "║    4. Paste into .env as TRADOVATE_ACCESS_TOKEN=...  ║\n"
-                "║                                                      ║\n"
-                "║  After first setup, the bot auto-renews the token.   ║\n"
-                "╚══════════════════════════════════════════════════════╝"
+                "╔══════════════════════════════════════════════════════════╗\n"
+                "║  CAPTCHA REQUIRED — one-time setup needed                ║\n"
+                "║                                                          ║\n"
+                "║  Credentials are CORRECT but Tradovate requires           ║\n"
+                "║  reCAPTCHA v2 (sitekey: 6Ld7FAoTAAAAA...) on first       ║\n"
+                "║  login from a new device.                                 ║\n"
+                "║                                                          ║\n"
+                "║  To fix (choose one):                                     ║\n"
+                "║                                                          ║\n"
+                "║  Option 1 (easiest): Run get_token.py on your PC         ║\n"
+                "║    $ python get_token.py                                 ║\n"
+                "║                                                          ║\n"
+                "║  Option 2: Get token from browser DevTools:              ║\n"
+                "║    1. Log into https://trader.tradovate.com              ║\n"
+                "║    2. Open DevTools (F12) → Network tab                  ║\n"
+                "║    3. Filter by 'Fetch/XHR', click any request           ║\n"
+                "║    4. In Headers, copy the 'Authorization: Bearer ...'   ║\n"
+                "║    5. Paste token into .env:                             ║\n"
+                "║       TRADOVATE_ACCESS_TOKEN=<paste_here>                ║\n"
+                "║                                                          ║\n"
+                "║  After first setup, the bot auto-renews the token.       ║\n"
+                "╚══════════════════════════════════════════════════════════╝"
             )
 
         # Wait for p-time and attempt verification with just the ticket
@@ -590,8 +593,20 @@ class TradovateAPI:
 class MarketDataStream:
     """
     WebSocket client for Tradovate market data.
-    Subscribes to real-time quotes and dispatches callbacks.
+
+    Protocol (reverse-engineered from Tradovate web trader JS):
+      - Transport: raw WebSocket to wss://md.tradovateapi.com/v1/websocket
+      - On connect, server sends "o" (open frame)
+      - Client sends: "authorize\\n<id>\\n\\n<token>" to authenticate
+      - Server responds: 'a[{"i":<id>,"s":200,...}]' on success
+      - Heartbeat: server sends "h" periodically; client should reply with "[]"
+      - Data frames: 'a[{...},{...}]' — JSON array of event objects
+      - Subscriptions: "md/subscribeQuote\\n<id>\\n\\n{\"symbol\":\"NQH6\"}"
     """
+
+    # Reconnect settings
+    MAX_RECONNECT_ATTEMPTS = 5
+    RECONNECT_BASE_DELAY = 2  # seconds
 
     def __init__(self, md_access_token: str):
         self.md_token = md_access_token
@@ -600,9 +615,17 @@ class MarketDataStream:
         self._callbacks: dict[str, list[Callable]] = {}
         self._connected = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._should_run = False
+        self._reconnect_count = 0
 
     def start(self):
         """Connect and start listening in a background thread."""
+        self._should_run = True
+        self._connect()
+        self._connected.wait(timeout=15)
+
+    def _connect(self):
+        """Create WebSocket and connect."""
         self.ws = websocket.WebSocketApp(
             config.WS_MARKET_URL,
             on_open=self._on_open,
@@ -612,18 +635,17 @@ class MarketDataStream:
         )
         self._thread = threading.Thread(target=self.ws.run_forever, daemon=True)
         self._thread.start()
-        # Wait for connection + auth
-        self._connected.wait(timeout=15)
 
     def stop(self):
         """Close the WebSocket."""
+        self._should_run = False
         if self.ws:
             self.ws.close()
 
     def subscribe_quote(self, symbol: str, callback: Callable):
         """Subscribe to real-time quotes for a symbol."""
         self._callbacks.setdefault(symbol, []).append(callback)
-        self._send(f"md/subscribeQuote", {"symbol": symbol})
+        self._send("md/subscribeQuote", {"symbol": symbol})
         logger.info("Subscribed to quotes: %s", symbol)
 
     def unsubscribe_quote(self, symbol: str):
@@ -647,6 +669,11 @@ class MarketDataStream:
             ws.send(auth_msg)
             return
 
+        if message == "h":
+            # Heartbeat — reply to keep connection alive
+            ws.send("[]")
+            return
+
         if message.startswith("a"):
             try:
                 payload = json.loads(message[1:])
@@ -655,32 +682,36 @@ class MarketDataStream:
                 pass
             return
 
-        if message == "h":
-            # Heartbeat
-            return
-
     def _handle_payload(self, payload: list):
         """Process incoming data frames."""
         for item in payload:
             if not isinstance(item, dict):
                 continue
 
-            # Check if this is an auth response
+            # Auth response
             if item.get("i") == 1 and item.get("s") == 200:
                 logger.info("Market data WebSocket authenticated")
+                self._reconnect_count = 0
                 self._connected.set()
                 continue
 
-            # Quote data
+            # Auth failure
+            if item.get("i") == 1 and item.get("s") != 200:
+                logger.error("Market data auth failed: %s", item)
+                continue
+
+            # Quote data — dispatched by symbol from the "d" field
             if "e" in item and item["e"] == "md" and "d" in item:
                 data = item["d"]
-                # Determine symbol from the subscription
-                for sym, cbs in self._callbacks.items():
-                    for cb in cbs:
-                        try:
-                            cb(sym, data)
-                        except Exception as e:
-                            logger.error("Quote callback error: %s", e)
+                quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
+                for quote in quotes:
+                    contract_id = quote.get("contractId")
+                    for sym, cbs in self._callbacks.items():
+                        for cb in cbs:
+                            try:
+                                cb(sym, quote)
+                            except Exception as e:
+                                logger.error("Quote callback error: %s", e)
 
     def _on_error(self, ws, error):
         logger.error("Market data WebSocket error: %s", error)
@@ -688,6 +719,25 @@ class MarketDataStream:
     def _on_close(self, ws, close_status_code, close_msg):
         logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
         self._connected.clear()
+        # Auto-reconnect
+        if self._should_run and self._reconnect_count < self.MAX_RECONNECT_ATTEMPTS:
+            self._reconnect_count += 1
+            delay = self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1))
+            logger.info(
+                "Reconnecting in %ds (attempt %d/%d)...",
+                delay, self._reconnect_count, self.MAX_RECONNECT_ATTEMPTS,
+            )
+            reconnect_timer = threading.Timer(delay, self._reconnect)
+            reconnect_timer.daemon = True
+            reconnect_timer.start()
+
+    def _reconnect(self):
+        """Reconnect and re-subscribe to all symbols."""
+        self._connect()
+        if self._connected.wait(timeout=15):
+            for symbol in list(self._callbacks.keys()):
+                self._send("md/subscribeQuote", {"symbol": symbol})
+                logger.info("Re-subscribed to: %s", symbol)
 
     def _send(self, endpoint: str, body: dict):
         """Send a message using the Tradovate WebSocket protocol."""
