@@ -750,8 +750,27 @@ class MarketDataStream:
             on_error=self._on_error,
             on_close=self._on_close,
         )
-        self._thread = threading.Thread(target=self.ws.run_forever, daemon=True)
+        # Detect proxy for WebSocket connections
+        proxy_kwargs = self._get_proxy_kwargs()
+        self._thread = threading.Thread(
+            target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
+        )
         self._thread.start()
+
+    @staticmethod
+    def _get_proxy_kwargs() -> dict:
+        """Extract proxy settings from environment for websocket-client."""
+        import re as _re
+        proxy_url = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or ""
+        m = _re.match(r"http://([^:]+):([^@]+)@([^:]+):(\d+)", proxy_url)
+        if not m:
+            return {}
+        return {
+            "http_proxy_host": m.group(3),
+            "http_proxy_port": int(m.group(4)),
+            "http_proxy_auth": (m.group(1), m.group(2)),
+            "proxy_type": "http",
+        }
 
     def stop(self):
         """Close the WebSocket."""
@@ -862,3 +881,127 @@ class MarketDataStream:
         msg = f"{endpoint}\n{self._request_id}\n\n{json.dumps(body)}"
         if self.ws:
             self.ws.send(msg)
+
+
+# ─────────────────────────────────────────────
+# REST-based Market Data (fallback when WebSocket is blocked)
+# ─────────────────────────────────────────────
+
+# Yahoo Finance symbol mapping for futures front-month
+_YAHOO_SYMBOLS = {
+    "NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F",
+    "SI": "SI=F", "NG": "NG=F",
+}
+
+
+class RestMarketDataPoller:
+    """
+    Polls Yahoo Finance REST API for market data when WebSocket is unavailable.
+
+    Drop-in replacement for MarketDataStream: same subscribe_quote() /
+    on_quote() / start() / stop() interface so bot.py can use either.
+    """
+
+    POLL_INTERVAL = 5  # seconds between polls
+
+    def __init__(self, md_access_token: str = ""):
+        # md_access_token accepted for interface compatibility but unused
+        self._callbacks: dict[str, list[Callable]] = {}
+        self._symbols: dict[str, str] = {}  # contract_name -> yahoo symbol
+        self._thread: Optional[threading.Thread] = None
+        self._should_run = False
+
+    def start(self):
+        """Start polling in a background thread."""
+        self._should_run = True
+        self._thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self._thread.start()
+        logger.info("REST market data poller started (interval=%ds)", self.POLL_INTERVAL)
+
+    def stop(self):
+        """Stop the polling thread."""
+        self._should_run = False
+
+    def subscribe_quote(self, symbol: str, callback: Callable):
+        """Register a callback for a symbol. symbol is the contract name (e.g. NQH6)."""
+        self._callbacks.setdefault(symbol, []).append(callback)
+        # Map contract name to Yahoo symbol (strip month code + year digit)
+        # Format: NQH6 -> NQ, ESH6 -> ES, GCG6 -> GC, CLJ6 -> CL
+        root = symbol[:-2] if len(symbol) > 2 else symbol
+        yahoo_sym = _YAHOO_SYMBOLS.get(root)
+        if yahoo_sym:
+            self._symbols[symbol] = yahoo_sym
+            logger.info("Subscribed to REST quotes: %s -> %s", symbol, yahoo_sym)
+        else:
+            logger.warning("No Yahoo symbol mapping for %s (root=%s)", symbol, root)
+
+    def unsubscribe_quote(self, symbol: str):
+        self._callbacks.pop(symbol, None)
+        self._symbols.pop(symbol, None)
+
+    def on_quote(self, symbol: str, callback: Callable):
+        self._callbacks.setdefault(symbol, []).append(callback)
+
+    def _poll_loop(self):
+        """Periodically fetch quotes and dispatch to callbacks."""
+        while self._should_run:
+            try:
+                self._fetch_and_dispatch()
+            except Exception as e:
+                logger.error("REST poller error: %s", e)
+            time.sleep(self.POLL_INTERVAL)
+
+    def _fetch_and_dispatch(self):
+        """Fetch quotes from Yahoo Finance and dispatch to callbacks."""
+        if not self._symbols:
+            return
+
+        yahoo_syms = list(set(self._symbols.values()))
+        sym_str = ",".join(yahoo_syms)
+
+        try:
+            url = (
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{sym_str}"
+                f"?interval=1m&range=1d"
+            )
+            headers = {"User-Agent": "Mozilla/5.0"}
+
+            # Fetch each symbol individually (batch not supported by v8 chart)
+            for contract_name, yahoo_sym in list(self._symbols.items()):
+                chart_url = (
+                    f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}"
+                    f"?interval=1m&range=1d"
+                )
+                resp = requests.get(chart_url, headers=headers, timeout=10)
+                if resp.status_code != 200:
+                    continue
+
+                data = resp.json()
+                result = data.get("chart", {}).get("result", [{}])[0]
+                meta = result.get("meta", {})
+                price = meta.get("regularMarketPrice", 0)
+                high = meta.get("regularMarketDayHigh", price)
+                low = meta.get("regularMarketDayLow", price)
+                volume = meta.get("regularMarketVolume", 0)
+
+                if price <= 0:
+                    continue
+
+                # Build quote dict matching the format _on_quote() expects
+                quote = {
+                    "trade": {"price": price, "size": volume},
+                    "bid": {"price": price},
+                    "high": {"price": high},
+                    "low": {"price": low},
+                }
+
+                # Dispatch to callbacks
+                cbs = self._callbacks.get(contract_name, [])
+                for cb in cbs:
+                    try:
+                        cb(contract_name, quote)
+                    except Exception as e:
+                        logger.error("Quote callback error for %s: %s", contract_name, e)
+
+        except requests.RequestException as e:
+            logger.warning("Yahoo Finance request failed: %s", e)

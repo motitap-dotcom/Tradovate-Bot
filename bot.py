@@ -21,7 +21,7 @@ from datetime import datetime, timezone, timedelta
 import config
 from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
-from tradovate_api import TradovateAPI, MarketDataStream
+from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -104,11 +104,11 @@ class TradovateBot:
         # Initialize strategies
         self._init_strategies()
 
-        # Start market data stream
-        if not self.dry_run and self.api.md_access_token:
-            self.md_stream = MarketDataStream(self.api.md_access_token)
-            self.md_stream.start()
-            self._subscribe_market_data()
+        # Start market data stream (WebSocket preferred, REST polling fallback)
+        if not self.dry_run:
+            self.md_stream = self._start_market_data()
+            if self.md_stream:
+                self._subscribe_market_data()
 
         # Main loop
         self.running = True
@@ -179,6 +179,26 @@ class TradovateBot:
     # ─────────────────────────────────────────
     # Market data
     # ─────────────────────────────────────────
+
+    def _start_market_data(self):
+        """Try WebSocket first; fall back to REST polling if WS is unavailable."""
+        if self.api.md_access_token:
+            try:
+                ws = MarketDataStream(self.api.md_access_token)
+                ws.start()
+                # Give it a moment to connect
+                if ws._connected.wait(timeout=10):
+                    logger.info("Market data via WebSocket")
+                    return ws
+                logger.warning("WebSocket connection failed, falling back to REST polling")
+                ws.stop()
+            except Exception as e:
+                logger.warning("WebSocket init failed (%s), falling back to REST polling", e)
+
+        poller = RestMarketDataPoller()
+        poller.start()
+        logger.info("Market data via REST polling (Yahoo Finance)")
+        return poller
 
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
