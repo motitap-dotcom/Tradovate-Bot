@@ -36,3 +36,7 @@ Thumbs.db
 # Trading data
 trades/
 backtest_results/
+
+# VPS generated files
+bot-ctl.sh
+venv/
