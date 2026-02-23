@@ -580,20 +580,15 @@ class TradovateAPI:
         order_type: str = "Market",
     ) -> Optional[dict]:
         """
-        Place an OSO bracket order: entry + stop loss + take profit.
+        Place a bracket order: market/limit entry + OCO stop-loss & take-profit.
 
-        Args:
-            symbol: Contract symbol (e.g. 'NQM5')
-            action: 'Buy' or 'Sell'
-            qty: Number of contracts
-            entry_price: Limit price for entry (None for market orders)
-            stop_price: Stop loss price
-            take_profit_price: Take profit limit price
-            order_type: 'Market' or 'Limit'
+        Uses placeorder (entry) + placeOCO (SL/TP) because FundedNext
+        blocks the placeOSO endpoint.
         """
         opposite_action = "Sell" if action == "Buy" else "Buy"
 
-        payload: dict[str, Any] = {
+        # --- Step 1: Entry order ---
+        entry_payload: dict[str, Any] = {
             "accountSpec": self.account_spec,
             "accountId": self.account_id,
             "action": action,
@@ -602,32 +597,57 @@ class TradovateAPI:
             "orderType": order_type,
             "timeInForce": "Day",
             "isAutomated": True,
-            "bracket1": {
-                "action": opposite_action,
-                "orderType": "Stop",
-                "stopPrice": stop_price,
-            },
-            "bracket2": {
-                "action": opposite_action,
-                "orderType": "Limit",
-                "price": take_profit_price,
-            },
         }
-
         if order_type == "Limit" and entry_price is not None:
-            payload["price"] = entry_price
+            entry_payload["price"] = entry_price
 
         logger.info(
             "Placing bracket %s %d %s @ %s | SL=%.2f TP=%.2f",
-            action,
-            qty,
-            symbol,
-            order_type,
-            stop_price,
-            take_profit_price,
+            action, qty, symbol, order_type, stop_price, take_profit_price,
         )
 
-        return self._post("/order/placeOSO", payload)
+        entry_result = self._post("/order/placeorder", entry_payload)
+        if not entry_result or "orderId" not in entry_result:
+            logger.error("Entry order failed: %s", entry_result)
+            return None
+
+        entry_order_id = entry_result["orderId"]
+        logger.info("Entry order placed: orderId=%s", entry_order_id)
+
+        # --- Step 2: OCO stop-loss + take-profit ---
+        oco_payload: dict[str, Any] = {
+            "accountSpec": self.account_spec,
+            "accountId": self.account_id,
+            "symbol": symbol,
+            "action": opposite_action,
+            "orderQty": qty,
+            "orderType": "Stop",
+            "stopPrice": stop_price,
+            "timeInForce": "GTC",
+            "isAutomated": True,
+            "other": {
+                "action": opposite_action,
+                "orderType": "Limit",
+                "price": take_profit_price,
+                "orderQty": qty,
+                "timeInForce": "GTC",
+            },
+        }
+
+        oco_result = self._post("/order/placeOCO", oco_payload)
+        if not oco_result or "orderId" not in oco_result:
+            logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
+        else:
+            logger.info(
+                "OCO placed: SL orderId=%s TP orderId=%s",
+                oco_result.get("orderId"), oco_result.get("ocoId"),
+            )
+
+        return {
+            "orderId": entry_order_id,
+            "slOrderId": oco_result.get("orderId") if oco_result else None,
+            "tpOrderId": oco_result.get("ocoId") if oco_result else None,
+        }
 
     def place_market_order(
         self, symbol: str, action: str, qty: int
@@ -695,8 +715,14 @@ class TradovateAPI:
                 json=payload,
                 timeout=30,
             )
+            if resp.status_code != 200:
+                logger.error(
+                    "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
+                )
             resp.raise_for_status()
-            return resp.json()
+            result = resp.json()
+            logger.debug("POST %s -> %s", endpoint, result)
+            return result
         except requests.RequestException as e:
             logger.error("POST %s failed: %s", endpoint, e)
             return None

@@ -437,11 +437,11 @@ class TradovateBot:
                     "stop": signal.stop_loss,
                     "target": signal.take_profit,
                     "reason": signal.reason,
-                    "order_id": result.get("id"),
+                    "order_id": result.get("orderId"),
                     "journal_id": trade_id,
                 }
             )
-            logger.info("Order placed: %s (journal: %s)", result.get("id"), trade_id)
+            logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
         else:
             logger.error("Order placement failed for %s", signal.symbol)
 
