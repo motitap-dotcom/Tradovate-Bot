@@ -697,6 +697,15 @@ def main():
         config.REST_URL = config._URLS["live"]["rest"]
         config.WS_TRADING_URL = config._URLS["live"]["ws_trading"]
         config.WS_MARKET_URL = config._URLS["live"]["ws_market"]
+        # FundedNext challenge accounts live on demo API even in --live mode.
+        # Auth already falls back to live endpoint automatically when needed.
+        if config.PROP_FIRM == "fundednext":
+            config.REST_URL = config._URLS["demo"]["rest"]
+            config.WS_TRADING_URL = config._URLS["demo"]["ws_trading"]
+            logger.info(
+                "FundedNext prop firm detected: using demo API for trading "
+                "(challenge account lives on demo.tradovateapi.com)"
+            )
 
     bot = TradovateBot(dry_run=args.dry_run)
 
