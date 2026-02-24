@@ -610,14 +610,24 @@ class TradovateBot:
                 return
             # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
             balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
-            if balance is not None:
-                unrealized = snapshot.get("openPnL", 0.0)
-                prev = self.risk.current_balance
-                self.risk.update_balance(balance, unrealized)
-                if abs(balance - prev) > 0.01:
-                    logger.info("Balance updated: %.2f -> %.2f (openPnL=%.2f)", prev, balance, unrealized)
-            else:
+            if balance is None:
                 logger.warning("Cash balance snapshot missing totalCashValue/netLiq: %s", snapshot)
+                return
+            unrealized = snapshot.get("openPnL", 0.0)
+            # Sync SOD balance from API so day_pnl reflects actual intraday P&L,
+            # not cumulative profit since account inception.
+            sod_balance = snapshot.get("totalCashValueSOD") or snapshot.get("cashSODUSD") or balance
+            if sod_balance and abs(self.risk.day_start_balance - sod_balance) > 0.01:
+                logger.info(
+                    "SOD balance synced: %.2f -> %.2f (was using account_size)",
+                    self.risk.day_start_balance,
+                    sod_balance,
+                )
+                self.risk.day_start_balance = sod_balance
+            prev = self.risk.current_balance
+            self.risk.update_balance(balance, unrealized)
+            if abs(balance - prev) > 0.01:
+                logger.info("Balance updated: %.2f -> %.2f (openPnL=%.2f)", prev, balance, unrealized)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 
