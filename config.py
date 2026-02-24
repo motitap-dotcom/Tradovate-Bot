@@ -50,7 +50,7 @@ WS_MARKET_URL = _URLS[ENVIRONMENT]["ws_market"]
 # ─────────────────────────────────────────────
 # Prop Firm Challenge Settings
 # ─────────────────────────────────────────────
-PROP_FIRM = os.getenv("PROP_FIRM", "apex")  # "apex", "topstep", or "fundednext"
+PROP_FIRM = os.getenv("PROP_FIRM", "fundednext")  # "apex", "topstep", or "fundednext"
 
 # Tradovate organization name (required for prop firm accounts)
 # Each prop firm has its own org name that must be sent with auth requests.
@@ -80,8 +80,8 @@ CHALLENGE_SETTINGS = {
     "fundednext": {
         "account_size": 50_000,
         "max_trailing_drawdown": 2_500,
-        "daily_loss_limit": 2_500,        # FundedNext Futures daily limit
-        "profit_target": 5_000,
+        "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
+        "profit_target": 3_000,           # FundedNext Futures challenge target (actual)
         "max_contracts": 10,
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,

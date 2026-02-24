@@ -60,11 +60,12 @@ python get_token.py         # One-time token capture (needs display)
 
 ## Trading Rules (FundedNext Challenge)
 - Max trailing drawdown: $2,500
-- Daily loss limit: $2,500
-- Profit target: $5,000
+- Daily loss limit: $1,000
+- Profit target: $3,000
 - Max contracts: 10 (minis)
 - Close by: 4:59 PM ET
 - Drawdown trails unrealized intraday peaks
+- Current balance: ~$52,426 (as of 2026-02-24)
 
 ## Enabled Contracts
 - **NQ** (E-mini Nasdaq): ORB strategy, 25pt stop / 50pt TP
