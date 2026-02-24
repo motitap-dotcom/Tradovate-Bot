@@ -30,7 +30,7 @@ err()  { echo -e "${RED}[x]${NC} $1"; exit 1; }
 # ── Config ──────────────────────────────────────────────────
 BOT_DIR="/root/tradovate-bot"
 REPO_URL="https://github.com/motitap-dotcom/Tradovate-Bot.git"
-BRANCH="claude/tradovate-api-research-DPnl9"
+BRANCH="master"
 SERVICE_NAME="tradovate-bot"
 
 echo -e "${CYAN}"
