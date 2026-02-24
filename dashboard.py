@@ -22,6 +22,7 @@ from flask import Flask, jsonify, Response
 
 import config
 from trade_journal import TradeJournal
+from tradovate_api import TradovateAPI
 
 BOT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BOT_DIR, "bot.log")
@@ -29,6 +30,30 @@ TOKEN_FILE = os.path.join(BOT_DIR, ".tradovate_token.json")
 TUNER_LOG = os.path.join(BOT_DIR, "tuner_log.json")
 
 app = Flask(__name__)
+
+
+def _ensure_token():
+    """Authenticate with Tradovate API if no valid token exists."""
+    if os.path.exists(TOKEN_FILE):
+        try:
+            with open(TOKEN_FILE) as f:
+                data = json.load(f)
+            exp = data.get("expirationTime", "")
+            if exp:
+                exp_dt = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) < exp_dt:
+                    return  # Token still valid
+        except Exception:
+            pass
+    # No valid token — try to authenticate
+    try:
+        api = TradovateAPI()
+        if api.authenticate():
+            print("  Dashboard: Tradovate token acquired successfully")
+        else:
+            print("  Dashboard: Could not authenticate (CAPTCHA may be required)")
+    except Exception as e:
+        print(f"  Dashboard: Auth error: {e}")
 
 
 # ─────────────────────────────────────────
@@ -223,6 +248,12 @@ def api_tuner():
 @app.route("/api/log")
 def api_log():
     return jsonify(_get_recent_log(50))
+
+
+@app.route("/api/refresh-token", methods=["POST"])
+def api_refresh_token():
+    _ensure_token()
+    return jsonify(_get_token_info())
 
 
 @app.route("/api/config")
@@ -555,6 +586,8 @@ def main():
         idx = sys.argv.index("--port")
         if idx + 1 < len(sys.argv):
             port = int(sys.argv[idx + 1])
+
+    _ensure_token()
 
     print(f"\n  Dashboard running at: http://0.0.0.0:{port}")
     print(f"  Press Ctrl+C to stop\n")
