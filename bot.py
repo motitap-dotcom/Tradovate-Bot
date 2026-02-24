@@ -603,10 +603,10 @@ class TradovateBot:
         try:
             snapshot = self.api.get_cash_balance()
             if not snapshot:
-                logger.warning("Balance sync: empty response from API")
+                logger.debug("Balance sync: unavailable for this account type")
                 return
             if snapshot.get("errorText"):
-                logger.warning("Cash balance error: %s", snapshot["errorText"])
+                logger.debug("Balance sync skipped: %s", snapshot["errorText"])
                 return
             # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
             # CashBalance (list) fields: amount, realizedPnL

@@ -544,15 +544,20 @@ class TradovateAPI:
             "/cashBalance/getcashbalancesnapshot",
             {"accountId": self.account_id},
         )
-        # If snapshot endpoint fails (e.g. "Account not found"), fall back to list
-        if result and result.get("errorText"):
-            balances = self._get("/cashBalance/list") or []
-            for b in balances:
-                if b.get("accountId") == self.account_id:
-                    return b
-            if balances:
-                return balances[0]
-        return result
+        if result and not result.get("errorText"):
+            return result
+        # Fallback: find by masterid
+        found = self._get(f"/cashBalance/find?masterid={self.account_id}")
+        if found and not found.get("errorText"):
+            return found
+        # Fallback: list and filter
+        items = self._get("/cashBalance/list") or []
+        for b in items:
+            if b.get("accountId") == self.account_id:
+                return b
+        if items:
+            return items[0]
+        return None
 
     def get_fills(self) -> list[dict]:
         """List recent fills."""
