@@ -540,10 +540,19 @@ class TradovateAPI:
         """Get cash balance snapshot for the active account."""
         if self.account_id is None:
             return None
-        return self._post(
+        result = self._post(
             "/cashBalance/getcashbalancesnapshot",
             {"accountId": self.account_id},
         )
+        # If snapshot endpoint fails (e.g. "Account not found"), fall back to list
+        if result and result.get("errorText"):
+            balances = self._get("/cashBalance/list") or []
+            for b in balances:
+                if b.get("accountId") == self.account_id:
+                    return b
+            if balances:
+                return balances[0]
+        return result
 
     def get_fills(self) -> list[dict]:
         """List recent fills."""

@@ -609,7 +609,8 @@ class TradovateBot:
                 logger.warning("Cash balance error: %s", snapshot["errorText"])
                 return
             # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
-            balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+            # CashBalance (list) fields: amount, realizedPnL
+            balance = snapshot.get("totalCashValue") or snapshot.get("netLiq") or snapshot.get("amount")
             if balance is None:
                 logger.warning("Cash balance snapshot missing totalCashValue/netLiq: %s", snapshot)
                 return
