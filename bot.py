@@ -126,6 +126,13 @@ class TradovateBot:
             if self.md_stream:
                 self._subscribe_market_data()
 
+            # Proactively renew token before it expires and push to WebSocket
+            def _on_token_refresh(new_md_token: str):
+                if isinstance(self.md_stream, MarketDataStream):
+                    self.md_stream.md_token = new_md_token
+                    logger.info("Market data stream token updated proactively")
+            self.api.start_token_refresh_thread(on_refresh=_on_token_refresh)
+
         # Main loop
         self.running = True
         self._main_loop()

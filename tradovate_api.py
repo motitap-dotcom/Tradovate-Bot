@@ -510,6 +510,27 @@ class TradovateAPI:
         if (self.token_expiry - now).total_seconds() < 300:
             self.renew_token()
 
+    def start_token_refresh_thread(self, on_refresh: Optional[Callable[[str], None]] = None):
+        """
+        Background daemon thread that renews the token ~10 min before expiry.
+        on_refresh(new_md_token) is called after each successful renewal so
+        callers (e.g. the market data WebSocket) can update their local copy.
+        """
+        def _loop():
+            while True:
+                time.sleep(60)
+                if not self.token_expiry:
+                    continue
+                remaining = (self.token_expiry - datetime.now(timezone.utc)).total_seconds()
+                if remaining < 600:
+                    logger.info("Proactive token renewal (%.0fs remaining)", remaining)
+                    if self.renew_token() and on_refresh and self.md_access_token:
+                        on_refresh(self.md_access_token)
+
+        t = threading.Thread(target=_loop, daemon=True, name="token-refresh")
+        t.start()
+        logger.info("Token refresh thread started (checks every 60s)")
+
     def _headers(self) -> dict:
         return {
             "Accept": "application/json",
