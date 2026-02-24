@@ -1,0 +1,19 @@
+[Unit]
+Description=Tradovate Trading Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/Tradovate-Bot
+ExecStart=/usr/bin/python3 /root/Tradovate-Bot/bot.py --live
+ExecStopPost=/bin/bash /root/Tradovate-Bot/alert.sh tradovate-bot
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/root/Tradovate-Bot/bot.log
+StandardError=append:/root/Tradovate-Bot/bot.log
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
