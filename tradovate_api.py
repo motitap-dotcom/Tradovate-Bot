@@ -365,7 +365,7 @@ class TradovateAPI:
         trader_url = (
             "https://trader.tradovate.com"
             if config.ENVIRONMENT == "live"
-            else "https://demo.tradovatetrader.com"
+            else "https://demo.tradovate.com"
         )
 
         captured: dict = {}
