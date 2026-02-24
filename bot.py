@@ -107,6 +107,7 @@ class TradovateBot:
                 logger.error("Authentication failed. Exiting.")
                 sys.exit(1)
             logger.info("Authenticated successfully")
+            self._sync_balance()  # seed risk manager with real account balance
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
@@ -596,19 +597,27 @@ class TradovateBot:
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
+        if self.api.account_id is None:
+            logger.warning("Balance sync skipped: account_id not set")
+            return
         try:
             snapshot = self.api.get_cash_balance()
-            if snapshot:
-                if snapshot.get("errorText"):
-                    logger.warning("Cash balance error: %s", snapshot["errorText"])
-                    return
-                # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
-                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
-                if balance is not None:
-                    unrealized = snapshot.get("openPnL", 0.0)
-                    self.risk.update_balance(balance, unrealized)
-                else:
-                    logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
+            if not snapshot:
+                logger.warning("Balance sync: empty response from API")
+                return
+            if snapshot.get("errorText"):
+                logger.warning("Cash balance error: %s", snapshot["errorText"])
+                return
+            # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
+            balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+            if balance is not None:
+                unrealized = snapshot.get("openPnL", 0.0)
+                prev = self.risk.current_balance
+                self.risk.update_balance(balance, unrealized)
+                if abs(balance - prev) > 0.01:
+                    logger.info("Balance updated: %.2f -> %.2f (openPnL=%.2f)", prev, balance, unrealized)
+            else:
+                logger.warning("Cash balance snapshot missing totalCashValue/netLiq: %s", snapshot)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 
