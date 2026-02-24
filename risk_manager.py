@@ -31,6 +31,8 @@ class RiskManager:
         self.max_contracts: int = challenge["max_contracts"]
         self.trails_unrealized: bool = challenge["drawdown_trails_unrealized"]
         self.brake_pct: float = config.DAILY_LOSS_BRAKE_PCT
+        self.daily_profit_cap: Optional[float] = challenge.get("daily_profit_cap")
+        self.consistency_pct: Optional[float] = challenge.get("consistency_rule_pct")
 
         # Running state
         self.starting_balance: float = self.account_size
@@ -56,12 +58,13 @@ class RiskManager:
         self.trades_today: int = 0
 
         logger.info(
-            "RiskManager initialized | account=%s | max_dd=%s | daily_limit=%s | brake=%.0f%% | max_trades/day=%d",
+            "RiskManager initialized | account=%s | max_dd=%s | daily_limit=%s | brake=%.0f%% | max_trades/day=%d | daily_profit_cap=%s",
             self.account_size,
             self.max_trailing_drawdown,
             self.daily_loss_limit,
             self.brake_pct * 100,
             self.max_daily_trades,
+            f"${self.daily_profit_cap}" if self.daily_profit_cap else "None",
         )
 
     # ─────────────────────────────────────────
@@ -96,6 +99,7 @@ class RiskManager:
         # Check all rules
         self._check_drawdown(equity)
         self._check_daily_loss()
+        self._check_daily_profit_cap()
 
     def end_of_day_update(self, realized_balance: float):
         """Call at session close for EOD trailing drawdown (Topstep)."""
@@ -136,6 +140,16 @@ class RiskManager:
             self._lock(
                 f"DAILY LOSS BRAKE: day P&L {self.day_pnl:.2f} hit "
                 f"{self.brake_pct:.0%} of limit (-{self.daily_loss_limit:.2f})"
+            )
+
+    def _check_daily_profit_cap(self):
+        """Lock trading if daily profit exceeds cap (consistency rule)."""
+        if self.daily_profit_cap is None:
+            return
+        if self.day_pnl >= self.daily_profit_cap:
+            self._lock(
+                f"DAILY PROFIT CAP: day P&L ${self.day_pnl:.2f} hit "
+                f"${self.daily_profit_cap:.2f} cap (consistency rule)"
             )
 
     def _check_new_day(self):

@@ -86,6 +86,8 @@ CHALLENGE_SETTINGS = {
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
+        "consistency_rule_pct": 0.40,     # Max single-day profit = 40% of total profit
+        "daily_profit_cap": 500,          # Conservative daily profit cap ($500)
     },
 }
 
