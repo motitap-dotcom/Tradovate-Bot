@@ -139,6 +139,11 @@ class TradovateAPI:
 
         # 3. Web-style auth (no CID/Secret needed)
         data = self._try_web_auth(url)
+        # 3b. If demo auth failed, try live endpoint (some prop firms require it)
+        if data is None and "demo" in self.base_url:
+            live_url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"
+            logger.info("Retrying auth via live endpoint...")
+            data = self._try_web_auth(live_url)
         # 4. API-key auth
         if data is None:
             data = self._try_api_auth(url)
@@ -362,11 +367,8 @@ class TradovateAPI:
                     "password": m.group(2),
                 }
 
-        trader_url = (
-            "https://trader.tradovate.com"
-            if config.ENVIRONMENT == "live"
-            else "https://demo.tradovate.com"
-        )
+        # Web trader login page is the same for both environments
+        trader_url = "https://trader.tradovate.com"
 
         captured: dict = {}
 
