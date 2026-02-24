@@ -489,6 +489,7 @@ class TradovateAPI:
             resp.raise_for_status()
             data = resp.json()
             self.access_token = data.get("accessToken", self.access_token)
+            self.md_access_token = data.get("mdAccessToken", self.md_access_token)
             if data.get("expirationTime"):
                 self.token_expiry = datetime.fromisoformat(
                     data["expirationTime"].replace("Z", "+00:00")
@@ -778,8 +779,9 @@ class MarketDataStream:
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_BASE_DELAY = 2  # seconds
 
-    def __init__(self, md_access_token: str):
+    def __init__(self, md_access_token: str, token_refresh: Optional[Callable[[], str]] = None):
         self.md_token = md_access_token
+        self._token_refresh = token_refresh
         self.ws: Optional[websocket.WebSocketApp] = None
         self._request_id = 0
         self._callbacks: dict[str, list[Callable]] = {}
@@ -886,7 +888,16 @@ class MarketDataStream:
 
             # Auth failure
             if item.get("i") == 1 and item.get("s") != 200:
-                logger.error("Market data auth failed: %s", item)
+                err_str = str(item.get("d", ""))
+                if "Expired" in err_str and self._token_refresh:
+                    logger.info("Market data token expired — refreshing and reconnecting")
+                    new_token = self._token_refresh()
+                    if new_token:
+                        self.md_token = new_token
+                    if self.ws:
+                        self.ws.close()  # triggers _on_close → reconnect with new token
+                else:
+                    logger.error("Market data auth failed: %s", item)
                 continue
 
             # Quote data — dispatched by symbol from the "d" field

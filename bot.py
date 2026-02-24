@@ -299,7 +299,7 @@ class TradovateBot:
         """Try WebSocket first; fall back to REST polling if WS is unavailable."""
         if self.api.md_access_token:
             try:
-                ws = MarketDataStream(self.api.md_access_token)
+                ws = MarketDataStream(self.api.md_access_token, token_refresh=self._refresh_md_token)
                 ws.start()
                 # Give it a moment to connect
                 if ws._connected.wait(timeout=10):
@@ -316,6 +316,11 @@ class TradovateBot:
         poller.start()
         logger.info("Market data via REST polling (Yahoo Finance)")
         return poller
+
+    def _refresh_md_token(self) -> str:
+        """Renew auth token and return fresh md_access_token for WebSocket re-auth."""
+        self.api.renew_token()
+        return self.api.md_access_token or ""
 
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
