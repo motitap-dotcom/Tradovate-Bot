@@ -702,8 +702,9 @@ def main():
         if config.PROP_FIRM == "fundednext":
             config.REST_URL = config._URLS["demo"]["rest"]
             config.WS_TRADING_URL = config._URLS["demo"]["ws_trading"]
+            config.WS_MARKET_URL = config._URLS["demo"]["ws_market"]
             logger.info(
-                "FundedNext prop firm detected: using demo API for trading "
+                "FundedNext prop firm detected: using demo API for all connections "
                 "(challenge account lives on demo.tradovateapi.com)"
             )
 
