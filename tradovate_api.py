@@ -797,7 +797,7 @@ class MarketDataStream:
     """
 
     # Reconnect settings
-    MAX_RECONNECT_ATTEMPTS = 5
+    MAX_RECONNECT_ATTEMPTS = 20
     RECONNECT_BASE_DELAY = 2  # seconds
 
     def __init__(self, md_access_token: str, token_refresh: Optional[Callable[[], str]] = None):
@@ -828,6 +828,8 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
+        proxy_kwargs["ping_interval"] = 25   # send WS ping every 25 s
+        proxy_kwargs["ping_timeout"] = 10    # drop if no pong within 10 s
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
