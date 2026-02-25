@@ -5,14 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=root
-WorkingDirectory=/root/Tradovate-Bot
-ExecStart=/usr/bin/python3 /root/Tradovate-Bot/bot.py --live
-ExecStopPost=/bin/bash /root/Tradovate-Bot/alert.sh tradovate-bot
+User=user
+WorkingDirectory=/home/user/Tradovate-Bot
+ExecStart=/usr/bin/python3 /home/user/Tradovate-Bot/bot.py --live
+ExecStopPost=/bin/bash /home/user/Tradovate-Bot/alert.sh tradovate-bot
 Restart=on-failure
 RestartSec=30
-StandardOutput=append:/root/Tradovate-Bot/bot.log
-StandardError=append:/root/Tradovate-Bot/bot.log
+StandardOutput=append:/home/user/Tradovate-Bot/bot.log
+StandardError=append:/home/user/Tradovate-Bot/bot.log
 Environment=PYTHONUNBUFFERED=1
 
 [Install]

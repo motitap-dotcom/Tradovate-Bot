@@ -87,6 +87,9 @@ class TradovateBot:
         self._min_order_gap_seconds: int = 30
         self._last_order_time: float = 0
 
+        # Last known market price per symbol (used for journal entry_price on market orders)
+        self._last_prices: dict[str, float] = {}
+
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
@@ -357,6 +360,9 @@ class TradovateBot:
         if current >= cutoff:
             return
 
+        # Track last price per symbol for journal entry_price
+        self._last_prices[symbol] = price
+
         # Feed price to strategy
         signal = None
         if hasattr(strategy, "on_price"):
@@ -445,7 +451,7 @@ class TradovateBot:
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=signal.entry_price or self._last_prices.get(signal.symbol, 0),
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
