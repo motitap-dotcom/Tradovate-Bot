@@ -1,12 +1,10 @@
 {
-  "command_id": "cce86cca",
-  "executed_at": "2026-02-26T21:16:30.081107+00:00",
+  "command_id": "14cd4a3f",
+  "executed_at": "2026-02-26T21:16:46.480940+00:00",
   "result": {
     "ok": true,
     "data": {
       "lines": [
-        "2026-02-26 21:14:48,812 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-        "2026-02-26 21:14:48,813 [ERROR] websocket: Connection to remote host was lost. - goodbye",
         "2026-02-26 21:14:48,813 [WARNING] tradovate_api: Market data WebSocket closed: None None",
         "2026-02-26 21:14:48,813 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
         "2026-02-26 21:14:50,986 [INFO] websocket: Websocket connected",
@@ -54,7 +52,9 @@
         "2026-02-26 21:16:28,394 [INFO] tradovate_api: Re-subscribed to: NQH6",
         "2026-02-26 21:16:28,394 [INFO] tradovate_api: Re-subscribed to: ESH6",
         "2026-02-26 21:16:28,394 [INFO] tradovate_api: Re-subscribed to: GCH6",
-        "2026-02-26 21:16:28,394 [INFO] tradovate_api: Re-subscribed to: CLJ6"
+        "2026-02-26 21:16:28,394 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+        "2026-02-26 21:16:41,293 [WARNING] bot: Balance sync: empty response (token may be invalid)",
+        "2026-02-26 21:16:41,458 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
       ],
       "count": 50
     }
