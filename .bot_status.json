@@ -1,16 +1,10 @@
 {
-  "command_id": "00b5f108",
-  "executed_at": "2026-02-26T20:51:06.431881+00:00",
+  "command_id": "e7c03462",
+  "executed_at": "2026-02-26T20:52:09.234996+00:00",
   "result": {
     "ok": true,
     "data": {
       "lines": [
-        "2026-02-26 20:48:09,948 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
-        "2026-02-26 20:48:09,949 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-        "2026-02-26 20:48:09,949 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-        "2026-02-26 20:48:09,949 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-        "2026-02-26 20:48:09,949 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-        "2026-02-26 20:48:12,132 [INFO] websocket: Websocket connected",
         "2026-02-26 20:48:12,132 [INFO] tradovate_api: Market data WebSocket connected",
         "2026-02-26 20:48:12,249 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
         "2026-02-26 20:48:12,250 [ERROR] websocket: Connection to remote host was lost. - goodbye",
@@ -54,7 +48,13 @@
         "2026-02-26 20:50:06,643 [WARNING] bot: Cash balance error: Account not found",
         "2026-02-26 20:50:06,808 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
         "2026-02-26 20:50:36,964 [WARNING] bot: Cash balance error: Account not found",
-        "2026-02-26 20:50:37,128 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
+        "2026-02-26 20:50:37,128 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 20:51:07,290 [WARNING] bot: Cash balance error: Account not found",
+        "2026-02-26 20:51:07,456 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 20:51:37,619 [WARNING] bot: Cash balance error: Account not found",
+        "2026-02-26 20:51:37,787 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 20:52:07,956 [WARNING] bot: Cash balance error: Account not found",
+        "2026-02-26 20:52:08,125 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
       ],
       "count": 50
     }
