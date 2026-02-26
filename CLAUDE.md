@@ -7,37 +7,50 @@ Claude Code is responsible for: starting/stopping the bot, monitoring trades,
 fixing bugs, deploying code changes, and checking status.
 
 ### How the bot runs
-- The bot runs **in this Claude Code environment** as a background process
-- Start: `nohup python3 bot.py > bot.log 2>&1 & echo $! > bot.pid`
-- Stop: `kill $(cat bot.pid)`
-- Status: `python3 check_status.py` (or `--watch` for live monitoring)
-- Logs: `tail -50 bot.log`
+The bot runs on a **VPS (external server)**, NOT in Claude Code.
+`server_agent.py` runs on the VPS and acts as a bridge:
 
-### CRITICAL: Bot CANNOT run in Claude Code environment
-The Claude Code sandbox proxy **blocks ALL access** to Tradovate domains:
-- `demo.tradovateapi.com` → blocked (ProxyError / 403)
-- `live.tradovateapi.com` → blocked
-- `trader.tradovate.com` → blocked (ERR_TUNNEL_CONNECTION_FAILED)
-- Token renewal endpoint → also blocked
+```
+Claude Code  ──push code/commands──►  GitHub  ◄──poll──  server_agent.py (VPS)
+                                                              │
+Claude Code  ◄──read status.json───  GitHub  ◄──push──  bot.py (VPS)
+```
 
-**The bot MUST run on a VPS or external server with unrestricted internet.**
+### How to manage the bot from Claude Code
+1. **Send commands**: Write to `github_control/command.json`, commit & push
+2. **Check status**: Read `github_control/status.json` (updated every ~30s by VPS)
+3. **Deploy code**: Push code changes → server_agent auto-pulls & restarts bot
+4. **View logs**: Read `status.json` → `recent_log` field
 
-### Workflow: Claude Code + VPS
-- **Claude Code** (here): Write code, fix bugs, run tests, push to GitHub
-- **VPS** (external server): Pull code from GitHub, run the bot
-- **Bridge**: `server_agent.py` runs on VPS, polls GitHub for commands
+### Available commands (via command.json)
+| Command | What it does |
+|---------|-------------|
+| `restart` | Stop + start the bot |
+| `start` | Start the bot if stopped |
+| `stop` | Stop the bot gracefully |
+| `status` | Force a status update |
+| `deploy` | Pull latest code + restart |
+| `emergency_stop` | Close all positions + cancel orders + stop bot |
+| `close_all` | Close all open positions |
+| `cancel_all` | Cancel all working orders |
+| `refresh_token` | Renew the auth token |
 
-### How to deploy to VPS
-1. Set up a VPS (DigitalOcean, Hetzner, etc.) with Python 3.11+
-2. Clone the repo: `git clone <repo-url>`
-3. Install deps: `pip install -r requirements.txt && playwright install chromium`
-4. Copy `.env` with credentials
-5. Run: `python server_agent.py` (manages bot lifecycle, polls GitHub)
-6. Or directly: `python bot.py` (for demo/testing)
+### How to send a command
+```python
+# In command.json:
+{"command": "restart", "id": "<unique-id>", "source": "claude",
+ "timestamp": "<iso-timestamp>"}
+```
+Then commit & push. The server agent polls every 30s.
 
-### If VPS already exists
-The `server_agent.py` auto-pulls code changes from GitHub and restarts the bot.
-Push fixes here → server_agent picks them up → bot restarts with new code.
+### How to check bot status
+Read `github_control/status.json` — it contains:
+- `bot_running` / `bot_pid` — is the bot alive
+- `token.status` / `token.minutes_remaining` — auth token health
+- `account.balance` / `account.day_pnl` — account info
+- `risk` — open contracts, trades today, locked status
+- `recent_log` — last 20 log lines from the bot
+- `journal_summary` — trade statistics
 
 ### What was fixed (2026-02-26)
 - **`server_agent.py`**: Removed hardcoded `--live` flag. Bot now uses
