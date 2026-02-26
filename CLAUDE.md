@@ -1,5 +1,95 @@
 # Tradovate Bot — Claude Code Guide
 
+## VPS Remote Server (IMPORTANT — Read First)
+
+The bot runs on a remote VPS. Every Claude Code session MUST connect to the server to manage the bot.
+
+### Connection Details
+
+```
+Host: 77.237.234.2
+User: root
+Port: 22
+Command: ssh root@77.237.234.2
+```
+
+### How to Connect
+
+1. On every new session, first test connectivity:
+   ```bash
+   ssh -o ConnectTimeout=10 root@77.237.234.2 "hostname && uptime"
+   ```
+2. If SSH key is missing, generate and copy:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/tradovate_vps -N ""
+   ssh-copy-id -i ~/.ssh/tradovate_vps root@77.237.234.2
+   ```
+3. For convenience, add SSH config:
+   ```bash
+   mkdir -p ~/.ssh && cat >> ~/.ssh/config << 'EOF'
+   Host tradovate-vps
+       HostName 77.237.234.2
+       User root
+       Port 22
+       IdentityFile ~/.ssh/tradovate_vps
+   EOF
+   ```
+
+### Bot Management via SSH
+
+```bash
+# Check bot status
+ssh root@77.237.234.2 "systemctl status tradovate-bot"
+
+# View live logs
+ssh root@77.237.234.2 "journalctl -u tradovate-bot -f --no-pager -n 50"
+
+# Restart bot
+ssh root@77.237.234.2 "systemctl restart tradovate-bot"
+
+# Stop bot
+ssh root@77.237.234.2 "systemctl stop tradovate-bot"
+
+# Start bot
+ssh root@77.237.234.2 "systemctl start tradovate-bot"
+
+# Run bot manually (foreground, for debugging)
+ssh root@77.237.234.2 "cd /opt/tradovate-bot && source venv/bin/activate && python bot.py"
+
+# Run with Playwright (browser auth)
+ssh root@77.237.234.2 "cd /opt/tradovate-bot && source venv/bin/activate && python browser_bot.py --headless"
+
+# Deploy latest code from git
+ssh root@77.237.234.2 "cd /opt/tradovate-bot && git pull && systemctl restart tradovate-bot"
+
+# Check dashboard
+ssh root@77.237.234.2 "systemctl status tradovate-dashboard"
+
+# View trade journal
+ssh root@77.237.234.2 "cd /opt/tradovate-bot && source venv/bin/activate && python trade_journal.py --today"
+
+# View bot config
+ssh root@77.237.234.2 "cat /opt/tradovate-bot/.env"
+```
+
+### Deploying Code Changes
+
+After making changes locally, push to git and deploy:
+```bash
+git push origin <branch>
+ssh root@77.237.234.2 "cd /opt/tradovate-bot && git pull origin main && systemctl restart tradovate-bot"
+```
+
+### VPS Paths
+
+- **Bot directory**: `/opt/tradovate-bot/`
+- **Virtual env**: `/opt/tradovate-bot/venv/`
+- **Logs**: `/opt/tradovate-bot/bot.log`
+- **Journal**: `/opt/tradovate-bot/trade_journal.json`
+- **Token**: `/opt/tradovate-bot/.tradovate_token.json`
+- **Tuner log**: `/opt/tradovate-bot/tuner_log.json`
+- **systemd**: `/etc/systemd/system/tradovate-bot.service`
+
 ## Overview
 
 Automated futures trading bot for the Tradovate platform, built for prop firm challenge accounts (FundedNext, Apex, Topstep). Executes ORB (Opening Range Breakout) and VWAP Momentum strategies with full risk management, auto-tuning, trade journaling, and a live web dashboard.
