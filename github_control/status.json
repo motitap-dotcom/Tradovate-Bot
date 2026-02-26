@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T18:44:45.694941+00:00",
+  "timestamp": "2026-02-26T18:45:11.370923+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 55553.3,
     "equity": 55553.3,
-    "day_pnl": 3490.1,
+    "day_pnl": 3640.1,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -241,10 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 18:44:02,638 [INFO] bot: SIGNAL: Sell GC 1 @ market | SL=5195.0360 TP=5174.1001 | VWAP short #2 at 5184.1001 (VWAP=5190.0360)",
-    "2026-02-26 18:44:02,638 [INFO] bot: SIGNAL: Sell GC 1 @ market | SL=5195.0360 TP=5174.1001 | VWAP short #2 at 5184.1001 (VWAP=5190.0360)",
-    "2026-02-26 18:44:02,638 [INFO] tradovate_api: Placing bracket Sell 1 GCH6 @ Market | SL=5195.04 TP=5174.10",
-    "2026-02-26 18:44:02,638 [INFO] tradovate_api: Placing bracket Sell 1 GCH6 @ Market | SL=5195.04 TP=5174.10",
     "2026-02-26 18:44:02,804 [INFO] tradovate_api: Entry order placed: orderId=409583841269",
     "2026-02-26 18:44:02,804 [INFO] tradovate_api: Entry order placed: orderId=409583841269",
     "2026-02-26 18:44:02,976 [INFO] tradovate_api: OCO placed: SL orderId=409583841280 TP orderId=409583841281",
@@ -260,13 +256,17 @@
     "2026-02-26 18:44:37,350 [INFO] risk_manager: New peak equity: 55913.30 | drawdown floor: 53413.30",
     "2026-02-26 18:44:37,350 [INFO] risk_manager: New peak equity: 55913.30 | drawdown floor: 53413.30",
     "2026-02-26 18:44:37,511 [INFO] bot: Status | balance=55553.30 | day_pnl=3490.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 18:44:37,511 [INFO] bot: Status | balance=55553.30 | day_pnl=3490.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
+    "2026-02-26 18:44:37,511 [INFO] bot: Status | balance=55553.30 | day_pnl=3490.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:45:07,685 [INFO] risk_manager: New peak equity: 56063.30 | drawdown floor: 53563.30",
+    "2026-02-26 18:45:07,685 [INFO] risk_manager: New peak equity: 56063.30 | drawdown floor: 53563.30",
+    "2026-02-26 18:45:07,852 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:45:07,852 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 16,
+    "minutes_remaining": 15,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "01:04:18"
+  "uptime": "01:04:44"
 }
