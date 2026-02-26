@@ -1,36 +1,62 @@
 {
-  "command_id": "9a44f664",
-  "executed_at": "2026-02-26T21:04:38.535088+00:00",
+  "command_id": "d9fdb24a",
+  "executed_at": "2026-02-26T21:05:11.323814+00:00",
   "result": {
     "ok": true,
     "data": {
-      "bot": {
-        "running": true,
-        "pid": 303606,
-        "systemd": "active"
-      },
-      "trading": {
-        "balance": 50000.0,
-        "day_pnl": 0.0,
-        "to_floor": 2500.0,
-        "contracts": "0/10",
-        "trades": "0/12",
-        "locked": false,
-        "timestamp": "2026-02-26 21:04:31",
-        "age_seconds": 7.5
-      },
-      "token": {
-        "status": "valid",
-        "remaining_minutes": 78.8
-      },
-      "journal": {
-        "total_trades": 0,
-        "wins": 0,
-        "losses": 0,
-        "win_rate": 0,
-        "total_pnl": 0
-      },
-      "server_time": "2026-02-26T21:04:38.535069+00:00"
+      "lines": [
+        "2026-02-26 21:02:47,480 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
+        "2026-02-26 21:02:47,480 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+        "2026-02-26 21:02:47,481 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+        "2026-02-26 21:02:47,481 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+        "2026-02-26 21:02:47,481 [INFO] tradovate_api: Reconnecting in 4s (attempt 2/5)...",
+        "2026-02-26 21:02:51,648 [INFO] websocket: Websocket connected",
+        "2026-02-26 21:02:51,648 [INFO] tradovate_api: Market data WebSocket connected",
+        "2026-02-26 21:02:51,764 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+        "2026-02-26 21:02:51,764 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+        "2026-02-26 21:02:51,764 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+        "2026-02-26 21:02:51,764 [INFO] tradovate_api: Reconnecting in 8s (attempt 3/5)...",
+        "2026-02-26 21:02:59,936 [INFO] websocket: Websocket connected",
+        "2026-02-26 21:02:59,936 [INFO] tradovate_api: Market data WebSocket connected",
+        "2026-02-26 21:03:00,048 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+        "2026-02-26 21:03:00,048 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+        "2026-02-26 21:03:00,048 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+        "2026-02-26 21:03:00,048 [INFO] tradovate_api: Reconnecting in 16s (attempt 4/5)...",
+        "2026-02-26 21:03:09,845 [WARNING] bot: WebSocket connection failed, falling back to REST polling",
+        "2026-02-26 21:03:09,850 [INFO] tradovate_api: REST market data poller started (interval=5s)",
+        "2026-02-26 21:03:09,850 [INFO] bot: Market data via REST polling (Yahoo Finance)",
+        "2026-02-26 21:03:09,850 [INFO] tradovate_api: Subscribed to REST quotes: NQH6 -> NQ=F",
+        "2026-02-26 21:03:09,850 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F",
+        "2026-02-26 21:03:09,850 [INFO] tradovate_api: Subscribed to REST quotes: GCH6 -> GC=F",
+        "2026-02-26 21:03:09,850 [INFO] tradovate_api: Subscribed to REST quotes: CLJ6 -> CL=F",
+        "2026-02-26 21:03:10,035 [WARNING] bot: Cash balance error: Account not found",
+        "2026-02-26 21:03:10,036 [WARNING] bot: Account not found \u2014 deleting stale token, forcing fresh auth...",
+        "2026-02-26 21:03:10,036 [INFO] bot: Deleted stale token file",
+        "2026-02-26 21:03:10,036 [INFO] tradovate_api: Trying web-style authentication (no CID needed)...",
+        "2026-02-26 21:03:10,223 [INFO] tradovate_api: Web auth response: Incorrect username or password. Please try again, noting that passwords are case-sensitive.",
+        "2026-02-26 21:03:10,225 [INFO] tradovate_api: No API secret configured, skipping API-key auth",
+        "2026-02-26 21:03:10,437 [INFO] tradovate_api: Attempting browser-based login at https://trader.tradovate.com ...",
+        "2026-02-26 21:03:16,256 [INFO] websocket: Websocket connected",
+        "2026-02-26 21:03:16,286 [INFO] tradovate_api: Market data WebSocket connected",
+        "2026-02-26 21:03:16,411 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
+        "2026-02-26 21:03:16,412 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+        "2026-02-26 21:03:16,412 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+        "2026-02-26 21:03:16,412 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+        "2026-02-26 21:03:29,656 [INFO] tradovate_api: Browser auth succeeded! userId=5644210",
+        "2026-02-26 21:03:29,656 [INFO] tradovate_api: Authenticated as FNFTMOTITAPWnBks (userId=5644210)",
+        "2026-02-26 21:03:29,890 [INFO] bot: Fresh auth OK: account=FNFTMOTITAPWnBks id=None",
+        "2026-02-26 21:03:29,890 [INFO] bot: Initial balance: $50000.00 | drawdown_floor: $47500.00",
+        "2026-02-26 21:03:29,892 [INFO] bot: Entering main loop...",
+        "2026-02-26 21:03:29,893 [WARNING] bot: Balance sync: empty response (token may be invalid)",
+        "2026-02-26 21:03:31,133 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 21:04:01,135 [WARNING] bot: Balance sync: empty response (token may be invalid)",
+        "2026-02-26 21:04:01,439 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 21:04:31,440 [WARNING] bot: Balance sync: empty response (token may be invalid)",
+        "2026-02-26 21:04:31,627 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 21:05:01,628 [WARNING] bot: Balance sync: empty response (token may be invalid)",
+        "2026-02-26 21:05:01,916 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
+      ],
+      "count": 50
     }
   }
 }
