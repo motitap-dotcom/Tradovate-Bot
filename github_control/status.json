@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T17:42:30.313681+00:00",
+  "timestamp": "2026-02-26T17:43:03.670987+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 52344.12,
     "equity": 52344.12,
-    "day_pnl": 375.92,
+    "day_pnl": 445.92,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 2,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 2423.8
+    "distance_to_floor": 2493.8
   },
   "positions": [],
   "recent_trades": [
@@ -241,8 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:41:55,471 [INFO] risk_manager: New peak equity: 52875.32 | drawdown floor: 50375.32",
-    "2026-02-26 17:41:55,471 [INFO] risk_manager: New peak equity: 52875.32 | drawdown floor: 50375.32",
     "2026-02-26 17:41:55,657 [INFO] bot: Status | balance=52420.32 | day_pnl=452.12 | to_floor=2500.00 | contracts=2/10 | trades=1/12 | locked=False",
     "2026-02-26 17:41:55,657 [INFO] bot: Status | balance=52420.32 | day_pnl=452.12 | to_floor=2500.00 | contracts=2/10 | trades=1/12 | locked=False",
     "2026-02-26 17:42:15,135 [INFO] strategies: VWAP GC SHORT #1 at 5189.2002 | VWAP=5190.0360 | SL=5195.0360 TP=5179.2002",
@@ -260,13 +258,15 @@
     "2026-02-26 17:42:15,478 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
     "2026-02-26 17:42:15,478 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
     "2026-02-26 17:42:25,978 [INFO] bot: Status | balance=52344.12 | day_pnl=375.92 | to_floor=2423.80 | contracts=2/10 | trades=2/12 | locked=False",
-    "2026-02-26 17:42:25,978 [INFO] bot: Status | balance=52344.12 | day_pnl=375.92 | to_floor=2423.80 | contracts=2/10 | trades=2/12 | locked=False"
+    "2026-02-26 17:42:25,978 [INFO] bot: Status | balance=52344.12 | day_pnl=375.92 | to_floor=2423.80 | contracts=2/10 | trades=2/12 | locked=False",
+    "2026-02-26 17:42:56,309 [INFO] bot: Status | balance=52344.12 | day_pnl=445.92 | to_floor=2493.80 | contracts=2/10 | trades=2/12 | locked=False",
+    "2026-02-26 17:42:56,309 [INFO] bot: Status | balance=52344.12 | day_pnl=445.92 | to_floor=2493.80 | contracts=2/10 | trades=2/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 78,
+    "minutes_remaining": 77,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "02:03"
+  "uptime": "02:36"
 }
