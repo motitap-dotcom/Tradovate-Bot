@@ -908,9 +908,13 @@ class MarketDataStream:
 
     def _reconnect(self):
         """Reconnect and re-subscribe to all symbols."""
+        if not self._should_run:
+            return
         self._connect()
         if self._connected.wait(timeout=15):
             for symbol in list(self._callbacks.keys()):
+                if not self._should_run:
+                    return
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
 

@@ -672,6 +672,9 @@ def main():
     def handle_signal(signum, frame):
         logger.info("Signal %s received. Stopping...", signum)
         bot.running = False
+        # Immediately stop WebSocket to prevent reconnection
+        if bot.md_stream and hasattr(bot.md_stream, '_should_run'):
+            bot.md_stream._should_run = False
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
