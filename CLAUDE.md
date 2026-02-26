@@ -1,5 +1,51 @@
 # Tradovate Bot — Claude Code Guide
 
+## IMPORTANT: Operations Guide (READ FIRST)
+
+**The user (Moti) manages this bot exclusively through Claude Code.**
+Claude Code is responsible for: starting/stopping the bot, monitoring trades,
+fixing bugs, deploying code changes, and checking status.
+
+### How the bot runs
+- The bot runs **in this Claude Code environment** as a background process
+- Start: `nohup python3 bot.py > bot.log 2>&1 & echo $! > bot.pid`
+- Stop: `kill $(cat bot.pid)`
+- Status: `python3 check_status.py` (or `--watch` for live monitoring)
+- Logs: `tail -50 bot.log`
+
+### Known environment limitation: Proxy blocks Tradovate API
+This Claude Code sandbox has a proxy that **blocks direct access** to
+`tradovateapi.com` and `trader.tradovate.com`. The bot CANNOT authenticate
+on its own from this environment. A valid token must be provided manually.
+
+### How to get the bot running (every time token expires)
+1. Ask Moti to log in at https://trader.tradovate.com in his browser
+2. He opens DevTools (F12) → Network tab → finds the auth response
+3. He pastes the `accessToken` value here
+4. Claude saves it to `.tradovate_token.json` or `.env` as `TRADOVATE_ACCESS_TOKEN`
+5. Claude starts the bot: `nohup python3 bot.py > bot.log 2>&1 &`
+6. The bot auto-renews the token every ~75 minutes (before 80min expiry)
+7. **As long as the bot keeps running, the token stays alive**
+8. If the bot crashes or the session restarts, we need a new token from Moti
+
+### What was fixed (2026-02-26)
+- **`server_agent.py`**: Removed hardcoded `--live` flag. Bot now uses
+  `TRADOVATE_ENV=demo` from `.env` (FundedNext challenge is on demo API)
+- **`bot.py`**: Added token auto-renewal in main loop (every 30s)
+- **`bot.py`**: Added market price fallback for fill_price (fixes entry_price=0)
+- **12 ghost trades in journal**: All from 2026-02-23, had entry_price=0
+  because orders went to live API (wrong endpoint). Cleaned up as stale.
+
+### Quick reference
+| Action | Command |
+|--------|---------|
+| Start bot | `nohup python3 bot.py > bot.log 2>&1 & echo $! > bot.pid` |
+| Stop bot | `kill $(cat bot.pid)` |
+| Check status | `python3 check_status.py` |
+| Live monitor | `python3 check_status.py --watch` |
+| View log | `tail -50 bot.log` |
+| Run tests | `python -m pytest test_all.py -v` |
+
 ## Account Info
 - **Prop Firm**: FundedNext (Futures Challenge)
 - **Username**: FNFTMOTITAPWnBks
@@ -41,9 +87,12 @@ bot.py                  — Main orchestrator: lifecycle, market data, order exe
 ## Running
 
 ```bash
-python bot.py --live        # Main entry (uses .env TRADOVATE_ENV)
+python bot.py               # Main entry (uses TRADOVATE_ENV from .env, default: demo)
+python bot.py --live        # Force live mode (DO NOT USE for FundedNext challenge)
+python bot.py --dry-run     # Paper mode — signals only, no real orders
 python browser_bot.py       # Browser-based auth then run bot
 python get_token.py         # One-time token capture (needs display)
+python check_status.py      # Quick health check report
 ```
 
 ## Key Files
@@ -91,3 +140,6 @@ python -m pytest test_all.py -v
 2. **CAPTCHA required**: Bot auto-handles via Playwright browser login
 3. **Empty account list**: FundedNext challenge accounts are on demo API
 4. **Rate limiting (p-ticket)**: Wait 15+ seconds before retrying auth
+5. **ProxyError in Claude Code env**: This sandbox blocks tradovateapi.com — need manual token from Moti
+6. **entry_price=0 in journal**: Orders went to wrong API endpoint (live vs demo) — fixed 2026-02-26
+7. **Token expired / bot stopped**: Ask Moti for a new token from browser DevTools
