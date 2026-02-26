@@ -13,11 +13,13 @@
       "entry_time": "2026-02-23T15:23:28.536939+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.106184+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4183.226154083333
     },
     {
       "id": "ES_20260223_152328",
@@ -32,11 +34,13 @@
       "entry_time": "2026-02-23T15:23:28.922200+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.107351+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4183.219752516667
     },
     {
       "id": "NQ_20260223_153739",
@@ -51,11 +55,13 @@
       "entry_time": "2026-02-23T15:37:39.904208+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.108038+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4169.0367305
     },
     {
       "id": "ES_20260223_153740",
@@ -70,11 +76,13 @@
       "entry_time": "2026-02-23T15:37:40.411766+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.108778+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4169.028283533333
     },
     {
       "id": "NQ_20260223_153954",
@@ -89,11 +97,13 @@
       "entry_time": "2026-02-23T15:39:54.619192+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.109901+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4166.791511816667
     },
     {
       "id": "ES_20260223_153954",
@@ -108,11 +118,13 @@
       "entry_time": "2026-02-23T15:39:54.998801+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.110647+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4166.785197433333
     },
     {
       "id": "NQ_20260223_155631",
@@ -127,11 +139,13 @@
       "entry_time": "2026-02-23T15:56:31.642224+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.111264+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4150.174484
     },
     {
       "id": "ES_20260223_155632",
@@ -146,11 +160,13 @@
       "entry_time": "2026-02-23T15:56:32.081050+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.111841+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4150.16717985
     },
     {
       "id": "NQ_20260223_164527",
@@ -165,11 +181,13 @@
       "entry_time": "2026-02-23T16:45:27.587110+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.112431+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4101.242088683333
     },
     {
       "id": "ES_20260223_164528",
@@ -184,11 +202,13 @@
       "entry_time": "2026-02-23T16:45:28.334839+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.112951+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4101.2296352
     },
     {
       "id": "CL_20260223_164529",
@@ -203,11 +223,13 @@
       "entry_time": "2026-02-23T16:45:29.029054+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.113445+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4101.218073183333
     },
     {
       "id": "CL_20260223_164535",
@@ -222,20 +244,29 @@
       "entry_time": "2026-02-23T16:45:35.544500+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_session_cleanup",
+      "exit_time": "2026-02-26T13:06:42.114042+00:00",
+      "status": "closed",
+      "r_multiple": 0,
+      "duration_minutes": 4101.109492366667
     }
   ],
   "daily_notes": {},
   "summary": {
-    "total_trades": 0,
+    "total_trades": 12,
     "wins": 0,
     "losses": 0,
-    "win_rate": 0,
-    "total_pnl": 0
+    "win_rate": 0.0,
+    "total_pnl": 0,
+    "avg_win": 0,
+    "avg_loss": 0,
+    "profit_factor": 0,
+    "expectancy": 0,
+    "best_trade": 0,
+    "worst_trade": 0,
+    "avg_r_multiple": 0
   },
-  "updated_at": "2026-02-23T16:45:35.544552+00:00"
+  "updated_at": "2026-02-26T13:06:42.114109+00:00"
 }

@@ -110,6 +110,9 @@ class TradovateBot:
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
+        # Close stale journal entries from previous sessions
+        self._close_stale_journal_trades()
+
         # Resolve front-month contracts
         self._resolve_contracts()
 
@@ -145,6 +148,26 @@ class TradovateBot:
 
         self._print_summary()
         logger.info("Bot stopped.")
+
+    # ─────────────────────────────────────────
+    # Stale trade cleanup
+    # ─────────────────────────────────────────
+
+    def _close_stale_journal_trades(self):
+        """Close journal trades left open from previous sessions."""
+        today = now_et().date().isoformat()
+        stale = [t for t in self.journal.trades if t["status"] == "open" and t.get("date") != today]
+        if not stale:
+            return
+        logger.info("Closing %d stale journal trades from previous sessions", len(stale))
+        for trade in stale:
+            self.journal.record_exit(
+                trade["id"],
+                exit_price=trade.get("entry_price", 0),
+                pnl=0,
+                exit_reason="stale_session_cleanup",
+            )
+        logger.info("Stale journal trades closed")
 
     # ─────────────────────────────────────────
     # Contract resolution
@@ -442,10 +465,14 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
+
+            # Try to get actual fill price from API
+            fill_price = self._get_fill_price(result.get("orderId")) or signal.entry_price or 0
+
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=fill_price,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -468,6 +495,27 @@ class TradovateBot:
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
         else:
             logger.error("Order placement failed for %s", signal.symbol)
+
+    # ─────────────────────────────────────────
+    # Fill price lookup
+    # ─────────────────────────────────────────
+
+    def _get_fill_price(self, order_id: int) -> float:
+        """Fetch fill price from the API for a recently placed market order."""
+        if not order_id:
+            return 0
+        try:
+            # Brief wait for fill to register
+            time.sleep(1)
+            fills = self.api.get_fills()
+            for fill in reversed(fills):
+                if fill.get("orderId") == order_id:
+                    price = fill.get("price", 0)
+                    logger.info("Fill price for orderId=%s: %.4f", order_id, price)
+                    return price
+        except Exception as e:
+            logger.warning("Could not fetch fill price for orderId=%s: %s", order_id, e)
+        return 0
 
     # ─────────────────────────────────────────
     # Main loop
@@ -575,6 +623,9 @@ class TradovateBot:
 
             self.risk.open_contracts = total_open
 
+            # Fetch fills once to look up exit prices
+            all_fills = self.api.get_fills() if self.trades_today else []
+
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
@@ -583,13 +634,49 @@ class TradovateBot:
                     continue
 
                 if sym not in open_base_symbols:
-                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
+                    # Position is flat — find exit fill price and compute P&L
+                    exit_price = 0
+                    pnl = 0
+                    order_id = trade_info.get("order_id")
+                    entry_price = 0
+
+                    # Find entry price from journal
+                    for t in reversed(self.journal.trades):
+                        if t["id"] == journal_id:
+                            entry_price = t.get("entry_price", 0)
+                            break
+
+                    # Find the most recent fill that closed this position
+                    for fill in reversed(all_fills):
+                        if fill.get("contractId") and order_id:
+                            # Match by looking at fills after our entry
+                            fill_action = fill.get("action", "")
+                            trade_dir = trade_info.get("direction", "")
+                            # Exit fill has the opposite action
+                            if (trade_dir == "Buy" and fill_action == "Sell") or \
+                               (trade_dir == "Sell" and fill_action == "Buy"):
+                                exit_price = fill.get("price", 0)
+                                break
+
+                    # Compute P&L if we have both prices
+                    if entry_price and exit_price:
+                        spec = config.CONTRACT_SPECS.get(sym, {})
+                        pv = spec.get("point_value", 1)
+                        qty = trade_info.get("qty", 1)
+                        if trade_info.get("direction") == "Buy":
+                            pnl = (exit_price - entry_price) * pv * qty
+                        else:
+                            pnl = (entry_price - exit_price) * pv * qty
+
                     self.journal.record_exit_by_symbol(
-                        sym, 0, 0, exit_reason="bracket_fill"
+                        sym, exit_price, pnl, exit_reason="bracket_fill"
                     )
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    logger.info(
+                        "Position closed for %s (flat) | exit=%.4f pnl=%.2f",
+                        sym, exit_price, pnl,
+                    )
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)

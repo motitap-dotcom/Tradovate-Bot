@@ -34,7 +34,7 @@ logger.setLevel(logging.INFO)
 _results = {"passed": 0, "failed": 0, "errors": []}
 
 
-def test(name):
+def check(name):
     """Decorator to register and run a test."""
     def decorator(func):
         def wrapper():
@@ -64,7 +64,7 @@ print("1. AUTHENTICATION TESTS")
 print("=" * 60)
 
 
-@test("Password encryption matches Tradovate web format")
+@check("Password encryption matches Tradovate web format")
 def test_password_encryption():
     from tradovate_api import _encrypt_password
     # Test the btoa(shift+reverse) encoding
@@ -84,7 +84,7 @@ def test_password_encryption():
     assert result == expected, f"Expected {expected}, got {result}"
 
 
-@test("HMAC sec computation produces valid hex digest")
+@check("HMAC sec computation produces valid hex digest")
 def test_hmac_sec():
     from tradovate_api import _compute_hmac_sec
     payload = {
@@ -100,7 +100,7 @@ def test_hmac_sec():
     assert all(c in "0123456789abcdef" for c in result), "HMAC should be hex"
 
 
-@test("Token persistence save/load roundtrip")
+@check("Token persistence save/load roundtrip")
 def test_token_persistence():
     from tradovate_api import TradovateAPI, _TOKEN_FILE
     import tempfile
@@ -137,7 +137,7 @@ def test_token_persistence():
             test_file.unlink()
 
 
-@test("Auth with pre-injected token works")
+@check("Auth with pre-injected token works")
 def test_injected_token():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -148,7 +148,7 @@ def test_injected_token():
     assert api.token_expiry is not None
 
 
-@test("Auth priority: env var token takes precedence")
+@check("Auth priority: env var token takes precedence")
 def test_auth_env_token():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -177,7 +177,7 @@ print("2. API ENDPOINT TESTS (mocked HTTP)")
 print("=" * 60)
 
 
-@test("GET /account/list returns accounts")
+@check("GET /account/list returns accounts")
 def test_get_accounts():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -195,7 +195,7 @@ def test_get_accounts():
         assert "/account/list" in call_url
 
 
-@test("GET /position/list returns positions")
+@check("GET /position/list returns positions")
 def test_get_positions():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -213,7 +213,7 @@ def test_get_positions():
         assert positions[0]["netPos"] == 2
 
 
-@test("Contract suggest returns front-month")
+@check("Contract suggest returns front-month")
 def test_suggest_contract():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -229,7 +229,7 @@ def test_suggest_contract():
         assert contract["name"] == "NQH6"
 
 
-@test("Place bracket order sends correct placeorder + placeOCO payload")
+@check("Place bracket order sends correct placeorder + placeOCO payload")
 def test_place_bracket():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -278,7 +278,7 @@ def test_place_bracket():
         assert oco_payload["other"]["price"] == 21100.0
 
 
-@test("Cancel all orders iterates working orders")
+@check("Cancel all orders iterates working orders")
 def test_cancel_all():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -297,7 +297,7 @@ def test_cancel_all():
             assert mock_post.call_count == 2
 
 
-@test("Close all positions sends correct market orders")
+@check("Close all positions sends correct market orders")
 def test_close_all():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -331,7 +331,7 @@ def test_close_all():
                 assert "Buy" in joined, f"Should buy short position, got: {calls}"
 
 
-@test("Token auto-renewal when close to expiry")
+@check("Token auto-renewal when close to expiry")
 def test_auto_renew():
     from tradovate_api import TradovateAPI
     api = TradovateAPI()
@@ -370,7 +370,7 @@ print("3. WEBSOCKET PROTOCOL TESTS")
 print("=" * 60)
 
 
-@test("WS auth message format is correct")
+@check("WS auth message format is correct")
 def test_ws_auth_format():
     from tradovate_api import MarketDataStream
     stream = MarketDataStream("test-md-token-123")
@@ -384,7 +384,7 @@ def test_ws_auth_format():
     assert "test-md-token-123" in msg
 
 
-@test("WS heartbeat replies with keepalive")
+@check("WS heartbeat replies with keepalive")
 def test_ws_heartbeat():
     from tradovate_api import MarketDataStream
     stream = MarketDataStream("token")
@@ -394,7 +394,7 @@ def test_ws_heartbeat():
     ws.send.assert_called_once_with("[]")
 
 
-@test("WS auth response sets connected flag")
+@check("WS auth response sets connected flag")
 def test_ws_auth_response():
     from tradovate_api import MarketDataStream
     stream = MarketDataStream("token")
@@ -405,7 +405,7 @@ def test_ws_auth_response():
     assert stream._connected.is_set(), "Should be connected after auth success"
 
 
-@test("WS subscribe message format")
+@check("WS subscribe message format")
 def test_ws_subscribe():
     from tradovate_api import MarketDataStream
     stream = MarketDataStream("token")
@@ -417,7 +417,7 @@ def test_ws_subscribe():
     assert "NQH6" in msg
 
 
-@test("WS request ID increments")
+@check("WS request ID increments")
 def test_ws_request_id():
     from tradovate_api import MarketDataStream
     stream = MarketDataStream("token")
@@ -447,7 +447,7 @@ print("4. STRATEGY TESTS (simulated market data)")
 print("=" * 60)
 
 
-@test("ORB: range accumulates during window")
+@check("ORB: range accumulates during window")
 def test_orb_range_accumulation():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
@@ -463,7 +463,7 @@ def test_orb_range_accumulation():
     assert s2 is None
 
 
-@test("ORB: breakout above range triggers LONG signal")
+@check("ORB: breakout above range triggers LONG signal")
 def test_orb_long_breakout():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
@@ -483,7 +483,7 @@ def test_orb_long_breakout():
     assert signal.take_profit > 21070.0
 
 
-@test("ORB: breakout below range triggers SHORT signal")
+@check("ORB: breakout below range triggers SHORT signal")
 def test_orb_short_breakout():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
@@ -501,7 +501,7 @@ def test_orb_short_breakout():
     assert signal.take_profit < 21030.0
 
 
-@test("ORB: no double-fire from same window")
+@check("ORB: no double-fire from same window")
 def test_orb_no_double_fire():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
@@ -523,7 +523,7 @@ def test_orb_no_double_fire():
     # The first 5-min window should NOT fire again
 
 
-@test("ORB: cooldown prevents rapid trades")
+@check("ORB: cooldown prevents rapid trades")
 def test_orb_cooldown():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
@@ -544,14 +544,14 @@ def test_orb_cooldown():
     assert s2 is None, "Should be blocked by cooldown"
 
 
-@test("ORB: max trades cap respected")
+@check("ORB: max trades cap respected")
 def test_orb_max_trades():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
     assert strategy.max_trades == 2  # Default from config
 
 
-@test("VWAP: running VWAP calculation")
+@check("VWAP: running VWAP calculation")
 def test_vwap_calculation():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("GC")
@@ -566,7 +566,7 @@ def test_vwap_calculation():
     assert abs(strat.vwap - expected) < 0.1
 
 
-@test("VWAP: crossover above triggers LONG")
+@check("VWAP: crossover above triggers LONG")
 def test_vwap_long_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("GC")
@@ -585,7 +585,7 @@ def test_vwap_long_crossover():
     assert signal.direction.value == "Buy"
 
 
-@test("VWAP: crossover below triggers SHORT")
+@check("VWAP: crossover below triggers SHORT")
 def test_vwap_short_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("GC")
@@ -603,7 +603,7 @@ def test_vwap_short_crossover():
     assert signal.direction.value == "Sell"
 
 
-@test("VWAP: cooldown between same-direction trades")
+@check("VWAP: cooldown between same-direction trades")
 def test_vwap_cooldown():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("GC")
@@ -624,7 +624,7 @@ def test_vwap_cooldown():
     assert s2 is None, "Should be blocked by cooldown"
 
 
-@test("VWAP: reset clears all state")
+@check("VWAP: reset clears all state")
 def test_vwap_reset():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("GC")
@@ -637,7 +637,7 @@ def test_vwap_reset():
     assert strat.short_count == 0
 
 
-@test("Strategy factory creates correct types")
+@check("Strategy factory creates correct types")
 def test_strategy_factory():
     from strategies import create_strategy, ORBStrategy, VWAPStrategy
     nq = create_strategy("NQ")
@@ -669,7 +669,7 @@ print("5. RISK MANAGER TESTS")
 print("=" * 60)
 
 
-@test("Risk manager initializes with correct values")
+@check("Risk manager initializes with correct values")
 def test_risk_init():
     import config as cfg
     from risk_manager import RiskManager
@@ -679,7 +679,7 @@ def test_risk_init():
     assert rm.trading_locked is False
 
 
-@test("Can trade returns True when conditions met")
+@check("Can trade returns True when conditions met")
 def test_can_trade_ok():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -688,7 +688,7 @@ def test_can_trade_ok():
     assert reason == "OK"
 
 
-@test("Trading locks on drawdown breach")
+@check("Trading locks on drawdown breach")
 def test_drawdown_lock():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -698,7 +698,7 @@ def test_drawdown_lock():
     assert "DRAWDOWN" in rm.lock_reason
 
 
-@test("Trading locks on daily loss brake")
+@check("Trading locks on daily loss brake")
 def test_daily_loss_brake():
     import config as cfg
     from risk_manager import RiskManager
@@ -714,7 +714,7 @@ def test_daily_loss_brake():
                 assert "DAILY LOSS" in rm.lock_reason
 
 
-@test("Max contracts prevents new trades")
+@check("Max contracts prevents new trades")
 def test_max_contracts():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -724,7 +724,7 @@ def test_max_contracts():
     assert "Max contracts" in reason
 
 
-@test("Daily trade cap prevents new trades")
+@check("Daily trade cap prevents new trades")
 def test_daily_trade_cap():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -734,7 +734,7 @@ def test_daily_trade_cap():
     assert "Daily trade cap" in reason
 
 
-@test("Position sizing returns valid contracts")
+@check("Position sizing returns valid contracts")
 def test_position_sizing():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -744,7 +744,7 @@ def test_position_sizing():
     assert qty <= rm.max_contracts
 
 
-@test("Position sizing returns 0 when locked")
+@check("Position sizing returns 0 when locked")
 def test_position_sizing_locked():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -754,7 +754,7 @@ def test_position_sizing_locked():
     assert qty == 0
 
 
-@test("Peak balance trails correctly (Apex style)")
+@check("Peak balance trails correctly (Apex style)")
 def test_peak_trailing():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -772,7 +772,7 @@ def test_peak_trailing():
     assert rm.drawdown_floor == old_floor  # floor doesn't go down
 
 
-@test("Register open/close tracks contracts")
+@check("Register open/close tracks contracts")
 def test_register_open_close():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -785,7 +785,7 @@ def test_register_open_close():
     assert rm.open_contracts == 0  # Clamped to 0
 
 
-@test("New day resets daily state")
+@check("New day resets daily state")
 def test_new_day_reset():
     from risk_manager import RiskManager
     rm = RiskManager()
@@ -821,7 +821,7 @@ print("6. LIVE API CONNECTIVITY TEST")
 print("=" * 60)
 
 
-@test("Auth endpoint responds (live server reachable)")
+@check("Auth endpoint responds (live server reachable)")
 def test_live_auth_endpoint():
     import requests
     url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"
@@ -834,7 +834,7 @@ def test_live_auth_endpoint():
         raise AssertionError("Cannot reach Tradovate API")
 
 
-@test("Demo endpoint is reachable")
+@check("Demo endpoint is reachable")
 def test_demo_reachable():
     import requests
     url = "https://demo.tradovateapi.com/v1/auth/accesstokenrequest"
@@ -846,7 +846,7 @@ def test_demo_reachable():
         raise AssertionError("Cannot reach Demo API")
 
 
-@test("Credentials are correct (p-ticket received)")
+@check("Credentials are correct (p-ticket received)")
 def test_credentials_valid():
     import requests
     url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"
@@ -897,7 +897,7 @@ print("=" * 60)
 import config
 
 
-@test("All enabled contracts have required fields")
+@check("All enabled contracts have required fields")
 def test_contract_specs():
     required = ["tick_size", "tick_value", "point_value", "strategy",
                  "stop_loss_points", "take_profit_points", "risk_reward_ratio"]
@@ -913,7 +913,7 @@ def test_contract_specs():
                 assert len(val) > 0, f"{sym}.{field} should be non-empty"
 
 
-@test("Risk-reward ratio is >= 1 for all contracts")
+@check("Risk-reward ratio is >= 1 for all contracts")
 def test_rr_ratio():
     for sym, spec in config.CONTRACT_SPECS.items():
         if not spec["enabled"]:
@@ -922,14 +922,14 @@ def test_rr_ratio():
             f"{sym} risk_reward_ratio {spec['risk_reward_ratio']} < 1.0"
 
 
-@test("URL configuration matches environment")
+@check("URL configuration matches environment")
 def test_urls():
     assert "live" in config.REST_URL or "demo" in config.REST_URL
     assert config.WS_TRADING_URL.startswith("wss://")
     assert config.WS_MARKET_URL.startswith("wss://")
 
 
-@test("Challenge settings are complete")
+@check("Challenge settings are complete")
 def test_challenge_settings():
     for firm, settings in config.CHALLENGE_SETTINGS.items():
         assert "account_size" in settings, f"{firm} missing account_size"
@@ -955,7 +955,7 @@ print("8. END-TO-END TRADING SIMULATION")
 print("=" * 60)
 
 
-@test("Full trading day simulation with NQ ORB")
+@check("Full trading day simulation with NQ ORB")
 def test_e2e_nq_orb():
     """Simulate a complete trading day with NQ ORB breakout."""
     from strategies import ORBStrategy, TradeSignal
@@ -998,7 +998,7 @@ def test_e2e_nq_orb():
                      s.direction.value, s.symbol, s.qty, s.stop_loss, s.take_profit, s.reason)
 
 
-@test("Full trading day simulation with GC VWAP")
+@check("Full trading day simulation with GC VWAP")
 def test_e2e_gc_vwap():
     """Simulate GC VWAP momentum trading."""
     from strategies import VWAPStrategy
@@ -1038,7 +1038,7 @@ def test_e2e_gc_vwap():
                      s.direction.value, s.symbol, s.qty, s.stop_loss, s.take_profit)
 
 
-@test("Risk manager prevents over-trading")
+@check("Risk manager prevents over-trading")
 def test_e2e_risk_cap():
     """Verify risk manager caps trades and locks on drawdown."""
     from risk_manager import RiskManager
@@ -1076,4 +1076,5 @@ if _results["errors"]:
     for name, err in _results["errors"]:
         print(f"  - {name}: {err}")
 
-sys.exit(0 if _results["failed"] == 0 else 1)
+if __name__ == "__main__":
+    sys.exit(0 if _results["failed"] == 0 else 1)
