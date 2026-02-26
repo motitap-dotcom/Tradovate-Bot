@@ -1,8 +1,36 @@
 {
-  "command_id": "140aaed8",
-  "executed_at": "2026-02-26T21:18:45.304686+00:00",
+  "command_id": "auto",
+  "executed_at": "2026-02-26T21:19:19.292220+00:00",
   "result": {
     "ok": true,
-    "message": "Bot stopped.\nGit pull: From https://github.com/motitap-dotcom/Tradovate-Bot\n * [new branch]      claude/check-bot-status-5zqKp -> origin/claude/check-bot-status-5zqKp\nAlready up to date.\nBot restarted. Status: active"
+    "data": {
+      "bot": {
+        "running": true,
+        "pid": 307682,
+        "systemd": "active"
+      },
+      "trading": {
+        "balance": 50000.0,
+        "day_pnl": 0.0,
+        "to_floor": 2500.0,
+        "contracts": "0/10",
+        "trades": "0/12",
+        "locked": false,
+        "timestamp": "2026-02-26 21:19:02",
+        "age_seconds": 17.3
+      },
+      "token": {
+        "status": "valid",
+        "remaining_minutes": 79.7
+      },
+      "journal": {
+        "total_trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "win_rate": 0,
+        "total_pnl": 0
+      },
+      "server_time": "2026-02-26T21:19:19.292208+00:00"
+    }
   }
 }
