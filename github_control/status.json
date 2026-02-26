@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T17:26:36.622565+00:00",
+  "timestamp": "2026-02-26T17:27:47.469634+00:00",
   "bot_running": true,
   "bot_pid": 262399,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:26:05,726 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:26:05,726 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:26:05,726 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:26:05,726 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:26:05,726 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:26:05,726 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:26:05,727 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:26:05,727 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:26:05,727 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:26:05,727 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:26:15,853 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-    "2026-02-26 17:26:15,853 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-    "2026-02-26 17:26:35,843 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 17:26:35,843 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 17:26:35,843 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 17:26:35,843 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 17:26:35,843 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:26:35,843 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:26:35,843 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:26:35,843 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)..."
+    "2026-02-26 17:27:40,652 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:27:40,652 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:27:40,652 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:27:40,652 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:27:42,814 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:27:42,814 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:27:42,814 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:27:42,814 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:27:42,931 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:27:42,931 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:27:46,847 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
+    "2026-02-26 17:27:46,847 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 66,
+    "minutes_remaining": 65,
     "expires_at": "2026-02-26T18:32:34.002000+00:00"
   },
   "errors": [],
-  "uptime": "14:02"
+  "uptime": "15:13"
 }
