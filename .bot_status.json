@@ -1,6 +1,6 @@
 {
   "command_id": "auto",
-  "executed_at": "2026-02-26T21:40:00.979149+00:00",
+  "executed_at": "2026-02-26T21:45:09.359204+00:00",
   "result": {
     "ok": true,
     "data": {
@@ -16,12 +16,12 @@
         "contracts": "0/10",
         "trades": "0/12",
         "locked": false,
-        "timestamp": "2026-02-26 21:39:31",
-        "age_seconds": 30.0
+        "timestamp": "2026-02-26 21:45:07",
+        "age_seconds": 2.4
       },
       "token": {
         "status": "valid",
-        "remaining_minutes": 72.8
+        "remaining_minutes": 67.7
       },
       "journal": {
         "total_trades": 0,
@@ -30,7 +30,7 @@
         "win_rate": 0,
         "total_pnl": 0
       },
-      "server_time": "2026-02-26T21:40:00.979129+00:00"
+      "server_time": "2026-02-26T21:45:09.359191+00:00"
     }
   }
 }
