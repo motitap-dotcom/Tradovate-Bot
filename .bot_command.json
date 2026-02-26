@@ -1,5 +1,6 @@
 {
-  "command": "",
-  "command_id": "",
-  "sent_at": ""
+  "command": "logs",
+  "command_id": "e7c03462",
+  "args": {},
+  "sent_at": "2026-02-26T20:51:42.972541+00:00"
 }
