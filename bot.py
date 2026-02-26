@@ -626,21 +626,35 @@ class TradovateBot:
                 if "not found" in err.lower() or "account" in err.lower():
                     if not getattr(self, "_reauth_attempted", False):
                         self._reauth_attempted = True
-                        logger.warning("Account not found — deleting stale token, forcing fresh auth...")
-                        # Clear in-memory AND on-disk token so authenticate() starts fresh
-                        self.api.access_token = None
-                        self.api.md_access_token = None
-                        self.api.account_id = None
+                        logger.warning("Account not found — trying live API auth + demo account lookup...")
+                        # FundedNext: auth via live API, then fetch account from demo
+                        import requests as _req
                         from pathlib import Path
+                        # Delete stale token
                         token_file = Path(__file__).parent / ".tradovate_token.json"
                         if token_file.exists():
                             token_file.unlink()
-                            logger.info("Deleted stale token file")
+                        # Auth via live endpoint
+                        self.api.access_token = None
+                        self.api.md_access_token = None
+                        self.api.account_id = None
+                        orig_url = self.api.base_url
+                        self.api.base_url = "https://live.tradovateapi.com/v1"
                         if self.api.authenticate():
-                            logger.info("Fresh auth OK: account=%s id=%s",
+                            # Got live token — now fetch account from demo
+                            self.api.base_url = orig_url
+                            self.api._fetch_account_id()
+                            if not self.api.account_id:
+                                # Demo didn't work, try account list from live
+                                self.api.base_url = "https://live.tradovateapi.com/v1"
+                                self.api._fetch_account_id()
+                                self.api.base_url = orig_url
+                            self.api._save_token()
+                            logger.info("Auth recovered: account=%s id=%s",
                                         self.api.account_spec, self.api.account_id)
                         else:
-                            logger.error("Fresh auth failed")
+                            self.api.base_url = orig_url
+                            logger.error("Live auth also failed")
                 return
             # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
             balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
