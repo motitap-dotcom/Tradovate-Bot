@@ -1,6 +1,6 @@
 {
-  "command": "ping",
-  "command_id": "db068e43",
+  "command": "status",
+  "command_id": "1ed7ed63",
   "args": {},
-  "sent_at": "2026-02-26T20:02:37.396229+00:00"
+  "sent_at": "2026-02-26T20:22:06.828903+00:00"
 }
