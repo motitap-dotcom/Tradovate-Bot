@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T18:45:47.599492+00:00",
+  "timestamp": "2026-02-26T18:46:13.042387+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
@@ -241,8 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 18:44:02,976 [INFO] tradovate_api: OCO placed: SL orderId=409583841280 TP orderId=409583841281",
-    "2026-02-26 18:44:02,976 [INFO] tradovate_api: OCO placed: SL orderId=409583841280 TP orderId=409583841281",
     "2026-02-26 18:44:02,977 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
     "2026-02-26 18:44:02,977 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
     "2026-02-26 18:44:06,997 [INFO] risk_manager: New peak equity: 55843.30 | drawdown floor: 53343.30",
@@ -260,13 +258,15 @@
     "2026-02-26 18:45:07,852 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:45:07,852 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:45:38,184 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 18:45:38,184 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
+    "2026-02-26 18:45:38,184 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:46:08,524 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:46:08,524 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 15,
+    "minutes_remaining": 14,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "01:05:20"
+  "uptime": "01:05:45"
 }
