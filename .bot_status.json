@@ -1,36 +1,8 @@
 {
-  "command_id": "auto",
-  "executed_at": "2026-02-26T21:24:29.745249+00:00",
+  "command_id": "12440e35",
+  "executed_at": "2026-02-26T21:27:04.935965+00:00",
   "result": {
-    "ok": true,
-    "data": {
-      "bot": {
-        "running": true,
-        "pid": 307682,
-        "systemd": "active"
-      },
-      "trading": {
-        "balance": 50000.0,
-        "day_pnl": 0.0,
-        "to_floor": 2500.0,
-        "contracts": "0/10",
-        "trades": "0/12",
-        "locked": false,
-        "timestamp": "2026-02-26 21:24:06",
-        "age_seconds": 23.7
-      },
-      "token": {
-        "status": "valid",
-        "remaining_minutes": 74.5
-      },
-      "journal": {
-        "total_trades": 0,
-        "wins": 0,
-        "losses": 0,
-        "win_rate": 0,
-        "total_pnl": 0
-      },
-      "server_time": "2026-02-26T21:24:29.745235+00:00"
-    }
+    "ok": false,
+    "message": "Stop warning: Command '['systemctl', 'stop', 'tradovate-bot']' timed out after 15 seconds\nGit pull failed: Command '['git', '-C', '/root/Tradovate-Bot', 'pull']' returned non-zero exit status 2."
   }
 }
