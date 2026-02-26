@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T17:57:05.046590+00:00",
+  "timestamp": "2026-02-26T17:57:45.464039+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 53932.38,
     "equity": 53932.38,
-    "day_pnl": 904.18,
+    "day_pnl": 729.18,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 4,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 1862.12
+    "distance_to_floor": 1687.12
   },
   "positions": [],
   "recent_trades": [
@@ -241,10 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:56:08,487 [INFO] strategies: ORB NQ SHORT at 24941.50 | window=15m | trade 2/2 | SL=24966.50 TP=24891.50",
-    "2026-02-26 17:56:08,487 [INFO] strategies: ORB NQ SHORT at 24941.50 | window=15m | trade 2/2 | SL=24966.50 TP=24891.50",
-    "2026-02-26 17:56:08,488 [INFO] risk_manager: Position size for NQ: 1 contracts | budget=750.00 | risk/contract=500.00",
-    "2026-02-26 17:56:08,488 [INFO] risk_manager: Position size for NQ: 1 contracts | budget=750.00 | risk/contract=500.00",
     "2026-02-26 17:56:08,488 [INFO] bot: SIGNAL: Sell NQ 1 @ market | SL=24966.5000 TP=24891.5000 | ORB-15m short breakout below 25224.50",
     "2026-02-26 17:56:08,488 [INFO] bot: SIGNAL: Sell NQ 1 @ market | SL=24966.5000 TP=24891.5000 | ORB-15m short breakout below 25224.50",
     "2026-02-26 17:56:08,488 [INFO] tradovate_api: Placing bracket Sell 1 NQH6 @ Market | SL=24966.50 TP=24891.50",
@@ -260,7 +256,11 @@
     "2026-02-26 17:56:09,024 [INFO] bot: Signal for ES deferred: global cooldown (29s remaining)",
     "2026-02-26 17:56:09,024 [INFO] bot: Signal for ES deferred: global cooldown (29s remaining)",
     "2026-02-26 17:56:35,440 [INFO] bot: Status | balance=53932.38 | day_pnl=904.18 | to_floor=1862.12 | contracts=2/10 | trades=4/12 | locked=False",
-    "2026-02-26 17:56:35,440 [INFO] bot: Status | balance=53932.38 | day_pnl=904.18 | to_floor=1862.12 | contracts=2/10 | trades=4/12 | locked=False"
+    "2026-02-26 17:56:35,440 [INFO] bot: Status | balance=53932.38 | day_pnl=904.18 | to_floor=1862.12 | contracts=2/10 | trades=4/12 | locked=False",
+    "2026-02-26 17:57:05,801 [INFO] bot: Status | balance=53932.38 | day_pnl=859.18 | to_floor=1817.12 | contracts=2/10 | trades=4/12 | locked=False",
+    "2026-02-26 17:57:05,801 [INFO] bot: Status | balance=53932.38 | day_pnl=859.18 | to_floor=1817.12 | contracts=2/10 | trades=4/12 | locked=False",
+    "2026-02-26 17:57:36,150 [INFO] bot: Status | balance=53932.38 | day_pnl=729.18 | to_floor=1687.12 | contracts=2/10 | trades=4/12 | locked=False",
+    "2026-02-26 17:57:36,150 [INFO] bot: Status | balance=53932.38 | day_pnl=729.18 | to_floor=1687.12 | contracts=2/10 | trades=4/12 | locked=False"
   ],
   "token": {
     "status": "valid",
@@ -268,5 +268,5 @@
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "16:37"
+  "uptime": "17:18"
 }
