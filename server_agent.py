@@ -65,11 +65,21 @@ logger = logging.getLogger("agent")
 # ─────────────────────────────────────────
 
 def git_pull():
-    """Pull latest changes from GitHub."""
+    """Pull latest changes from GitHub. Auto-stashes local changes."""
     try:
+        # Stash any uncommitted changes (e.g. status.json written between pushes)
+        subprocess.run(
+            ["git", "stash", "--include-untracked"],
+            cwd=BOT_DIR, capture_output=True, text=True, timeout=10,
+        )
         result = subprocess.run(
             ["git", "pull", "origin", BRANCH, "--ff-only"],
             cwd=BOT_DIR, capture_output=True, text=True, timeout=30,
+        )
+        # Pop stash (ignore errors if stash was empty)
+        subprocess.run(
+            ["git", "stash", "pop"],
+            cwd=BOT_DIR, capture_output=True, text=True, timeout=10,
         )
         if result.returncode == 0:
             output = result.stdout.strip()
