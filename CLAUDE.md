@@ -1,5 +1,13 @@
 # Tradovate Bot — Claude Code Guide
 
+## PRODUCTION VPS (PROTECTED — DO NOT MODIFY WITHOUT OWNER APPROVAL)
+
+> **Server: `root@77.237.234.2` (SSH port 22)**
+> This is the ONLY production server. All deployments target this server.
+> Claude must reference this address for any VPS-related operations.
+
+---
+
 ## PROTECTED RULES (DO NOT MODIFY OR DELETE WITHOUT EXPLICIT OWNER APPROVAL)
 
 > **These rules are PERMANENT and LOCKED. Claude MUST NOT change, remove, or
