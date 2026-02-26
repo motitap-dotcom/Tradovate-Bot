@@ -1,36 +1,8 @@
 {
-  "command_id": "auto",
-  "executed_at": "2026-02-26T20:53:27.331902+00:00",
+  "command_id": "f9a48832",
+  "executed_at": "2026-02-26T20:54:40.227967+00:00",
   "result": {
     "ok": true,
-    "data": {
-      "bot": {
-        "running": true,
-        "pid": 300986,
-        "systemd": "active"
-      },
-      "trading": {
-        "balance": 50000.0,
-        "day_pnl": 0.0,
-        "to_floor": 2500.0,
-        "contracts": "0/10",
-        "trades": "0/12",
-        "locked": false,
-        "timestamp": "2026-02-26 20:52:38",
-        "age_seconds": 49.3
-      },
-      "token": {
-        "status": "valid",
-        "remaining_minutes": 79.7
-      },
-      "journal": {
-        "total_trades": 0,
-        "wins": 0,
-        "losses": 0,
-        "win_rate": 0,
-        "total_pnl": 0
-      },
-      "server_time": "2026-02-26T20:53:27.331892+00:00"
-    }
+    "message": "Bot stopped.\nGit pull: Already up to date.\nBot restarted. Status: active"
   }
 }
