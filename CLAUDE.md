@@ -13,20 +13,31 @@ fixing bugs, deploying code changes, and checking status.
 - Status: `python3 check_status.py` (or `--watch` for live monitoring)
 - Logs: `tail -50 bot.log`
 
-### Known environment limitation: Proxy blocks Tradovate API
-This Claude Code sandbox has a proxy that **blocks direct access** to
-`tradovateapi.com` and `trader.tradovate.com`. The bot CANNOT authenticate
-on its own from this environment. A valid token must be provided manually.
+### CRITICAL: Bot CANNOT run in Claude Code environment
+The Claude Code sandbox proxy **blocks ALL access** to Tradovate domains:
+- `demo.tradovateapi.com` → blocked (ProxyError / 403)
+- `live.tradovateapi.com` → blocked
+- `trader.tradovate.com` → blocked (ERR_TUNNEL_CONNECTION_FAILED)
+- Token renewal endpoint → also blocked
 
-### How to get the bot running (every time token expires)
-1. Ask Moti to log in at https://trader.tradovate.com in his browser
-2. He opens DevTools (F12) → Network tab → finds the auth response
-3. He pastes the `accessToken` value here
-4. Claude saves it to `.tradovate_token.json` or `.env` as `TRADOVATE_ACCESS_TOKEN`
-5. Claude starts the bot: `nohup python3 bot.py > bot.log 2>&1 &`
-6. The bot auto-renews the token every ~75 minutes (before 80min expiry)
-7. **As long as the bot keeps running, the token stays alive**
-8. If the bot crashes or the session restarts, we need a new token from Moti
+**The bot MUST run on a VPS or external server with unrestricted internet.**
+
+### Workflow: Claude Code + VPS
+- **Claude Code** (here): Write code, fix bugs, run tests, push to GitHub
+- **VPS** (external server): Pull code from GitHub, run the bot
+- **Bridge**: `server_agent.py` runs on VPS, polls GitHub for commands
+
+### How to deploy to VPS
+1. Set up a VPS (DigitalOcean, Hetzner, etc.) with Python 3.11+
+2. Clone the repo: `git clone <repo-url>`
+3. Install deps: `pip install -r requirements.txt && playwright install chromium`
+4. Copy `.env` with credentials
+5. Run: `python server_agent.py` (manages bot lifecycle, polls GitHub)
+6. Or directly: `python bot.py` (for demo/testing)
+
+### If VPS already exists
+The `server_agent.py` auto-pulls code changes from GitHub and restarts the bot.
+Push fixes here → server_agent picks them up → bot restarts with new code.
 
 ### What was fixed (2026-02-26)
 - **`server_agent.py`**: Removed hardcoded `--live` flag. Bot now uses
