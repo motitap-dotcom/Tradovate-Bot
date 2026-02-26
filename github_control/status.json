@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T20:25:59.705037+00:00",
+  "timestamp": "2026-02-26T20:26:38.784821+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 55550.42,
     "equity": 55550.42,
-    "day_pnl": 4882.22,
+    "day_pnl": 4737.22,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 6,
     "max_daily_trades": 12,
     "locked": true,
-    "distance_to_floor": 2312.12
+    "distance_to_floor": 2167.12
   },
   "positions": [],
   "recent_trades": [
@@ -241,9 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 20:24:24,479 [INFO] tradovate_api: Placing bracket Sell 1 NQH6 @ Market | SL=25062.25 TP=24987.25",
-    "2026-02-26 20:24:24,664 [INFO] tradovate_api: Entry order placed: orderId=409583841286",
-    "2026-02-26 20:24:24,840 [INFO] tradovate_api: OCO placed: SL orderId=409583841295 TP orderId=409583841296",
     "2026-02-26 20:24:24,841 [ERROR] tradovate_api: Quote callback error for NQH6: 'TradovateBot' object has no attribute 'market_data'",
     "2026-02-26 20:24:24,953 [INFO] strategies: ORB ES SHORT at 6917.25 | window=5m | trade 1/2 | SL=6923.25 TP=6905.25",
     "2026-02-26 20:24:24,954 [INFO] bot: Signal for ES deferred: global cooldown (29s remaining)",
@@ -260,13 +257,16 @@
     "2026-02-26 20:25:22,851 [INFO] bot: Status | balance=55550.42 | day_pnl=4862.22 | to_floor=2292.12 | contracts=2/10 | trades=6/12 | locked=True",
     "2026-02-26 20:25:51,498 [INFO] bot: Status | balance=55550.42 | day_pnl=1787.12 | to_floor=2347.12 | contracts=2/10 | trades=1/12 | locked=False",
     "2026-02-26 20:25:53,230 [INFO] bot: Status | balance=55550.42 | day_pnl=4882.22 | to_floor=2312.12 | contracts=2/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:25:53,230 [INFO] bot: Status | balance=55550.42 | day_pnl=4882.22 | to_floor=2312.12 | contracts=2/10 | trades=6/12 | locked=True"
+    "2026-02-26 20:25:53,230 [INFO] bot: Status | balance=55550.42 | day_pnl=4882.22 | to_floor=2312.12 | contracts=2/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:26:21,922 [INFO] bot: Status | balance=55550.42 | day_pnl=1617.12 | to_floor=2177.12 | contracts=2/10 | trades=1/12 | locked=False",
+    "2026-02-26 20:26:23,614 [INFO] bot: Status | balance=55550.42 | day_pnl=4737.22 | to_floor=2167.12 | contracts=2/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:26:23,614 [INFO] bot: Status | balance=55550.42 | day_pnl=4737.22 | to_floor=2167.12 | contracts=2/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 78,
+    "minutes_remaining": 77,
     "expires_at": "2026-02-26T21:43:52.706000+00:00"
   },
   "errors": [],
-  "uptime": "02:45:32"
+  "uptime": "02:46:11"
 }
