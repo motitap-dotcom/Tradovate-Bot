@@ -1,5 +1,6 @@
 {
-  "command": "",
-  "command_id": "",
-  "sent_at": ""
+  "command": "status",
+  "command_id": "75c673b9",
+  "args": {},
+  "sent_at": "2026-02-26T21:03:48.000796+00:00"
 }
