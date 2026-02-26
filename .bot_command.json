@@ -1,1 +1,6 @@
-{"command": "", "command_id": "", "sent_at": ""}
+{
+  "command": "ping",
+  "command_id": "db068e43",
+  "args": {},
+  "sent_at": "2026-02-26T20:02:37.396229+00:00"
+}
