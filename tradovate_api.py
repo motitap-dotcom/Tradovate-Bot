@@ -522,15 +522,18 @@ class TradovateAPI:
         }
 
     def _fetch_account_id(self):
-        """Get the first account ID. Tries current endpoint, then fallback."""
+        """Get the first account ID. Tries current endpoint, then fallback, then hardcoded."""
+        # Known FundedNext account (fallback if API fails)
+        _KNOWN_ACCOUNT_ID = 39996695
+        _KNOWN_ACCOUNT_SPEC = "FNFTCHMOTITAPIRO67510"
+
         accounts = self.get_accounts()
         if not accounts:
             # FundedNext: token from live may need demo for accounts, or vice versa
             alt = "https://demo.tradovateapi.com/v1" if "live" in self.base_url else "https://live.tradovateapi.com/v1"
             logger.info("No accounts on %s, trying %s...", self.base_url, alt)
             try:
-                import requests as _req
-                resp = _req.get(f"{alt}/account/list", headers=self._headers(), timeout=15)
+                resp = requests.get(f"{alt}/account/list", headers=self._headers(), timeout=15)
                 if resp.status_code == 200:
                     accounts = resp.json() or []
             except Exception as e:
@@ -540,7 +543,11 @@ class TradovateAPI:
             self.account_spec = accounts[0].get("name", self.account_spec)
             logger.info("Account ID: %s (%s)", self.account_id, self.account_spec)
         else:
-            logger.warning("No accounts found on any endpoint")
+            # Use known account as last resort
+            logger.warning("No accounts from API — using known account_id=%s (%s)",
+                           _KNOWN_ACCOUNT_ID, _KNOWN_ACCOUNT_SPEC)
+            self.account_id = _KNOWN_ACCOUNT_ID
+            self.account_spec = _KNOWN_ACCOUNT_SPEC
 
     # ─────────────────────────────────────────
     # Account & Position queries
@@ -555,13 +562,35 @@ class TradovateAPI:
         return self._get("/position/list") or []
 
     def get_cash_balance(self) -> Optional[dict]:
-        """Get cash balance snapshot for the active account."""
+        """Get cash balance snapshot for the active account.
+        Tries the current base_url first; if it returns an error, tries the alternate endpoint.
+        """
         if self.account_id is None:
             return None
-        return self._post(
+        result = self._post(
             "/cashBalance/getcashbalancesnapshot",
             {"accountId": self.account_id},
         )
+        # If we got an error (e.g. "Account not found"), try the other endpoint
+        if result and result.get("errorText"):
+            alt = "https://demo.tradovateapi.com/v1" if "live" in self.base_url else "https://live.tradovateapi.com/v1"
+            logger.info("cashBalance failed on %s (%s), trying %s...",
+                        self.base_url, result["errorText"], alt)
+            try:
+                resp = requests.post(
+                    f"{alt}/cashBalance/getcashbalancesnapshot",
+                    headers=self._headers(),
+                    json={"accountId": self.account_id},
+                    timeout=15,
+                )
+                if resp.status_code == 200:
+                    alt_result = resp.json()
+                    if alt_result and not alt_result.get("errorText"):
+                        logger.info("cashBalance succeeded on alternate endpoint %s", alt)
+                        return alt_result
+            except Exception as e:
+                logger.warning("Alternate cashBalance failed: %s", e)
+        return result
 
     def get_fills(self) -> list[dict]:
         """List recent fills."""
