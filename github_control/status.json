@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-02-26T20:24:34.337189+00:00",
+  "timestamp": "2026-02-26T20:25:27.891038+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
-    "balance": 55553.3,
-    "equity": 55553.3,
-    "day_pnl": 5060.1,
+    "balance": 55550.42,
+    "equity": 55550.42,
+    "day_pnl": 4862.22,
     "unrealized_pnl": 0
   },
   "risk": {
-    "open_contracts": 1,
+    "open_contracts": 2,
     "max_contracts": 10,
     "trades_today": 6,
     "max_daily_trades": 12,
     "locked": true,
-    "distance_to_floor": 2490.0
+    "distance_to_floor": 2292.12
   },
   "positions": [],
   "recent_trades": [
@@ -241,12 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 20:24:19,326 [INFO] bot: Entering main loop...",
-    "2026-02-26 20:24:19,489 [INFO] risk_manager: SOD balance initialized from API: 55553.30",
-    "2026-02-26 20:24:19,489 [INFO] risk_manager: New peak equity: 57493.30 | drawdown floor: 54993.30",
-    "2026-02-26 20:24:20,329 [INFO] bot: Status | balance=55553.30 | day_pnl=1940.00 | to_floor=2500.00 | contracts=1/10 | trades=0/12 | locked=False",
-    "2026-02-26 20:24:22,005 [INFO] bot: Status | balance=55553.30 | day_pnl=5060.10 | to_floor=2490.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:24:22,005 [INFO] bot: Status | balance=55553.30 | day_pnl=5060.10 | to_floor=2490.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 20:24:24,479 [INFO] strategies: ORB NQ SHORT at 25037.25 | window=5m | trade 1/2 | SL=25062.25 TP=24987.25",
     "2026-02-26 20:24:24,479 [INFO] risk_manager: Position size for NQ: 1 contracts | budget=750.00 | risk/contract=500.00",
     "2026-02-26 20:24:24,479 [INFO] bot: SIGNAL: Sell NQ 1 @ market | SL=25062.2500 TP=24987.2500 | ORB-5m short breakout below 25256.00",
@@ -260,13 +254,19 @@
     "2026-02-26 20:24:25,690 [INFO] tradovate_api: Market data WebSocket connected",
     "2026-02-26 20:24:25,811 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
     "2026-02-26 20:24:25,811 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-    "2026-02-26 20:24:25,811 [WARNING] tradovate_api: Market data WebSocket closed: None None"
+    "2026-02-26 20:24:25,811 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 20:24:50,748 [INFO] bot: Status | balance=55550.42 | day_pnl=1807.12 | to_floor=2367.12 | contracts=2/10 | trades=1/12 | locked=False",
+    "2026-02-26 20:24:52,367 [INFO] bot: Status | balance=55550.42 | day_pnl=4962.22 | to_floor=2392.12 | contracts=2/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:24:52,367 [INFO] bot: Status | balance=55550.42 | day_pnl=4962.22 | to_floor=2392.12 | contracts=2/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:25:21,097 [INFO] bot: Status | balance=55550.42 | day_pnl=1747.12 | to_floor=2307.12 | contracts=2/10 | trades=1/12 | locked=False",
+    "2026-02-26 20:25:22,851 [INFO] bot: Status | balance=55550.42 | day_pnl=4862.22 | to_floor=2292.12 | contracts=2/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:25:22,851 [INFO] bot: Status | balance=55550.42 | day_pnl=4862.22 | to_floor=2292.12 | contracts=2/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 79,
+    "minutes_remaining": 78,
     "expires_at": "2026-02-26T21:43:52.706000+00:00"
   },
   "errors": [],
-  "uptime": "02:44:07"
+  "uptime": "02:45:00"
 }
