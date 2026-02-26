@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-02-26T17:27:47.469634+00:00",
+  "timestamp": "2026-02-26T17:29:08.584205+00:00",
   "bot_running": true,
-  "bot_pid": 262399,
+  "bot_pid": 263598,
   "agent_running": true,
   "account": {
     "balance": 52426.08,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:27:40,652 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:27:40,652 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:27:40,652 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:27:40,652 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:27:42,814 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:27:42,814 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:27:42,814 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:27:42,814 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:27:42,931 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:27:42,931 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:27:42,932 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:27:46,847 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-    "2026-02-26 17:27:46,847 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True"
+    "2026-02-26 17:28:45,459 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:28:45,459 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:28:47,547 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
+    "2026-02-26 17:28:47,547 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
+    "2026-02-26 17:28:47,627 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:28:47,627 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:28:47,628 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:28:47,628 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:28:47,739 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:28:47,739 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:28:56,363 [INFO] bot: Signal 15 received. Stopping...",
+    "2026-02-26 17:28:56,363 [INFO] bot: Signal 15 received. Stopping..."
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 65,
+    "minutes_remaining": 63,
     "expires_at": "2026-02-26T18:32:34.002000+00:00"
   },
   "errors": [],
-  "uptime": "15:13"
+  "uptime": "00:00"
 }
