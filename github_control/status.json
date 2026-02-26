@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T17:53:58.581921+00:00",
+  "timestamp": "2026-02-26T17:54:40.138985+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 53935.26,
     "equity": 53935.26,
-    "day_pnl": 1352.06,
+    "day_pnl": 1052.06,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 3,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 2310.0
+    "distance_to_floor": 2010.0
   },
   "positions": [],
   "recent_trades": [
@@ -241,10 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:50:01,051 [INFO] bot: Status | balance=53935.26 | day_pnl=1262.06 | to_floor=2460.00 | contracts=1/10 | trades=3/12 | locked=False",
-    "2026-02-26 17:50:01,051 [INFO] bot: Status | balance=53935.26 | day_pnl=1262.06 | to_floor=2460.00 | contracts=1/10 | trades=3/12 | locked=False",
-    "2026-02-26 17:50:31,379 [INFO] bot: Status | balance=53935.26 | day_pnl=1272.06 | to_floor=2470.00 | contracts=1/10 | trades=3/12 | locked=False",
-    "2026-02-26 17:50:31,379 [INFO] bot: Status | balance=53935.26 | day_pnl=1272.06 | to_floor=2470.00 | contracts=1/10 | trades=3/12 | locked=False",
     "2026-02-26 17:50:56,130 [WARNING] tradovate_api: Yahoo Finance request failed for ES=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
     "2026-02-26 17:50:56,130 [WARNING] tradovate_api: Yahoo Finance request failed for ES=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
     "2026-02-26 17:51:01,548 [INFO] risk_manager: New peak equity: 53965.26 | drawdown floor: 51465.26",
@@ -260,7 +256,11 @@
     "2026-02-26 17:53:03,078 [INFO] bot: Status | balance=53935.26 | day_pnl=1452.06 | to_floor=2410.00 | contracts=1/10 | trades=3/12 | locked=False",
     "2026-02-26 17:53:03,078 [INFO] bot: Status | balance=53935.26 | day_pnl=1452.06 | to_floor=2410.00 | contracts=1/10 | trades=3/12 | locked=False",
     "2026-02-26 17:53:33,404 [INFO] bot: Status | balance=53935.26 | day_pnl=1352.06 | to_floor=2310.00 | contracts=1/10 | trades=3/12 | locked=False",
-    "2026-02-26 17:53:33,404 [INFO] bot: Status | balance=53935.26 | day_pnl=1352.06 | to_floor=2310.00 | contracts=1/10 | trades=3/12 | locked=False"
+    "2026-02-26 17:53:33,404 [INFO] bot: Status | balance=53935.26 | day_pnl=1352.06 | to_floor=2310.00 | contracts=1/10 | trades=3/12 | locked=False",
+    "2026-02-26 17:54:03,748 [INFO] bot: Status | balance=53935.26 | day_pnl=982.06 | to_floor=1940.00 | contracts=1/10 | trades=3/12 | locked=False",
+    "2026-02-26 17:54:03,748 [INFO] bot: Status | balance=53935.26 | day_pnl=982.06 | to_floor=1940.00 | contracts=1/10 | trades=3/12 | locked=False",
+    "2026-02-26 17:54:34,080 [INFO] bot: Status | balance=53935.26 | day_pnl=1052.06 | to_floor=2010.00 | contracts=1/10 | trades=3/12 | locked=False",
+    "2026-02-26 17:54:34,080 [INFO] bot: Status | balance=53935.26 | day_pnl=1052.06 | to_floor=2010.00 | contracts=1/10 | trades=3/12 | locked=False"
   ],
   "token": {
     "status": "valid",
@@ -268,5 +268,5 @@
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "13:31"
+  "uptime": "14:13"
 }
