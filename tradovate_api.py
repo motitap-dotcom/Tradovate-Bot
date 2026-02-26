@@ -517,12 +517,20 @@ class TradovateAPI:
         }
 
     def _fetch_account_id(self):
-        """Get the first account ID."""
+        """Get the account ID. Try API first, fall back to saved token data."""
         accounts = self.get_accounts()
         if accounts:
             self.account_id = accounts[0]["id"]
             self.account_spec = accounts[0].get("name", self.account_spec)
             logger.info("Account ID: %s (%s)", self.account_id, self.account_spec)
+        elif self.account_id:
+            # account_id was loaded from saved token — keep it
+            logger.info(
+                "Account list empty, using saved account ID: %s (%s)",
+                self.account_id, self.account_spec,
+            )
+        else:
+            logger.warning("No accounts found and no saved account ID")
 
     # ─────────────────────────────────────────
     # Account & Position queries
@@ -790,9 +798,12 @@ class MarketDataStream:
             on_close=self._on_close,
         )
         # Detect proxy for WebSocket connections
-        proxy_kwargs = self._get_proxy_kwargs()
+        run_kwargs = self._get_proxy_kwargs()
+        # Keep connection alive with WebSocket-level pings
+        run_kwargs["ping_interval"] = 30
+        run_kwargs["ping_timeout"] = 10
         self._thread = threading.Thread(
-            target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
+            target=self.ws.run_forever, kwargs=run_kwargs, daemon=True
         )
         self._thread.start()
 
