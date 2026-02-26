@@ -132,8 +132,7 @@ class TradovateBot:
         # Sync real balance before main loop (so risk manager starts with
         # actual numbers instead of default 50K account_size)
         if not self.dry_run:
-            self._sync_balance()
-            self.risk.day_start_balance = self.risk.current_balance
+            self._init_balance()
             logger.info(
                 "Initial balance: $%.2f | drawdown_floor: $%.2f",
                 self.risk.current_balance, self.risk.drawdown_floor,
@@ -611,6 +610,31 @@ class TradovateBot:
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
+
+    def _init_balance(self):
+        """One-time initial balance sync: sets risk manager state from API
+        without triggering profit cap / drawdown checks."""
+        try:
+            snapshot = self.api.get_cash_balance()
+            if not snapshot or snapshot.get("errorText"):
+                logger.warning("Initial balance sync failed: %s",
+                               snapshot.get("errorText") if snapshot else "empty")
+                return
+            balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+            if balance is None:
+                return
+            # Set all risk manager baselines to the real balance
+            self.risk.current_balance = balance
+            self.risk.day_start_balance = balance
+            self.risk.starting_balance = balance
+            self.risk.peak_balance = max(balance, self.risk.peak_balance)
+            self.risk.drawdown_floor = self.risk.peak_balance - self.risk.max_trailing_drawdown
+            self.risk.day_pnl = 0.0
+            self.risk.trading_locked = False
+            self.risk.lock_reason = ""
+            logger.info("Initial balance from API: $%.2f", balance)
+        except Exception as e:
+            logger.error("Initial balance error: %s", e)
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
