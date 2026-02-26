@@ -48,27 +48,33 @@ python browser_bot.py       # Browser-based auth then run bot
 python get_token.py         # One-time token capture (needs display)
 ```
 
-## Remote Management (from Claude Code)
+## Remote Management (from Claude Code via GitHub)
 
-The bot can be managed remotely via the management API.
+The bot is managed remotely using GitHub as a communication channel.
+The VPS runs `vps_agent.py` which polls GitHub every 15 seconds for commands.
+
+**VPS**: `77.237.234.2` (root, password in session history)
 
 ```bash
-# Control the bot from Claude Code:
-python remote_ctl.py status      # Full status (balance, P&L, token, trades)
-python remote_ctl.py start       # Start the bot
-python remote_ctl.py stop        # Stop the bot
-python remote_ctl.py restart     # Restart the bot
-python remote_ctl.py logs        # Last 50 log lines
-python remote_ctl.py logs 200    # Last 200 log lines
-python remote_ctl.py activity    # Recent signals/trades/locks
-python remote_ctl.py journal     # Trade journal summary
-python remote_ctl.py trades      # All trades list
-python remote_ctl.py token       # Auth token status
-python remote_ctl.py update      # Git pull + restart
-python remote_ctl.py ping        # Health check
+# Send commands to the VPS via GitHub:
+python bot_cmd.py status         # Full bot status
+python bot_cmd.py start          # Start the bot
+python bot_cmd.py stop           # Stop the bot
+python bot_cmd.py restart        # Restart the bot
+python bot_cmd.py logs           # View recent logs
+python bot_cmd.py activity       # Recent signals/trades/locks
+python bot_cmd.py token          # Token status
+python bot_cmd.py update         # Git pull + restart on VPS
+python bot_cmd.py ping           # Health check
+python bot_cmd.py read           # Read latest status (no command sent)
 ```
 
-Requires `VPS_URL` and `MGMT_API_KEY` in `.env`.
+How it works:
+1. `bot_cmd.py` writes command to `.bot_command.json` and pushes to GitHub
+2. `vps_agent.py` on VPS pulls every 15s, executes, writes result to `.bot_status.json`
+3. `bot_cmd.py` fetches the result from GitHub
+
+VPS services: `tradovate-bot` (the bot), `tradovate-agent` (GitHub poller)
 
 ## Key Files
 
