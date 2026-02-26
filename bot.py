@@ -626,14 +626,21 @@ class TradovateBot:
                 if "not found" in err.lower() or "account" in err.lower():
                     if not getattr(self, "_reauth_attempted", False):
                         self._reauth_attempted = True
-                        logger.warning("Account not found — forcing full re-authentication...")
-                        self.api.access_token = None  # Clear stale token
+                        logger.warning("Account not found — deleting stale token, forcing fresh auth...")
+                        # Clear in-memory AND on-disk token so authenticate() starts fresh
+                        self.api.access_token = None
                         self.api.md_access_token = None
+                        self.api.account_id = None
+                        from pathlib import Path
+                        token_file = Path(__file__).parent / ".tradovate_token.json"
+                        if token_file.exists():
+                            token_file.unlink()
+                            logger.info("Deleted stale token file")
                         if self.api.authenticate():
-                            logger.info("Re-auth OK: account=%s id=%s",
+                            logger.info("Fresh auth OK: account=%s id=%s",
                                         self.api.account_spec, self.api.account_id)
                         else:
-                            logger.error("Re-auth failed")
+                            logger.error("Fresh auth failed")
                 return
             # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
             balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
