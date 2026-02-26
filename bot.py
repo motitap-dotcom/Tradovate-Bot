@@ -620,7 +620,12 @@ class TradovateBot:
                 logger.warning("Balance sync: empty response (token may be invalid)")
                 return
             if snapshot.get("errorText"):
-                logger.warning("Cash balance error: %s", snapshot["errorText"])
+                err = snapshot["errorText"]
+                logger.warning("Cash balance error: %s", err)
+                # Account not found — re-resolve account ID
+                if "not found" in err.lower() or "account" in err.lower():
+                    logger.info("Re-fetching account ID...")
+                    self.api._fetch_account_id()
                 return
             # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
             balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
