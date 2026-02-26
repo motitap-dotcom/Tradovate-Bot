@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T20:27:03.143881+00:00",
+  "timestamp": "2026-02-26T20:27:42.547372+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
@@ -241,9 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 20:24:25,690 [INFO] websocket: Websocket connected",
-    "2026-02-26 20:24:25,690 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 20:24:25,811 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
     "2026-02-26 20:24:25,811 [ERROR] websocket: Connection to remote host was lost. - goodbye",
     "2026-02-26 20:24:25,811 [WARNING] tradovate_api: Market data WebSocket closed: None None",
     "2026-02-26 20:24:50,748 [INFO] bot: Status | balance=55550.42 | day_pnl=1807.12 | to_floor=2367.12 | contracts=2/10 | trades=1/12 | locked=False",
@@ -260,13 +257,16 @@
     "2026-02-26 20:26:23,614 [INFO] bot: Status | balance=55550.42 | day_pnl=4737.22 | to_floor=2167.12 | contracts=2/10 | trades=6/12 | locked=True",
     "2026-02-26 20:26:52,338 [INFO] bot: Status | balance=55550.42 | day_pnl=1652.12 | to_floor=2212.12 | contracts=2/10 | trades=1/12 | locked=False",
     "2026-02-26 20:26:53,955 [INFO] bot: Status | balance=55550.42 | day_pnl=4782.22 | to_floor=2212.12 | contracts=2/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:26:53,955 [INFO] bot: Status | balance=55550.42 | day_pnl=4782.22 | to_floor=2212.12 | contracts=2/10 | trades=6/12 | locked=True"
+    "2026-02-26 20:26:53,955 [INFO] bot: Status | balance=55550.42 | day_pnl=4782.22 | to_floor=2212.12 | contracts=2/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:27:22,671 [INFO] bot: Status | balance=55550.42 | day_pnl=1642.12 | to_floor=2202.12 | contracts=2/10 | trades=1/12 | locked=False",
+    "2026-02-26 20:27:24,295 [INFO] bot: Status | balance=55550.42 | day_pnl=4782.22 | to_floor=2212.12 | contracts=2/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:27:24,295 [INFO] bot: Status | balance=55550.42 | day_pnl=4782.22 | to_floor=2212.12 | contracts=2/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 77,
+    "minutes_remaining": 76,
     "expires_at": "2026-02-26T21:43:52.706000+00:00"
   },
   "errors": [],
-  "uptime": "02:46:36"
+  "uptime": "02:47:15"
 }
