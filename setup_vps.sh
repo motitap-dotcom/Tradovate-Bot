@@ -34,11 +34,18 @@ err()  { echo -e "${RED}[x]${NC} $1"; exit 1; }
 step() { echo -e "\n${CYAN}── $1 ──${NC}"; }
 
 # ── Config ──────────────────────────────────────────────────
-BOT_DIR="/root/tradovate-bot"
 REPO_URL="https://github.com/motitap-dotcom/Tradovate-Bot.git"
-BRANCH="master"
 SERVICE_NAME="tradovate-bot"
 USERNAME="FNFTMOTITAPWnBks"
+
+# Auto-detect bot directory (handle both casings)
+if [ -d "/root/Tradovate-Bot/.git" ]; then
+    BOT_DIR="/root/Tradovate-Bot"
+elif [ -d "/root/tradovate-bot/.git" ]; then
+    BOT_DIR="/root/tradovate-bot"
+else
+    BOT_DIR="/root/Tradovate-Bot"
+fi
 
 # ── Banner ──────────────────────────────────────────────────
 echo -e "${CYAN}"
@@ -98,25 +105,34 @@ step "2/7  Getting latest code"
 systemctl stop "$SERVICE_NAME" 2>/dev/null || true
 
 if [ -d "$BOT_DIR/.git" ]; then
-    log "Updating existing installation..."
+    log "Repo found at $BOT_DIR — updating..."
     cd "$BOT_DIR"
     # Save .env and token before update
     [ -f .env ] && cp .env /tmp/.tradovate_env_backup 2>/dev/null || true
     [ -f .tradovate_token.json ] && cp .tradovate_token.json /tmp/.tradovate_token_backup 2>/dev/null || true
-    git fetch origin "$BRANCH" 2>&1 | tail -1
-    git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH" 2>/dev/null || true
-    git reset --hard "origin/$BRANCH"
+    # Auto-detect branch: use current branch, or find default from remote
+    BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+    if [ -z "$BRANCH" ]; then
+        BRANCH=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}' || echo "")
+    fi
+    if [ -n "$BRANCH" ]; then
+        git fetch origin "$BRANCH" 2>&1 | tail -1 || true
+        git reset --hard "origin/$BRANCH" 2>/dev/null || log "Using local code (fetch skipped)"
+    else
+        log "Using local code as-is (no remote branch detected)"
+    fi
     # Restore .env and token
     [ -f /tmp/.tradovate_env_backup ] && cp /tmp/.tradovate_env_backup .env 2>/dev/null || true
     [ -f /tmp/.tradovate_token_backup ] && cp /tmp/.tradovate_token_backup .tradovate_token.json 2>/dev/null || true
-    log "Code updated."
+    log "Code ready."
 else
     if [ -d "$BOT_DIR" ]; then
         warn "$BOT_DIR exists but is not a git repo. Backing up..."
         mv "$BOT_DIR" "${BOT_DIR}.bak.$(date +%s)"
     fi
     log "Cloning repository..."
-    git clone -b "$BRANCH" "$REPO_URL" "$BOT_DIR" 2>&1 | tail -3
+    # Auto-detect default branch
+    git clone "$REPO_URL" "$BOT_DIR" 2>&1 | tail -3
     cd "$BOT_DIR"
     log "Repository cloned."
 fi
