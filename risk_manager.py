@@ -43,6 +43,7 @@ class RiskManager:
         # Daily tracking
         self.today: date = date.today()
         self.day_start_balance: float = self.account_size
+        self._sod_initialized: bool = False  # True after first real balance from API
         self.day_pnl: float = 0.0
         self.unrealized_pnl: float = 0.0
 
@@ -74,6 +75,12 @@ class RiskManager:
     def update_balance(self, realized_balance: float, unrealized_pnl: float = 0.0):
         """Call this after every fill or on each tick to update risk state."""
         self._check_new_day()
+
+        # First real balance from API → use as SOD baseline
+        if not self._sod_initialized:
+            self._sod_initialized = True
+            self.day_start_balance = realized_balance
+            logger.info("SOD balance initialized from API: %.2f", realized_balance)
 
         self.current_balance = realized_balance
         self.unrealized_pnl = unrealized_pnl
@@ -159,6 +166,7 @@ class RiskManager:
             logger.info("New trading day detected. Resetting daily state.")
             self.today = today
             self.day_start_balance = self.current_balance
+            self._sod_initialized = True  # carry over from yesterday's last balance
             self.day_pnl = 0.0
             self.trades_today = 0
             self.trading_locked = False
