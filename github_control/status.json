@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-02-26T17:41:59.341523+00:00",
+  "timestamp": "2026-02-26T17:42:30.313681+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
-    "balance": 52420.32,
-    "equity": 52420.32,
-    "day_pnl": 452.12,
+    "balance": 52344.12,
+    "equity": 52344.12,
+    "day_pnl": 375.92,
     "unrealized_pnl": 0
   },
   "risk": {
     "open_contracts": 2,
     "max_contracts": 10,
-    "trades_today": 1,
+    "trades_today": 2,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 2500.0
+    "distance_to_floor": 2423.8
   },
   "positions": [],
   "recent_trades": [
@@ -241,26 +241,26 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:41:00,314 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:41:00,314 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:41:00,315 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:41:00,315 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:41:00,430 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
-    "2026-02-26 17:41:00,430 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
-    "2026-02-26 17:41:00,431 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-    "2026-02-26 17:41:00,431 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-    "2026-02-26 17:41:00,431 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-    "2026-02-26 17:41:00,431 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-    "2026-02-26 17:41:00,431 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:41:00,431 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:41:25,122 [INFO] risk_manager: New peak equity: 52765.32 | drawdown floor: 50265.32",
-    "2026-02-26 17:41:25,122 [INFO] risk_manager: New peak equity: 52765.32 | drawdown floor: 50265.32",
-    "2026-02-26 17:41:25,308 [INFO] bot: Status | balance=52420.32 | day_pnl=342.12 | to_floor=2500.00 | contracts=2/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:41:25,308 [INFO] bot: Status | balance=52420.32 | day_pnl=342.12 | to_floor=2500.00 | contracts=2/10 | trades=1/12 | locked=False",
     "2026-02-26 17:41:55,471 [INFO] risk_manager: New peak equity: 52875.32 | drawdown floor: 50375.32",
     "2026-02-26 17:41:55,471 [INFO] risk_manager: New peak equity: 52875.32 | drawdown floor: 50375.32",
     "2026-02-26 17:41:55,657 [INFO] bot: Status | balance=52420.32 | day_pnl=452.12 | to_floor=2500.00 | contracts=2/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:41:55,657 [INFO] bot: Status | balance=52420.32 | day_pnl=452.12 | to_floor=2500.00 | contracts=2/10 | trades=1/12 | locked=False"
+    "2026-02-26 17:41:55,657 [INFO] bot: Status | balance=52420.32 | day_pnl=452.12 | to_floor=2500.00 | contracts=2/10 | trades=1/12 | locked=False",
+    "2026-02-26 17:42:15,135 [INFO] strategies: VWAP GC SHORT #1 at 5189.2002 | VWAP=5190.0360 | SL=5195.0360 TP=5179.2002",
+    "2026-02-26 17:42:15,135 [INFO] strategies: VWAP GC SHORT #1 at 5189.2002 | VWAP=5190.0360 | SL=5195.0360 TP=5179.2002",
+    "2026-02-26 17:42:15,135 [INFO] risk_manager: Position size for GC: 1 contracts | budget=750.00 | risk/contract=500.00",
+    "2026-02-26 17:42:15,135 [INFO] risk_manager: Position size for GC: 1 contracts | budget=750.00 | risk/contract=500.00",
+    "2026-02-26 17:42:15,135 [INFO] bot: SIGNAL: Sell GC 1 @ market | SL=5195.0360 TP=5179.2002 | VWAP short #1 at 5189.2002 (VWAP=5190.0360)",
+    "2026-02-26 17:42:15,135 [INFO] bot: SIGNAL: Sell GC 1 @ market | SL=5195.0360 TP=5179.2002 | VWAP short #1 at 5189.2002 (VWAP=5190.0360)",
+    "2026-02-26 17:42:15,135 [INFO] tradovate_api: Placing bracket Sell 1 GCH6 @ Market | SL=5195.04 TP=5179.20",
+    "2026-02-26 17:42:15,135 [INFO] tradovate_api: Placing bracket Sell 1 GCH6 @ Market | SL=5195.04 TP=5179.20",
+    "2026-02-26 17:42:15,308 [INFO] tradovate_api: Entry order placed: orderId=409583841164",
+    "2026-02-26 17:42:15,308 [INFO] tradovate_api: Entry order placed: orderId=409583841164",
+    "2026-02-26 17:42:15,478 [INFO] tradovate_api: OCO placed: SL orderId=409583841174 TP orderId=409583841175",
+    "2026-02-26 17:42:15,478 [INFO] tradovate_api: OCO placed: SL orderId=409583841174 TP orderId=409583841175",
+    "2026-02-26 17:42:15,478 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
+    "2026-02-26 17:42:15,478 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
+    "2026-02-26 17:42:25,978 [INFO] bot: Status | balance=52344.12 | day_pnl=375.92 | to_floor=2423.80 | contracts=2/10 | trades=2/12 | locked=False",
+    "2026-02-26 17:42:25,978 [INFO] bot: Status | balance=52344.12 | day_pnl=375.92 | to_floor=2423.80 | contracts=2/10 | trades=2/12 | locked=False"
   ],
   "token": {
     "status": "valid",
@@ -268,5 +268,5 @@
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "01:32"
+  "uptime": "02:03"
 }
