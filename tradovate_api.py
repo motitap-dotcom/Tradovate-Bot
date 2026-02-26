@@ -522,12 +522,25 @@ class TradovateAPI:
         }
 
     def _fetch_account_id(self):
-        """Get the first account ID."""
+        """Get the first account ID. Tries current endpoint, then fallback."""
         accounts = self.get_accounts()
+        if not accounts:
+            # FundedNext: token from live may need demo for accounts, or vice versa
+            alt = "https://demo.tradovateapi.com/v1" if "live" in self.base_url else "https://live.tradovateapi.com/v1"
+            logger.info("No accounts on %s, trying %s...", self.base_url, alt)
+            try:
+                import requests as _req
+                resp = _req.get(f"{alt}/account/list", headers=self._headers(), timeout=15)
+                if resp.status_code == 200:
+                    accounts = resp.json() or []
+            except Exception as e:
+                logger.warning("Fallback account fetch failed: %s", e)
         if accounts:
             self.account_id = accounts[0]["id"]
             self.account_spec = accounts[0].get("name", self.account_spec)
             logger.info("Account ID: %s (%s)", self.account_id, self.account_spec)
+        else:
+            logger.warning("No accounts found on any endpoint")
 
     # ─────────────────────────────────────────
     # Account & Position queries
