@@ -622,10 +622,18 @@ class TradovateBot:
             if snapshot.get("errorText"):
                 err = snapshot["errorText"]
                 logger.warning("Cash balance error: %s", err)
-                # Account not found — re-resolve account ID
+                # Account not found — token may be from wrong endpoint; full re-auth
                 if "not found" in err.lower() or "account" in err.lower():
-                    logger.info("Re-fetching account ID...")
-                    self.api._fetch_account_id()
+                    if not getattr(self, "_reauth_attempted", False):
+                        self._reauth_attempted = True
+                        logger.warning("Account not found — forcing full re-authentication...")
+                        self.api.access_token = None  # Clear stale token
+                        self.api.md_access_token = None
+                        if self.api.authenticate():
+                            logger.info("Re-auth OK: account=%s id=%s",
+                                        self.api.account_spec, self.api.account_id)
+                        else:
+                            logger.error("Re-auth failed")
                 return
             # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
             balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
