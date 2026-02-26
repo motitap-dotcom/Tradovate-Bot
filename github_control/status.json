@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T18:51:25.958266+00:00",
+  "timestamp": "2026-02-26T18:52:03.160591+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
@@ -241,8 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 18:47:09,225 [INFO] bot: Status | balance=55553.30 | day_pnl=3590.10 | to_floor=2450.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 18:47:09,225 [INFO] bot: Status | balance=55553.30 | day_pnl=3590.10 | to_floor=2450.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:47:39,560 [INFO] bot: Status | balance=55553.30 | day_pnl=3550.10 | to_floor=2410.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:47:39,560 [INFO] bot: Status | balance=55553.30 | day_pnl=3550.10 | to_floor=2410.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:48:09,883 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
@@ -260,13 +258,15 @@
     "2026-02-26 18:50:41,542 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:50:41,542 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:51:11,870 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 18:51:11,870 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
+    "2026-02-26 18:51:11,870 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:51:42,198 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:51:42,198 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 9,
+    "minutes_remaining": 8,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "01:10:58"
+  "uptime": "01:11:36"
 }
