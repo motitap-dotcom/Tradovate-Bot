@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-02-26T17:49:21.040353+00:00",
+  "timestamp": "2026-02-26T17:49:50.876588+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
-    "balance": 52341.02,
-    "equity": 52341.02,
-    "day_pnl": 982.82,
+    "balance": 53935.26,
+    "equity": 53935.26,
+    "day_pnl": 1302.06,
     "unrealized_pnl": 0
   },
   "risk": {
-    "open_contracts": 3,
+    "open_contracts": 1,
     "max_contracts": 10,
     "trades_today": 3,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 2440.0
+    "distance_to_floor": 2500.0
   },
   "positions": [],
   "recent_trades": [
@@ -241,10 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:47:41,160 [INFO] bot: SIGNAL: Buy GC 1 @ market | SL=5185.0360 TP=5200.2002 | VWAP long #1 at 5190.2002 (VWAP=5190.0360)",
-    "2026-02-26 17:47:41,160 [INFO] bot: SIGNAL: Buy GC 1 @ market | SL=5185.0360 TP=5200.2002 | VWAP long #1 at 5190.2002 (VWAP=5190.0360)",
-    "2026-02-26 17:47:41,160 [INFO] tradovate_api: Placing bracket Buy 1 GCH6 @ Market | SL=5185.04 TP=5200.20",
-    "2026-02-26 17:47:41,160 [INFO] tradovate_api: Placing bracket Buy 1 GCH6 @ Market | SL=5185.04 TP=5200.20",
     "2026-02-26 17:47:41,329 [INFO] tradovate_api: Entry order placed: orderId=409583841191",
     "2026-02-26 17:47:41,329 [INFO] tradovate_api: Entry order placed: orderId=409583841191",
     "2026-02-26 17:47:41,512 [INFO] tradovate_api: OCO placed: SL orderId=409583841200 TP orderId=409583841201",
@@ -260,7 +256,11 @@
     "2026-02-26 17:48:30,044 [INFO] bot: Status | balance=52341.02 | day_pnl=1042.82 | to_floor=2500.00 | contracts=3/10 | trades=3/12 | locked=False",
     "2026-02-26 17:48:30,044 [INFO] bot: Status | balance=52341.02 | day_pnl=1042.82 | to_floor=2500.00 | contracts=3/10 | trades=3/12 | locked=False",
     "2026-02-26 17:49:00,379 [INFO] bot: Status | balance=52341.02 | day_pnl=982.82 | to_floor=2440.00 | contracts=3/10 | trades=3/12 | locked=False",
-    "2026-02-26 17:49:00,379 [INFO] bot: Status | balance=52341.02 | day_pnl=982.82 | to_floor=2440.00 | contracts=3/10 | trades=3/12 | locked=False"
+    "2026-02-26 17:49:00,379 [INFO] bot: Status | balance=52341.02 | day_pnl=982.82 | to_floor=2440.00 | contracts=3/10 | trades=3/12 | locked=False",
+    "2026-02-26 17:49:30,569 [INFO] risk_manager: New peak equity: 53725.26 | drawdown floor: 51225.26",
+    "2026-02-26 17:49:30,569 [INFO] risk_manager: New peak equity: 53725.26 | drawdown floor: 51225.26",
+    "2026-02-26 17:49:30,728 [INFO] bot: Status | balance=53935.26 | day_pnl=1302.06 | to_floor=2500.00 | contracts=1/10 | trades=3/12 | locked=False",
+    "2026-02-26 17:49:30,728 [INFO] bot: Status | balance=53935.26 | day_pnl=1302.06 | to_floor=2500.00 | contracts=1/10 | trades=3/12 | locked=False"
   ],
   "token": {
     "status": "valid",
@@ -268,5 +268,5 @@
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "08:53"
+  "uptime": "09:23"
 }
