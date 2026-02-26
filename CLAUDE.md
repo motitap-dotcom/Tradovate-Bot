@@ -6,6 +6,25 @@
 Claude Code is responsible for: starting/stopping the bot, monitoring trades,
 fixing bugs, deploying code changes, and checking status.
 
+### VPS Access (SSH)
+- **IP**: `77.237.234.2`
+- **User**: `root`
+- **SSH**: `ssh root@77.237.234.2`
+- **Bot directory**: `/root/Tradovate-Bot` (verify on first connect)
+- **NOTE**: SSH is blocked from Claude Code sandbox (proxy restriction).
+  If direct VPS access is needed, ask Moti to run commands on the VPS.
+
+### Authentication Method: Playwright Browser ("Machzai")
+**IMPORTANT — DO NOT FORGET**: Authentication uses **Playwright headless browser**
+(referred to as "machzai" by Moti). This is the PRIMARY auth method because:
+- FundedNext accounts require reCAPTCHA on first login
+- Direct API auth (username+password) fails due to CAPTCHA
+- The browser method bypasses CAPTCHA by using a real browser session
+- Playwright is installed on the VPS and handles login automatically
+- The browser logs into `https://trader.tradovate.com`, captures the auth token
+- Token is then saved to `.tradovate_token.json` and auto-renewed every ~80 min
+- **If token expires and can't be renewed**: the bot re-authenticates via Playwright
+
 ### How the bot runs
 The bot runs on a **VPS (external server)**, NOT in Claude Code.
 `server_agent.py` runs on the VPS and acts as a bridge:
