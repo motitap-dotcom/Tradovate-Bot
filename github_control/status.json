@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-02-26T16:59:15.061630+00:00",
+  "timestamp": "2026-02-26T17:00:37.665649+00:00",
   "bot_running": true,
-  "bot_pid": 261284,
+  "bot_pid": 261625,
   "agent_running": true,
   "account": {
     "balance": 50000.0,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 16:58:47,882 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 16:58:47,882 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 16:58:50,051 [INFO] websocket: Websocket connected",
-    "2026-02-26 16:58:50,051 [INFO] websocket: Websocket connected",
-    "2026-02-26 16:58:50,052 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 16:58:50,052 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 16:58:50,166 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:58:50,166 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:58:50,167 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 16:58:50,167 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 16:58:50,167 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 16:58:50,167 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 16:58:50,167 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 16:58:50,167 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 16:58:50,168 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 16:58:50,168 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 16:59:08,919 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 16:59:08,919 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 16:59:09,101 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-    "2026-02-26 16:59:09,101 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
+    "2026-02-26 17:00:32,256 [INFO] bot:   distance_to_floor: 2500.0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   distance_to_floor: 2500.0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   daily_loss_limit: 1000",
+    "2026-02-26 17:00:32,256 [INFO] bot:   daily_loss_limit: 1000",
+    "2026-02-26 17:00:32,256 [INFO] bot:   daily_loss_remaining: 1000.0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   daily_loss_remaining: 1000.0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   open_contracts: 0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   open_contracts: 0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   max_contracts: 10",
+    "2026-02-26 17:00:32,256 [INFO] bot:   max_contracts: 10",
+    "2026-02-26 17:00:32,256 [INFO] bot:   trades_today: 0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   trades_today: 0",
+    "2026-02-26 17:00:32,256 [INFO] bot:   max_daily_trades: 12",
+    "2026-02-26 17:00:32,256 [INFO] bot:   max_daily_trades: 12",
+    "2026-02-26 17:00:32,256 [INFO] bot:   locked: False",
+    "2026-02-26 17:00:32,256 [INFO] bot:   locked: False",
+    "2026-02-26 17:00:32,256 [INFO] bot:   lock_reason: ",
+    "2026-02-26 17:00:32,256 [INFO] bot:   lock_reason: ",
+    "2026-02-26 17:00:32,256 [INFO] bot: Bot stopped.",
+    "2026-02-26 17:00:32,256 [INFO] bot: Bot stopped."
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 76,
-    "expires_at": "2026-02-26T18:15:34.133000+00:00"
+    "minutes_remaining": 79,
+    "expires_at": "2026-02-26T18:19:59.197000+00:00"
   },
   "errors": [],
-  "uptime": "03:41"
+  "uptime": "00:00"
 }
