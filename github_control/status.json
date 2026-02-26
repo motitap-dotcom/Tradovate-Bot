@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T17:36:11.767120+00:00",
+  "timestamp": "2026-02-26T17:36:35.172555+00:00",
   "bot_running": true,
   "bot_pid": 264529,
   "agent_running": true,
   "account": {
-    "balance": 0,
-    "equity": 0,
-    "day_pnl": 0,
+    "balance": 52426.08,
+    "equity": 52426.08,
+    "day_pnl": 0.0,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 0,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 0
+    "distance_to_floor": 2500.0
   },
   "positions": [],
   "recent_trades": [
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:36:07,099 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 17:36:07,099 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 17:36:07,099 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 17:36:07,099 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 17:36:07,099 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:36:07,099 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:36:07,099 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:36:07,099 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:36:09,293 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:36:09,293 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:36:09,294 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:36:09,294 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:36:09,410 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-    "2026-02-26 17:36:09,410 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-    "2026-02-26 17:36:09,411 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-    "2026-02-26 17:36:09,411 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-    "2026-02-26 17:36:09,411 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:36:09,411 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:36:09,411 [INFO] tradovate_api: Reconnecting in 4s (attempt 2/5)...",
-    "2026-02-26 17:36:09,411 [INFO] tradovate_api: Reconnecting in 4s (attempt 2/5)..."
+    "File \"/usr/lib/python3.12/threading.py\", line 1073, in _bootstrap_inner",
+    "    self.run()",
+    "  File \"/usr/lib/python3.12/threading.py\", line 1010, in run",
+    "    self._target(*self._args, **self._kwargs)",
+    "  File \"/root/Tradovate-Bot/remote_control.py\", line 706, in _run",
+    "    server = HTTPServer((\"0.0.0.0\", port), RemoteControlHandler)",
+    "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+    "  File \"/usr/lib/python3.12/socketserver.py\", line 457, in __init__",
+    "    self.server_bind()",
+    "  File \"/usr/lib/python3.12/http/server.py\", line 136, in server_bind",
+    "    socketserver.TCPServer.server_bind(self)",
+    "  File \"/usr/lib/python3.12/socketserver.py\", line 473, in server_bind",
+    "    self.socket.bind(self.server_address)",
+    "OSError: [Errno 98] Address already in use",
+    "2026-02-26 17:36:31,975 [INFO] risk_manager: SOD balance initialized from API: 52426.08",
+    "2026-02-26 17:36:31,975 [INFO] risk_manager: SOD balance initialized from API: 52426.08",
+    "2026-02-26 17:36:31,975 [INFO] risk_manager: New peak equity: 52426.08 | drawdown floor: 49926.08",
+    "2026-02-26 17:36:31,975 [INFO] risk_manager: New peak equity: 52426.08 | drawdown floor: 49926.08",
+    "2026-02-26 17:36:32,907 [INFO] bot: Status | balance=52426.08 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+    "2026-02-26 17:36:32,907 [INFO] bot: Status | balance=52426.08 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 80,
+    "minutes_remaining": 79,
     "expires_at": "2026-02-26T18:56:04.998000+00:00"
   },
   "errors": [],
-  "uptime": "00:07"
+  "uptime": "00:30"
 }
