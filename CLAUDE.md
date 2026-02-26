@@ -1,69 +1,74 @@
 # Tradovate Bot — Claude Code Guide
 
-## IMPORTANT: Operations Guide (READ FIRST)
+## CRITICAL: READ THIS FIRST
 
-**The user (Moti) manages this bot exclusively through Claude Code.**
-Claude Code is responsible for: starting/stopping the bot, monitoring trades,
-fixing bugs, deploying code changes, and checking status.
+### How Moti manages the bot
+**Moti manages this bot 100% through Claude Code. No terminal. No SSH.**
+Everything — starting, stopping, monitoring, fixing, deploying — is done
+from Claude Code via the GitHub bridge to the VPS.
 
-### VPS Access (SSH)
+**DO NOT** try to run `bot.py` locally in Claude Code — it will fail
+(sandbox blocks tradovateapi.com). The bot runs ONLY on the VPS.
+
+### Authentication: Playwright Browser ("Machzai")
+**NEVER FORGET**: Auth uses **Playwright headless browser** ("machzai").
+- FundedNext requires reCAPTCHA → only a real browser can handle it
+- Playwright on the VPS logs into `https://trader.tradovate.com` automatically
+- Captures the auth token and saves to `.tradovate_token.json`
+- Token auto-renews every ~80 minutes
+- If renewal fails → Playwright re-authenticates automatically
+- **This is the ONLY auth method that works reliably for FundedNext**
+
+### VPS Details
 - **IP**: `77.237.234.2`
 - **User**: `root`
 - **SSH**: `ssh root@77.237.234.2`
-- **Bot directory**: `/root/Tradovate-Bot` (verify on first connect)
-- **NOTE**: SSH is blocked from Claude Code sandbox (proxy restriction).
-  If direct VPS access is needed, ask Moti to run commands on the VPS.
+- **Bot directory**: `/root/Tradovate-Bot`
+- SSH is blocked from Claude Code sandbox. If SSH is needed, ask Moti to
+  run commands on the VPS and paste the output.
 
-### Authentication Method: Playwright Browser ("Machzai")
-**IMPORTANT — DO NOT FORGET**: Authentication uses **Playwright headless browser**
-(referred to as "machzai" by Moti). This is the PRIMARY auth method because:
-- FundedNext accounts require reCAPTCHA on first login
-- Direct API auth (username+password) fails due to CAPTCHA
-- The browser method bypasses CAPTCHA by using a real browser session
-- Playwright is installed on the VPS and handles login automatically
-- The browser logs into `https://trader.tradovate.com`, captures the auth token
-- Token is then saved to `.tradovate_token.json` and auto-renewed every ~80 min
-- **If token expires and can't be renewed**: the bot re-authenticates via Playwright
+---
 
-### How the bot runs
-The bot runs on a **VPS (external server)**, NOT in Claude Code.
-`server_agent.py` runs on the VPS and acts as a bridge:
+## Operations Guide
+
+### Architecture
+The bot runs on a **VPS**. `server_agent.py` bridges Claude Code ↔ VPS:
 
 ```
-Claude Code  ──push code/commands──►  GitHub  ◄──poll──  server_agent.py (VPS)
-                                                              │
-Claude Code  ◄──read status.json───  GitHub  ◄──push──  bot.py (VPS)
+Claude Code  ──push code/commands──►  GitHub  ◄──poll (30s)──  server_agent.py (VPS)
+                                                                     │
+Claude Code  ◄──read status.json───  GitHub  ◄──push (60s)──  bot.py (VPS)
 ```
 
-### How to manage the bot from Claude Code
-1. **Send commands**: Write to `github_control/command.json`, commit & push
-2. **Check status**: Read `github_control/status.json` (updated every ~30s by VPS)
-3. **Deploy code**: Push code changes → server_agent auto-pulls & restarts bot
-4. **View logs**: Read `status.json` → `recent_log` field
+### How to manage the bot (ALL from Claude Code)
+
+| Action | How |
+|--------|-----|
+| **Check status** | `git pull` then read `github_control/status.json` |
+| **Send command** | Write `command.json`, commit & push (agent polls every 30s) |
+| **Deploy code** | Push code changes → agent auto-pulls & restarts bot |
+| **View logs** | Read `status.json` → `recent_log` field |
+| **Emergency** | Send `emergency_stop` command (closes all + stops) |
 
 ### Available commands (via command.json)
+```json
+{"command": "<cmd>", "id": "<unique-id>", "source": "claude",
+ "timestamp": "<iso-timestamp>"}
+```
+
 | Command | What it does |
 |---------|-------------|
-| `restart` | Stop + start the bot |
 | `start` | Start the bot if stopped |
 | `stop` | Stop the bot gracefully |
-| `status` | Force a status update |
+| `restart` | Stop + start the bot |
 | `deploy` | Pull latest code + restart |
+| `status` | Force a status update |
 | `emergency_stop` | Close all positions + cancel orders + stop bot |
 | `close_all` | Close all open positions |
 | `cancel_all` | Cancel all working orders |
 | `refresh_token` | Renew the auth token |
 
-### How to send a command
-```python
-# In command.json:
-{"command": "restart", "id": "<unique-id>", "source": "claude",
- "timestamp": "<iso-timestamp>"}
-```
-Then commit & push. The server agent polls every 30s.
-
-### How to check bot status
-Read `github_control/status.json` — it contains:
+### Status fields (github_control/status.json)
 - `bot_running` / `bot_pid` — is the bot alive
 - `token.status` / `token.minutes_remaining` — auth token health
 - `account.balance` / `account.day_pnl` — account info
@@ -71,49 +76,29 @@ Read `github_control/status.json` — it contains:
 - `recent_log` — last 20 log lines from the bot
 - `journal_summary` — trade statistics
 
-### What was fixed (2026-02-26)
-- **`server_agent.py`**: Removed hardcoded `--live` flag. Bot now uses
-  `TRADOVATE_ENV=demo` from `.env` (FundedNext challenge is on demo API)
-- **`bot.py`**: Added token auto-renewal in main loop (every 30s)
-- **`bot.py`**: Added market price fallback for fill_price (fixes entry_price=0)
-- **12 ghost trades in journal**: All from 2026-02-23, had entry_price=0
-  because orders went to live API (wrong endpoint). Cleaned up as stale.
-
-### Quick reference
-| Action | Command |
-|--------|---------|
-| Start bot | `nohup python3 bot.py > bot.log 2>&1 & echo $! > bot.pid` |
-| Stop bot | `kill $(cat bot.pid)` |
-| Check status | `python3 check_status.py` |
-| Live monitor | `python3 check_status.py --watch` |
-| View log | `tail -50 bot.log` |
-| Run tests | `python -m pytest test_all.py -v` |
+---
 
 ## Account Info
 - **Prop Firm**: FundedNext (Futures Challenge)
 - **Username**: FNFTMOTITAPWnBks
-- **Account**: FNFTCHMOTITAPIRO67510 (Demo, id=39996695)
+- **Account**: FNFTCHMOTITAPIRO67510 (id=39996695)
 - **User ID**: 5644210
-- **Organization**: FundedNext (id=44)
-- **Environment**: demo (challenge phase uses demo API)
+- **Environment**: demo API (but auth may go through live endpoint)
 - **Starting Balance**: $50,000
-- **SOD Balance**: ~$48,094 (as of 2026-02-23)
+- **Current Balance**: ~$52,426 (as of 2026-02-26)
 
 ## Authentication
 Token is stored in `.tradovate_token.json` and auto-renewed.
 
-**Auth flow priority** (in `tradovate_api.py:authenticate()`):
-1. `TRADOVATE_ACCESS_TOKEN` env var (manual override)
-2. Pre-injected token via `set_token()`
-3. Saved token from `.tradovate_token.json` (renewed via API)
-4. Web-style API auth (cid=8, no secret)
-5. API-key auth (CID + Secret)
-6. Playwright browser login (handles CAPTCHA automatically)
+**Auth flow** (in `tradovate_api.py:authenticate()`):
+1. Saved token from `.tradovate_token.json` (renewed via API)
+2. Web-style API auth (cid=8, no secret)
+3. If demo auth fails → try live endpoint (FundedNext requires this)
+4. API-key auth (CID + Secret)
+5. **Playwright browser login** ("machzai") — handles CAPTCHA automatically
 
-**CAPTCHA handling**: FundedNext accounts on Tradovate require reCAPTCHA on
-first login from a new device. The bot uses Playwright headless browser to
-bypass this by logging in through the actual Tradovate web trader page.
-The browser needs the HTTPS_PROXY env var configured (auto-detected).
+The bot auto-detects whether the account is on demo or live API and
+switches `base_url` accordingly (fixed 2026-02-26).
 
 ## Architecture
 
@@ -178,11 +163,20 @@ python check_status.py      # Quick health check report
 python -m pytest test_all.py -v
 ```
 
+## Fixes Log (2026-02-26)
+- **`server_agent.py`**: Removed hardcoded `--live` flag (was sending orders to live API)
+- **`server_agent.py`**: Added `git stash` before pull (fixes dirty working tree blocking pulls)
+- **`bot.py`**: Token auto-renewal in main loop (every 30s)
+- **`bot.py`**: Market price fallback for fill_price (fixes entry_price=0)
+- **`bot.py`**: Removed warmup code that consumed ORB breakouts (was preventing mid-day trading)
+- **`tradovate_api.py`**: Auto-detect demo vs live API for account operations
+- **`risk_manager.py`**: SOD balance from API instead of config default (was incorrectly triggering profit cap)
+- **12 ghost trades cleaned**: All from 2026-02-23, had entry_price=0
+
 ## Common Issues
-1. **"Incorrect password"**: Credentials are correct; try `live` API (not `demo` for auth)
-2. **CAPTCHA required**: Bot auto-handles via Playwright browser login
-3. **Empty account list**: FundedNext challenge accounts are on demo API
-4. **Rate limiting (p-ticket)**: Wait 15+ seconds before retrying auth
-5. **ProxyError in Claude Code env**: This sandbox blocks tradovateapi.com — need manual token from Moti
-6. **entry_price=0 in journal**: Orders went to wrong API endpoint (live vs demo) — fixed 2026-02-26
-7. **Token expired / bot stopped**: Ask Moti for a new token from browser DevTools
+1. **CAPTCHA required**: Bot auto-handles via Playwright ("machzai")
+2. **"Account not found"**: Bot auto-detects correct API (demo vs live)
+3. **Rate limiting (p-ticket)**: Wait 15+ seconds before retrying auth
+4. **Claude Code can't reach Tradovate**: Sandbox proxy blocks it — manage via GitHub bridge only
+5. **Git sync stuck**: `server_agent.py` now stashes before pull (fixed 2026-02-26)
+6. **Wrong day PnL on startup**: SOD balance now initialized from API (fixed 2026-02-26)
