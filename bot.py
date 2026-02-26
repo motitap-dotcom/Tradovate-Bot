@@ -566,6 +566,10 @@ class TradovateBot:
                     self.running = False
                     break
 
+                # Ensure token is fresh (renew if < 5 min remaining)
+                if not self.dry_run:
+                    self.api.ensure_token_valid()
+
                 # Update balance from API FIRST (before logging status)
                 if not self.dry_run:
                     self._sync_balance()
