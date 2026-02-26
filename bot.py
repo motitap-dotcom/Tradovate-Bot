@@ -46,7 +46,11 @@ logger = logging.getLogger("bot")
 # Eastern Time helper
 # ─────────────────────────────────────────────
 
-ET = timezone(timedelta(hours=-5))  # EST (adjust for DST as needed)
+try:
+    from zoneinfo import ZoneInfo
+    ET = ZoneInfo("America/New_York")  # Handles EST/EDT automatically
+except ImportError:
+    ET = timezone(timedelta(hours=-5))  # Fallback: EST only
 
 
 def now_et() -> datetime:
@@ -124,6 +128,16 @@ class TradovateBot:
             self.md_stream = self._start_market_data()
             if self.md_stream:
                 self._subscribe_market_data()
+
+        # Sync real balance before main loop (so risk manager starts with
+        # actual numbers instead of default 50K account_size)
+        if not self.dry_run:
+            self._sync_balance()
+            self.risk.day_start_balance = self.risk.current_balance
+            logger.info(
+                "Initial balance: $%.2f | drawdown_floor: $%.2f",
+                self.risk.current_balance, self.risk.drawdown_floor,
+            )
 
         # Main loop
         self.running = True
