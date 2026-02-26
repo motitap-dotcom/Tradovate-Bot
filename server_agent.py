@@ -188,7 +188,7 @@ def start_bot():
     try:
         log_fd = open(LOG_FILE, "a")
         proc = subprocess.Popen(
-            [sys.executable, os.path.join(BOT_DIR, "bot.py"), "--live"],
+            [sys.executable, os.path.join(BOT_DIR, "bot.py")],
             cwd=BOT_DIR,
             stdout=log_fd,
             stderr=log_fd,

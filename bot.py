@@ -471,8 +471,14 @@ class TradovateBot:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
 
-            # Try to get actual fill price from API
-            fill_price = self._get_fill_price(result.get("orderId")) or signal.entry_price or 0
+            # Try to get actual fill price from API, fall back to last market price
+            last_price = self.market_data.get(signal.symbol, {}).get("last", 0)
+            fill_price = (
+                self._get_fill_price(result.get("orderId"))
+                or signal.entry_price
+                or last_price
+                or 0
+            )
 
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
