@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T20:23:23.554392+00:00",
+  "timestamp": "2026-02-26T20:24:25.898729+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 55553.3,
     "equity": 55553.3,
-    "day_pnl": 5070.1,
+    "day_pnl": 5060.1,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 6,
     "max_daily_trades": 12,
     "locked": true,
-    "distance_to_floor": 2500.0
+    "distance_to_floor": 2490.0
   },
   "positions": [],
   "recent_trades": [
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 20:18:47,992 [INFO] bot: Status | balance=55553.30 | day_pnl=4740.10 | to_floor=2170.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:18:47,992 [INFO] bot: Status | balance=55553.30 | day_pnl=4740.10 | to_floor=2170.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:19:18,443 [INFO] bot: Status | balance=55553.30 | day_pnl=4730.10 | to_floor=2160.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:19:18,443 [INFO] bot: Status | balance=55553.30 | day_pnl=4730.10 | to_floor=2160.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:19:48,830 [INFO] bot: Status | balance=55553.30 | day_pnl=4880.10 | to_floor=2310.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:19:48,830 [INFO] bot: Status | balance=55553.30 | day_pnl=4880.10 | to_floor=2310.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:20:19,189 [INFO] bot: Status | balance=55553.30 | day_pnl=5050.10 | to_floor=2480.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:20:19,189 [INFO] bot: Status | balance=55553.30 | day_pnl=5050.10 | to_floor=2480.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:20:49,544 [INFO] bot: Status | balance=55553.30 | day_pnl=4990.10 | to_floor=2420.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:20:49,544 [INFO] bot: Status | balance=55553.30 | day_pnl=4990.10 | to_floor=2420.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:21:19,902 [INFO] bot: Status | balance=55553.30 | day_pnl=4980.10 | to_floor=2410.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:21:19,902 [INFO] bot: Status | balance=55553.30 | day_pnl=4980.10 | to_floor=2410.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:21:50,254 [INFO] bot: Status | balance=55553.30 | day_pnl=4950.10 | to_floor=2380.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:21:50,254 [INFO] bot: Status | balance=55553.30 | day_pnl=4950.10 | to_floor=2380.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:22:20,604 [INFO] bot: Status | balance=55553.30 | day_pnl=5010.10 | to_floor=2440.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:22:20,604 [INFO] bot: Status | balance=55553.30 | day_pnl=5010.10 | to_floor=2440.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:22:50,939 [INFO] bot: Status | balance=55553.30 | day_pnl=5040.10 | to_floor=2470.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:22:50,939 [INFO] bot: Status | balance=55553.30 | day_pnl=5040.10 | to_floor=2470.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:23:21,307 [INFO] bot: Status | balance=55553.30 | day_pnl=5070.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:23:21,307 [INFO] bot: Status | balance=55553.30 | day_pnl=5070.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
+    "2026-02-26 20:24:19,326 [INFO] bot: Entering main loop...",
+    "2026-02-26 20:24:19,489 [INFO] risk_manager: SOD balance initialized from API: 55553.30",
+    "2026-02-26 20:24:19,489 [INFO] risk_manager: New peak equity: 57493.30 | drawdown floor: 54993.30",
+    "2026-02-26 20:24:20,329 [INFO] bot: Status | balance=55553.30 | day_pnl=1940.00 | to_floor=2500.00 | contracts=1/10 | trades=0/12 | locked=False",
+    "2026-02-26 20:24:22,005 [INFO] bot: Status | balance=55553.30 | day_pnl=5060.10 | to_floor=2490.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:24:22,005 [INFO] bot: Status | balance=55553.30 | day_pnl=5060.10 | to_floor=2490.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:24:24,479 [INFO] strategies: ORB NQ SHORT at 25037.25 | window=5m | trade 1/2 | SL=25062.25 TP=24987.25",
+    "2026-02-26 20:24:24,479 [INFO] risk_manager: Position size for NQ: 1 contracts | budget=750.00 | risk/contract=500.00",
+    "2026-02-26 20:24:24,479 [INFO] bot: SIGNAL: Sell NQ 1 @ market | SL=25062.2500 TP=24987.2500 | ORB-5m short breakout below 25256.00",
+    "2026-02-26 20:24:24,479 [INFO] tradovate_api: Placing bracket Sell 1 NQH6 @ Market | SL=25062.25 TP=24987.25",
+    "2026-02-26 20:24:24,664 [INFO] tradovate_api: Entry order placed: orderId=409583841286",
+    "2026-02-26 20:24:24,840 [INFO] tradovate_api: OCO placed: SL orderId=409583841295 TP orderId=409583841296",
+    "2026-02-26 20:24:24,841 [ERROR] tradovate_api: Quote callback error for NQH6: 'TradovateBot' object has no attribute 'market_data'",
+    "2026-02-26 20:24:24,953 [INFO] strategies: ORB ES SHORT at 6917.25 | window=5m | trade 1/2 | SL=6923.25 TP=6905.25",
+    "2026-02-26 20:24:24,954 [INFO] bot: Signal for ES deferred: global cooldown (29s remaining)",
+    "2026-02-26 20:24:25,690 [INFO] websocket: Websocket connected",
+    "2026-02-26 20:24:25,690 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 20:24:25,811 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+    "2026-02-26 20:24:25,811 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 20:24:25,811 [WARNING] tradovate_api: Market data WebSocket closed: None None"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 68,
-    "expires_at": "2026-02-26T21:31:11.879000+00:00"
+    "minutes_remaining": 79,
+    "expires_at": "2026-02-26T21:43:52.706000+00:00"
   },
   "errors": [],
-  "uptime": "02:42:56"
+  "uptime": "02:43:58"
 }
