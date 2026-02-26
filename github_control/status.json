@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T17:35:33.032566+00:00",
-  "bot_running": false,
-  "bot_pid": 0,
+  "timestamp": "2026-02-26T17:36:11.767120+00:00",
+  "bot_running": true,
+  "bot_pid": 264529,
   "agent_running": true,
   "account": {
-    "balance": 52426.08,
-    "equity": 52426.08,
-    "day_pnl": 2426.08,
+    "balance": 0,
+    "equity": 0,
+    "day_pnl": 0,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -14,8 +14,8 @@
     "max_contracts": 10,
     "trades_today": 0,
     "max_daily_trades": 12,
-    "locked": true,
-    "distance_to_floor": 2500.0
+    "locked": false,
+    "distance_to_floor": 0
   },
   "positions": [],
   "recent_trades": [
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:29:42,463 [INFO] bot:   distance_to_floor: 2500.0",
-    "2026-02-26 17:29:42,463 [INFO] bot:   distance_to_floor: 2500.0",
-    "2026-02-26 17:29:42,463 [INFO] bot:   daily_loss_limit: 1000",
-    "2026-02-26 17:29:42,463 [INFO] bot:   daily_loss_limit: 1000",
-    "2026-02-26 17:29:42,463 [INFO] bot:   daily_loss_remaining: 3426.0800000000017",
-    "2026-02-26 17:29:42,463 [INFO] bot:   daily_loss_remaining: 3426.0800000000017",
-    "2026-02-26 17:29:42,463 [INFO] bot:   open_contracts: 0",
-    "2026-02-26 17:29:42,463 [INFO] bot:   open_contracts: 0",
-    "2026-02-26 17:29:42,463 [INFO] bot:   max_contracts: 10",
-    "2026-02-26 17:29:42,463 [INFO] bot:   max_contracts: 10",
-    "2026-02-26 17:29:42,463 [INFO] bot:   trades_today: 0",
-    "2026-02-26 17:29:42,463 [INFO] bot:   trades_today: 0",
-    "2026-02-26 17:29:42,463 [INFO] bot:   max_daily_trades: 12",
-    "2026-02-26 17:29:42,463 [INFO] bot:   max_daily_trades: 12",
-    "2026-02-26 17:29:42,463 [INFO] bot:   locked: True",
-    "2026-02-26 17:29:42,463 [INFO] bot:   locked: True",
-    "2026-02-26 17:29:42,463 [INFO] bot:   lock_reason: DAILY PROFIT CAP: day P&L $2426.08 hit $2400.00 cap (consistency rule)",
-    "2026-02-26 17:29:42,463 [INFO] bot:   lock_reason: DAILY PROFIT CAP: day P&L $2426.08 hit $2400.00 cap (consistency rule)",
-    "2026-02-26 17:29:42,463 [INFO] bot: Bot stopped.",
-    "2026-02-26 17:29:42,463 [INFO] bot: Bot stopped."
+    "2026-02-26 17:36:07,099 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+    "2026-02-26 17:36:07,099 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+    "2026-02-26 17:36:07,099 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+    "2026-02-26 17:36:07,099 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+    "2026-02-26 17:36:07,099 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:36:07,099 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:36:07,099 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:36:07,099 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:36:09,293 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:36:09,293 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:36:09,294 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:36:09,294 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:36:09,410 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+    "2026-02-26 17:36:09,410 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+    "2026-02-26 17:36:09,411 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 17:36:09,411 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 17:36:09,411 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:36:09,411 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:36:09,411 [INFO] tradovate_api: Reconnecting in 4s (attempt 2/5)...",
+    "2026-02-26 17:36:09,411 [INFO] tradovate_api: Reconnecting in 4s (attempt 2/5)..."
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 74,
-    "expires_at": "2026-02-26T18:49:09.234000+00:00"
+    "minutes_remaining": 80,
+    "expires_at": "2026-02-26T18:56:04.998000+00:00"
   },
   "errors": [],
-  "uptime": "not running"
+  "uptime": "00:07"
 }
