@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T20:06:19.824309+00:00",
+  "timestamp": "2026-02-26T20:07:22.119031+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 55553.3,
     "equity": 55553.3,
-    "day_pnl": 5000.1,
+    "day_pnl": 4920.1,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 6,
     "max_daily_trades": 12,
     "locked": true,
-    "distance_to_floor": 2500.0
+    "distance_to_floor": 2350.0
   },
   "positions": [],
   "recent_trades": [
@@ -241,12 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 20:03:05,717 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:03:05,717 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:03:36,081 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:03:36,081 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:04:06,441 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:04:06,441 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 20:04:36,817 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 20:04:36,817 [INFO] bot: Status | balance=55553.30 | day_pnl=4340.10 | to_floor=1970.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 20:05:07,208 [INFO] risk_manager: New peak equity: 57343.30 | drawdown floor: 54843.30",
@@ -260,13 +254,19 @@
     "2026-02-26 20:06:08,295 [INFO] risk_manager: New peak equity: 57423.30 | drawdown floor: 54923.30",
     "2026-02-26 20:06:08,295 [INFO] risk_manager: New peak equity: 57423.30 | drawdown floor: 54923.30",
     "2026-02-26 20:06:08,478 [INFO] bot: Status | balance=55553.30 | day_pnl=5000.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 20:06:08,478 [INFO] bot: Status | balance=55553.30 | day_pnl=5000.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
+    "2026-02-26 20:06:08,478 [INFO] bot: Status | balance=55553.30 | day_pnl=5000.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:06:38,650 [INFO] risk_manager: New peak equity: 57493.30 | drawdown floor: 54993.30",
+    "2026-02-26 20:06:38,650 [INFO] risk_manager: New peak equity: 57493.30 | drawdown floor: 54993.30",
+    "2026-02-26 20:06:38,835 [INFO] bot: Status | balance=55553.30 | day_pnl=5070.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:06:38,835 [INFO] bot: Status | balance=55553.30 | day_pnl=5070.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:07:09,165 [INFO] bot: Status | balance=55553.30 | day_pnl=4920.10 | to_floor=2350.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 20:07:09,165 [INFO] bot: Status | balance=55553.30 | day_pnl=4920.10 | to_floor=2350.00 | contracts=1/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 9,
+    "minutes_remaining": 8,
     "expires_at": "2026-02-26T20:15:44.687000+00:00"
   },
   "errors": [],
-  "uptime": "02:25:52"
+  "uptime": "02:26:54"
 }
