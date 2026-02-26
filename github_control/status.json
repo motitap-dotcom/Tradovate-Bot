@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T17:12:33.677586+00:00",
+  "timestamp": "2026-02-26T17:13:46.102136+00:00",
   "bot_running": true,
   "bot_pid": 262399,
   "agent_running": true,
   "account": {
-    "balance": 50000.0,
-    "equity": 50000.0,
-    "day_pnl": 0.0,
+    "balance": 52426.08,
+    "equity": 52426.08,
+    "day_pnl": 2426.08,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -14,7 +14,7 @@
     "max_contracts": 10,
     "trades_today": 0,
     "max_daily_trades": 12,
-    "locked": false,
+    "locked": true,
     "distance_to_floor": 2500.0
   },
   "positions": [],
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:11:59,979 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:11:59,979 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:11:59,979 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:11:59,979 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:12:18,220 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 17:12:18,220 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 17:12:18,221 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
-    "2026-02-26 17:12:18,221 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
-    "2026-02-26 17:12:18,374 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-    "2026-02-26 17:12:18,374 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-    "2026-02-26 17:12:21,435 [INFO] bot: Signal 15 received. Stopping...",
-    "2026-02-26 17:12:21,435 [INFO] bot: Signal 15 received. Stopping...",
-    "2026-02-26 17:12:30,093 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 17:12:30,093 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 17:12:30,093 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 17:12:30,093 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 17:12:30,093 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:12:30,093 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:12:30,093 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:12:30,093 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)..."
+    "2026-02-26 17:13:38,271 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 17:13:38,271 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 17:13:38,271 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:13:38,271 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:13:38,271 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:13:38,271 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:13:40,433 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:13:40,433 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:13:40,433 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:13:40,433 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:13:40,547 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:13:40,547 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:13:40,548 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:13:40,548 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:13:40,548 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:13:40,548 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:13:40,548 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:13:40,548 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:13:40,549 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:13:40,549 [INFO] tradovate_api: Re-subscribed to: CLJ6"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 68,
-    "expires_at": "2026-02-26T18:20:37.992000+00:00"
+    "minutes_remaining": 79,
+    "expires_at": "2026-02-26T18:32:34.002000+00:00"
   },
   "errors": [],
-  "uptime": "00:00"
+  "uptime": "01:12"
 }
