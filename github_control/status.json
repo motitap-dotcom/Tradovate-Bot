@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T17:18:28.626556+00:00",
+  "timestamp": "2026-02-26T17:19:37.710837+00:00",
   "bot_running": true,
   "bot_pid": 262399,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:17:57,456 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:17:57,456 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:17:57,456 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:17:57,456 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:17:59,624 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:17:59,624 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:17:59,624 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:17:59,624 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:17:59,738 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:17:59,738 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:17:59,739 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:18:10,458 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-    "2026-02-26 17:18:10,458 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True"
+    "2026-02-26 17:19:34,658 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+    "2026-02-26 17:19:34,658 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+    "2026-02-26 17:19:34,658 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:19:34,658 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:19:34,658 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:19:34,658 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:19:36,821 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:19:36,821 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:19:36,822 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:19:36,822 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:19:36,931 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:19:36,931 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:19:36,931 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:19:36,931 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:19:36,931 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:19:36,931 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:19:36,932 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:19:36,932 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:19:36,932 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:19:36,932 [INFO] tradovate_api: Re-subscribed to: CLJ6"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 74,
+    "minutes_remaining": 73,
     "expires_at": "2026-02-26T18:32:34.002000+00:00"
   },
   "errors": [],
-  "uptime": "05:54"
+  "uptime": "07:04"
 }
