@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T16:21:47.885721+00:00",
+  "timestamp": "2026-02-26T16:22:51.837093+00:00",
   "bot_running": true,
   "bot_pid": 258625,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 16:21:02,657 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:21:02,658 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 16:21:02,658 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 16:21:02,659 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 16:21:02,659 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 16:21:09,096 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 16:21:09,260 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-    "2026-02-26 16:21:32,775 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 16:21:32,775 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 16:21:32,775 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 16:21:32,775 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 16:21:34,943 [INFO] websocket: Websocket connected",
-    "2026-02-26 16:21:34,944 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 16:21:35,051 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:21:35,051 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 16:21:35,052 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 16:21:35,052 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 16:21:35,052 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 16:21:39,420 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 16:21:39,582 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
+    "2026-02-26 16:22:07,453 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 16:22:07,454 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 16:22:07,455 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 16:22:07,455 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 16:22:07,455 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 16:22:09,758 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 16:22:09,925 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+    "2026-02-26 16:22:37,568 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+    "2026-02-26 16:22:37,569 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+    "2026-02-26 16:22:37,569 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 16:22:37,569 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 16:22:39,733 [INFO] websocket: Websocket connected",
+    "2026-02-26 16:22:39,733 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 16:22:39,848 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 16:22:39,849 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 16:22:39,849 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 16:22:39,849 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 16:22:39,849 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 16:22:40,089 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 16:22:40,256 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 73,
+    "minutes_remaining": 72,
     "expires_at": "2026-02-26T17:34:32.269000+00:00"
   },
   "errors": [],
-  "uptime": "07:15"
+  "uptime": "08:19"
 }
