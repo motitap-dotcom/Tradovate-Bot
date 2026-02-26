@@ -1,7 +1,7 @@
 {
-  "command": "none",
+  "command": "restart",
   "args": {},
-  "timestamp": "2026-02-26T00:00:00Z",
-  "id": "init",
-  "source": "init"
+  "timestamp": "2026-02-26T16:13:28.359235+00:00",
+  "id": "169dad55",
+  "source": "claude"
 }
