@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T16:24:58.475517+00:00",
+  "timestamp": "2026-02-26T16:26:00.247176+00:00",
   "bot_running": true,
   "bot_pid": 258625,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 16:24:16,923 [INFO] websocket: Websocket connected",
-    "2026-02-26 16:24:16,923 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 16:24:17,039 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:24:17,039 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 16:24:17,039 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 16:24:17,039 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 16:24:17,040 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 16:24:41,405 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 16:24:41,591 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-    "2026-02-26 16:24:47,153 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-    "2026-02-26 16:24:47,153 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-    "2026-02-26 16:24:47,153 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 16:24:47,154 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 16:24:49,321 [INFO] websocket: Websocket connected",
-    "2026-02-26 16:24:49,321 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 16:24:49,429 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:24:49,430 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 16:24:49,430 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 16:24:49,430 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 16:24:49,430 [INFO] tradovate_api: Re-subscribed to: CLJ6"
+    "2026-02-26 16:25:21,705 [INFO] websocket: Websocket connected",
+    "2026-02-26 16:25:21,705 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 16:25:21,819 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 16:25:21,820 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 16:25:21,820 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 16:25:21,820 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 16:25:21,820 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 16:25:42,098 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 16:25:42,272 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+    "2026-02-26 16:25:51,934 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+    "2026-02-26 16:25:51,935 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 16:25:51,935 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 16:25:51,935 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 16:25:54,097 [INFO] websocket: Websocket connected",
+    "2026-02-26 16:25:54,098 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 16:25:54,212 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 16:25:54,213 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 16:25:54,213 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 16:25:54,213 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 16:25:54,213 [INFO] tradovate_api: Re-subscribed to: CLJ6"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 70,
+    "minutes_remaining": 69,
     "expires_at": "2026-02-26T17:34:32.269000+00:00"
   },
   "errors": [],
-  "uptime": "10:26"
+  "uptime": "11:28"
 }
