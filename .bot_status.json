@@ -1,62 +1,36 @@
 {
-  "command_id": "6303211d",
-  "executed_at": "2026-02-26T21:33:40.544955+00:00",
+  "command_id": "auto",
+  "executed_at": "2026-02-26T21:34:52.609461+00:00",
   "result": {
     "ok": true,
     "data": {
-      "lines": [
-        "2026-02-26 21:32:52,586 [INFO] bot: Skipping NG (disabled)",
-        "2026-02-26 21:32:52,586 [INFO] bot: Strategy for NQ: ORBStrategy",
-        "2026-02-26 21:32:52,586 [INFO] bot: Strategy for ES: ORBStrategy",
-        "2026-02-26 21:32:52,586 [INFO] bot: Strategy for GC: VWAPStrategy",
-        "2026-02-26 21:32:52,586 [INFO] bot: Strategy for CL: VWAPStrategy",
-        "2026-02-26 21:32:52,716 [INFO] strategies: ORB 5-min range: high=25342.00 low=25256.00 size=86.00",
-        "2026-02-26 21:32:52,716 [INFO] strategies: ORB 15-min range: high=25342.00 low=25224.50 size=117.50",
-        "2026-02-26 21:32:52,716 [INFO] bot: Warmed up NQ with 975 candles | strategy=ORBStrategy",
-        "2026-02-26 21:32:52,717 [INFO] bot:   ORB 5-min range: 25256.00 - 25342.00 (size=86.00)",
-        "2026-02-26 21:32:52,717 [INFO] bot:   ORB 15-min range: 25224.50 - 25342.00 (size=117.50)",
-        "2026-02-26 21:32:52,883 [INFO] strategies: ORB 5-min range: high=6961.25 low=6948.00 size=13.25",
-        "2026-02-26 21:32:52,883 [INFO] strategies: ORB 15-min range: high=6961.25 low=6937.00 size=24.25",
-        "2026-02-26 21:32:52,884 [INFO] bot: Warmed up ES with 975 candles | strategy=ORBStrategy",
-        "2026-02-26 21:32:52,884 [INFO] bot:   ORB 5-min range: 6948.00 - 6961.25 (size=13.25)",
-        "2026-02-26 21:32:52,884 [INFO] bot:   ORB 15-min range: 6937.00 - 6961.25 (size=24.25)",
-        "2026-02-26 21:32:53,030 [INFO] bot: Warmed up GC with 983 candles | strategy=VWAPStrategy",
-        "2026-02-26 21:32:53,030 [INFO] bot:   VWAP: 5191.7917",
-        "2026-02-26 21:32:53,184 [INFO] bot: Warmed up CL with 982 candles | strategy=VWAPStrategy",
-        "2026-02-26 21:32:53,184 [INFO] bot:   VWAP: 65.4026",
-        "2026-02-26 21:32:53,374 [INFO] websocket: Websocket connected",
-        "2026-02-26 21:32:53,374 [INFO] tradovate_api: Market data WebSocket connected",
-        "2026-02-26 21:32:53,488 [INFO] tradovate_api: Market data WebSocket authenticated",
-        "2026-02-26 21:32:53,488 [INFO] bot: Market data via WebSocket",
-        "2026-02-26 21:32:53,489 [INFO] tradovate_api: Subscribed to quotes: NQH6",
-        "2026-02-26 21:32:53,489 [INFO] tradovate_api: Subscribed to quotes: ESH6",
-        "2026-02-26 21:32:53,489 [INFO] tradovate_api: Subscribed to quotes: GCH6",
-        "2026-02-26 21:32:53,490 [INFO] tradovate_api: Subscribed to quotes: CLJ6",
-        "2026-02-26 21:32:53,603 [INFO] tradovate_api: Market data WebSocket authenticated",
-        "2026-02-26 21:32:53,663 [INFO] tradovate_api: cashBalance failed on https://live.tradovateapi.com/v1 (Account not found), trying https://demo.tradovateapi.com/v1...",
-        "2026-02-26 21:32:53,836 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:32:53,838 [INFO] bot: Initial balance from API: $57369.44",
-        "2026-02-26 21:32:53,839 [INFO] bot: Initial balance: $57369.44 | drawdown_floor: $54869.44",
-        "2026-02-26 21:32:53,839 [INFO] bot: Entering main loop...",
-        "2026-02-26 21:32:54,011 [INFO] tradovate_api: cashBalance failed on https://live.tradovateapi.com/v1 (Account not found), trying https://demo.tradovateapi.com/v1...",
-        "2026-02-26 21:32:54,174 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:32:55,016 [INFO] bot: Status | balance=57369.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-        "2026-02-26 21:33:23,603 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-        "2026-02-26 21:33:23,604 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-        "2026-02-26 21:33:23,604 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-        "2026-02-26 21:33:23,604 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-        "2026-02-26 21:33:25,186 [INFO] tradovate_api: cashBalance failed on https://live.tradovateapi.com/v1 (Account not found), trying https://demo.tradovateapi.com/v1...",
-        "2026-02-26 21:33:25,350 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:33:25,511 [INFO] bot: Status | balance=57369.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-        "2026-02-26 21:33:25,769 [INFO] websocket: Websocket connected",
-        "2026-02-26 21:33:25,769 [INFO] tradovate_api: Market data WebSocket connected",
-        "2026-02-26 21:33:25,884 [INFO] tradovate_api: Market data WebSocket authenticated",
-        "2026-02-26 21:33:25,884 [INFO] tradovate_api: Re-subscribed to: NQH6",
-        "2026-02-26 21:33:25,885 [INFO] tradovate_api: Re-subscribed to: ESH6",
-        "2026-02-26 21:33:25,885 [INFO] tradovate_api: Re-subscribed to: GCH6",
-        "2026-02-26 21:33:25,885 [INFO] tradovate_api: Re-subscribed to: CLJ6"
-      ],
-      "count": 50
+      "bot": {
+        "running": true,
+        "pid": 311596,
+        "systemd": "active"
+      },
+      "trading": {
+        "balance": 57369.44,
+        "day_pnl": 0.0,
+        "to_floor": 2500.0,
+        "contracts": "0/10",
+        "trades": "0/12",
+        "locked": false,
+        "timestamp": "2026-02-26 21:34:26",
+        "age_seconds": 26.6
+      },
+      "token": {
+        "status": "valid",
+        "remaining_minutes": 78.0
+      },
+      "journal": {
+        "total_trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "win_rate": 0,
+        "total_pnl": 0
+      },
+      "server_time": "2026-02-26T21:34:52.609449+00:00"
     }
   }
 }
