@@ -555,13 +555,10 @@ class TradovateBot:
 
             # Build contractId -> base symbol mapping from our contract_map
             # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
-            # We need to match position contractId (int) to our symbols.
-            # Resolve this once and cache it.
+            # Resolve once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
-            # Lazily build the mapping from API contract lookups
-            for symbol, contract_name in self.contract_map.items():
-                if symbol not in [v for v in self._contract_id_to_symbol.values()]:
+                for symbol, contract_name in self.contract_map.items():
                     contract = self.api.find_contract(contract_name)
                     if contract:
                         self._contract_id_to_symbol[contract["id"]] = symbol

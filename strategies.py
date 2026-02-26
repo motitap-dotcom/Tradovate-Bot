@@ -349,10 +349,11 @@ class VWAPStrategy:
             return None
 
         # Cross-direction cooldown: prevent whipsaw (e.g. SHORT then LONG in seconds)
+        # Note: do NOT update _prev_price here — preserving crossover state
+        # so the signal can fire once the cooldown expires.
         if self.last_any_trade_time and self._current_time:
             gap = (self._current_time - self.last_any_trade_time).total_seconds() / 60
             if gap < self.min_trade_gap_minutes:
-                self._prev_price = price
                 return None
 
         signal = None

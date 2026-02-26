@@ -773,6 +773,10 @@ class MarketDataStream:
         self._thread: Optional[threading.Thread] = None
         self._should_run = False
         self._reconnect_count = 0
+        # Maps contractId (int) → symbol name for dispatching quotes
+        self._contract_id_to_symbol: dict[int, str] = {}
+        # Maps request ID → symbol name for building the contract mapping
+        self._pending_subs: dict[int, str] = {}
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -820,6 +824,9 @@ class MarketDataStream:
     def subscribe_quote(self, symbol: str, callback: Callable):
         """Subscribe to real-time quotes for a symbol."""
         self._callbacks.setdefault(symbol, []).append(callback)
+        # Track request ID so we can map contractId → symbol on response
+        next_id = self._request_id + 1
+        self._pending_subs[next_id] = symbol
         self._send("md/subscribeQuote", {"symbol": symbol})
         logger.info("Subscribed to quotes: %s", symbol)
 
@@ -875,18 +882,39 @@ class MarketDataStream:
                 logger.error("Market data auth failed: %s", item)
                 continue
 
-            # Quote data — dispatched by symbol from the "d" field
+            # Subscription response — extract contractId → symbol mapping
+            req_id = item.get("i")
+            if req_id and req_id in self._pending_subs and item.get("s") == 200:
+                symbol = self._pending_subs.pop(req_id)
+                # The response "d" contains the subscribed contract info
+                d = item.get("d", {})
+                cid = d.get("contractId")
+                if cid is not None:
+                    self._contract_id_to_symbol[cid] = symbol
+                    logger.debug("Mapped contractId %d → %s", cid, symbol)
+
+            # Quote data — dispatch only to the matching symbol's callbacks
             if "e" in item and item["e"] == "md" and "d" in item:
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
                 for quote in quotes:
                     contract_id = quote.get("contractId")
-                    for sym, cbs in self._callbacks.items():
-                        for cb in cbs:
+                    # Find the symbol for this contractId
+                    sym = self._contract_id_to_symbol.get(contract_id)
+                    if sym and sym in self._callbacks:
+                        for cb in self._callbacks[sym]:
                             try:
                                 cb(sym, quote)
                             except Exception as e:
                                 logger.error("Quote callback error: %s", e)
+                    elif contract_id is not None:
+                        # Fallback: broadcast to all (shouldn't happen normally)
+                        for s, cbs in self._callbacks.items():
+                            for cb in cbs:
+                                try:
+                                    cb(s, quote)
+                                except Exception as e:
+                                    logger.error("Quote callback error: %s", e)
 
     def _on_error(self, ws, error):
         logger.error("Market data WebSocket error: %s", error)
@@ -908,9 +936,12 @@ class MarketDataStream:
 
     def _reconnect(self):
         """Reconnect and re-subscribe to all symbols."""
+        self._contract_id_to_symbol.clear()
         self._connect()
         if self._connected.wait(timeout=15):
             for symbol in list(self._callbacks.keys()):
+                next_id = self._request_id + 1
+                self._pending_subs[next_id] = symbol
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
 
