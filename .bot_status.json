@@ -1,62 +1,37 @@
 {
-  "command_id": "a6704e8f",
-  "executed_at": "2026-02-26T21:30:42.192040+00:00",
+  "command_id": "8aec2bae",
+  "executed_at": "2026-02-26T21:32:53.120212+00:00",
   "result": {
     "ok": true,
+    "message": "Service restarted. Status: active",
     "data": {
-      "lines": [
-        "2026-02-26 21:28:45,788 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:28:45,789 [INFO] risk_manager: New peak equity: 57369.44 | drawdown floor: 54869.44",
-        "2026-02-26 21:28:45,790 [CRITICAL] risk_manager: TRADING LOCKED: DAILY PROFIT CAP: day P&L $7369.44 hit $2400.00 cap (consistency rule)",
-        "2026-02-26 21:28:45,790 [INFO] bot: Initial balance: $57369.44 | drawdown_floor: $54869.44",
-        "2026-02-26 21:28:45,790 [INFO] bot: Entering main loop...",
-        "2026-02-26 21:28:45,953 [INFO] tradovate_api: cashBalance failed on https://live.tradovateapi.com/v1 (Account not found), trying https://demo.tradovateapi.com/v1...",
-        "2026-02-26 21:28:46,124 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:28:46,976 [INFO] bot: Status | balance=57369.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-        "2026-02-26 21:29:15,555 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-        "2026-02-26 21:29:15,555 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-        "2026-02-26 21:29:15,555 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-        "2026-02-26 21:29:15,556 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-        "2026-02-26 21:29:17,137 [INFO] tradovate_api: cashBalance failed on https://live.tradovateapi.com/v1 (Account not found), trying https://demo.tradovateapi.com/v1...",
-        "2026-02-26 21:29:17,295 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:29:17,465 [INFO] bot: Status | balance=57369.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-        "2026-02-26 21:29:17,737 [INFO] websocket: Websocket connected",
-        "2026-02-26 21:29:17,737 [INFO] tradovate_api: Market data WebSocket connected",
-        "2026-02-26 21:29:17,851 [INFO] tradovate_api: Market data WebSocket authenticated",
-        "2026-02-26 21:29:17,852 [INFO] tradovate_api: Re-subscribed to: NQH6",
-        "2026-02-26 21:29:17,852 [INFO] tradovate_api: Re-subscribed to: ESH6",
-        "2026-02-26 21:29:17,852 [INFO] tradovate_api: Re-subscribed to: GCH6",
-        "2026-02-26 21:29:17,852 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-        "2026-02-26 21:29:47,635 [INFO] tradovate_api: cashBalance failed on https://live.tradovateapi.com/v1 (Account not found), trying https://demo.tradovateapi.com/v1...",
-        "2026-02-26 21:29:47,816 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:29:47,966 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-        "2026-02-26 21:29:47,966 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-        "2026-02-26 21:29:47,966 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-        "2026-02-26 21:29:47,966 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-        "2026-02-26 21:29:47,987 [INFO] bot: Status | balance=57369.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-        "2026-02-26 21:29:50,141 [INFO] websocket: Websocket connected",
-        "2026-02-26 21:29:50,141 [INFO] tradovate_api: Market data WebSocket connected",
-        "2026-02-26 21:29:50,257 [INFO] tradovate_api: Market data WebSocket authenticated",
-        "2026-02-26 21:29:50,258 [INFO] tradovate_api: Re-subscribed to: NQH6",
-        "2026-02-26 21:29:50,258 [INFO] tradovate_api: Re-subscribed to: ESH6",
-        "2026-02-26 21:29:50,258 [INFO] tradovate_api: Re-subscribed to: GCH6",
-        "2026-02-26 21:29:50,258 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-        "2026-02-26 21:30:18,145 [INFO] tradovate_api: cashBalance failed on https://live.tradovateapi.com/v1 (Account not found), trying https://demo.tradovateapi.com/v1...",
-        "2026-02-26 21:30:18,314 [INFO] tradovate_api: cashBalance succeeded on alternate endpoint https://demo.tradovateapi.com/v1",
-        "2026-02-26 21:30:18,482 [INFO] bot: Status | balance=57369.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-        "2026-02-26 21:30:20,373 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-        "2026-02-26 21:30:20,374 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-        "2026-02-26 21:30:20,374 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-        "2026-02-26 21:30:20,374 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-        "2026-02-26 21:30:22,541 [INFO] websocket: Websocket connected",
-        "2026-02-26 21:30:22,542 [INFO] tradovate_api: Market data WebSocket connected",
-        "2026-02-26 21:30:22,649 [INFO] tradovate_api: Market data WebSocket authenticated",
-        "2026-02-26 21:30:22,650 [INFO] tradovate_api: Re-subscribed to: NQH6",
-        "2026-02-26 21:30:22,650 [INFO] tradovate_api: Re-subscribed to: ESH6",
-        "2026-02-26 21:30:22,650 [INFO] tradovate_api: Re-subscribed to: GCH6",
-        "2026-02-26 21:30:22,650 [INFO] tradovate_api: Re-subscribed to: CLJ6"
-      ],
-      "count": 50
+      "bot": {
+        "running": true,
+        "pid": 311596,
+        "systemd": "active"
+      },
+      "trading": {
+        "balance": 57369.44,
+        "day_pnl": 0.0,
+        "to_floor": 2500.0,
+        "contracts": "0/10",
+        "trades": "0/12",
+        "locked": true,
+        "timestamp": "2026-02-26 21:32:20",
+        "age_seconds": 33.1
+      },
+      "token": {
+        "status": "valid",
+        "remaining_minutes": 80.0
+      },
+      "journal": {
+        "total_trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "win_rate": 0,
+        "total_pnl": 0
+      },
+      "server_time": "2026-02-26T21:32:53.120193+00:00"
     }
   }
 }
