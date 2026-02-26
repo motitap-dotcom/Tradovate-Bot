@@ -530,7 +530,13 @@ class TradovateAPI:
                 self.account_id, self.account_spec,
             )
         else:
-            logger.warning("No accounts found and no saved account ID")
+            # Last resort: use known FundedNext demo account
+            self.account_id = 39996695
+            self.account_spec = "FNFTCHMOTITAPIRO67510"
+            logger.warning(
+                "No accounts found — using known FundedNext account: %s (%s)",
+                self.account_id, self.account_spec,
+            )
 
     # ─────────────────────────────────────────
     # Account & Position queries
