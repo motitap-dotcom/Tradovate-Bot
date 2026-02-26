@@ -692,7 +692,16 @@ class TradovateBot:
             snapshot = self.api.get_cash_balance()
             if snapshot:
                 if snapshot.get("errorText"):
-                    logger.warning("Cash balance error: %s", snapshot["errorText"])
+                    err = snapshot["errorText"]
+                    logger.warning("Cash balance error: %s", err)
+                    # Account not found → wrong account_id, reset to known FundedNext
+                    if "Account not found" in str(err):
+                        logger.warning(
+                            "Resetting account_id to known FundedNext account (39996695)"
+                        )
+                        self.api.account_id = 39996695
+                        self.api.account_spec = "FNFTCHMOTITAPIRO67510"
+                        self.api._save_token()
                     return
                 # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
                 balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")

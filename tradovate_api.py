@@ -517,24 +517,19 @@ class TradovateAPI:
         }
 
     def _fetch_account_id(self):
-        """Get the account ID. Try API first, fall back to saved token data."""
+        """Get the account ID. Try API first, fall back to known FundedNext account."""
         accounts = self.get_accounts()
         if accounts:
             self.account_id = accounts[0]["id"]
             self.account_spec = accounts[0].get("name", self.account_spec)
             logger.info("Account ID: %s (%s)", self.account_id, self.account_spec)
-        elif self.account_id:
-            # account_id was loaded from saved token — keep it
-            logger.info(
-                "Account list empty, using saved account ID: %s (%s)",
-                self.account_id, self.account_spec,
-            )
         else:
-            # Last resort: use known FundedNext demo account
+            # API returned empty — use known FundedNext demo account.
+            # Don't trust saved token's account_id (may be from live endpoint).
             self.account_id = 39996695
             self.account_spec = "FNFTCHMOTITAPIRO67510"
             logger.warning(
-                "No accounts found — using known FundedNext account: %s (%s)",
+                "Account list empty — using known FundedNext account: %s (%s)",
                 self.account_id, self.account_spec,
             )
 
