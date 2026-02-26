@@ -513,6 +513,10 @@ class TradovateBot:
                     self.running = False
                     break
 
+                # Keep token alive (renews if <5 min remain)
+                if not self.dry_run:
+                    self.api.ensure_token_valid()
+
                 # Update balance from API FIRST (before logging status)
                 if not self.dry_run:
                     self._sync_balance()
@@ -598,17 +602,19 @@ class TradovateBot:
         """Fetch latest balance from API and update risk manager."""
         try:
             snapshot = self.api.get_cash_balance()
-            if snapshot:
-                if snapshot.get("errorText"):
-                    logger.warning("Cash balance error: %s", snapshot["errorText"])
-                    return
-                # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
-                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
-                if balance is not None:
-                    unrealized = snapshot.get("openPnL", 0.0)
-                    self.risk.update_balance(balance, unrealized)
-                else:
-                    logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
+            if not snapshot:
+                logger.warning("Balance sync: empty response (token may be invalid)")
+                return
+            if snapshot.get("errorText"):
+                logger.warning("Cash balance error: %s", snapshot["errorText"])
+                return
+            # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
+            balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+            if balance is not None:
+                unrealized = snapshot.get("openPnL", 0.0)
+                self.risk.update_balance(balance, unrealized)
+            else:
+                logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 

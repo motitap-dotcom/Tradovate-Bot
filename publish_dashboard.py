@@ -53,12 +53,51 @@ def collect_data() -> dict:
     return data
 
 
+def _ensure_fresh_token():
+    """Renew saved token if it's close to expiry or expired."""
+    if not os.path.exists(TOKEN_FILE):
+        return
+    try:
+        import requests
+        with open(TOKEN_FILE) as f:
+            t = json.load(f)
+        token = t.get("accessToken", "")
+        exp = t.get("expirationTime", "")
+        if not token or not exp:
+            return
+        exp_dt = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+        remaining = (exp_dt - datetime.now(timezone.utc)).total_seconds()
+        if remaining > 900:  # More than 15 min left — no need to renew
+            return
+        # Renew the token
+        base_url = "https://demo.tradovateapi.com/v1"
+        resp = requests.post(
+            f"{base_url}/auth/renewaccesstoken",
+            headers={"Authorization": f"Bearer {token}",
+                     "Accept": "application/json",
+                     "Content-Type": "application/json"},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            t["accessToken"] = data.get("accessToken", token)
+            if data.get("expirationTime"):
+                t["expirationTime"] = data["expirationTime"]
+            with open(TOKEN_FILE, "w") as f:
+                json.dump(t, f, indent=2)
+    except Exception:
+        pass
+
+
 def _api_balance() -> dict:
     """Fetch live balance from Tradovate API using saved token."""
     if not os.path.exists(TOKEN_FILE):
         return {}
     try:
         import requests
+        # Renew token if needed before using it
+        _ensure_fresh_token()
+
         with open(TOKEN_FILE) as f:
             t = json.load(f)
         token = t.get("accessToken", "")
@@ -66,7 +105,7 @@ def _api_balance() -> dict:
         if not token or not account_id:
             return {}
 
-        # Check if token is expired
+        # Check if token is expired (after renewal attempt)
         exp = t.get("expirationTime", "")
         if exp:
             exp_dt = datetime.fromisoformat(exp.replace("Z", "+00:00"))

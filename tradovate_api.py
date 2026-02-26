@@ -501,13 +501,18 @@ class TradovateAPI:
             return False
 
     def ensure_token_valid(self):
-        """Renew token if close to expiry."""
+        """Renew token if close to expiry (renews with 15 min buffer)."""
         if self.token_expiry is None:
             return
         now = datetime.now(timezone.utc)
-        # Renew if less than 5 minutes remain
-        if (self.token_expiry - now).total_seconds() < 300:
-            self.renew_token()
+        remaining = (self.token_expiry - now).total_seconds()
+        # Renew if less than 15 minutes remain (token lasts ~80 min)
+        if remaining < 900:
+            logger.info("Token expires in %.0f sec — renewing...", remaining)
+            if not self.renew_token():
+                # Renewal failed — try full re-auth as fallback
+                logger.warning("Token renewal failed, attempting full re-authentication...")
+                self.authenticate()
 
     def _headers(self) -> dict:
         return {
