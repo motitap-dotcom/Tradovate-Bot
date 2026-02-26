@@ -1,9 +1,7 @@
 {
-  "command": "none",
+  "command": "restart",
   "args": {},
-  "timestamp": "2026-02-26T17:00:00.000000+00:00",
-  "id": "afb12f5c",
-  "source": "claude",
-  "last_result": "Bot stopped (was PID 261621) \u2192 Bot started (PID 261625)",
-  "processed_at": "2026-02-26T17:00:37.641124+00:00"
+  "timestamp": "2026-02-26T17:10:00.000000+00:00",
+  "id": "b3c72e91",
+  "source": "claude"
 }
