@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T17:06:05.540068+00:00",
+  "timestamp": "2026-02-26T17:07:07.156024+00:00",
   "bot_running": true,
   "bot_pid": 261625,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:06:01,316 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-    "2026-02-26 17:06:01,316 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-    "2026-02-26 17:06:01,316 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:06:01,316 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-    "2026-02-26 17:06:01,316 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:06:01,316 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:06:03,478 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:06:03,478 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:06:03,479 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:06:03,479 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:06:03,594 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:06:03,594 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:06:03,594 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:06:03,594 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:06:03,595 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:06:03,595 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:06:03,595 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:06:03,595 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:06:03,595 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:06:03,595 [INFO] tradovate_api: Re-subscribed to: CLJ6"
+    "2026-02-26 17:06:35,996 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:06:35,996 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:06:35,996 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:06:35,996 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:06:35,997 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:06:35,997 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:06:44,488 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 17:06:44,488 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 17:06:44,488 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
+    "2026-02-26 17:06:44,488 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
+    "2026-02-26 17:06:44,673 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+    "2026-02-26 17:06:44,673 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+    "2026-02-26 17:07:06,112 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+    "2026-02-26 17:07:06,112 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+    "2026-02-26 17:07:06,112 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 17:07:06,112 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+    "2026-02-26 17:07:06,112 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:07:06,112 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+    "2026-02-26 17:07:06,112 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 17:07:06,112 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)..."
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 75,
+    "minutes_remaining": 74,
     "expires_at": "2026-02-26T18:20:37.992000+00:00"
   },
   "errors": [],
-  "uptime": "05:27"
+  "uptime": "06:29"
 }
