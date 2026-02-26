@@ -25,7 +25,7 @@ from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
-from auto_tuner import AutoTuner
+from auto_tuner import AutoTuner, HourFilter
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -90,6 +90,16 @@ class TradovateBot:
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
+        # Intra-day learning: streak tracking
+        self._recent_pnls: list[float] = []
+        self._intraday_adjustments: list[dict] = []
+
+        # Hour-based trade filtering
+        self.hour_filter = HourFilter(self.journal)
+
+        # Migrate stale legacy trades on startup
+        self.journal.migrate_legacy_trades()
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -118,6 +128,12 @@ class TradovateBot:
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
+
+        # Update hour filter from recent trade data
+        self.hour_filter.update()
+        blocked = self.hour_filter.get_blocked()
+        if blocked:
+            logger.info("Hour filter active: %s", blocked)
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -357,6 +373,10 @@ class TradovateBot:
         if current >= cutoff:
             return
 
+        # Hour-based filter: skip consistently losing hours for this symbol
+        if not self.hour_filter.is_allowed(symbol, current.hour):
+            return
+
         # Feed price to strategy
         signal = None
         if hasattr(strategy, "on_price"):
@@ -462,7 +482,10 @@ class TradovateBot:
                     "target": signal.take_profit,
                     "reason": signal.reason,
                     "order_id": result.get("orderId"),
+                    "sl_order_id": result.get("slOrderId"),
+                    "tp_order_id": result.get("tpOrderId"),
                     "journal_id": trade_id,
+                    "balance_at_entry": self.risk.current_balance,
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
@@ -495,12 +518,21 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                    # Record force-close exits in journal
+                    # Record force-close exits in journal with actual P&L
+                    time.sleep(3)  # Brief wait for fills to settle
                     for t in self.trades_today:
-                        if t.get("journal_id"):
+                        if t.get("journal_id") and not t.get("_closed"):
+                            entry_fill, exit_fill, pnl, _ = self._resolve_trade_fills(t)
                             self.journal.record_exit_by_symbol(
-                                t["symbol"], 0, 0, exit_reason="force_close"
+                                t["symbol"], exit_fill, pnl, exit_reason="force_close"
                             )
+                            if entry_fill or exit_fill:
+                                self.journal.update_fill_data(
+                                    t["journal_id"],
+                                    actual_entry=entry_fill,
+                                    actual_exit=exit_fill,
+                                )
+                            t["_closed"] = True
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -543,26 +575,21 @@ class TradovateBot:
         self.stop()
 
     def _sync_fills(self):
-        """Check positions and fills to close journal trades and update contract count."""
+        """Check positions and fills to close journal trades with actual P&L data."""
         try:
             positions = self.api.get_positions()
 
-            # Build contractId -> base symbol mapping from our contract_map
-            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
-            # We need to match position contractId (int) to our symbols.
-            # Resolve this once and cache it.
+            # Build contractId -> base symbol mapping (cached)
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
-            # Lazily build the mapping from API contract lookups
             for symbol, contract_name in self.contract_map.items():
                 if symbol not in [v for v in self._contract_id_to_symbol.values()]:
                     contract = self.api.find_contract(contract_name)
                     if contract:
                         self._contract_id_to_symbol[contract["id"]] = symbol
 
-            # Count total open contracts from API (authoritative)
+            # Count open contracts from API (authoritative)
             total_open = 0
-            # Track which base symbols have open positions
             open_base_symbols = set()
             for p in positions:
                 net = abs(p.get("netPos", 0))
@@ -583,16 +610,160 @@ class TradovateBot:
                     continue
 
                 if sym not in open_base_symbols:
-                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
+                    # Position flat — resolve actual fill data
+                    entry_fill, exit_fill, actual_pnl, exit_reason = \
+                        self._resolve_trade_fills(trade_info)
+
                     self.journal.record_exit_by_symbol(
-                        sym, 0, 0, exit_reason="bracket_fill"
+                        sym, exit_fill, actual_pnl, exit_reason=exit_reason
                     )
+                    # Backfill actual fill prices for slippage tracking
+                    if entry_fill or exit_fill:
+                        self.journal.update_fill_data(
+                            journal_id,
+                            actual_entry=entry_fill,
+                            actual_exit=exit_fill,
+                        )
+
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    logger.info(
+                        "Position closed for %s | P&L=$%.2f exit=%.2f (%s)",
+                        sym, actual_pnl, exit_fill, exit_reason,
+                    )
+
+                    # Intra-day learning callback
+                    self._on_trade_closed(trade_info, actual_pnl)
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
+
+    def _resolve_trade_fills(self, trade_info: dict) -> tuple:
+        """Resolve actual fill prices and P&L for a closed trade.
+        Returns: (entry_fill_price, exit_fill_price, actual_pnl, exit_reason)
+        """
+        sym = trade_info["symbol"]
+        spec = config.CONTRACT_SPECS.get(sym, {})
+        point_value = spec.get("point_value", 1)
+        qty = trade_info.get("qty", 1)
+        direction = trade_info.get("direction", "Buy")
+        dir_mult = 1 if direction == "Buy" else -1
+
+        entry_order_id = trade_info.get("order_id")
+        sl_order_id = trade_info.get("sl_order_id")
+        tp_order_id = trade_info.get("tp_order_id")
+
+        entry_fill_price = 0.0
+        exit_fill_price = 0.0
+        exit_reason = "bracket_fill"
+
+        # Resolve entry fill price
+        if entry_order_id:
+            try:
+                entry_fills = self.api.get_fills_for_order(entry_order_id)
+                if entry_fills:
+                    total_qty = sum(f.get("qty", 0) for f in entry_fills)
+                    if total_qty > 0:
+                        entry_fill_price = sum(
+                            f.get("price", 0) * f.get("qty", 0) for f in entry_fills
+                        ) / total_qty
+            except Exception as e:
+                logger.debug("Entry fill lookup failed: %s", e)
+
+        # Resolve exit fill price — check SL first, then TP
+        for oid, reason in [(sl_order_id, "stop_loss"), (tp_order_id, "take_profit")]:
+            if not oid:
+                continue
+            try:
+                exit_fills = self.api.get_fills_for_order(oid)
+                if exit_fills:
+                    total_qty = sum(f.get("qty", 0) for f in exit_fills)
+                    if total_qty > 0:
+                        exit_fill_price = sum(
+                            f.get("price", 0) * f.get("qty", 0) for f in exit_fills
+                        ) / total_qty
+                        exit_reason = reason
+                        break
+            except Exception as e:
+                logger.debug("Exit fill lookup for %s failed: %s", reason, e)
+
+        # Calculate P&L from fills
+        if entry_fill_price and exit_fill_price:
+            actual_pnl = (exit_fill_price - entry_fill_price) * dir_mult * qty * point_value
+        else:
+            # Fallback: use balance difference
+            actual_pnl = self._pnl_from_balance(trade_info)
+
+        return entry_fill_price, exit_fill_price, round(actual_pnl, 2), exit_reason
+
+    def _pnl_from_balance(self, trade_info: dict) -> float:
+        """Fallback P&L estimation from balance change since trade entry."""
+        balance_at_entry = trade_info.get("balance_at_entry", 0)
+        if balance_at_entry and self.risk.current_balance:
+            return self.risk.current_balance - balance_at_entry
+        return 0.0
+
+    # ─────────────────────────────────────────
+    # Intra-day learning
+    # ─────────────────────────────────────────
+
+    def _on_trade_closed(self, trade_info: dict, actual_pnl: float):
+        """Called immediately after each trade closes. Detects streaks and adapts."""
+        self._recent_pnls.append(actual_pnl)
+
+        # Count consecutive losses (from most recent)
+        consecutive_losses = 0
+        for p in reversed(self._recent_pnls):
+            if p < 0:
+                consecutive_losses += 1
+            else:
+                break
+
+        # Cold streak: 3+ consecutive losses → increase conservatism
+        if consecutive_losses >= 3:
+            logger.warning(
+                "COLD STREAK: %d consecutive losses (last 5: %s). Tightening parameters.",
+                consecutive_losses,
+                [f"${p:+.0f}" for p in self._recent_pnls[-5:]],
+            )
+            self._apply_streak_adjustments(conservative=True)
+
+        # Update hour filter after each trade for freshest data
+        self.hour_filter.update()
+
+    def _apply_streak_adjustments(self, conservative: bool):
+        """Temporarily adjust parameters based on intra-day streaks.
+        Safety rule: intra-day adjustments can ONLY make the bot more conservative."""
+        if not conservative:
+            return  # Never increase aggressiveness intra-day
+
+        for sym in self.contract_map:
+            spec = config.CONTRACT_SPECS.get(sym)
+            if not spec:
+                continue
+
+            # Widen cooldowns by 50%
+            for param in ("orb_cooldown_minutes", "vwap_cooldown_minutes"):
+                if param in spec:
+                    old = spec[param]
+                    new = int(old * 1.5)
+                    spec[param] = new
+                    self._intraday_adjustments.append({
+                        "param": param, "symbol": sym,
+                        "old_value": old, "new_value": new,
+                        "reason": "cold_streak",
+                    })
+
+        # Widen global order gap
+        old_gap = self._min_order_gap_seconds
+        self._min_order_gap_seconds = int(old_gap * 1.5)
+        self._intraday_adjustments.append({
+            "param": "_min_order_gap_seconds", "symbol": "global",
+            "old_value": old_gap, "new_value": self._min_order_gap_seconds,
+            "reason": "cold_streak",
+        })
+
+        logger.info("Streak adjustments applied: %d changes", len(self._intraday_adjustments))
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""

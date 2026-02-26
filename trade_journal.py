@@ -108,6 +108,11 @@ class TradeJournal:
             "exit_reason": None,
             "exit_time": None,
             "status": "open",
+            # Fill tracking (populated after fills resolve)
+            "expected_entry_price": entry_price,
+            "actual_entry_price": None,
+            "actual_exit_price": None,
+            "slippage_points": None,
         }
         self.trades.append(trade)
         self._save()
@@ -163,12 +168,57 @@ class TradeJournal:
                 return
         logger.warning("Journal: no open trade found for %s", symbol)
 
+    def update_fill_data(self, trade_id: str, actual_entry: float = 0,
+                         actual_exit: float = 0):
+        """Backfill actual fill prices and compute slippage after fills resolve."""
+        for trade in reversed(self.trades):
+            if trade["id"] == trade_id:
+                if actual_entry:
+                    trade["actual_entry_price"] = actual_entry
+                    # Backfill entry_price if it was 0 (market orders)
+                    if not trade.get("entry_price"):
+                        trade["entry_price"] = actual_entry
+                    expected = trade.get("expected_entry_price") or trade.get("entry_price")
+                    if expected:
+                        trade["slippage_points"] = round(abs(actual_entry - expected), 6)
+                if actual_exit:
+                    trade["actual_exit_price"] = actual_exit
+                self._save()
+                logger.info(
+                    "Journal: FILL %s entry=%.2f exit=%.2f slip=%.4f",
+                    trade_id, actual_entry or 0, actual_exit or 0,
+                    trade.get("slippage_points") or 0,
+                )
+                return
+        logger.warning("Journal: trade_id %s not found for fill update", trade_id)
+
+    def migrate_legacy_trades(self):
+        """Mark old open trades (from past dates) as stale so they don't corrupt analytics."""
+        today = date.today().isoformat()
+        migrated = 0
+        for trade in self.trades:
+            if trade["date"] < today and trade["status"] == "open":
+                trade["status"] = "stale"
+                trade["exit_reason"] = "migration_stale"
+                migrated += 1
+        if migrated:
+            self._save()
+            logger.info("Journal: migrated %d stale trades from past dates", migrated)
+
+    def data_quality_pct(self) -> float:
+        """Return percentage of closed trades with non-zero P&L (data quality metric)."""
+        closed = self._closed_trades()
+        if not closed:
+            return 0.0
+        with_pnl = [t for t in closed if t.get("pnl") and t["pnl"] != 0]
+        return len(with_pnl) / len(closed)
+
     # ─────────────────────────────────────────
     # Analysis
     # ─────────────────────────────────────────
 
     def _closed_trades(self, since: Optional[str] = None) -> list[dict]:
-        """Get closed trades, optionally filtered by date."""
+        """Get closed trades, optionally filtered by date. Excludes stale trades."""
         trades = [t for t in self.trades if t["status"] == "closed"]
         if since:
             trades = [t for t in trades if t["date"] >= since]
@@ -199,7 +249,7 @@ class TradeJournal:
             "expectancy": statistics.mean(pnls) if pnls else 0,
             "best_trade": max(pnls) if pnls else 0,
             "worst_trade": min(pnls) if pnls else 0,
-            "avg_r_multiple": statistics.mean([t.get("r_multiple", 0) for t in closed if t.get("r_multiple")]) or 0,
+            "avg_r_multiple": statistics.mean(r_vals) if (r_vals := [t.get("r_multiple", 0) for t in closed if t.get("r_multiple")]) else 0,
         }
 
     def analyze_by_symbol(self) -> dict:
@@ -254,6 +304,41 @@ class TradeJournal:
                 "total_pnl": sum(pnls),
             }
         return result
+
+    def analyze_by_symbol_and_hour(self, since: Optional[str] = None) -> dict:
+        """Performance breakdown by (symbol, hour) pair for hour filtering."""
+        by_key = defaultdict(list)
+        for t in self._closed_trades(since):
+            hour = t.get("entry_hour_et", -1)
+            if hour < 0:
+                continue
+            key = f"{t['symbol']}_{hour}"
+            by_key[key].append(t)
+
+        result = {}
+        for key, trades in sorted(by_key.items()):
+            pnls = [t["pnl"] for t in trades if t["pnl"] is not None]
+            wins = [p for p in pnls if p > 0]
+            result[key] = {
+                "trades": len(trades),
+                "win_rate": len(wins) / len(pnls) if pnls else 0,
+                "total_pnl": sum(pnls),
+                "avg_pnl": statistics.mean(pnls) if pnls else 0,
+            }
+        return result
+
+    def analyze_slippage(self) -> dict:
+        """Slippage analysis across all trades with fill data."""
+        slips = [t["slippage_points"] for t in self._closed_trades()
+                 if t.get("slippage_points") is not None]
+        if not slips:
+            return {"count": 0, "avg": 0, "max": 0, "total": 0}
+        return {
+            "count": len(slips),
+            "avg": statistics.mean(slips),
+            "max": max(slips),
+            "total": sum(slips),
+        }
 
     def analyze_by_exit_reason(self) -> dict:
         """How trades end: TP hit, SL hit, force-close, etc."""

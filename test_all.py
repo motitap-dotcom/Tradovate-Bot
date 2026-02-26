@@ -1063,6 +1063,418 @@ test_e2e_risk_cap()
 
 
 # ─────────────────────────────────────────────
+# 7. LEARNING SYSTEM TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("7. LEARNING SYSTEM TESTS")
+print("=" * 60)
+
+
+@test("get_fills_for_order calls correct endpoint")
+def test_get_fills_for_order():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "test"
+    api.rest_url = "https://demo.tradovateapi.com/v1"
+    with patch("tradovate_api.requests.get") as mock_get:
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: [{"orderId": 123, "price": 20000.50, "qty": 1, "action": "Buy"}],
+        )
+        fills = api.get_fills_for_order(123)
+        assert len(fills) == 1
+        assert fills[0]["price"] == 20000.50
+        # Verify endpoint
+        call_url = mock_get.call_args[0][0]
+        assert "/fill/deps?masterid=123" in call_url
+
+
+test_get_fills_for_order()
+
+
+@test("get_fills_for_order returns empty for None order_id")
+def test_get_fills_no_order():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    assert api.get_fills_for_order(0) == []
+    assert api.get_fills_for_order(None) == []
+
+
+test_get_fills_no_order()
+
+
+@test("Journal update_fill_data records slippage")
+def test_journal_fill_data():
+    import tempfile
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        tid = journal.record_entry("NQ", "Buy", 20000.0, 1, "ORB", "breakout",
+                                   stop_loss=19975.0, take_profit=20050.0)
+        # Simulate fill data arriving
+        journal.update_fill_data(tid, actual_entry=20000.75, actual_exit=20049.50)
+
+        trade = journal.trades[-1]
+        assert trade["actual_entry_price"] == 20000.75
+        assert trade["actual_exit_price"] == 20049.50
+        assert trade["slippage_points"] == round(abs(20000.75 - 20000.0), 6)
+    finally:
+        os.unlink(tmp)
+
+
+test_journal_fill_data()
+
+
+@test("Journal migrate_legacy_trades marks old open trades as stale")
+def test_migrate_legacy():
+    import tempfile
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        # Manually insert a trade from yesterday
+        journal.trades.append({
+            "id": "NQ_old", "symbol": "NQ", "date": "2020-01-01",
+            "status": "open", "pnl": None, "entry_price": 0,
+            "exit_reason": None, "entry_time": "2020-01-01T10:00:00+00:00",
+        })
+        journal._save()
+
+        journal.migrate_legacy_trades()
+        stale = [t for t in journal.trades if t["status"] == "stale"]
+        assert len(stale) == 1
+        assert stale[0]["id"] == "NQ_old"
+
+        # Verify stale trades are excluded from _closed_trades
+        closed = journal._closed_trades()
+        assert all(t["id"] != "NQ_old" for t in closed)
+    finally:
+        os.unlink(tmp)
+
+
+test_migrate_legacy()
+
+
+@test("Journal data_quality_pct reports correctly")
+def test_data_quality():
+    import tempfile
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        # Add 2 trades with real P&L and 1 with zero
+        t1 = journal.record_entry("NQ", "Buy", 20000, 1, "ORB", "test")
+        journal.record_exit(t1, 20050, 1000, "take_profit")
+        t2 = journal.record_entry("ES", "Sell", 5000, 1, "ORB", "test")
+        journal.record_exit(t2, 4990, 500, "take_profit")
+        t3 = journal.record_entry("GC", "Buy", 2000, 1, "VWAP", "test")
+        journal.record_exit(t3, 0, 0, "bracket_fill")  # legacy zero
+
+        # 2 out of 3 have real P&L
+        quality = journal.data_quality_pct()
+        assert abs(quality - 2/3) < 0.01
+    finally:
+        os.unlink(tmp)
+
+
+test_data_quality()
+
+
+@test("AutoTuner uses rolling window (ignores old trades)")
+def test_rolling_window():
+    import tempfile
+    from trade_journal import TradeJournal
+    from auto_tuner import AutoTuner
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        # Add old trades (30 days ago) — should be ignored with rolling_days=7
+        for i in range(10):
+            journal.trades.append({
+                "id": f"old_{i}", "symbol": "NQ", "date": "2020-01-01",
+                "status": "closed", "pnl": -500, "exit_reason": "stop_loss",
+                "entry_price": 20000, "stop_loss": 19975,
+                "r_multiple": -1.0, "duration_minutes": 5,
+                "entry_hour_et": 10, "strategy": "ORB", "qty": 1,
+                "direction": "Buy", "entry_time": "2020-01-01T15:00:00+00:00",
+            })
+        journal._save()
+
+        tuner = AutoTuner(journal)
+        result = tuner.run(min_trades=5, rolling_days=7)
+        # Should find 0 trades in the 7-day window, so skip tuning
+        assert result == []
+    finally:
+        os.unlink(tmp)
+
+
+test_rolling_window()
+
+
+@test("AutoTuner expanded bounds include cooldowns and R:R")
+def test_expanded_bounds():
+    from auto_tuner import _BOUNDS, _GLOBAL_BOUNDS
+    # Verify new bounds exist
+    assert "orb_cooldown_minutes" in _BOUNDS
+    assert "vwap_cooldown_minutes" in _BOUNDS
+    assert "risk_reward_ratio" in _BOUNDS
+    assert "max_orb_trades" in _BOUNDS
+    assert "RISK_PER_TRADE_PCT" in _GLOBAL_BOUNDS
+    assert "DAILY_LOSS_BRAKE_PCT" in _GLOBAL_BOUNDS
+    # Verify bounds are reasonable
+    assert _BOUNDS["orb_cooldown_minutes"]["NQ"] == (5, 60)
+    assert _GLOBAL_BOUNDS["RISK_PER_TRADE_PCT"] == (0.005, 0.03)
+
+
+test_expanded_bounds()
+
+
+@test("AutoTuner _propose_global respects bounds")
+def test_propose_global_bounds():
+    from auto_tuner import AutoTuner
+    tuner = AutoTuner()
+    # Try to set RISK_PER_TRADE_PCT way too high
+    tuner._propose_global("RISK_PER_TRADE_PCT", 0.015, 0.10, "test")
+    if tuner.adjustments:
+        adj = tuner.adjustments[-1]
+        # Should be capped at max bound (0.03) and max change (20%)
+        assert adj["new_value"] <= 0.03
+
+
+test_propose_global_bounds()
+
+
+@test("HourFilter blocks consistently losing hours")
+def test_hour_filter_blocks():
+    import tempfile
+    from trade_journal import TradeJournal
+    from auto_tuner import HourFilter
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        today = date.today().isoformat()
+        # Add 5 losing trades at hour 14 for NQ
+        for i in range(5):
+            journal.trades.append({
+                "id": f"bad_{i}", "symbol": "NQ", "date": today,
+                "status": "closed", "pnl": -200, "exit_reason": "stop_loss",
+                "entry_hour_et": 14, "entry_time": f"{today}T19:00:00+00:00",
+            })
+        journal._save()
+
+        hf = HourFilter(journal)
+        hf.update(rolling_days=10)
+        assert hf.is_allowed("NQ", 14) is False  # Should be blocked
+        assert hf.is_allowed("NQ", 10) is True   # Other hours fine
+        assert hf.is_allowed("ES", 14) is True   # Different symbol fine
+    finally:
+        os.unlink(tmp)
+
+
+test_hour_filter_blocks()
+
+
+@test("HourFilter allows hours with insufficient data")
+def test_hour_filter_insufficient():
+    import tempfile
+    from trade_journal import TradeJournal
+    from auto_tuner import HourFilter
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        today = date.today().isoformat()
+        # Only 2 trades (below minimum of 3)
+        for i in range(2):
+            journal.trades.append({
+                "id": f"few_{i}", "symbol": "NQ", "date": today,
+                "status": "closed", "pnl": -200, "exit_reason": "stop_loss",
+                "entry_hour_et": 11, "entry_time": f"{today}T16:00:00+00:00",
+            })
+        journal._save()
+
+        hf = HourFilter(journal)
+        hf.update()
+        # Should NOT block — insufficient data
+        assert hf.is_allowed("NQ", 11) is True
+    finally:
+        os.unlink(tmp)
+
+
+test_hour_filter_insufficient()
+
+
+@test("_resolve_trade_fills computes correct P&L for long trade")
+def test_resolve_fills_long():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "test"
+    api.rest_url = "https://demo.tradovateapi.com/v1"
+
+    # Mock the fill lookups
+    with patch.object(api, "get_fills_for_order") as mock_fills:
+        mock_fills.side_effect = lambda oid: {
+            100: [{"price": 20000.50, "qty": 1}],  # entry
+            200: [],                                  # SL not hit
+            300: [{"price": 20050.25, "qty": 1}],   # TP hit
+        }.get(oid, [])
+
+        trade_info = {
+            "symbol": "NQ", "direction": "Buy", "qty": 1,
+            "order_id": 100, "sl_order_id": 200, "tp_order_id": 300,
+            "balance_at_entry": 50000,
+        }
+
+        # Import bot class but don't initialize it fully
+        from bot import TradovateBot
+        bot = TradovateBot.__new__(TradovateBot)
+        bot.api = api
+        bot.risk = MagicMock()
+        bot.risk.current_balance = 50000
+
+        entry, exit_, pnl, reason = bot._resolve_trade_fills(trade_info)
+        assert entry == 20000.50
+        assert exit_ == 20050.25
+        assert reason == "take_profit"
+        # P&L = (20050.25 - 20000.50) * 1 * 1 * 20 (NQ point value)
+        expected_pnl = (20050.25 - 20000.50) * 1 * 1 * 20
+        assert abs(pnl - expected_pnl) < 0.01
+
+
+test_resolve_fills_long()
+
+
+@test("_resolve_trade_fills computes correct P&L for short trade")
+def test_resolve_fills_short():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "test"
+    api.rest_url = "https://demo.tradovateapi.com/v1"
+
+    with patch.object(api, "get_fills_for_order") as mock_fills:
+        mock_fills.side_effect = lambda oid: {
+            100: [{"price": 5100.00, "qty": 2}],   # entry: sold at 5100
+            200: [{"price": 5090.00, "qty": 2}],   # SL hit at 5090 (profit for short)
+            300: [],
+        }.get(oid, [])
+
+        trade_info = {
+            "symbol": "ES", "direction": "Sell", "qty": 2,
+            "order_id": 100, "sl_order_id": 200, "tp_order_id": 300,
+            "balance_at_entry": 50000,
+        }
+
+        from bot import TradovateBot
+        bot = TradovateBot.__new__(TradovateBot)
+        bot.api = api
+        bot.risk = MagicMock()
+        bot.risk.current_balance = 50000
+
+        entry, exit_, pnl, reason = bot._resolve_trade_fills(trade_info)
+        assert entry == 5100.00
+        assert exit_ == 5090.00
+        assert reason == "stop_loss"
+        # P&L = (5090 - 5100) * -1 * 2 * 50 = +1000 (profit for short)
+        expected_pnl = (5090.00 - 5100.00) * (-1) * 2 * 50
+        assert abs(pnl - expected_pnl) < 0.01
+
+
+test_resolve_fills_short()
+
+
+@test("_resolve_trade_fills falls back to balance diff when no fills")
+def test_resolve_fills_fallback():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "test"
+
+    with patch.object(api, "get_fills_for_order", return_value=[]):
+        trade_info = {
+            "symbol": "NQ", "direction": "Buy", "qty": 1,
+            "order_id": None, "sl_order_id": None, "tp_order_id": None,
+            "balance_at_entry": 50000,
+        }
+
+        from bot import TradovateBot
+        bot = TradovateBot.__new__(TradovateBot)
+        bot.api = api
+        bot.risk = MagicMock()
+        bot.risk.current_balance = 50500  # +500 from entry
+
+        entry, exit_, pnl, reason = bot._resolve_trade_fills(trade_info)
+        assert entry == 0  # No fill data
+        assert pnl == 500  # Balance diff fallback
+
+
+test_resolve_fills_fallback()
+
+
+@test("Journal analyze_by_symbol_and_hour returns correct breakdown")
+def test_analyze_symbol_hour():
+    import tempfile
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        today = date.today().isoformat()
+        # 3 NQ trades at hour 10: 2 wins, 1 loss
+        for i, pnl in enumerate([200, 300, -100]):
+            journal.trades.append({
+                "id": f"sh_{i}", "symbol": "NQ", "date": today,
+                "status": "closed", "pnl": pnl, "entry_hour_et": 10,
+                "entry_time": f"{today}T15:00:00+00:00",
+            })
+        journal._save()
+
+        result = journal.analyze_by_symbol_and_hour()
+        key = "NQ_10"
+        assert key in result
+        assert result[key]["trades"] == 3
+        assert abs(result[key]["win_rate"] - 2/3) < 0.01
+        assert result[key]["total_pnl"] == 400
+    finally:
+        os.unlink(tmp)
+
+
+test_analyze_symbol_hour()
+
+
+@test("Journal slippage analysis works with fill data")
+def test_slippage_analysis():
+    import tempfile
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        tmp = f.name
+    try:
+        journal = TradeJournal(filepath=tmp)
+        t1 = journal.record_entry("NQ", "Buy", 20000.0, 1, "ORB", "test")
+        journal.update_fill_data(t1, actual_entry=20000.75)
+        journal.record_exit(t1, 20050, 1000, "take_profit")
+
+        t2 = journal.record_entry("ES", "Buy", 5000.0, 1, "ORB", "test")
+        journal.update_fill_data(t2, actual_entry=5000.25)
+        journal.record_exit(t2, 5010, 500, "take_profit")
+
+        slippage = journal.analyze_slippage()
+        assert slippage["count"] == 2
+        assert slippage["avg"] == (0.75 + 0.25) / 2
+        assert slippage["max"] == 0.75
+    finally:
+        os.unlink(tmp)
+
+
+test_slippage_analysis()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 

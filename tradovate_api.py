@@ -549,6 +549,19 @@ class TradovateAPI:
         """List recent fills."""
         return self._get("/fill/list") or []
 
+    def get_fills_for_order(self, order_id: int) -> list[dict]:
+        """Get fills for a specific order via /fill/deps endpoint.
+        Returns list of fill records with price, qty, timestamp, action."""
+        if not order_id:
+            return []
+        return self._get(f"/fill/deps?masterid={order_id}") or []
+
+    def get_order(self, order_id: int) -> Optional[dict]:
+        """Get a single order by ID."""
+        if not order_id:
+            return None
+        return self._get(f"/order/item?id={order_id}")
+
     # ─────────────────────────────────────────
     # Contract lookup
     # ─────────────────────────────────────────
