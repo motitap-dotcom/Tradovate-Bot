@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-02-26T18:43:39.176609+00:00",
+  "timestamp": "2026-02-26T18:44:09.622030+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
-    "balance": 54806.4,
-    "equity": 54806.4,
-    "day_pnl": 1463.2,
+    "balance": 55553.3,
+    "equity": 55553.3,
+    "day_pnl": 3420.1,
     "unrealized_pnl": 0
   },
   "risk": {
-    "open_contracts": 2,
+    "open_contracts": 1,
     "max_contracts": 10,
-    "trades_today": 5,
+    "trades_today": 6,
     "max_daily_trades": 12,
-    "locked": false,
-    "distance_to_floor": 1786.9
+    "locked": true,
+    "distance_to_floor": 2500.0
   },
   "positions": [],
   "recent_trades": [
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 18:39:03,817 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:39:03,817 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:39:34,176 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:39:34,176 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:40:04,505 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:40:04,505 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:40:34,843 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:40:34,843 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:41:05,179 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:41:05,179 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:41:35,504 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:41:35,504 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:42:05,830 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:42:05,830 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:42:36,163 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:42:36,163 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:43:06,494 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:43:06,494 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:43:36,830 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
-    "2026-02-26 18:43:36,830 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False"
+    "2026-02-26 18:44:02,638 [INFO] strategies: VWAP GC SHORT #2 at 5184.1001 | VWAP=5190.0360 | SL=5195.0360 TP=5174.1001",
+    "2026-02-26 18:44:02,638 [INFO] strategies: VWAP GC SHORT #2 at 5184.1001 | VWAP=5190.0360 | SL=5195.0360 TP=5174.1001",
+    "2026-02-26 18:44:02,638 [INFO] risk_manager: Position size for GC: 1 contracts | budget=750.00 | risk/contract=500.00",
+    "2026-02-26 18:44:02,638 [INFO] risk_manager: Position size for GC: 1 contracts | budget=750.00 | risk/contract=500.00",
+    "2026-02-26 18:44:02,638 [INFO] bot: SIGNAL: Sell GC 1 @ market | SL=5195.0360 TP=5174.1001 | VWAP short #2 at 5184.1001 (VWAP=5190.0360)",
+    "2026-02-26 18:44:02,638 [INFO] bot: SIGNAL: Sell GC 1 @ market | SL=5195.0360 TP=5174.1001 | VWAP short #2 at 5184.1001 (VWAP=5190.0360)",
+    "2026-02-26 18:44:02,638 [INFO] tradovate_api: Placing bracket Sell 1 GCH6 @ Market | SL=5195.04 TP=5174.10",
+    "2026-02-26 18:44:02,638 [INFO] tradovate_api: Placing bracket Sell 1 GCH6 @ Market | SL=5195.04 TP=5174.10",
+    "2026-02-26 18:44:02,804 [INFO] tradovate_api: Entry order placed: orderId=409583841269",
+    "2026-02-26 18:44:02,804 [INFO] tradovate_api: Entry order placed: orderId=409583841269",
+    "2026-02-26 18:44:02,976 [INFO] tradovate_api: OCO placed: SL orderId=409583841280 TP orderId=409583841281",
+    "2026-02-26 18:44:02,976 [INFO] tradovate_api: OCO placed: SL orderId=409583841280 TP orderId=409583841281",
+    "2026-02-26 18:44:02,977 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
+    "2026-02-26 18:44:02,977 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
+    "2026-02-26 18:44:06,997 [INFO] risk_manager: New peak equity: 55843.30 | drawdown floor: 53343.30",
+    "2026-02-26 18:44:06,997 [INFO] risk_manager: New peak equity: 55843.30 | drawdown floor: 53343.30",
+    "2026-02-26 18:44:06,998 [CRITICAL] risk_manager: TRADING LOCKED: DAILY PROFIT CAP: day P&L $3420.10 hit $2400.00 cap (consistency rule)",
+    "2026-02-26 18:44:06,998 [CRITICAL] risk_manager: TRADING LOCKED: DAILY PROFIT CAP: day P&L $3420.10 hit $2400.00 cap (consistency rule)",
+    "2026-02-26 18:44:07,161 [INFO] bot: Status | balance=55553.30 | day_pnl=3420.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:44:07,161 [INFO] bot: Status | balance=55553.30 | day_pnl=3420.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 17,
+    "minutes_remaining": 16,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "01:03:12"
+  "uptime": "01:03:42"
 }
