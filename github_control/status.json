@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T17:29:08.584205+00:00",
+  "timestamp": "2026-02-26T17:29:16.479847+00:00",
   "bot_running": true,
   "bot_pid": 263598,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:28:45,459 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:28:45,459 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
-    "2026-02-26 17:28:47,547 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-    "2026-02-26 17:28:47,547 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
-    "2026-02-26 17:28:47,627 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:28:47,627 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:28:47,628 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:28:47,628 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:28:47,738 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:28:47,739 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:28:47,739 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:28:56,363 [INFO] bot: Signal 15 received. Stopping...",
-    "2026-02-26 17:28:56,363 [INFO] bot: Signal 15 received. Stopping..."
+    "File \"/usr/lib/python3.12/threading.py\", line 1010, in run",
+    "    self._target(*self._args, **self._kwargs)",
+    "  File \"/root/Tradovate-Bot/remote_control.py\", line 706, in _run",
+    "    server = HTTPServer((\"0.0.0.0\", port), RemoteControlHandler)",
+    "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+    "  File \"/usr/lib/python3.12/socketserver.py\", line 457, in __init__",
+    "    self.server_bind()",
+    "  File \"/usr/lib/python3.12/http/server.py\", line 136, in server_bind",
+    "    socketserver.TCPServer.server_bind(self)",
+    "  File \"/usr/lib/python3.12/socketserver.py\", line 473, in server_bind",
+    "    self.socket.bind(self.server_address)",
+    "OSError: [Errno 98] Address already in use",
+    "2026-02-26 17:29:11,239 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:29:11,239 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:29:11,284 [INFO] risk_manager: New peak equity: 52426.08 | drawdown floor: 49926.08",
+    "2026-02-26 17:29:11,284 [INFO] risk_manager: New peak equity: 52426.08 | drawdown floor: 49926.08",
+    "2026-02-26 17:29:11,284 [CRITICAL] risk_manager: TRADING LOCKED: DAILY PROFIT CAP: day P&L $2426.08 hit $2400.00 cap (consistency rule)",
+    "2026-02-26 17:29:11,284 [CRITICAL] risk_manager: TRADING LOCKED: DAILY PROFIT CAP: day P&L $2426.08 hit $2400.00 cap (consistency rule)",
+    "2026-02-26 17:29:12,123 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True",
+    "2026-02-26 17:29:12,123 [INFO] bot: Status | balance=52426.08 | day_pnl=2426.08 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 63,
-    "expires_at": "2026-02-26T18:32:34.002000+00:00"
+    "minutes_remaining": 80,
+    "expires_at": "2026-02-26T18:49:09.234000+00:00"
   },
   "errors": [],
-  "uptime": "00:00"
+  "uptime": "00:07"
 }
