@@ -1,36 +1,62 @@
 {
-  "command_id": "f1dbbf0d",
-  "executed_at": "2026-02-26T21:27:36.846934+00:00",
+  "command_id": "2bdeb9b0",
+  "executed_at": "2026-02-26T21:28:11.329257+00:00",
   "result": {
     "ok": true,
     "data": {
-      "bot": {
-        "running": false,
-        "pid": 0,
-        "systemd": "inactive"
-      },
-      "trading": {
-        "balance": 50000.0,
-        "day_pnl": 0.0,
-        "to_floor": 2500.0,
-        "contracts": "0/10",
-        "trades": "0/12",
-        "locked": false,
-        "timestamp": "2026-02-26 21:26:38",
-        "age_seconds": 58.8
-      },
-      "token": {
-        "status": "valid",
-        "remaining_minutes": 71.4
-      },
-      "journal": {
-        "total_trades": 0,
-        "wins": 0,
-        "losses": 0,
-        "win_rate": 0,
-        "total_pnl": 0
-      },
-      "server_time": "2026-02-26T21:27:36.846919+00:00"
+      "lines": [
+        "2026-02-26 21:25:47,176 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+        "2026-02-26 21:26:07,589 [WARNING] bot: Cash balance error: Account not found",
+        "2026-02-26 21:26:07,765 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 21:26:17,285 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+        "2026-02-26 21:26:17,285 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+        "2026-02-26 21:26:17,285 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+        "2026-02-26 21:26:17,285 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+        "2026-02-26 21:26:19,442 [INFO] websocket: Websocket connected",
+        "2026-02-26 21:26:19,442 [INFO] tradovate_api: Market data WebSocket connected",
+        "2026-02-26 21:26:19,556 [INFO] tradovate_api: Market data WebSocket authenticated",
+        "2026-02-26 21:26:19,557 [INFO] tradovate_api: Re-subscribed to: NQH6",
+        "2026-02-26 21:26:19,557 [INFO] tradovate_api: Re-subscribed to: ESH6",
+        "2026-02-26 21:26:19,557 [INFO] tradovate_api: Re-subscribed to: GCH6",
+        "2026-02-26 21:26:19,558 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+        "2026-02-26 21:26:37,948 [WARNING] bot: Cash balance error: Account not found",
+        "2026-02-26 21:26:38,113 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+        "2026-02-26 21:26:49,296 [INFO] bot: Signal 15 received. Stopping...",
+        "2026-02-26 21:26:49,671 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+        "2026-02-26 21:26:49,672 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+        "2026-02-26 21:26:49,672 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+        "2026-02-26 21:26:49,672 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+        "2026-02-26 21:26:51,840 [INFO] websocket: Websocket connected",
+        "2026-02-26 21:26:51,841 [INFO] tradovate_api: Market data WebSocket connected",
+        "2026-02-26 21:26:51,948 [INFO] tradovate_api: Market data WebSocket authenticated",
+        "2026-02-26 21:26:51,949 [INFO] tradovate_api: Re-subscribed to: NQH6",
+        "2026-02-26 21:26:51,949 [INFO] tradovate_api: Re-subscribed to: ESH6",
+        "2026-02-26 21:26:51,950 [INFO] tradovate_api: Re-subscribed to: GCH6",
+        "2026-02-26 21:26:51,950 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+        "2026-02-26 21:27:08,114 [INFO] bot: Shutting down bot...",
+        "2026-02-26 21:27:08,279 [INFO] tradovate_api: Cancelled 0 working orders",
+        "2026-02-26 21:27:08,550 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+        "2026-02-26 21:27:08,552 [INFO] bot: ============================================================",
+        "2026-02-26 21:27:08,552 [INFO] bot: END OF DAY SUMMARY",
+        "2026-02-26 21:27:08,552 [INFO] bot: ============================================================",
+        "2026-02-26 21:27:08,552 [INFO] bot: Total trades: 0",
+        "2026-02-26 21:27:08,552 [INFO] bot:   balance: 50000",
+        "2026-02-26 21:27:08,552 [INFO] bot:   equity: 50000.0",
+        "2026-02-26 21:27:08,552 [INFO] bot:   day_pnl: 0.0",
+        "2026-02-26 21:27:08,552 [INFO] bot:   peak_balance: 50000",
+        "2026-02-26 21:27:08,552 [INFO] bot:   drawdown_floor: 47500",
+        "2026-02-26 21:27:08,552 [INFO] bot:   distance_to_floor: 2500.0",
+        "2026-02-26 21:27:08,552 [INFO] bot:   daily_loss_limit: 1000",
+        "2026-02-26 21:27:08,552 [INFO] bot:   daily_loss_remaining: 1000.0",
+        "2026-02-26 21:27:08,552 [INFO] bot:   open_contracts: 0",
+        "2026-02-26 21:27:08,553 [INFO] bot:   max_contracts: 10",
+        "2026-02-26 21:27:08,553 [INFO] bot:   trades_today: 0",
+        "2026-02-26 21:27:08,553 [INFO] bot:   max_daily_trades: 12",
+        "2026-02-26 21:27:08,553 [INFO] bot:   locked: False",
+        "2026-02-26 21:27:08,553 [INFO] bot:   lock_reason: ",
+        "2026-02-26 21:27:08,553 [INFO] bot: Bot stopped."
+      ],
+      "count": 50
     }
   }
 }
