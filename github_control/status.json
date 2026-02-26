@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T16:37:13.015630+00:00",
+  "timestamp": "2026-02-26T16:38:17.602068+00:00",
   "bot_running": true,
   "bot_pid": 260054,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "File \"/usr/lib/python3.12/threading.py\", line 1073, in _bootstrap_inner",
-    "    self.run()",
-    "  File \"/usr/lib/python3.12/threading.py\", line 1010, in run",
-    "    self._target(*self._args, **self._kwargs)",
-    "  File \"/root/Tradovate-Bot/remote_control.py\", line 706, in _run",
-    "    server = HTTPServer((\"0.0.0.0\", port), RemoteControlHandler)",
-    "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
-    "  File \"/usr/lib/python3.12/socketserver.py\", line 457, in __init__",
-    "    self.server_bind()",
-    "  File \"/usr/lib/python3.12/http/server.py\", line 136, in server_bind",
-    "    socketserver.TCPServer.server_bind(self)",
-    "  File \"/usr/lib/python3.12/socketserver.py\", line 473, in server_bind",
-    "    self.socket.bind(self.server_address)",
-    "OSError: [Errno 98] Address already in use",
-    "2026-02-26 16:36:44,764 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:36:44,764 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 16:36:44,805 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 16:36:44,805 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 16:36:45,627 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-    "2026-02-26 16:36:45,627 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
+    "2026-02-26 16:37:47,158 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 16:37:47,158 [INFO] tradovate_api: Reconnecting in 2s (attempt 1/5)...",
+    "2026-02-26 16:37:49,324 [INFO] websocket: Websocket connected",
+    "2026-02-26 16:37:49,324 [INFO] websocket: Websocket connected",
+    "2026-02-26 16:37:49,324 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 16:37:49,324 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 16:37:49,440 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 16:37:49,440 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 16:37:49,440 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 16:37:49,440 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 16:37:49,441 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 16:37:49,441 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 16:37:49,441 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 16:37:49,441 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 16:37:49,441 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 16:37:49,441 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 16:38:16,469 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 16:38:16,469 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 16:38:16,630 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+    "2026-02-26 16:38:16,630 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 79,
+    "minutes_remaining": 78,
     "expires_at": "2026-02-26T17:56:42.980000+00:00"
   },
   "errors": [],
-  "uptime": "00:30"
+  "uptime": "01:34"
 }
