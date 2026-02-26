@@ -28,9 +28,9 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err()  { echo -e "${RED}[x]${NC} $1"; exit 1; }
 
 # ── Config ──────────────────────────────────────────────────
-BOT_DIR="/root/tradovate-bot"
+BOT_DIR="/root/Tradovate-Bot"
 REPO_URL="https://github.com/motitap-dotcom/Tradovate-Bot.git"
-BRANCH="claude/tradovate-api-research-DPnl9"
+BRANCH="master"
 SERVICE_NAME="tradovate-bot"
 
 echo -e "${CYAN}"
@@ -187,7 +187,7 @@ case "${1:-status}" in
     logs50)  sudo journalctl -u "$SERVICE" -n 50 --no-pager ;;
     update)
         echo "Pulling latest code..."
-        cd /root/tradovate-bot
+        cd /root/Tradovate-Bot
         sudo systemctl stop "$SERVICE"
         git pull origin "$(git branch --show-current)"
         source venv/bin/activate
