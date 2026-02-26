@@ -1,6 +1,6 @@
 {
-  "command_id": "27aa8294",
-  "executed_at": "2026-02-26T20:39:41.368485+00:00",
+  "command_id": "auto",
+  "executed_at": "2026-02-26T20:42:34.770202+00:00",
   "result": {
     "ok": true,
     "data": {
@@ -16,12 +16,12 @@
         "contracts": "1/10",
         "trades": "1/12",
         "locked": false,
-        "timestamp": "2026-02-26 20:39:30",
-        "age_seconds": 11.4
+        "timestamp": "2026-02-26 20:42:33",
+        "age_seconds": 1.8
       },
       "token": {
         "status": "valid",
-        "remaining_minutes": 64.2
+        "remaining_minutes": 61.3
       },
       "journal": {
         "total_trades": 0,
@@ -30,7 +30,7 @@
         "win_rate": 0,
         "total_pnl": 0
       },
-      "server_time": "2026-02-26T20:39:41.368470+00:00"
+      "server_time": "2026-02-26T20:42:34.770188+00:00"
     }
   }
 }
