@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-02-26T00:00:00Z",
+  "bot_running": false,
+  "agent_running": false,
+  "account": {
+    "balance": 0,
+    "equity": 0,
+    "day_pnl": 0,
+    "unrealized_pnl": 0
+  },
+  "risk": {
+    "peak_balance": 0,
+    "drawdown_floor": 0,
+    "distance_to_floor": 0,
+    "daily_loss_remaining": 0,
+    "open_contracts": 0,
+    "max_contracts": 0,
+    "trades_today": 0,
+    "max_daily_trades": 0,
+    "locked": false,
+    "lock_reason": ""
+  },
+  "positions": [],
+  "recent_trades": [],
+  "recent_log": [],
+  "token": {
+    "status": "unknown",
+    "minutes_remaining": 0
+  },
+  "errors": [],
+  "uptime": "not started"
+}

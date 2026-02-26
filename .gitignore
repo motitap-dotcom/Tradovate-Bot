@@ -40,3 +40,8 @@ backtest_results/
 # VPS generated files
 bot-ctl.sh
 venv/
+
+# Agent runtime files
+agent.log
+.bot.pid
+.agent.pid
