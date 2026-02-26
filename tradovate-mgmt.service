@@ -1,0 +1,18 @@
+[Unit]
+Description=Tradovate Bot Management API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/Tradovate-Bot
+ExecStart=/usr/bin/python3 /root/Tradovate-Bot/remote_api.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/root/Tradovate-Bot/mgmt.log
+StandardError=append:/root/Tradovate-Bot/mgmt.log
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

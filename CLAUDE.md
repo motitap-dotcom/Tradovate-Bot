@@ -35,7 +35,9 @@ bot.py                  — Main orchestrator: lifecycle, market data, order exe
 ├── risk_manager.py     — Drawdown enforcement, position sizing, daily loss limits
 ├── config.py           — All settings, loaded from .env
 ├── browser_bot.py      — Alternative entry point: browser-based auth + bot
-└── get_token.py        — One-time token capture (requires display)
+├── get_token.py        — One-time token capture (requires display)
+├── remote_api.py       — HTTP management API (runs on VPS, port 9090)
+└── remote_ctl.py       — Remote control client (used from Claude Code)
 ```
 
 ## Running
@@ -45,6 +47,28 @@ python bot.py --live        # Main entry (uses .env TRADOVATE_ENV)
 python browser_bot.py       # Browser-based auth then run bot
 python get_token.py         # One-time token capture (needs display)
 ```
+
+## Remote Management (from Claude Code)
+
+The bot can be managed remotely via the management API.
+
+```bash
+# Control the bot from Claude Code:
+python remote_ctl.py status      # Full status (balance, P&L, token, trades)
+python remote_ctl.py start       # Start the bot
+python remote_ctl.py stop        # Stop the bot
+python remote_ctl.py restart     # Restart the bot
+python remote_ctl.py logs        # Last 50 log lines
+python remote_ctl.py logs 200    # Last 200 log lines
+python remote_ctl.py activity    # Recent signals/trades/locks
+python remote_ctl.py journal     # Trade journal summary
+python remote_ctl.py trades      # All trades list
+python remote_ctl.py token       # Auth token status
+python remote_ctl.py update      # Git pull + restart
+python remote_ctl.py ping        # Health check
+```
+
+Requires `VPS_URL` and `MGMT_API_KEY` in `.env`.
 
 ## Key Files
 
@@ -57,6 +81,9 @@ python get_token.py         # One-time token capture (needs display)
 | `strategies.py` | ORB + VWAP strategies |
 | `risk_manager.py` | Position sizing + drawdown protection |
 | `test_all.py` | Comprehensive test suite |
+| `remote_api.py` | Management API server (VPS side) |
+| `remote_ctl.py` | Remote control client (Claude Code side) |
+| `tradovate-mgmt.service` | Systemd service for mgmt API |
 
 ## Trading Rules (FundedNext Challenge)
 - Max trailing drawdown: $2,500

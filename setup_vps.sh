@@ -111,6 +111,10 @@ PROP_FIRM=fundednext
 # Logging
 LOG_LEVEL=INFO
 LOG_FILE=bot.log
+
+# Remote Management API
+MGMT_API_KEY=CHANGE_ME
+MGMT_PORT=9090
 ENVEOF
     chmod 600 "$ENV_FILE"
     log ".env template created."
@@ -159,6 +163,44 @@ EOF
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" > /dev/null 2>&1
 log "Systemd service installed and enabled."
+
+# ── 5b. Management API service ────────────────────────────
+MGMT_SERVICE="tradovate-mgmt"
+log "Installing management API service..."
+cat > "/etc/systemd/system/${MGMT_SERVICE}.service" << EOF
+[Unit]
+Description=Tradovate Bot Management API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=$BOT_DIR
+ExecStart=$BOT_DIR/venv/bin/python remote_api.py
+EnvironmentFile=$BOT_DIR/.env
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=$MGMT_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable "$MGMT_SERVICE" > /dev/null 2>&1
+log "Management API service installed."
+
+# Generate a random API key if not already set
+if grep -q "CHANGE_ME" "$ENV_FILE" 2>/dev/null; then
+    RANDOM_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+    sed -i "s/MGMT_API_KEY=CHANGE_ME/MGMT_API_KEY=$RANDOM_KEY/" "$ENV_FILE"
+    log "Generated random MGMT_API_KEY: $RANDOM_KEY"
+    warn "SAVE THIS KEY — you'll need it for remote_ctl.py"
+fi
 
 # ── 6. Log rotation ────────────────────────────────────────
 cat > "/etc/logrotate.d/$SERVICE_NAME" << EOF
@@ -235,6 +277,20 @@ if grep -q "your_password_here" "$ENV_FILE" 2>/dev/null; then
     echo ""
 fi
 
-echo -e "  ${GREEN}When ready, start the bot:${NC}"
-echo -e "      ${YELLOW}cd $BOT_DIR && ./bot-ctl.sh start${NC}"
+echo -e "  ${CYAN}Remote Management API:${NC}"
+echo ""
+echo -e "    ${GREEN}sudo systemctl start $MGMT_SERVICE${NC}   Start mgmt API"
+echo -e "    ${GREEN}sudo systemctl status $MGMT_SERVICE${NC}  Check mgmt API"
+echo ""
+echo -e "  ${CYAN}From Claude Code (after setting VPS_URL + MGMT_API_KEY in .env):${NC}"
+echo ""
+echo -e "    ${GREEN}python remote_ctl.py status${NC}    Full bot status"
+echo -e "    ${GREEN}python remote_ctl.py start${NC}     Start the bot"
+echo -e "    ${GREEN}python remote_ctl.py stop${NC}      Stop the bot"
+echo -e "    ${GREEN}python remote_ctl.py logs${NC}      View recent logs"
+echo ""
+echo -e "  ${GREEN}When ready, start everything:${NC}"
+echo -e "      ${YELLOW}cd $BOT_DIR${NC}"
+echo -e "      ${YELLOW}sudo systemctl start $MGMT_SERVICE${NC}"
+echo -e "      ${YELLOW}sudo systemctl start $SERVICE_NAME${NC}"
 echo ""
