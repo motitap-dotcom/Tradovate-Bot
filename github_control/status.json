@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-02-26T17:40:26.968704+00:00",
-  "bot_running": false,
-  "bot_pid": 0,
+  "timestamp": "2026-02-26T17:40:57.564443+00:00",
+  "bot_running": true,
+  "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 52423.2,
     "equity": 52423.2,
-    "day_pnl": 162.12,
+    "day_pnl": 200.0,
     "unrealized_pnl": 0
   },
   "risk": {
     "open_contracts": 1,
     "max_contracts": 10,
-    "trades_today": 1,
+    "trades_today": 0,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 2310.0
+    "distance_to_floor": 2500.0
   },
   "positions": [],
   "recent_trades": [
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:37:33,399 [INFO] risk_manager: New peak equity: 52748.20 | drawdown floor: 50248.20",
-    "2026-02-26 17:37:33,399 [INFO] risk_manager: New peak equity: 52748.20 | drawdown floor: 50248.20",
-    "2026-02-26 17:37:33,575 [INFO] bot: Status | balance=52423.20 | day_pnl=322.12 | to_floor=2500.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:37:33,575 [INFO] bot: Status | balance=52423.20 | day_pnl=322.12 | to_floor=2500.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:38:03,743 [INFO] risk_manager: New peak equity: 52778.20 | drawdown floor: 50278.20",
-    "2026-02-26 17:38:03,743 [INFO] risk_manager: New peak equity: 52778.20 | drawdown floor: 50278.20",
-    "2026-02-26 17:38:03,902 [INFO] bot: Status | balance=52423.20 | day_pnl=352.12 | to_floor=2500.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:38:03,902 [INFO] bot: Status | balance=52423.20 | day_pnl=352.12 | to_floor=2500.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:38:34,258 [INFO] bot: Status | balance=52423.20 | day_pnl=237.12 | to_floor=2385.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:38:34,258 [INFO] bot: Status | balance=52423.20 | day_pnl=237.12 | to_floor=2385.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:39:04,605 [INFO] bot: Status | balance=52423.20 | day_pnl=237.12 | to_floor=2385.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:39:04,605 [INFO] bot: Status | balance=52423.20 | day_pnl=237.12 | to_floor=2385.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:39:34,936 [INFO] bot: Status | balance=52423.20 | day_pnl=197.12 | to_floor=2345.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:39:34,936 [INFO] bot: Status | balance=52423.20 | day_pnl=197.12 | to_floor=2345.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:40:05,271 [INFO] bot: Status | balance=52423.20 | day_pnl=162.12 | to_floor=2310.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:40:05,271 [INFO] bot: Status | balance=52423.20 | day_pnl=162.12 | to_floor=2310.00 | contracts=1/10 | trades=1/12 | locked=False",
-    "2026-02-26 17:40:14,765 [WARNING] tradovate_api: Yahoo Finance request failed for CL=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
-    "2026-02-26 17:40:14,765 [WARNING] tradovate_api: Yahoo Finance request failed for CL=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
-    "2026-02-26 17:40:14,915 [INFO] bot: Signal 15 received. Stopping...",
-    "2026-02-26 17:40:14,915 [INFO] bot: Signal 15 received. Stopping..."
+    "File \"/usr/lib/python3.12/threading.py\", line 1073, in _bootstrap_inner",
+    "    self.run()",
+    "  File \"/usr/lib/python3.12/threading.py\", line 1010, in run",
+    "    self._target(*self._args, **self._kwargs)",
+    "  File \"/root/Tradovate-Bot/remote_control.py\", line 706, in _run",
+    "    server = HTTPServer((\"0.0.0.0\", port), RemoteControlHandler)",
+    "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+    "  File \"/usr/lib/python3.12/socketserver.py\", line 457, in __init__",
+    "    self.server_bind()",
+    "  File \"/usr/lib/python3.12/http/server.py\", line 136, in server_bind",
+    "    socketserver.TCPServer.server_bind(self)",
+    "  File \"/usr/lib/python3.12/socketserver.py\", line 473, in server_bind",
+    "    self.socket.bind(self.server_address)",
+    "OSError: [Errno 98] Address already in use",
+    "2026-02-26 17:40:54,126 [INFO] risk_manager: SOD balance initialized from API: 52423.20",
+    "2026-02-26 17:40:54,126 [INFO] risk_manager: SOD balance initialized from API: 52423.20",
+    "2026-02-26 17:40:54,126 [INFO] risk_manager: New peak equity: 52623.20 | drawdown floor: 50123.20",
+    "2026-02-26 17:40:54,126 [INFO] risk_manager: New peak equity: 52623.20 | drawdown floor: 50123.20",
+    "2026-02-26 17:40:54,944 [INFO] bot: Status | balance=52423.20 | day_pnl=200.00 | to_floor=2500.00 | contracts=1/10 | trades=0/12 | locked=False",
+    "2026-02-26 17:40:54,944 [INFO] bot: Status | balance=52423.20 | day_pnl=200.00 | to_floor=2500.00 | contracts=1/10 | trades=0/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 76,
-    "expires_at": "2026-02-26T18:56:04.998000+00:00"
+    "minutes_remaining": 79,
+    "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "not running"
+  "uptime": "00:30"
 }
