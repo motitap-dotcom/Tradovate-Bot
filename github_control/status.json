@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T17:08:08.946265+00:00",
+  "timestamp": "2026-02-26T17:09:10.679422+00:00",
   "bot_running": true,
   "bot_pid": 261625,
   "agent_running": true,
@@ -241,32 +241,32 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:07:40,683 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:07:40,683 [INFO] websocket: Websocket connected",
-    "2026-02-26 17:07:40,684 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:07:40,684 [INFO] tradovate_api: Market data WebSocket connected",
-    "2026-02-26 17:07:40,798 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:07:40,798 [INFO] tradovate_api: Market data WebSocket authenticated",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: NQH6",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: ESH6",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: GCH6",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:07:40,799 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-    "2026-02-26 17:07:45,181 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 17:07:45,181 [WARNING] bot: Cash balance error: Account not found",
-    "2026-02-26 17:07:45,182 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
-    "2026-02-26 17:07:45,182 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
-    "2026-02-26 17:07:45,344 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
-    "2026-02-26 17:07:45,344 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
+    "2026-02-26 17:08:45,483 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:08:45,483 [INFO] websocket: Websocket connected",
+    "2026-02-26 17:08:45,484 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:08:45,484 [INFO] tradovate_api: Market data WebSocket connected",
+    "2026-02-26 17:08:45,598 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:08:45,598 [INFO] tradovate_api: Market data WebSocket authenticated",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: NQH6",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: ESH6",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: GCH6",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:08:45,599 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+    "2026-02-26 17:08:45,828 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 17:08:45,828 [WARNING] bot: Cash balance error: Account not found",
+    "2026-02-26 17:08:45,829 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
+    "2026-02-26 17:08:45,829 [WARNING] bot: Resetting account_id to known FundedNext account (39996695)",
+    "2026-02-26 17:08:45,990 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False",
+    "2026-02-26 17:08:45,990 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 72,
+    "minutes_remaining": 71,
     "expires_at": "2026-02-26T18:20:37.992000+00:00"
   },
   "errors": [],
-  "uptime": "07:31"
+  "uptime": "08:33"
 }
