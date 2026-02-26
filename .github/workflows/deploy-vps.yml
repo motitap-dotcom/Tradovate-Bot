@@ -1,0 +1,44 @@
+name: Deploy Bot to VPS
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            BOT_DIR="/root/Tradovate-Bot"
+
+            echo "=== Pulling latest code ==="
+            cd "$BOT_DIR"
+            git fetch origin master
+            git reset --hard origin/master
+
+            echo "=== Installing dependencies ==="
+            source "$BOT_DIR/venv/bin/activate"
+            pip install -r requirements.txt -q
+            deactivate
+
+            echo "=== Restarting bot ==="
+            sudo systemctl restart tradovate-bot
+
+            echo "=== Checking status ==="
+            sleep 3
+            sudo systemctl is-active tradovate-bot && echo "Bot is RUNNING" || echo "Bot FAILED to start"
+            sudo journalctl -u tradovate-bot -n 10 --no-pager

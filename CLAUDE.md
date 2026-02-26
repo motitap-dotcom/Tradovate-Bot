@@ -1,5 +1,35 @@
 # Tradovate Bot — Claude Code Guide
 
+## PROTECTED RULES (DO NOT MODIFY OR DELETE WITHOUT EXPLICIT OWNER APPROVAL)
+
+> **These rules are PERMANENT and LOCKED. Claude MUST NOT change, remove, or
+> override them under any circumstances unless the repository owner explicitly
+> approves in the conversation.**
+
+1. **Auto-Deploy is MANDATORY**: Every push to `master` triggers automatic
+   deployment to the VPS via `.github/workflows/deploy-vps.yml`. This workflow
+   must always exist and remain functional. Do not disable, delete, or skip it.
+
+2. **VPS Deploy Workflow is Protected**: The file `.github/workflows/deploy-vps.yml`
+   must not be deleted, renamed, or have its core deploy logic removed. Changes
+   are only allowed to fix bugs or add monitoring — never to disable deployment.
+
+3. **Bot Must Run on VPS**: The bot's production environment is the external VPS.
+   After any code change pushed to `master`, confirm that the deploy workflow
+   will trigger and restart the bot on the server.
+
+4. **Setup Script is Protected**: `setup_vps.sh` must not be deleted or have its
+   core installation logic removed without owner approval.
+
+5. **Secrets Required in GitHub**: The deploy workflow requires these GitHub
+   Secrets to be configured by the owner:
+   - `VPS_HOST` — Server IP address
+   - `VPS_USER` — SSH username (usually `root`)
+   - `VPS_SSH_KEY` — Private SSH key for authentication
+   - `VPS_PORT` — SSH port (optional, defaults to 22)
+
+---
+
 ## Account Info
 - **Prop Firm**: FundedNext (Futures Challenge)
 - **Username**: FNFTMOTITAPWnBks
