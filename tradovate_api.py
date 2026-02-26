@@ -517,19 +517,45 @@ class TradovateAPI:
         }
 
     def _fetch_account_id(self):
-        """Get the account ID. Try API first, fall back to known FundedNext account."""
+        """Get the account ID. Try current API, then alternate, then hardcoded fallback."""
         accounts = self.get_accounts()
         if accounts:
             self.account_id = accounts[0]["id"]
             self.account_spec = accounts[0].get("name", self.account_spec)
             logger.info("Account ID: %s (%s)", self.account_id, self.account_spec)
+            return
+
+        # Current API returned empty — try the other endpoint.
+        # FundedNext tokens sometimes auth on live but account is on live too.
+        alt_base = (
+            "https://live.tradovateapi.com/v1"
+            if "demo" in self.base_url
+            else "https://demo.tradovateapi.com/v1"
+        )
+        try:
+            resp = requests.get(
+                f"{alt_base}/account/list",
+                headers=self._headers(), timeout=30,
+            )
+            alt_accounts = resp.json() if resp.status_code == 200 else []
+        except Exception:
+            alt_accounts = []
+
+        if alt_accounts:
+            old_base = self.base_url
+            self.base_url = alt_base
+            self.account_id = alt_accounts[0]["id"]
+            self.account_spec = alt_accounts[0].get("name", self.account_spec)
+            logger.info(
+                "Account found on alternate API (%s → %s): %s (%s)",
+                old_base, alt_base, self.account_id, self.account_spec,
+            )
         else:
-            # API returned empty — use known FundedNext demo account.
-            # Don't trust saved token's account_id (may be from live endpoint).
+            # Last resort: use known FundedNext account
             self.account_id = 39996695
             self.account_spec = "FNFTCHMOTITAPIRO67510"
             logger.warning(
-                "Account list empty — using known FundedNext account: %s (%s)",
+                "Account list empty on both APIs — using known FundedNext account: %s (%s)",
                 self.account_id, self.account_spec,
             )
 
