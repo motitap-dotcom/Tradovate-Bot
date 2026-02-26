@@ -1,8 +1,36 @@
 {
-  "command_id": "f2634caa",
-  "executed_at": "2026-02-26T21:02:44.692797+00:00",
+  "command_id": "auto",
+  "executed_at": "2026-02-26T21:03:47.818234+00:00",
   "result": {
     "ok": true,
-    "message": "Stop warning: Command '['systemctl', 'stop', 'tradovate-bot']' timed out after 15 seconds\nGit pull: Already up to date.\nBot restarted. Status: active"
+    "data": {
+      "bot": {
+        "running": true,
+        "pid": 303606,
+        "systemd": "active"
+      },
+      "trading": {
+        "balance": 50000.0,
+        "day_pnl": 0.0,
+        "to_floor": 2500.0,
+        "contracts": "0/10",
+        "trades": "0/12",
+        "locked": false,
+        "timestamp": "2026-02-26 21:03:31",
+        "age_seconds": 16.8
+      },
+      "token": {
+        "status": "valid",
+        "remaining_minutes": 79.7
+      },
+      "journal": {
+        "total_trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "win_rate": 0,
+        "total_pnl": 0
+      },
+      "server_time": "2026-02-26T21:03:47.818222+00:00"
+    }
   }
 }
