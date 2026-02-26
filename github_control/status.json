@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-26T17:43:34.177221+00:00",
+  "timestamp": "2026-02-26T17:44:05.282611+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
     "balance": 52344.12,
     "equity": 52344.12,
-    "day_pnl": 325.92,
+    "day_pnl": 355.92,
     "unrealized_pnl": 0
   },
   "risk": {
@@ -15,7 +15,7 @@
     "trades_today": 2,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 2373.8
+    "distance_to_floor": 2403.8
   },
   "positions": [],
   "recent_trades": [
@@ -241,8 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:42:15,135 [INFO] strategies: VWAP GC SHORT #1 at 5189.2002 | VWAP=5190.0360 | SL=5195.0360 TP=5179.2002",
-    "2026-02-26 17:42:15,135 [INFO] strategies: VWAP GC SHORT #1 at 5189.2002 | VWAP=5190.0360 | SL=5195.0360 TP=5179.2002",
     "2026-02-26 17:42:15,135 [INFO] risk_manager: Position size for GC: 1 contracts | budget=750.00 | risk/contract=500.00",
     "2026-02-26 17:42:15,135 [INFO] risk_manager: Position size for GC: 1 contracts | budget=750.00 | risk/contract=500.00",
     "2026-02-26 17:42:15,135 [INFO] bot: SIGNAL: Sell GC 1 @ market | SL=5195.0360 TP=5179.2002 | VWAP short #1 at 5189.2002 (VWAP=5190.0360)",
@@ -260,13 +258,15 @@
     "2026-02-26 17:42:56,309 [INFO] bot: Status | balance=52344.12 | day_pnl=445.92 | to_floor=2493.80 | contracts=2/10 | trades=2/12 | locked=False",
     "2026-02-26 17:42:56,309 [INFO] bot: Status | balance=52344.12 | day_pnl=445.92 | to_floor=2493.80 | contracts=2/10 | trades=2/12 | locked=False",
     "2026-02-26 17:43:26,653 [INFO] bot: Status | balance=52344.12 | day_pnl=325.92 | to_floor=2373.80 | contracts=2/10 | trades=2/12 | locked=False",
-    "2026-02-26 17:43:26,653 [INFO] bot: Status | balance=52344.12 | day_pnl=325.92 | to_floor=2373.80 | contracts=2/10 | trades=2/12 | locked=False"
+    "2026-02-26 17:43:26,653 [INFO] bot: Status | balance=52344.12 | day_pnl=325.92 | to_floor=2373.80 | contracts=2/10 | trades=2/12 | locked=False",
+    "2026-02-26 17:43:56,988 [INFO] bot: Status | balance=52344.12 | day_pnl=355.92 | to_floor=2403.80 | contracts=2/10 | trades=2/12 | locked=False",
+    "2026-02-26 17:43:56,988 [INFO] bot: Status | balance=52344.12 | day_pnl=355.92 | to_floor=2403.80 | contracts=2/10 | trades=2/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 77,
+    "minutes_remaining": 76,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "03:07"
+  "uptime": "03:38"
 }
