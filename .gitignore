@@ -43,5 +43,6 @@ venv/
 
 # Agent runtime files
 agent.log
+bot.pid
 .bot.pid
 .agent.pid
