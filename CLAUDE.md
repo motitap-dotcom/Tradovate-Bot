@@ -1,5 +1,18 @@
 # Tradovate Bot — Claude Code Guide
 
+## !!! MANDATORY FIRST STEP — EVERY SESSION !!!
+
+**Before doing ANYTHING else in any session, you MUST:**
+1. **Read this entire CLAUDE.md file first** — it contains critical rules, architecture, and context
+2. **Read `config.py`** — current trading settings, enabled contracts, risk parameters
+3. **Read `bot.py`** — main orchestrator logic, understand the current flow
+4. **Run `python bot_cmd.py read`** — check latest bot status from VPS
+
+**Do NOT skip these steps. Do NOT start coding, debugging, or answering questions before completing them.**
+**This ensures you always have full context and don't break anything.**
+
+---
+
 ## !!! REMOTE CONTROL — READ THIS FIRST !!!
 
 **The bot runs on a VPS. You control it from here via GitHub.**
