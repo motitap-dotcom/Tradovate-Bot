@@ -1,21 +1,21 @@
 {
-  "timestamp": "2026-02-26T18:24:16.393152+00:00",
+  "timestamp": "2026-02-26T18:24:58.847741+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
-    "balance": 54809.5,
-    "equity": 54809.5,
-    "day_pnl": 2176.3,
+    "balance": 54806.4,
+    "equity": 54806.4,
+    "day_pnl": 1463.2,
     "unrealized_pnl": 0
   },
   "risk": {
-    "open_contracts": 1,
+    "open_contracts": 2,
     "max_contracts": 10,
-    "trades_today": 4,
+    "trades_today": 5,
     "max_daily_trades": 12,
     "locked": false,
-    "distance_to_floor": 2500.0
+    "distance_to_floor": 1786.9
   },
   "positions": [],
   "recent_trades": [
@@ -241,10 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 18:22:52,985 [INFO] bot: Status | balance=54809.50 | day_pnl=2176.30 | to_floor=2500.00 | contracts=1/10 | trades=4/12 | locked=False",
-    "2026-02-26 18:22:52,985 [INFO] bot: Status | balance=54809.50 | day_pnl=2176.30 | to_floor=2500.00 | contracts=1/10 | trades=4/12 | locked=False",
-    "2026-02-26 18:23:23,316 [INFO] bot: Status | balance=54809.50 | day_pnl=2176.30 | to_floor=2500.00 | contracts=1/10 | trades=4/12 | locked=False",
-    "2026-02-26 18:23:23,316 [INFO] bot: Status | balance=54809.50 | day_pnl=2176.30 | to_floor=2500.00 | contracts=1/10 | trades=4/12 | locked=False",
     "2026-02-26 18:23:53,637 [INFO] bot: Status | balance=54809.50 | day_pnl=2176.30 | to_floor=2500.00 | contracts=1/10 | trades=4/12 | locked=False",
     "2026-02-26 18:23:53,637 [INFO] bot: Status | balance=54809.50 | day_pnl=2176.30 | to_floor=2500.00 | contracts=1/10 | trades=4/12 | locked=False",
     "2026-02-26 18:24:03,635 [INFO] strategies: VWAP GC LONG #2 at 5190.6001 | VWAP=5190.0360 | SL=5185.0360 TP=5200.6001",
@@ -260,13 +256,17 @@
     "2026-02-26 18:24:03,986 [INFO] tradovate_api: OCO placed: SL orderId=409583841263 TP orderId=409583841264",
     "2026-02-26 18:24:03,986 [INFO] tradovate_api: OCO placed: SL orderId=409583841263 TP orderId=409583841264",
     "2026-02-26 18:24:03,986 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
-    "2026-02-26 18:24:03,986 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'"
+    "2026-02-26 18:24:03,986 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
+    "2026-02-26 18:24:23,976 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
+    "2026-02-26 18:24:23,976 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
+    "2026-02-26 18:24:54,304 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False",
+    "2026-02-26 18:24:54,304 [INFO] bot: Status | balance=54806.40 | day_pnl=1463.20 | to_floor=1786.90 | contracts=2/10 | trades=5/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 36,
+    "minutes_remaining": 35,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "43:49"
+  "uptime": "44:31"
 }
