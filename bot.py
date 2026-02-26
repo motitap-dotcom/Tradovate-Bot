@@ -26,6 +26,7 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+from remote_control import start_remote_control
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -127,6 +128,10 @@ class TradovateBot:
             self.md_stream = self._start_market_data()
             if self.md_stream:
                 self._subscribe_market_data()
+
+        # Start remote control API (background thread)
+        start_remote_control(bot=self, port=8080)
+        logger.info("Remote control API started on port 8080")
 
         # Main loop
         self.running = True
