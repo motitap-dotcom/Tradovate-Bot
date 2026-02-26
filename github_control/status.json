@@ -1,18 +1,18 @@
 {
-  "timestamp": "2026-02-26T17:47:42.165801+00:00",
+  "timestamp": "2026-02-26T17:48:12.402847+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
   "account": {
-    "balance": 52344.12,
-    "equity": 52344.12,
-    "day_pnl": 695.92,
+    "balance": 52341.02,
+    "equity": 52341.02,
+    "day_pnl": 822.82,
     "unrealized_pnl": 0
   },
   "risk": {
-    "open_contracts": 2,
+    "open_contracts": 3,
     "max_contracts": 10,
-    "trades_today": 2,
+    "trades_today": 3,
     "max_daily_trades": 12,
     "locked": false,
     "distance_to_floor": 2500.0
@@ -241,10 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 17:46:58,863 [INFO] risk_manager: New peak equity: 53119.12 | drawdown floor: 50619.12",
-    "2026-02-26 17:46:58,863 [INFO] risk_manager: New peak equity: 53119.12 | drawdown floor: 50619.12",
-    "2026-02-26 17:46:59,055 [INFO] bot: Status | balance=52344.12 | day_pnl=695.92 | to_floor=2500.00 | contracts=2/10 | trades=2/12 | locked=False",
-    "2026-02-26 17:46:59,055 [INFO] bot: Status | balance=52344.12 | day_pnl=695.92 | to_floor=2500.00 | contracts=2/10 | trades=2/12 | locked=False",
     "2026-02-26 17:47:29,395 [INFO] bot: Status | balance=52344.12 | day_pnl=695.92 | to_floor=2500.00 | contracts=2/10 | trades=2/12 | locked=False",
     "2026-02-26 17:47:29,395 [INFO] bot: Status | balance=52344.12 | day_pnl=695.92 | to_floor=2500.00 | contracts=2/10 | trades=2/12 | locked=False",
     "2026-02-26 17:47:41,160 [INFO] strategies: VWAP GC LONG #1 at 5190.2002 | VWAP=5190.0360 | SL=5185.0360 TP=5200.2002",
@@ -260,13 +256,17 @@
     "2026-02-26 17:47:41,512 [INFO] tradovate_api: OCO placed: SL orderId=409583841200 TP orderId=409583841201",
     "2026-02-26 17:47:41,512 [INFO] tradovate_api: OCO placed: SL orderId=409583841200 TP orderId=409583841201",
     "2026-02-26 17:47:41,512 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
-    "2026-02-26 17:47:41,512 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'"
+    "2026-02-26 17:47:41,512 [ERROR] tradovate_api: Quote callback error for GCH6: 'TradovateBot' object has no attribute 'market_data'",
+    "2026-02-26 17:47:59,556 [INFO] risk_manager: New peak equity: 53246.02 | drawdown floor: 50746.02",
+    "2026-02-26 17:47:59,556 [INFO] risk_manager: New peak equity: 53246.02 | drawdown floor: 50746.02",
+    "2026-02-26 17:47:59,718 [INFO] bot: Status | balance=52341.02 | day_pnl=822.82 | to_floor=2500.00 | contracts=3/10 | trades=3/12 | locked=False",
+    "2026-02-26 17:47:59,718 [INFO] bot: Status | balance=52341.02 | day_pnl=822.82 | to_floor=2500.00 | contracts=3/10 | trades=3/12 | locked=False"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 73,
+    "minutes_remaining": 72,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "07:15"
+  "uptime": "07:45"
 }
