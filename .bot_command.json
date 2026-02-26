@@ -1,5 +1,6 @@
 {
-  "command": "",
-  "command_id": "",
-  "sent_at": ""
+  "command": "restart",
+  "command_id": "72d8e028",
+  "args": {},
+  "sent_at": "2026-02-26T20:52:54.868874+00:00"
 }
