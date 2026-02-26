@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T19:23:52.667647+00:00",
+  "timestamp": "2026-02-26T19:24:17.628693+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
@@ -241,8 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 19:19:14,586 [WARNING] tradovate_api: Yahoo Finance request failed for ES=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
-    "2026-02-26 19:19:14,586 [WARNING] tradovate_api: Yahoo Finance request failed for ES=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
     "2026-02-26 19:19:32,609 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 19:19:32,609 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 19:20:03,160 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
@@ -260,13 +258,15 @@
     "2026-02-26 19:23:05,932 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 19:23:05,932 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 19:23:36,267 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 19:23:36,267 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
+    "2026-02-26 19:23:36,267 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 19:24:06,617 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 19:24:06,617 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 52,
+    "minutes_remaining": 51,
     "expires_at": "2026-02-26T20:15:44.687000+00:00"
   },
   "errors": [],
-  "uptime": "01:43:25"
+  "uptime": "01:43:50"
 }
