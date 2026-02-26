@@ -1,9 +1,8 @@
 {
-  "command_id": "89a1580a",
-  "executed_at": "2026-02-26T21:28:45.121748+00:00",
+  "command_id": "auto",
+  "executed_at": "2026-02-26T21:29:39.541166+00:00",
   "result": {
     "ok": true,
-    "message": "Service started. Status: active",
     "data": {
       "bot": {
         "running": true,
@@ -11,18 +10,18 @@
         "systemd": "active"
       },
       "trading": {
-        "balance": 50000.0,
+        "balance": 57369.44,
         "day_pnl": 0.0,
         "to_floor": 2500.0,
         "contracts": "0/10",
         "trades": "0/12",
-        "locked": false,
-        "timestamp": "2026-02-26 21:26:38",
-        "age_seconds": 127.1
+        "locked": true,
+        "timestamp": "2026-02-26 21:29:17",
+        "age_seconds": 22.5
       },
       "token": {
         "status": "valid",
-        "remaining_minutes": 80.0
+        "remaining_minutes": 79.1
       },
       "journal": {
         "total_trades": 0,
@@ -31,7 +30,7 @@
         "win_rate": 0,
         "total_pnl": 0
       },
-      "server_time": "2026-02-26T21:28:45.121736+00:00"
+      "server_time": "2026-02-26T21:29:39.541124+00:00"
     }
   }
 }
