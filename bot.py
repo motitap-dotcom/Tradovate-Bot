@@ -282,16 +282,6 @@ class TradovateBot:
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
-                            elif not window.breakout_fired:
-                                # Range is set — check if price already broke out
-                                # during warmup. Mark as fired so we don't trigger
-                                # a stale breakout on the first live tick.
-                                if c > window.range_high or c < window.range_low:
-                                    window.breakout_fired = True
-                                    logger.debug(
-                                        "Warmup: consumed stale %s ORB %dm breakout at %.2f",
-                                        symbol, window.window_minutes, c,
-                                    )
 
                     fed += 1
 
