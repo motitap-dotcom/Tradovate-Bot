@@ -1,5 +1,10 @@
 # Tradovate Bot — Claude Code Guide
 
+## Deployment
+- **VPS**: User has a VPS server for running the bot 24/7
+- **Services**: systemd services configured for bot + dashboard auto-restart
+- **Goal**: All code changes should be pushed to Git, then pulled on the VPS
+
 ## Account Info
 - **Prop Firm**: FundedNext (Futures Challenge)
 - **Username**: FNFTMOTITAPWnBks
