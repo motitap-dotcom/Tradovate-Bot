@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-26T18:49:22.553839+00:00",
+  "timestamp": "2026-02-26T18:49:59.637946+00:00",
   "bot_running": true,
   "bot_pid": 265344,
   "agent_running": true,
@@ -241,8 +241,6 @@
     "losses": 0
   },
   "recent_log": [
-    "2026-02-26 18:45:07,685 [INFO] risk_manager: New peak equity: 56063.30 | drawdown floor: 53563.30",
-    "2026-02-26 18:45:07,685 [INFO] risk_manager: New peak equity: 56063.30 | drawdown floor: 53563.30",
     "2026-02-26 18:45:07,852 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:45:07,852 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:45:38,184 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
@@ -260,13 +258,15 @@
     "2026-02-26 18:48:40,232 [INFO] bot: Status | balance=55553.30 | day_pnl=3590.10 | to_floor=2450.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:48:40,232 [INFO] bot: Status | balance=55553.30 | day_pnl=3590.10 | to_floor=2450.00 | contracts=1/10 | trades=6/12 | locked=True",
     "2026-02-26 18:49:10,549 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
-    "2026-02-26 18:49:10,549 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
+    "2026-02-26 18:49:10,549 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:49:40,868 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True",
+    "2026-02-26 18:49:40,868 [INFO] bot: Status | balance=55553.30 | day_pnl=3640.10 | to_floor=2500.00 | contracts=1/10 | trades=6/12 | locked=True"
   ],
   "token": {
     "status": "valid",
-    "minutes_remaining": 11,
+    "minutes_remaining": 10,
     "expires_at": "2026-02-26T19:00:27.463000+00:00"
   },
   "errors": [],
-  "uptime": "01:08:55"
+  "uptime": "01:09:32"
 }
