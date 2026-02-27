@@ -4,6 +4,9 @@ Tradovate Trading Bot
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
 
+Deployment: Push & Flow — push to main triggers automatic server update.
+No diagnostics (ping/curl/ssh) needed. (Updated 2026-02-27)
+
 Usage:
     python bot.py              # Run in demo mode (default)
     python bot.py --live       # Run in live mode (use with caution)
