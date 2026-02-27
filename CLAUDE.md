@@ -89,6 +89,9 @@ python -m pytest test_all.py -v
 ## Development Workflow
 Always reference `deployment_config.md` for server connection details. The server is a Contabo VPS. Use the Webhook CI/CD method to deploy. Do not ask the user for these details as they are static.
 
+### נוהל סיום משימה
+בכל פעם שסיימת לכתוב קוד, לתקן באג או לבצע שינוי לבקשת המשתמש, עליך לשאול באופן אקטיבי: **"סיימתי, האם לדחוף (Push) ל-main כדי לעדכן את השרת?"**. אל תחכה שהמשתמש יזכיר לך את זה – זו האחריות שלך לוודא שהקוד מגיע לשרת.
+
 ## Health Check Protocol
 If the user asks "מה מצב השרת?" or "Is the server okay?" (or any similar question about server/bot health), run the diagnostic commands from the **Diagnostics** section in `deployment_config.md` and report the status. If a check fails, suggest a solution (e.g., restart the webhook listener, restart the bot process, or check the Contabo dashboard).
 
