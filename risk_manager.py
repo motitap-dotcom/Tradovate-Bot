@@ -7,14 +7,20 @@ Enforces prop firm challenge rules:
   - Emergency brake at configurable % of daily loss budget
   - Dynamic position sizing per contract based on tick value
   - Maximum contract limits
+  - Daily profit cap (consistency rule) — persists across restarts
 """
 
+import json
 import logging
 import math
 from datetime import datetime, date
+from pathlib import Path
 from typing import Optional
 
 import config
+
+# Persist day-start balance so restarts don't reset daily P&L
+_DAY_STATE_FILE = Path(__file__).parent / ".day_state.json"
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +72,71 @@ class RiskManager:
             self.max_daily_trades,
             f"${self.daily_profit_cap}" if self.daily_profit_cap else "None",
         )
+
+    # ─────────────────────────────────────────
+    # Persistent day-start balance (survives restarts)
+    # ─────────────────────────────────────────
+
+    def _save_day_state(self, date_str: str, day_start_balance: float):
+        """Save today's start-of-day balance to disk."""
+        try:
+            _DAY_STATE_FILE.write_text(
+                json.dumps({"date": date_str, "day_start_balance": day_start_balance})
+            )
+        except Exception as e:
+            logger.warning("Failed to save day state: %s", e)
+
+    def _load_day_state(self) -> Optional[dict]:
+        """Load saved day-start state from disk."""
+        try:
+            if _DAY_STATE_FILE.exists():
+                return json.loads(_DAY_STATE_FILE.read_text())
+        except Exception as e:
+            logger.warning("Failed to load day state: %s", e)
+        return None
+
+    def set_initial_balance(self, balance: float):
+        """
+        Set balance from API on startup, preserving daily P&L if the bot
+        restarts mid-day.  This prevents the daily profit cap from being
+        bypassed by a restart.
+        """
+        saved = self._load_day_state()
+        today_str = date.today().isoformat()
+
+        if saved and saved.get("date") == today_str:
+            # ── Same-day restart: recover the real day-start balance ──
+            self.day_start_balance = saved["day_start_balance"]
+            self.day_pnl = balance - self.day_start_balance
+            logger.info(
+                "Mid-day restart detected | day_start=%.2f | current=%.2f | day_pnl=%.2f",
+                self.day_start_balance, balance, self.day_pnl,
+            )
+            # Re-apply profit cap check immediately
+            if self.daily_profit_cap and self.day_pnl >= self.daily_profit_cap:
+                self._lock(
+                    f"DAILY PROFIT CAP (resumed): day P&L ${self.day_pnl:.2f} "
+                    f">= cap ${self.daily_profit_cap:.2f}"
+                )
+            # Re-apply daily loss check
+            if self.daily_loss_limit:
+                brake_threshold = -self.daily_loss_limit * self.brake_pct
+                if self.day_pnl <= brake_threshold:
+                    self._lock(
+                        f"DAILY LOSS BRAKE (resumed): day P&L ${self.day_pnl:.2f}"
+                    )
+        else:
+            # ── New trading day: record start-of-day balance ──
+            self.day_start_balance = balance
+            self.day_pnl = 0.0
+            self.trading_locked = False
+            self.lock_reason = ""
+            self._save_day_state(today_str, balance)
+            logger.info("New trading day | day_start=%.2f", balance)
+
+        self.current_balance = balance
+        self.peak_balance = max(balance, self.peak_balance)
+        self.drawdown_floor = self.peak_balance - self.max_trailing_drawdown
 
     # ─────────────────────────────────────────
     # Balance updates

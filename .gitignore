@@ -25,6 +25,9 @@ credentials.json
 api_keys.json
 .tradovate_token.json
 
+# Runtime state (per-machine)
+.day_state.json
+
 # Logs
 logs/
 *.log
