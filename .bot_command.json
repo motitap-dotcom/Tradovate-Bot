@@ -1,6 +1,6 @@
 {
-  "command": "update",
-  "command_id": "377ba5a0",
+  "command": "status",
+  "command_id": "8fca4e1a",
   "args": {},
-  "sent_at": "2026-02-27T07:47:22.493951+00:00"
+  "sent_at": "2026-02-27T07:51:32.259915+00:00"
 }
