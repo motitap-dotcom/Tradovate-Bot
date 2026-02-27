@@ -86,11 +86,8 @@ python get_token.py         # One-time token capture (needs display)
 python -m pytest test_all.py -v
 ```
 
-## Development Workflow
-Always reference `deployment_config.md` for server connection details. The server is a Contabo VPS. Use the Webhook CI/CD method to deploy. Do not ask the user for these details as they are static.
-
-## Health Check Protocol
-If the user asks "מה מצב השרת?" or "Is the server okay?" (or any similar question about server/bot health), run the diagnostic commands from the **Diagnostics** section in `deployment_config.md` and report the status. If a check fails, suggest a solution (e.g., restart the webhook listener, restart the bot process, or check the Contabo dashboard).
+## Deployment
+To deploy, push to `main` branch. The server will auto-update via Webhook. Do not attempt SSH, ping, or manual health checks — they do not work from this environment.
 
 ## Common Issues
 1. **"Incorrect password"**: Credentials are correct; try `live` API (not `demo` for auth)
