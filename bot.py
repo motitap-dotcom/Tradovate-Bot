@@ -16,6 +16,7 @@ Usage:
 import argparse
 import json
 import logging
+import os
 import signal
 import sys
 import time
@@ -29,6 +30,11 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+
+# ─────────────────────────────────────────────
+# Live status file path
+# ─────────────────────────────────────────────
+LIVE_STATUS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_status.json")
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -110,6 +116,15 @@ class TradovateBot:
                 logger.error("Authentication failed. Exiting.")
                 sys.exit(1)
             logger.info("Authenticated successfully")
+
+            # Fetch initial balance and save to live_status.json
+            self._sync_balance()
+            self._save_live_status(event="bot_started")
+            self._send_telegram(
+                f"<b>Bot Started</b>\n"
+                f"Env: {config.ENVIRONMENT}\n"
+                f"Balance: ${self.risk.current_balance:.2f}"
+            )
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
@@ -147,6 +162,17 @@ class TradovateBot:
             self.md_stream.stop()
 
         self._print_summary()
+
+        # Final status save and notification
+        if not self.dry_run:
+            self._save_live_status(event="bot_stopped")
+            self._send_telegram(
+                f"<b>Bot Stopped</b>\n"
+                f"Balance: ${self.risk.current_balance:.2f}\n"
+                f"Day P&L: ${self.risk.day_pnl:.2f}\n"
+                f"Trades today: {self.risk.trades_today}"
+            )
+
         logger.info("Bot stopped.")
 
     # ─────────────────────────────────────────
@@ -469,6 +495,29 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+
+            # Update live_status.json with trade info
+            self._save_live_status(
+                event="trade_executed",
+                trade_info={
+                    "symbol": signal.symbol,
+                    "direction": signal.direction.value,
+                    "qty": signal.qty,
+                    "stop_loss": signal.stop_loss,
+                    "take_profit": signal.take_profit,
+                    "reason": signal.reason,
+                    "order_id": result.get("orderId"),
+                },
+            )
+
+            # Send Telegram notification
+            self._send_telegram(
+                f"<b>Trade Executed</b>\n"
+                f"{signal.direction.value} {signal.symbol} x{signal.qty}\n"
+                f"SL: {signal.stop_loss:.4f} | TP: {signal.take_profit:.4f}\n"
+                f"Reason: {signal.reason}\n"
+                f"Balance: ${self.risk.current_balance:.2f}"
+            )
         else:
             logger.error("Order placement failed for %s", signal.symbol)
 
@@ -610,10 +659,80 @@ class TradovateBot:
                 if balance is not None:
                     unrealized = snapshot.get("openPnL", 0.0)
                     self.risk.update_balance(balance, unrealized)
+                    # Save real balance to live_status.json
+                    self._save_live_status(event="balance_sync")
                 else:
                     logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
+
+    # ─────────────────────────────────────────
+    # Live status reporting
+    # ─────────────────────────────────────────
+
+    def _save_live_status(self, event: str = "update", trade_info: dict = None):
+        """
+        Write current account status to live_status.json.
+        Called after every balance sync and after every trade execution.
+        All numbers come from the real API — never fabricated.
+        """
+        try:
+            status = self.risk.status()
+            data = {
+                "timestamp": now_et().isoformat(),
+                "event": event,
+                "account": {
+                    "balance": status["balance"],
+                    "equity": status["equity"],
+                    "day_pnl": status["day_pnl"],
+                    "peak_balance": status["peak_balance"],
+                    "drawdown_floor": status["drawdown_floor"],
+                    "distance_to_floor": status["distance_to_floor"],
+                },
+                "risk": {
+                    "open_contracts": status["open_contracts"],
+                    "max_contracts": status["max_contracts"],
+                    "trades_today": status["trades_today"],
+                    "max_daily_trades": status["max_daily_trades"],
+                    "locked": status["locked"],
+                    "lock_reason": status["lock_reason"],
+                },
+                "environment": config.ENVIRONMENT,
+                "dry_run": self.dry_run,
+            }
+            if trade_info:
+                data["last_trade"] = trade_info
+
+            with open(LIVE_STATUS_FILE, "w") as f:
+                json.dump(data, f, indent=2)
+
+            logger.info(
+                "LIVE STATUS | balance=%.2f | equity=%.2f | day_pnl=%.2f | event=%s",
+                status["balance"], status["equity"], status["day_pnl"], event,
+            )
+        except Exception as e:
+            logger.error("Failed to write live_status.json: %s", e)
+
+    def _send_telegram(self, message: str):
+        """
+        Send a notification to Telegram if bot token and chat ID are configured.
+        Silently skips if not configured. Never blocks the trading loop.
+        """
+        token = config.TELEGRAM_BOT_TOKEN
+        chat_id = config.TELEGRAM_CHAT_ID
+        if not token or not chat_id:
+            return
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            resp = requests.post(
+                url,
+                json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"},
+                timeout=5,
+            )
+            if resp.status_code != 200:
+                logger.warning("Telegram send failed: %s", resp.text)
+        except Exception as e:
+            logger.warning("Telegram error: %s", e)
 
     # ─────────────────────────────────────────
     # Reporting

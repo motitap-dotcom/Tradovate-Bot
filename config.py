@@ -222,6 +222,12 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 RISK_PER_TRADE_PCT = 0.015  # 1.5% of account per trade
 
 # ─────────────────────────────────────────────
+# Telegram Notifications (optional)
+# ─────────────────────────────────────────────
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
+# ─────────────────────────────────────────────
 # Logging
 # ─────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
