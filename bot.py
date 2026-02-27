@@ -105,6 +105,10 @@ class TradovateBot:
         logger.info("Prop firm: %s | Account size: %s", config.PROP_FIRM, config.ACTIVE_CHALLENGE["account_size"])
         logger.info("=" * 60)
 
+        # Wait for market hours before doing anything (no API calls while sleeping)
+        self.running = True
+        self._wait_for_market_hours()
+
         # Authenticate
         if not self.dry_run:
             if not self.api.authenticate():
@@ -158,6 +162,46 @@ class TradovateBot:
 
         self._print_summary()
         logger.info("Bot stopped.")
+
+    # ─────────────────────────────────────────
+    # Market hours scheduling
+    # ─────────────────────────────────────────
+
+    def _wait_for_market_hours(self):
+        """Sleep until trading hours (weekday, 9:25 AM – force_close ET).
+        Called on startup so the bot can run 24/7 via systemd and only
+        trade during market hours. Sleeps in short chunks so SIGTERM
+        from 'systemctl stop' is handled promptly."""
+        PRE_OPEN_MINUTES = 5  # wake up 5 min before market open for warmup
+
+        while self.running:
+            current = now_et()
+            weekday = current.weekday()  # 0=Mon..6=Sun
+
+            market_open = parse_time_et(config.MARKET_OPEN_ET)
+            earliest_start = market_open - timedelta(minutes=PRE_OPEN_MINUTES)
+            force_close = parse_time_et(config.FORCE_CLOSE_ET)
+
+            if weekday < 5 and earliest_start <= current < force_close:
+                logger.info("Market hours active (%s ET). Proceeding.",
+                            current.strftime("%H:%M"))
+                return
+
+            # Log reason and sleep
+            if weekday >= 5:
+                day_name = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][weekday]
+                logger.info("Weekend (%s). Sleeping 30 min...", day_name)
+                time.sleep(1800)
+            elif current < earliest_start:
+                mins_left = (earliest_start - current).total_seconds() / 60
+                logger.info("Pre-market (%s ET). Market opens in %d min.",
+                            current.strftime("%H:%M"), int(mins_left))
+                time.sleep(min(300, int(mins_left * 60)))
+            else:
+                # After force close — exit so systemd restarts fresh tomorrow
+                logger.info("After market close (%s ET). Exiting for daily restart.",
+                            current.strftime("%H:%M"))
+                sys.exit(0)
 
     # ─────────────────────────────────────────
     # Contract resolution

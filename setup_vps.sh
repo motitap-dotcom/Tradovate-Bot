@@ -141,8 +141,9 @@ WorkingDirectory=$BOT_DIR
 ExecStart=$BOT_DIR/venv/bin/python bot.py --live
 EnvironmentFile=$BOT_DIR/.env
 
-# Auto-restart on crash (30s delay)
-Restart=on-failure
+# Auto-restart: bot sleeps outside market hours, exits at force close,
+# systemd restarts it and it sleeps until next market open.
+Restart=always
 RestartSec=30
 
 # Logging to journald
