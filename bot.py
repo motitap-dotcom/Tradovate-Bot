@@ -16,10 +16,12 @@ Usage:
 import argparse
 import json
 import logging
+import os
 import signal
 import sys
 import time
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 import requests
 
@@ -535,6 +537,9 @@ class TradovateBot:
                     status["locked"],
                 )
 
+                # Write live status file for external monitoring
+                self._write_live_status()
+
                 time.sleep(30)  # Status update every 30 seconds
 
             except KeyboardInterrupt:
@@ -614,6 +619,39 @@ class TradovateBot:
                     logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
+
+    # ─────────────────────────────────────────
+    # Live status file
+    # ─────────────────────────────────────────
+
+    _STATUS_FILE = Path(__file__).parent / "live_status.json"
+
+    def _write_live_status(self):
+        """Write current bot status to live_status.json for external monitoring."""
+        try:
+            status = self.risk.status()
+            payload = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp_et": now_et().isoformat(),
+                "balance": status["balance"],
+                "equity": status["equity"],
+                "day_pnl": status["day_pnl"],
+                "peak_balance": status["peak_balance"],
+                "drawdown_floor": status["drawdown_floor"],
+                "distance_to_floor": status["distance_to_floor"],
+                "open_contracts": status["open_contracts"],
+                "trades_today": status["trades_today"],
+                "locked": status["locked"],
+                "lock_reason": status["lock_reason"],
+                "environment": config.ENVIRONMENT,
+                "dry_run": self.dry_run,
+                "active_symbols": list(self.contract_map.keys()),
+            }
+            tmp = self._STATUS_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(payload, indent=2))
+            tmp.replace(self._STATUS_FILE)
+        except Exception as e:
+            logger.warning("Failed to write live_status.json: %s", e)
 
     # ─────────────────────────────────────────
     # Reporting
