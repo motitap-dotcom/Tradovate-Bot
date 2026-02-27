@@ -87,7 +87,7 @@ CHALLENGE_SETTINGS = {
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
         "consistency_rule_pct": 0.40,     # Max single-day profit = 40% of total profit
-        "daily_profit_cap": 1_200,        # 40% of profit target ($3,000). Highest day is $4,943 — need to dilute it
+        "daily_profit_cap": 4_943,        # 40% of required total profit ($12,358). Must not exceed highest day ($4,943)
     },
 }
 
