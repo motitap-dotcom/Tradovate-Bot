@@ -86,6 +86,9 @@ python get_token.py         # One-time token capture (needs display)
 python -m pytest test_all.py -v
 ```
 
+## Development Workflow
+Always reference `deployment_config.md` for server connection details. The server is a Contabo VPS. Use the Webhook CI/CD method to deploy. Do not ask the user for these details as they are static.
+
 ## Common Issues
 1. **"Incorrect password"**: Credentials are correct; try `live` API (not `demo` for auth)
 2. **CAPTCHA required**: Bot auto-handles via Playwright browser login
