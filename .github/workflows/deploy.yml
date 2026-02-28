@@ -1,7 +1,6 @@
 name: Deploy to Server
 
 # Fires on push to main/master or the deploy branch.
-# Also fires when auto-merge pushes to the deploy branch.
 on:
   push:
     branches: [main, master, claude/tradovate-api-research-DPnl9]
@@ -44,11 +43,11 @@ jobs:
           python -m py_compile risk_manager.py
           python -m py_compile config.py
 
-  # ── Step 2: Deploy via SSH ──
+  # ── Step 2: Deploy via SSH (requires SERVER_HOST var) ──
   deploy:
     needs: pre-check
     runs-on: ubuntu-latest
-    if: vars.SERVER_HOST != '' && secrets.SERVER_SSH_KEY != ''
+    if: vars.SERVER_HOST != ''
 
     steps:
       - name: Deploy to server via SSH
@@ -79,7 +78,7 @@ jobs:
             git reset --hard "origin/$BRANCH"
             echo "Now at: $(git log -1 --oneline)"
 
-            # Update dependencies (only if requirements.txt changed)
+            # Update dependencies
             echo ""
             echo "--- Updating dependencies ---"
             if [ -f venv/bin/pip ]; then
@@ -119,15 +118,14 @@ jobs:
           echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Message:** ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Deploy via SSH to \`${{ vars.SERVER_HOST }}\`" >> $GITHUB_STEP_SUMMARY
 
-  # ── Fallback: Webhook if no SSH configured ──
+  # ── Fallback: Webhook if no SSH host configured ──
   webhook-fallback:
     needs: pre-check
     runs-on: ubuntu-latest
-    if: vars.DEPLOY_WEBHOOK_URL != '' && (vars.SERVER_HOST == '' || secrets.SERVER_SSH_KEY == '')
+    if: vars.SERVER_HOST == '' && vars.DEPLOY_WEBHOOK_URL != ''
 
     steps:
       - name: Trigger server webhook

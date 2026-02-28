@@ -9,7 +9,7 @@ on:
 jobs:
   check-server:
     runs-on: ubuntu-latest
-    if: vars.SERVER_HOST != '' || secrets.SERVER_SSH_KEY != ''
+    if: vars.SERVER_HOST != ''
 
     steps:
       - name: Check bot service via SSH
@@ -95,7 +95,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> Requires \`SERVER_HOST\`, \`SERVER_USER\` (vars) and \`SERVER_SSH_KEY\` (secret) to be configured." >> $GITHUB_STEP_SUMMARY
 
-  # Fallback: if no SSH, at least check live_status.json via the bot's API
+  # Fallback: if no SSH host, at least try network check
   check-api:
     runs-on: ubuntu-latest
     if: vars.SERVER_HOST != ''
