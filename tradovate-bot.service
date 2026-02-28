@@ -2,18 +2,28 @@
 Description=Tradovate Trading Bot
 After=network-online.target
 Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
 
 [Service]
 Type=simple
-User=root
-WorkingDirectory=/root/Tradovate-Bot
-ExecStart=/usr/bin/python3 /root/Tradovate-Bot/bot.py --live
-ExecStopPost=/bin/bash /root/Tradovate-Bot/alert.sh tradovate-bot
-Restart=always
+WorkingDirectory=/root/tradovate-bot
+ExecStart=/root/tradovate-bot/venv/bin/python bot.py --live
+EnvironmentFile=/root/tradovate-bot/.env
+ExecStopPost=/bin/bash /root/tradovate-bot/alert.sh tradovate-bot
+
+# Auto-restart on crash (30s delay)
+Restart=on-failure
 RestartSec=30
-StandardOutput=append:/root/Tradovate-Bot/bot.log
-StandardError=append:/root/Tradovate-Bot/bot.log
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tradovate-bot
 Environment=PYTHONUNBUFFERED=1
+
+# Security
+NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target

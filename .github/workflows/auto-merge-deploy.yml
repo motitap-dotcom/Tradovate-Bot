@@ -12,6 +12,8 @@ on:
 
 env:
   DEPLOY_BRANCH: claude/tradovate-api-research-DPnl9
+  BOT_DIR: /root/tradovate-bot
+  SERVICE_NAME: tradovate-bot
 
 jobs:
   test:
@@ -41,9 +43,6 @@ jobs:
           python -m py_compile config.py
 
       - name: Run tests
-        # test_all.py has its own runner (not pytest-compatible).
-        # 3 network tests (API reachability) always fail in CI — that's expected.
-        # Syntax errors are caught by the compile step above.
         continue-on-error: true
         run: python test_all.py
 
@@ -70,14 +69,46 @@ jobs:
           git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
           git push origin ${{ env.DEPLOY_BRANCH }}
 
-      - name: Trigger server webhook
-        if: vars.DEPLOY_WEBHOOK_URL != ''
+      # SSH deploy — pulls code and restarts bot on the server
+      - name: Deploy to server via SSH
+        if: vars.SERVER_HOST != '' && secrets.SERVER_SSH_KEY != ''
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script_stop: true
+          script: |
+            echo "=== Auto-merge deploy: ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }} ==="
+            cd ${{ env.BOT_DIR }} || exit 1
+            git fetch origin ${{ env.DEPLOY_BRANCH }}
+            git reset --hard origin/${{ env.DEPLOY_BRANCH }}
+            echo "Now at: $(git log -1 --oneline)"
+
+            # Update deps if needed
+            [ -f venv/bin/pip ] && venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+
+            # Restart bot
+            systemctl restart ${{ env.SERVICE_NAME }}
+            sleep 3
+
+            if systemctl is-active --quiet ${{ env.SERVICE_NAME }}; then
+              echo "BOT: RUNNING"
+            else
+              echo "BOT: FAILED"
+              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 15
+              exit 1
+            fi
+
+      # Fallback: webhook if no SSH
+      - name: Trigger server webhook (fallback)
+        if: vars.DEPLOY_WEBHOOK_URL != '' && (vars.SERVER_HOST == '' || secrets.SERVER_SSH_KEY == '')
         run: |
           curl -s -X POST \
             -H "Content-Type: application/json" \
             -d '{"ref":"${{ env.DEPLOY_BRANCH }}","commit":"${{ github.sha }}","source":"${{ github.ref_name }}","actor":"${{ github.actor }}"}' \
             "${{ vars.DEPLOY_WEBHOOK_URL }}" \
-            --max-time 10 || echo "Webhook sent (or server will auto-pull)"
+            --max-time 10 || echo "Webhook sent"
 
       - name: Deploy summary
         run: |
@@ -86,7 +117,5 @@ jobs:
           echo "**Source:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** \`${{ env.DEPLOY_BRANCH }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Message:** ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Merged and deployed. Server webhook fired." >> $GITHUB_STEP_SUMMARY
+          echo "Merged and deployed via SSH." >> $GITHUB_STEP_SUMMARY
