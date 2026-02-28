@@ -1,0 +1,73 @@
+name: Auto-merge to Main & Deploy
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Create dummy .env for tests
+        run: cp .env.example .env
+
+      - name: Syntax check
+        run: |
+          python -m py_compile bot.py
+          python -m py_compile tradovate_api.py
+          python -m py_compile strategies.py
+          python -m py_compile risk_manager.py
+          python -m py_compile config.py
+
+      - name: Run tests
+        run: python -m pytest test_all.py -v --tb=short
+
+  merge-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge to main
+        run: |
+          git checkout main
+          git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → main"
+          git push origin main
+
+      - name: Deploy summary
+        run: |
+          echo "## Auto-merge & Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Source:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Message:** ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Merged to main. Server deploy webhook will fire automatically." >> $GITHUB_STEP_SUMMARY
