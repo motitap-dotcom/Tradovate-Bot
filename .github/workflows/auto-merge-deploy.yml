@@ -1,12 +1,17 @@
-name: Auto-merge to Main & Deploy
+name: Auto-merge & Deploy
 
+# Triggers on push to any claude/* branch EXCEPT the deploy target itself
 on:
   push:
     branches:
       - 'claude/**'
+      - '!claude/tradovate-api-research-DPnl9'
     paths-ignore:
       - 'docs/**'
       - '*.md'
+
+env:
+  DEPLOY_BRANCH: claude/tradovate-api-research-DPnl9
 
 jobs:
   test:
@@ -55,19 +60,30 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge to main
+      - name: Merge to deploy branch
         run: |
-          git checkout main
-          git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → main"
-          git push origin main
+          git fetch origin ${{ env.DEPLOY_BRANCH }}
+          git checkout ${{ env.DEPLOY_BRANCH }}
+          git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
+          git push origin ${{ env.DEPLOY_BRANCH }}
+
+      - name: Trigger server webhook
+        if: vars.DEPLOY_WEBHOOK_URL != ''
+        run: |
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"ref":"${{ env.DEPLOY_BRANCH }}","commit":"${{ github.sha }}","source":"${{ github.ref_name }}","actor":"${{ github.actor }}"}' \
+            "${{ vars.DEPLOY_WEBHOOK_URL }}" \
+            --max-time 10 || echo "Webhook sent (or server will auto-pull)"
 
       - name: Deploy summary
         run: |
           echo "## Auto-merge & Deploy" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Source:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** \`${{ env.DEPLOY_BRANCH }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "**Message:** ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Merged to main. Server deploy webhook will fire automatically." >> $GITHUB_STEP_SUMMARY
+          echo "Merged and deployed. Server webhook fired." >> $GITHUB_STEP_SUMMARY

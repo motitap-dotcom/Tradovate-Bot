@@ -2,7 +2,7 @@ name: Deploy — Notify Server
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, claude/tradovate-api-research-DPnl9]
     paths-ignore:
       - 'docs/**'
       - '*.md'
