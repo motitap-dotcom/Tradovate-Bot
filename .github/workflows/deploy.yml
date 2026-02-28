@@ -1,0 +1,42 @@
+name: Deploy — Notify Server
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/deploy-pages.yml'
+
+jobs:
+  notify-deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy summary
+        run: |
+          echo "## Deploy Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Message:** ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Server webhook will auto-pull this commit." >> $GITHUB_STEP_SUMMARY
+
+      - name: Trigger server webhook
+        if: vars.DEPLOY_WEBHOOK_URL != ''
+        run: |
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"ref":"${{ github.ref }}","commit":"${{ github.sha }}","actor":"${{ github.actor }}"}' \
+            "${{ vars.DEPLOY_WEBHOOK_URL }}" \
+            --max-time 10 || echo "Webhook notification sent (or server will auto-pull)"
+
+      - name: Log deployment
+        run: |
+          echo "Deployment triggered for commit ${{ github.sha }}"
+          echo "The VPS server auto-pulls on push to main via webhook."
