@@ -21,6 +21,7 @@ import signal
 import sys
 import time
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import requests
@@ -51,7 +52,7 @@ logger = logging.getLogger("bot")
 # Eastern Time helper
 # ─────────────────────────────────────────────
 
-ET = timezone(timedelta(hours=-5))  # EST (adjust for DST as needed)
+ET = ZoneInfo("America/New_York")  # Handles EST/EDT automatically
 
 
 def now_et() -> datetime:
