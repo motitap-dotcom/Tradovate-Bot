@@ -21,6 +21,7 @@ import signal
 import sys
 import time
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import requests
@@ -51,7 +52,7 @@ logger = logging.getLogger("bot")
 # Eastern Time helper
 # ─────────────────────────────────────────────
 
-ET = timezone(timedelta(hours=-5))  # EST (adjust for DST as needed)
+ET = ZoneInfo("America/New_York")  # Handles EST/EDT automatically
 
 
 def now_et() -> datetime:
@@ -687,7 +688,23 @@ class TradovateBot:
 # ─────────────────────────────────────────────
 
 
+def _next_trading_morning() -> datetime:
+    """Return the next weekday at 09:25 ET (5 min before market open)."""
+    now = now_et()
+    # Start from tomorrow
+    candidate = now.replace(hour=9, minute=25, second=0, microsecond=0) + timedelta(days=1)
+    # Skip weekends: Saturday=5, Sunday=6
+    while candidate.weekday() >= 5:
+        candidate += timedelta(days=1)
+    return candidate
+
+
+_shutdown_requested = False
+
+
 def main():
+    global _shutdown_requested
+
     parser = argparse.ArgumentParser(description="Tradovate Trading Bot")
     parser.add_argument(
         "--live",
@@ -707,17 +724,41 @@ def main():
         config.WS_TRADING_URL = config._URLS["live"]["ws_trading"]
         config.WS_MARKET_URL = config._URLS["live"]["ws_market"]
 
-    bot = TradovateBot(dry_run=args.dry_run)
-
-    # Graceful shutdown on SIGINT / SIGTERM
+    # Graceful shutdown on SIGINT / SIGTERM exits the daily loop
     def handle_signal(signum, frame):
+        global _shutdown_requested
         logger.info("Signal %s received. Stopping...", signum)
-        bot.running = False
+        _shutdown_requested = True
+        if bot is not None:
+            bot.running = False
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
 
-    bot.start()
+    # ── Daily loop: run bot, sleep until next trading morning, repeat ──
+    bot = None
+    while not _shutdown_requested:
+        bot = TradovateBot(dry_run=args.dry_run)
+        bot.start()
+
+        if _shutdown_requested:
+            break
+
+        # Bot finished today's session — sleep until next trading morning
+        wake_up = _next_trading_morning()
+        sleep_seconds = (wake_up - now_et()).total_seconds()
+        logger.info(
+            "Session ended. Next trading session: %s ET (sleeping %.0f minutes)",
+            wake_up.strftime("%Y-%m-%d %H:%M"),
+            sleep_seconds / 60,
+        )
+
+        # Sleep in 60s chunks so we can respond to signals promptly
+        while sleep_seconds > 0 and not _shutdown_requested:
+            time.sleep(min(60, sleep_seconds))
+            sleep_seconds -= 60
+
+    logger.info("Bot process exiting.")
 
 
 if __name__ == "__main__":

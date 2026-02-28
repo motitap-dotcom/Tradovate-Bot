@@ -1,0 +1,127 @@
+name: Server Health Check — Is Bot Running?
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+  workflow_dispatch:
+
+jobs:
+  check-server:
+    runs-on: ubuntu-latest
+    if: vars.SERVER_HOST != '' || secrets.SERVER_SSH_KEY != ''
+
+    steps:
+      - name: Check bot service via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script_stop: false
+          script: |
+            echo "========================================="
+            echo "  Server Health Check — $(date)"
+            echo "========================================="
+            echo ""
+
+            # 1. Service status
+            echo "--- systemctl status tradovate-bot ---"
+            if systemctl is-active --quiet tradovate-bot; then
+              echo "SERVICE: RUNNING"
+              systemctl status tradovate-bot --no-pager -l 2>&1 | head -15
+            else
+              echo "SERVICE: STOPPED"
+              systemctl status tradovate-bot --no-pager -l 2>&1 | head -20
+            fi
+            echo ""
+
+            # 2. Recent logs (last 30 lines)
+            echo "--- Recent bot logs ---"
+            journalctl -u tradovate-bot --no-pager -n 30 2>/dev/null || \
+              tail -30 /root/tradovate-bot/bot.log 2>/dev/null || \
+              echo "No logs found"
+            echo ""
+
+            # 3. live_status.json (written by bot every 30s)
+            echo "--- live_status.json ---"
+            if [ -f /root/tradovate-bot/live_status.json ]; then
+              cat /root/tradovate-bot/live_status.json
+              echo ""
+              LAST_MOD=$(stat -c %Y /root/tradovate-bot/live_status.json)
+              NOW=$(date +%s)
+              AGE=$(( NOW - LAST_MOD ))
+              echo "Last updated: ${AGE}s ago"
+              if [ "$AGE" -lt 120 ]; then
+                echo "STATUS FILE: FRESH (bot is actively writing)"
+              else
+                echo "STATUS FILE: STALE (bot may be stuck or stopped)"
+              fi
+            else
+              echo "live_status.json not found"
+            fi
+            echo ""
+
+            # 4. Process check
+            echo "--- Process check ---"
+            if pgrep -f "python.*bot.py" > /dev/null; then
+              echo "PROCESS: RUNNING"
+              ps aux | grep "[p]ython.*bot.py"
+            else
+              echo "PROCESS: NOT FOUND"
+            fi
+            echo ""
+
+            # 5. Git status on server
+            echo "--- Git status on server ---"
+            cd /root/tradovate-bot 2>/dev/null && \
+              echo "Branch: $(git branch --show-current)" && \
+              echo "Last commit: $(git log -1 --oneline)" && \
+              echo "Last pull: $(stat -c '%y' .git/FETCH_HEAD 2>/dev/null || echo 'unknown')"
+            echo ""
+            echo "========================================="
+            echo "  Health check complete"
+            echo "========================================="
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Server Health Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See the job output above for full bot status." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Requires \`SERVER_HOST\`, \`SERVER_USER\` (vars) and \`SERVER_SSH_KEY\` (secret) to be configured." >> $GITHUB_STEP_SUMMARY
+
+  # Fallback: if no SSH, at least check live_status.json via the bot's API
+  check-api:
+    runs-on: ubuntu-latest
+    if: vars.SERVER_HOST != ''
+
+    steps:
+      - name: Check bot status endpoint
+        run: |
+          echo "Checking server at ${{ vars.SERVER_HOST }}..."
+
+          # Try common status endpoints
+          for PORT in 8080 8000 3000 80; do
+            echo "Trying port $PORT..."
+            RESP=$(curl -s --max-time 5 "http://${{ vars.SERVER_HOST }}:$PORT/status" 2>/dev/null || true)
+            if [ -n "$RESP" ]; then
+              echo "Response from port $PORT:"
+              echo "$RESP" | head -20
+            fi
+          done
+
+          # Ping check
+          echo ""
+          echo "--- Ping check ---"
+          ping -c 3 -W 5 ${{ vars.SERVER_HOST }} 2>&1 || echo "Ping failed (may be blocked by firewall)"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## API/Network Check" >> $GITHUB_STEP_SUMMARY
+          echo "Server: \`${{ vars.SERVER_HOST }}\`" >> $GITHUB_STEP_SUMMARY

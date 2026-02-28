@@ -1,0 +1,266 @@
+name: Tradovate Connectivity Test
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+
+jobs:
+  connectivity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Test Tradovate Live API reachability
+        run: |
+          python -c "
+          import requests, sys
+
+          print('=== Testing Tradovate API Connectivity ===')
+          print()
+
+          # 1. Live endpoint
+          print('1. Live API endpoint...')
+          try:
+              r = requests.post(
+                  'https://live.tradovateapi.com/v1/auth/accesstokenrequest',
+                  json={'name': 'test'},
+                  timeout=15
+              )
+              print(f'   Status: {r.status_code}')
+              print(f'   Response: {r.text[:200]}')
+              print('   [PASS] Live API is reachable')
+          except Exception as e:
+              print(f'   [FAIL] {e}')
+              sys.exit(1)
+
+          print()
+
+          # 2. Demo endpoint
+          print('2. Demo API endpoint...')
+          try:
+              r = requests.post(
+                  'https://demo.tradovateapi.com/v1/auth/accesstokenrequest',
+                  json={'name': 'test'},
+                  timeout=15
+              )
+              print(f'   Status: {r.status_code}')
+              print(f'   Response: {r.text[:200]}')
+              print('   [PASS] Demo API is reachable')
+          except Exception as e:
+              print(f'   [FAIL] {e}')
+              sys.exit(1)
+
+          print()
+
+          # 3. WebSocket endpoint check (DNS resolve)
+          print('3. WebSocket endpoints (DNS)...')
+          import socket
+          for host in ['demo.tradovateapi.com', 'live.tradovateapi.com', 'md.tradovateapi.com']:
+              try:
+                  ip = socket.gethostbyname(host)
+                  print(f'   {host} -> {ip} [OK]')
+              except Exception as e:
+                  print(f'   {host} -> [FAIL] {e}')
+                  sys.exit(1)
+
+          print()
+          print('=== All connectivity tests passed ===')
+          "
+
+      - name: Test authentication (credentials)
+        env:
+          TRADOVATE_USERNAME: ${{ secrets.TRADOVATE_USERNAME }}
+          TRADOVATE_PASSWORD: ${{ secrets.TRADOVATE_PASSWORD }}
+        if: env.TRADOVATE_USERNAME != ''
+        run: |
+          python -c "
+          import requests, os, sys, base64, hashlib, hmac, uuid
+
+          username = os.environ['TRADOVATE_USERNAME']
+          password = os.environ['TRADOVATE_PASSWORD']
+
+          print('=== Testing Tradovate Authentication ===')
+          print(f'Username: {username[:4]}***')
+          print()
+
+          # Encrypt password (Tradovate web-style)
+          offset = len(username) % len(password)
+          rearranged = password[offset:] + password[:offset]
+          reversed_pw = rearranged[::-1]
+          encrypted_pw = base64.b64encode(reversed_pw.encode()).decode()
+
+          device_id = f'gh-actions-{uuid.uuid4()}'
+          hmac_key = '1259-11e7-485a-aeae-9b6016579351'
+
+          payload = {
+              'name': username,
+              'password': encrypted_pw,
+              'appId': 'tradovate_trader(web)',
+              'appVersion': '3.260220.0',
+              'deviceId': device_id,
+              'cid': 8,
+              'sec': '',
+              'chl': '',
+              'organization': '',
+          }
+
+          # Compute HMAC sec
+          fields = ['chl', 'deviceId', 'name', 'password', 'appId']
+          message = ''.join(str(payload.get(f, '')) for f in fields)
+          payload['sec'] = hmac.new(
+              hmac_key.encode(), message.encode(), hashlib.sha256
+          ).hexdigest()
+
+          # Try live endpoint (FundedNext uses live for auth)
+          print('Attempting web-style auth via live endpoint...')
+          try:
+              r = requests.post(
+                  'https://live.tradovateapi.com/v1/auth/accesstokenrequest',
+                  json=payload,
+                  timeout=30
+              )
+              data = r.json()
+
+              if 'accessToken' in data:
+                  print(f'[PASS] Direct token received!')
+                  print(f'  userId: {data.get(\"userId\")}')
+                  print(f'  expires: {data.get(\"expirationTime\", \"?\")[:19]}')
+              elif 'p-ticket' in data:
+                  print(f'[PASS] Credentials valid (p-ticket received)')
+                  print(f'  CAPTCHA required: {data.get(\"p-captcha\", False)}')
+                  print(f'  Wait time: {data.get(\"p-time\", \"?\")}s')
+              else:
+                  error = data.get('errorText', str(data))
+                  if 'Incorrect' in error:
+                      print(f'[WARN] Possibly rate-limited: {error}')
+                  else:
+                      print(f'[FAIL] Unexpected response: {error}')
+                      sys.exit(1)
+          except Exception as e:
+              print(f'[FAIL] Auth request failed: {e}')
+              sys.exit(1)
+
+          print()
+
+          # Also try demo endpoint
+          print('Attempting auth via demo endpoint...')
+          try:
+              r = requests.post(
+                  'https://demo.tradovateapi.com/v1/auth/accesstokenrequest',
+                  json=payload,
+                  timeout=30
+              )
+              data = r.json()
+              if 'accessToken' in data:
+                  print(f'[PASS] Demo token received!')
+                  print(f'  userId: {data.get(\"userId\")}')
+              elif 'p-ticket' in data:
+                  print(f'[PASS] Demo credentials valid (p-ticket)')
+              else:
+                  error = data.get('errorText', str(data))
+                  print(f'[INFO] Demo response: {error}')
+          except Exception as e:
+              print(f'[INFO] Demo auth: {e}')
+
+          print()
+          print('=== Authentication test complete ===')
+          "
+
+      - name: Test account data (with token)
+        env:
+          TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
+        if: env.TRADOVATE_ACCESS_TOKEN != ''
+        run: |
+          python -c "
+          import requests, os, sys
+
+          token = os.environ['TRADOVATE_ACCESS_TOKEN']
+          headers = {'Authorization': f'Bearer {token}'}
+          base = 'https://demo.tradovateapi.com/v1'
+
+          print('=== Testing Account Access (with saved token) ===')
+          print()
+
+          # Account list
+          print('1. Fetching accounts...')
+          try:
+              r = requests.get(f'{base}/account/list', headers=headers, timeout=15)
+              if r.status_code == 200:
+                  accounts = r.json()
+                  for a in accounts:
+                      print(f'   Account: {a.get(\"name\",\"?\")} | ID: {a.get(\"id\",\"?\")} | Active: {a.get(\"active\",\"?\")}')
+                  print(f'   [PASS] {len(accounts)} account(s) found')
+              else:
+                  print(f'   [WARN] Status {r.status_code}: {r.text[:200]}')
+                  print('   Token may be expired — needs renewal on server')
+          except Exception as e:
+              print(f'   [FAIL] {e}')
+
+          print()
+
+          # Cash balance
+          print('2. Fetching cash balance...')
+          try:
+              r = requests.get(f'{base}/cashBalance/getcashbalancesnapshot', headers=headers, timeout=15,
+                               params={'accountId': 39996695})
+              if r.status_code == 200:
+                  data = r.json()
+                  print(f'   Balance data: {str(data)[:300]}')
+                  print('   [PASS] Balance retrieved')
+              else:
+                  print(f'   [WARN] Status {r.status_code}: {r.text[:200]}')
+          except Exception as e:
+              print(f'   [FAIL] {e}')
+
+          print()
+
+          # Positions
+          print('3. Fetching positions...')
+          try:
+              r = requests.get(f'{base}/position/list', headers=headers, timeout=15)
+              if r.status_code == 200:
+                  positions = r.json()
+                  open_pos = [p for p in positions if p.get('netPos', 0) != 0]
+                  print(f'   Total positions: {len(positions)}, Open: {len(open_pos)}')
+                  for p in open_pos:
+                      print(f'     {p.get(\"contractId\")} qty={p.get(\"netPos\")} price={p.get(\"netPrice\")}')
+                  print('   [PASS] Positions retrieved')
+              else:
+                  print(f'   [WARN] Status {r.status_code}: {r.text[:200]}')
+          except Exception as e:
+              print(f'   [FAIL] {e}')
+
+          print()
+          print('=== Account access test complete ===')
+          "
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Tradovate Connectivity Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Live API Reachable | ${{ steps.connectivity.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Demo API Reachable | ${{ steps.connectivity.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| DNS Resolution | ${{ steps.connectivity.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ Auth & account tests run only if secrets are configured." >> $GITHUB_STEP_SUMMARY

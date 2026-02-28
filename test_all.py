@@ -18,6 +18,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone, date, time as dtime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from unittest.mock import MagicMock, patch
 
 # Setup path
@@ -452,7 +453,7 @@ def test_orb_range_accumulation():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
     # Feed prices during first 5 minutes (09:30 - 09:35)
-    ET = timezone(timedelta(hours=-5))
+    ET = ZoneInfo("America/New_York")
     t1 = datetime(2026, 2, 23, 9, 31, tzinfo=ET)
     t2 = datetime(2026, 2, 23, 9, 33, tzinfo=ET)
 
@@ -467,7 +468,7 @@ def test_orb_range_accumulation():
 def test_orb_long_breakout():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
-    ET = timezone(timedelta(hours=-5))
+    ET = ZoneInfo("America/New_York")
 
     # Accumulate range (09:30 - 09:35)
     for minute in range(5):
@@ -487,7 +488,7 @@ def test_orb_long_breakout():
 def test_orb_short_breakout():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
-    ET = timezone(timedelta(hours=-5))
+    ET = ZoneInfo("America/New_York")
 
     for minute in range(5):
         t = datetime(2026, 2, 23, 9, 30 + minute, tzinfo=ET)
@@ -505,7 +506,7 @@ def test_orb_short_breakout():
 def test_orb_no_double_fire():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
-    ET = timezone(timedelta(hours=-5))
+    ET = ZoneInfo("America/New_York")
 
     for minute in range(5):
         t = datetime(2026, 2, 23, 9, 30 + minute, tzinfo=ET)
@@ -527,7 +528,7 @@ def test_orb_no_double_fire():
 def test_orb_cooldown():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
-    ET = timezone(timedelta(hours=-5))
+    ET = ZoneInfo("America/New_York")
 
     for minute in range(5):
         t = datetime(2026, 2, 23, 9, 30 + minute, tzinfo=ET)
@@ -963,7 +964,7 @@ def test_e2e_nq_orb():
 
     strategy = ORBStrategy("NQ")
     rm = RiskManager()
-    ET = timezone(timedelta(hours=-5))
+    ET = ZoneInfo("America/New_York")
     signals = []
 
     # Simulate market data: 09:30 - 15:30
