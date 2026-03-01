@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-01T11:46:15Z",
+  "timestamp": "2026-03-01T11:53:38Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -8,7 +8,7 @@
   "positions": [],
   "orders": [],
   "errors": [
-    "No TRADOVATE_ACCESS_TOKEN or TRADOVATE_USERNAME secrets configured"
+    "Auth failed: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
   ],
   "server": null
 }
