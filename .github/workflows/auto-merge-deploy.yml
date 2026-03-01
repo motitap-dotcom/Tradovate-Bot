@@ -75,13 +75,34 @@ jobs:
           fi
           git push origin ${{ env.DEPLOY_BRANCH }}
 
-      # SSH deploy (only if SERVER_HOST is configured as a repo variable)
+      # Resolve server host from vars or secrets
+      - name: Check server host
+        id: server_check
+        env:
+          HOST_VAR: ${{ vars.SERVER_HOST }}
+          HOST_SECRET: ${{ secrets.SERVER_HOST }}
+          USER_VAR: ${{ vars.SERVER_USER }}
+          USER_SECRET: ${{ secrets.SERVER_USER }}
+        run: |
+          HOST="${HOST_VAR:-$HOST_SECRET}"
+          USER="${USER_VAR:-${USER_SECRET:-root}}"
+          if [ -n "$HOST" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "host=$HOST" >> $GITHUB_OUTPUT
+            echo "user=$USER" >> $GITHUB_OUTPUT
+            echo "SSH deploy target: $USER@$HOST"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "No SERVER_HOST configured — skipping SSH deploy"
+          fi
+
+      # SSH deploy (if SERVER_HOST is configured as variable OR secret)
       - name: Deploy to server via SSH
-        if: vars.SERVER_HOST != ''
+        if: steps.server_check.outputs.available == 'true'
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
+          host: ${{ steps.server_check.outputs.host }}
+          username: ${{ steps.server_check.outputs.user }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           envs: SERVER_GH_PAT
           script: |
@@ -126,7 +147,7 @@ jobs:
 
       # Fallback: webhook if no SSH host configured
       - name: Trigger server webhook (fallback)
-        if: vars.SERVER_HOST == '' && vars.DEPLOY_WEBHOOK_URL != ''
+        if: steps.server_check.outputs.available != 'true' && vars.DEPLOY_WEBHOOK_URL != ''
         run: |
           curl -s -X POST \
             -H "Content-Type: application/json" \
