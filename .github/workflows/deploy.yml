@@ -49,14 +49,14 @@ jobs:
   deploy:
     needs: pre-check
     runs-on: ubuntu-latest
-    if: vars.SERVER_HOST != ''
+    if: secrets.SERVER_HOST != ''
 
     steps:
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           envs: SERVER_GH_PAT
           script_stop: true
@@ -144,13 +144,13 @@ jobs:
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deploy via SSH to \`${{ vars.SERVER_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Deploy via SSH to server" >> $GITHUB_STEP_SUMMARY
 
   # ── Fallback: Webhook if no SSH host configured ──
   webhook-fallback:
     needs: pre-check
     runs-on: ubuntu-latest
-    if: vars.SERVER_HOST == '' && vars.DEPLOY_WEBHOOK_URL != ''
+    if: secrets.SERVER_HOST == '' && vars.DEPLOY_WEBHOOK_URL != ''
 
     steps:
       - name: Trigger server webhook
