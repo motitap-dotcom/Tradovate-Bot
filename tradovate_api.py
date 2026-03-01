@@ -489,11 +489,13 @@ class TradovateAPI:
             resp.raise_for_status()
             data = resp.json()
             self.access_token = data.get("accessToken", self.access_token)
+            self.md_access_token = data.get("mdAccessToken", self.md_access_token)
             if data.get("expirationTime"):
                 self.token_expiry = datetime.fromisoformat(
                     data["expirationTime"].replace("Z", "+00:00")
                 )
-            logger.info("Token renewed. Expires: %s", self.token_expiry)
+            logger.info("Token renewed (md=%s). Expires: %s",
+                        "yes" if self.md_access_token else "no", self.token_expiry)
             self._save_token()
             return True
         except requests.RequestException as e:
@@ -949,10 +951,17 @@ class MarketDataStream:
         # This fixes the 403 Forbidden issue when the md token expires
         if self._api:
             try:
+                old_md = self._api.md_access_token
                 self._api.ensure_token_valid()
                 if self._api.md_access_token:
                     self.md_token = self._api.md_access_token
                     logger.info("Refreshed market data token for reconnection")
+                # If md token didn't change after renewal, try full re-auth
+                if self._api.md_access_token == old_md:
+                    logger.info("md token unchanged after renewal, forcing full re-auth...")
+                    if self._api._re_authenticate() and self._api.md_access_token:
+                        self.md_token = self._api.md_access_token
+                        logger.info("Full re-auth got fresh md token")
             except Exception as e:
                 logger.warning("Token refresh failed during reconnect: %s", e)
 
