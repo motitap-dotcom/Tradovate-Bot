@@ -1,14 +1,18 @@
 name: Bot Status Check
 
-# Triggers on push to claude/* branches or manually
 on:
+  # Check status every 15 minutes
+  schedule:
+    - cron: '*/15 * * * *'
+  # Also on push to claude/* branches or manual trigger
   push:
     branches:
+      - 'main'
       - 'claude/**'
+    paths:
+      - 'server_status.json'
+      - '.github/workflows/server-health-check.yml'
   workflow_dispatch:
-
-env:
-  DEPLOY_BRANCH: claude/tradovate-api-research-DPnl9
 
 jobs:
   check-status:
@@ -16,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.DEPLOY_BRANCH }}
+          ref: main
           fetch-depth: 1
 
       - name: Read server_status.json
@@ -26,13 +30,19 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ ! -f server_status.json ]; then
-            echo "**server_status.json not found.**" >> $GITHUB_STEP_SUMMARY
+            echo "**server_status.json not found on main branch.**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The server hasn't pushed status yet." >> $GITHUB_STEP_SUMMARY
-            echo "Make sure \`server_cron.sh\` is running on the server:" >> $GITHUB_STEP_SUMMARY
+            echo "The server hasn't pushed status yet. Setup steps:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "1. Create a GitHub PAT with \`repo\` scope" >> $GITHUB_STEP_SUMMARY
+            echo "2. On the server, set it as env var:" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo 'echo "GH_PAT=ghp_your_token_here" >> /etc/environment' >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "crontab -e" >> $GITHUB_STEP_SUMMARY
-            echo "*/5 * * * * cd /root/tradovate-bot && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1" >> $GITHUB_STEP_SUMMARY
+            echo "3. Add crontab entry:" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo 'crontab -e' >> $GITHUB_STEP_SUMMARY
+            echo '*/5 * * * * cd /root/tradovate-bot && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1' >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "status=missing" >> $GITHUB_OUTPUT
             exit 0
@@ -40,6 +50,7 @@ jobs:
 
           echo '```json' >> $GITHUB_STEP_SUMMARY
           cat server_status.json >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -47,11 +58,18 @@ jobs:
           BOT_ACTIVE=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('bot_active', False))" 2>/dev/null || echo "unknown")
           TIMESTAMP=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('timestamp', 'unknown'))" 2>/dev/null || echo "unknown")
           COMMIT=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('git_commit', 'unknown'))" 2>/dev/null || echo "unknown")
+          DISK=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('disk_usage', 'N/A'))" 2>/dev/null || echo "N/A")
+          MEMORY=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('memory', 'N/A'))" 2>/dev/null || echo "N/A")
+
+          # Live status (nested)
+          BALANCE=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('live_status',{}).get('balance','N/A'))" 2>/dev/null || echo "N/A")
+          DAY_PNL=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('live_status',{}).get('day_pnl','N/A'))" 2>/dev/null || echo "N/A")
+          TRADES=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('live_status',{}).get('trades_today','N/A'))" 2>/dev/null || echo "N/A")
 
           if [ "$BOT_ACTIVE" = "True" ]; then
-            echo "### ✅ Bot is RUNNING" >> $GITHUB_STEP_SUMMARY
+            echo "### Bot is RUNNING" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### ❌ Bot is DOWN" >> $GITHUB_STEP_SUMMARY
+            echo "### Bot is DOWN" >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -60,6 +78,11 @@ jobs:
           echo "| Last report | \`$TIMESTAMP\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Server commit | \`$COMMIT\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Bot active | \`$BOT_ACTIVE\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Balance | \`$BALANCE\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Day P&L | \`$DAY_PNL\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trades today | \`$TRADES\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Disk usage | \`$DISK\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Memory | \`$MEMORY\` |" >> $GITHUB_STEP_SUMMARY
 
           echo "status=$BOT_ACTIVE" >> $GITHUB_OUTPUT
           echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
@@ -71,7 +94,7 @@ jobs:
             exit 0
           fi
 
-          TIMESTAMP=$(python3 -c "
+          AGE_SECONDS=$(python3 -c "
           import json, datetime
           d = json.load(open('server_status.json'))
           ts = d.get('timestamp', '')
@@ -84,10 +107,13 @@ jobs:
           " 2>/dev/null || echo "-1")
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "$TIMESTAMP" -gt 600 ] 2>/dev/null; then
-            MINS=$((TIMESTAMP / 60))
-            echo "### ⚠️ Status is ${MINS} minutes old — server may not be polling" >> $GITHUB_STEP_SUMMARY
-          elif [ "$TIMESTAMP" -ge 0 ] 2>/dev/null; then
-            MINS=$((TIMESTAMP / 60))
-            echo "### 🕐 Status is ${MINS} minutes old" >> $GITHUB_STEP_SUMMARY
+          if [ "$AGE_SECONDS" -gt 900 ] 2>/dev/null; then
+            MINS=$((AGE_SECONDS / 60))
+            echo "### WARNING: Status is ${MINS} minutes old — server cron may be down" >> $GITHUB_STEP_SUMMARY
+          elif [ "$AGE_SECONDS" -gt 600 ] 2>/dev/null; then
+            MINS=$((AGE_SECONDS / 60))
+            echo "### Status is ${MINS} minutes old — may be slightly stale" >> $GITHUB_STEP_SUMMARY
+          elif [ "$AGE_SECONDS" -ge 0 ] 2>/dev/null; then
+            MINS=$((AGE_SECONDS / 60))
+            echo "### Status is ${MINS} minutes old" >> $GITHUB_STEP_SUMMARY
           fi
