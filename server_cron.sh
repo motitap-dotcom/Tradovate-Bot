@@ -9,17 +9,32 @@ set -euo pipefail
 
 BOT_DIR="${BOT_DIR:-/root/tradovate-bot}"
 SERVICE="tradovate-bot"
-BRANCH="${DEPLOY_BRANCH:-main}"
 STATUS_FILE="server_status.json"
 
 cd "$BOT_DIR"
 
+# ── 0. Auto-detect deploy branch: prefer main, fall back to old branch ──
+if [ -n "${DEPLOY_BRANCH:-}" ]; then
+    BRANCH="$DEPLOY_BRANCH"
+elif git ls-remote --heads origin main 2>/dev/null | grep -q main; then
+    BRANCH="main"
+    # Switch local checkout to main if needed
+    CURRENT=$(git branch --show-current)
+    if [ "$CURRENT" != "main" ]; then
+        echo "[$(date)] Switching from $CURRENT to main..."
+        git fetch origin main
+        git checkout -B main origin/main
+    fi
+else
+    BRANCH="claude/tradovate-api-research-DPnl9"
+fi
+
 # ── 1. Pull latest code ──
-echo "[$(date)] Checking for updates..."
+echo "[$(date)] Checking for updates on $BRANCH..."
 git fetch origin "$BRANCH" 2>/dev/null
 
 LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse "origin/$BRANCH")
+REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
 
 if [ "$LOCAL" != "$REMOTE" ]; then
     echo "[$(date)] New code found. Updating..."

@@ -2,7 +2,7 @@ name: Tradovate Connectivity Test
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, 'claude/**']
   schedule:
     - cron: '0 */6 * * *'  # Every 6 hours
   workflow_dispatch:
