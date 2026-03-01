@@ -79,8 +79,8 @@ jobs:
           username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           envs: SERVER_GH_PAT
-          script_stop: true
           script: |
+            set -e
             echo "=== Auto-merge deploy: ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }} ==="
             BOT_DIR="${{ env.BOT_DIR }}"
             cd "$BOT_DIR" || exit 1
