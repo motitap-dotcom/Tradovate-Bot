@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-03-01T11:34:38Z",
+  "api_reachable": true,
+  "authenticated": false,
+  "auth_method": null,
+  "account": {},
+  "balance": {},
+  "positions": [],
+  "orders": [],
+  "errors": [
+    "No TRADOVATE_ACCESS_TOKEN or TRADOVATE_USERNAME secrets configured"
+  ],
+  "server": null
+}
