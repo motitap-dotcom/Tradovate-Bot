@@ -70,9 +70,22 @@ jobs:
           git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
           git push origin ${{ env.DEPLOY_BRANCH }}
 
+      - name: Check SSH availability
+        id: ssh_check
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          if [ -n "$SSH_HOST" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "SSH host configured — will deploy"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "::warning::SERVER_HOST secret not set — skipping SSH deploy"
+          fi
+
       # SSH deploy (only if SERVER_HOST is configured as a repo secret)
       - name: Deploy to server via SSH
-        if: secrets.SERVER_HOST != ''
+        if: steps.ssh_check.outputs.available == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -120,8 +133,20 @@ jobs:
           SERVER_GH_PAT: ${{ secrets.SERVER_GH_PAT }}
 
       # Fallback: webhook if no SSH host configured
+      - name: Check webhook fallback
+        id: webhook_check
+        if: steps.ssh_check.outputs.available == 'false'
+        env:
+          WEBHOOK_URL: ${{ vars.DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -n "$WEBHOOK_URL" ]; then
+            echo "should_webhook=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_webhook=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Trigger server webhook (fallback)
-        if: secrets.SERVER_HOST == '' && vars.DEPLOY_WEBHOOK_URL != ''
+        if: steps.webhook_check.outputs.should_webhook == 'true'
         run: |
           curl -s -X POST \
             -H "Content-Type: application/json" \
@@ -137,5 +162,4 @@ jobs:
           echo "**Source:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** \`${{ env.DEPLOY_BRANCH }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Merged and deployed." >> $GITHUB_STEP_SUMMARY
+          echo "**SSH available:** \`${{ steps.ssh_check.outputs.available }}\`" >> $GITHUB_STEP_SUMMARY
