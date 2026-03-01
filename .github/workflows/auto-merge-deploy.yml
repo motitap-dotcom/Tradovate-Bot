@@ -1,6 +1,7 @@
-name: Auto-merge & Deploy
+name: Auto-merge to main
 
-# Triggers on push to any claude/* branch — merges into main and deploys
+# Triggers on push to any claude/* branch — tests and merges into main.
+# Actual deploy handled by server_cron.sh (polls every 5 min).
 on:
   push:
     branches:
@@ -13,8 +14,6 @@ on:
 
 env:
   DEPLOY_BRANCH: main
-  BOT_DIR: /root/tradovate-bot
-  SERVICE_NAME: tradovate-bot
 
 jobs:
   test:
@@ -47,7 +46,7 @@ jobs:
         continue-on-error: true
         run: python test_all.py
 
-  merge-and-deploy:
+  merge:
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -63,103 +62,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge to deploy branch
+      - name: Merge to main
         run: |
           git fetch origin ${{ env.DEPLOY_BRANCH }}
           git checkout ${{ env.DEPLOY_BRANCH }}
           git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
           git push origin ${{ env.DEPLOY_BRANCH }}
 
-      - name: Check SSH availability
-        id: ssh_check
-        env:
-          SSH_HOST: ${{ secrets.SERVER_HOST }}
-        run: |
-          if [ -n "$SSH_HOST" ]; then
-            echo "available=true" >> $GITHUB_OUTPUT
-            echo "SSH host configured — will deploy"
-          else
-            echo "available=false" >> $GITHUB_OUTPUT
-            echo "::warning::SERVER_HOST secret not set — skipping SSH deploy"
-          fi
-
-      # SSH deploy (only if SERVER_HOST is configured as a repo secret)
-      - name: Deploy to server via SSH
-        if: steps.ssh_check.outputs.available == 'true'
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: SERVER_GH_PAT
-          script_stop: true
-          script: |
-            echo "=== Auto-merge deploy: ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }} ==="
-            BOT_DIR="${{ env.BOT_DIR }}"
-            cd "$BOT_DIR" || exit 1
-            git fetch origin ${{ env.DEPLOY_BRANCH }}
-            git reset --hard origin/${{ env.DEPLOY_BRANCH }}
-            echo "Now at: $(git log -1 --oneline)"
-
-            # Update deps if needed
-            [ -f venv/bin/pip ] && venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
-
-            # Restart bot
-            systemctl restart ${{ env.SERVICE_NAME }}
-            sleep 3
-
-            if systemctl is-active --quiet ${{ env.SERVICE_NAME }}; then
-              echo "BOT: RUNNING"
-            else
-              echo "BOT: FAILED"
-              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 15
-              exit 1
-            fi
-
-            # ── Setup status cron ──
-            if [ -n "${SERVER_GH_PAT:-}" ]; then
-              echo "export GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
-              chmod 600 "$BOT_DIR/.gh_pat"
-            fi
-
-            CRON_CMD="cd $BOT_DIR && . $BOT_DIR/.gh_pat 2>/dev/null; bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
-            if ! crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
-              (crontab -l 2>/dev/null; echo "*/5 * * * * $CRON_CMD") | crontab -
-              echo "Status cron installed."
-            else
-              echo "Status cron already exists."
-            fi
-        env:
-          SERVER_GH_PAT: ${{ secrets.SERVER_GH_PAT }}
-
-      # Fallback: webhook if no SSH host configured
-      - name: Check webhook fallback
-        id: webhook_check
-        if: steps.ssh_check.outputs.available == 'false'
-        env:
-          WEBHOOK_URL: ${{ vars.DEPLOY_WEBHOOK_URL }}
-        run: |
-          if [ -n "$WEBHOOK_URL" ]; then
-            echo "should_webhook=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_webhook=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Trigger server webhook (fallback)
-        if: steps.webhook_check.outputs.should_webhook == 'true'
-        run: |
-          curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"ref":"${{ env.DEPLOY_BRANCH }}","commit":"${{ github.sha }}","source":"${{ github.ref_name }}","actor":"${{ github.actor }}"}' \
-            "${{ vars.DEPLOY_WEBHOOK_URL }}" \
-            --max-time 10 || echo "Webhook sent"
-
-      - name: Deploy summary
+      - name: Summary
         if: always()
         run: |
-          echo "## Auto-merge & Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "## Auto-merge" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Source:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** \`${{ env.DEPLOY_BRANCH }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**SSH available:** \`${{ steps.ssh_check.outputs.available }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Server picks up changes via \`server_cron.sh\` (every 5 min)." >> $GITHUB_STEP_SUMMARY
