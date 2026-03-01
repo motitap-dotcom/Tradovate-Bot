@@ -107,10 +107,20 @@ class TradovateBot:
         logger.info("Prop firm: %s | Account size: %s", config.PROP_FIRM, config.ACTIVE_CHALLENGE["account_size"])
         logger.info("=" * 60)
 
-        # Authenticate
+        # Authenticate (retry up to 3 times with backoff)
         if not self.dry_run:
-            if not self.api.authenticate():
-                logger.error("Authentication failed. Exiting.")
+            auth_ok = False
+            for attempt in range(1, 4):
+                if self.api.authenticate():
+                    auth_ok = True
+                    break
+                wait = attempt * 10
+                logger.warning(
+                    "Authentication attempt %d/3 failed. Retrying in %ds...", attempt, wait
+                )
+                time.sleep(wait)
+            if not auth_ok:
+                logger.error("Authentication failed after 3 attempts. Exiting.")
                 sys.exit(1)
             logger.info("Authenticated successfully")
         else:
@@ -304,7 +314,7 @@ class TradovateBot:
         """Try WebSocket first; fall back to REST polling if WS is unavailable."""
         if self.api.md_access_token:
             try:
-                ws = MarketDataStream(self.api.md_access_token)
+                ws = MarketDataStream(self.api.md_access_token, api=self.api)
                 ws.start()
                 # Give it a moment to connect
                 if ws._connected.wait(timeout=10):
@@ -489,6 +499,9 @@ class TradovateBot:
 
         # Track known fills to detect new ones
         self._known_fill_ids: set = set()
+        # Track consecutive API failures for auto-recovery
+        self._consecutive_api_failures = 0
+        _MAX_API_FAILURES_BEFORE_REAUTH = 3
 
         while self.running:
             try:
@@ -520,14 +533,44 @@ class TradovateBot:
                     break
 
                 # Update balance from API FIRST (before logging status)
+                api_ok = True
                 if not self.dry_run:
-                    self._sync_balance()
-                    self._sync_fills()
+                    try:
+                        self._sync_balance()
+                        self._sync_fills()
+                        self._consecutive_api_failures = 0  # Reset on success
+                    except Exception as e:
+                        self._consecutive_api_failures += 1
+                        api_ok = False
+                        logger.warning(
+                            "API sync failed (%d/%d): %s",
+                            self._consecutive_api_failures,
+                            _MAX_API_FAILURES_BEFORE_REAUTH,
+                            e,
+                        )
+
+                # Auto-recovery: re-authenticate after consecutive API failures
+                if not self.dry_run and self._consecutive_api_failures >= _MAX_API_FAILURES_BEFORE_REAUTH:
+                    logger.warning(
+                        "=== AUTO-RECOVERY: %d consecutive API failures. Re-authenticating... ===",
+                        self._consecutive_api_failures,
+                    )
+                    if self.api._re_authenticate():
+                        logger.info("=== AUTO-RECOVERY: Re-authentication succeeded ===")
+                        self._consecutive_api_failures = 0
+                        # Restart market data with fresh token
+                        if self.md_stream:
+                            self.md_stream.stop()
+                        self.md_stream = self._start_market_data()
+                        if self.md_stream:
+                            self._subscribe_market_data()
+                    else:
+                        logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -536,6 +579,7 @@ class TradovateBot:
                     status["trades_today"],
                     status["max_daily_trades"],
                     status["locked"],
+                    "" if api_ok else " | API-ERROR",
                 )
 
                 # Write live status file for external monitoring

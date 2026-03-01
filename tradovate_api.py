@@ -501,13 +501,27 @@ class TradovateAPI:
             return False
 
     def ensure_token_valid(self):
-        """Renew token if close to expiry."""
+        """Renew token if close to expiry. Falls back to full re-auth if renewal fails."""
         if self.token_expiry is None:
             return
         now = datetime.now(timezone.utc)
-        # Renew if less than 5 minutes remain
-        if (self.token_expiry - now).total_seconds() < 300:
-            self.renew_token()
+        remaining = (self.token_expiry - now).total_seconds()
+        # Renew if less than 10 minutes remain (was 5 — more buffer for slow networks)
+        if remaining < 600:
+            if remaining <= 0:
+                logger.warning("Token EXPIRED (%.0fs ago). Attempting full re-auth...", -remaining)
+            else:
+                logger.info("Token expiring in %.0fs. Renewing...", remaining)
+            if not self.renew_token():
+                logger.warning("Token renewal failed. Attempting full re-authentication...")
+                # Clear expired token so authenticate() doesn't short-circuit
+                old_token = self.access_token
+                self.access_token = None
+                self.md_access_token = None
+                if not self.authenticate():
+                    # Restore old token as last resort (might still work for a bit)
+                    self.access_token = old_token
+                    logger.error("Full re-authentication also failed!")
 
     def _headers(self) -> dict:
         return {
@@ -707,19 +721,24 @@ class TradovateAPI:
     # HTTP helpers
     # ─────────────────────────────────────────
 
-    def _get(self, endpoint: str) -> Any:
+    def _get(self, endpoint: str, _retried: bool = False) -> Any:
         self.ensure_token_valid()
         try:
             resp = requests.get(
                 f"{self.base_url}{endpoint}", headers=self._headers(), timeout=30
             )
+            # Auto re-auth on 401/403 (expired token) — retry once
+            if resp.status_code in (401, 403) and not _retried:
+                logger.warning("GET %s returned %d. Re-authenticating...", endpoint, resp.status_code)
+                if self._re_authenticate():
+                    return self._get(endpoint, _retried=True)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as e:
             logger.error("GET %s failed: %s", endpoint, e)
             return None
 
-    def _post(self, endpoint: str, payload: dict) -> Any:
+    def _post(self, endpoint: str, payload: dict, _retried: bool = False) -> Any:
         self.ensure_token_valid()
         try:
             resp = requests.post(
@@ -728,6 +747,11 @@ class TradovateAPI:
                 json=payload,
                 timeout=30,
             )
+            # Auto re-auth on 401/403 (expired token) — retry once
+            if resp.status_code in (401, 403) and not _retried:
+                logger.warning("POST %s returned %d. Re-authenticating...", endpoint, resp.status_code)
+                if self._re_authenticate():
+                    return self._post(endpoint, payload, _retried=True)
             if resp.status_code != 200:
                 logger.error(
                     "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
@@ -739,6 +763,13 @@ class TradovateAPI:
         except requests.RequestException as e:
             logger.error("POST %s failed: %s", endpoint, e)
             return None
+
+    def _re_authenticate(self) -> bool:
+        """Clear expired token and do full re-authentication."""
+        self.access_token = None
+        self.md_access_token = None
+        self.token_expiry = None
+        return self.authenticate()
 
 
 # ─────────────────────────────────────────────
@@ -764,8 +795,9 @@ class MarketDataStream:
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_BASE_DELAY = 2  # seconds
 
-    def __init__(self, md_access_token: str):
+    def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
+        self._api = api  # Reference to API client for token refresh on 403
         self.ws: Optional[websocket.WebSocketApp] = None
         self._request_id = 0
         self._callbacks: dict[str, list[Callable]] = {}
@@ -889,30 +921,57 @@ class MarketDataStream:
                                 logger.error("Quote callback error: %s", e)
 
     def _on_error(self, ws, error):
-        logger.error("Market data WebSocket error: %s", error)
+        error_str = str(error)
+        if "403" in error_str:
+            logger.error("Market data WebSocket 403 Forbidden (token expired). Will re-auth on reconnect.")
+        else:
+            logger.error("Market data WebSocket error: %s", error)
 
     def _on_close(self, ws, close_status_code, close_msg):
         logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
         self._connected.clear()
-        # Auto-reconnect
-        if self._should_run and self._reconnect_count < self.MAX_RECONNECT_ATTEMPTS:
+        # Auto-reconnect (unlimited attempts — bot should never stop trying)
+        if self._should_run:
             self._reconnect_count += 1
-            delay = self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1))
+            # Cap delay at 60 seconds
+            delay = min(60, self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1)))
             logger.info(
-                "Reconnecting in %ds (attempt %d/%d)...",
-                delay, self._reconnect_count, self.MAX_RECONNECT_ATTEMPTS,
+                "Reconnecting in %ds (attempt %d)...",
+                delay, self._reconnect_count,
             )
             reconnect_timer = threading.Timer(delay, self._reconnect)
             reconnect_timer.daemon = True
             reconnect_timer.start()
 
     def _reconnect(self):
-        """Reconnect and re-subscribe to all symbols."""
+        """Reconnect and re-subscribe to all symbols. Refreshes token on 403."""
+        # If we have an API reference, refresh the token before reconnecting
+        # This fixes the 403 Forbidden issue when the md token expires
+        if self._api:
+            try:
+                self._api.ensure_token_valid()
+                if self._api.md_access_token:
+                    self.md_token = self._api.md_access_token
+                    logger.info("Refreshed market data token for reconnection")
+            except Exception as e:
+                logger.warning("Token refresh failed during reconnect: %s", e)
+
         self._connect()
         if self._connected.wait(timeout=15):
             for symbol in list(self._callbacks.keys()):
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
+        elif self._should_run and self._api:
+            # Connection failed even with fresh token — try full re-auth
+            logger.warning("WebSocket reconnect failed. Attempting full re-authentication...")
+            if self._api._re_authenticate() and self._api.md_access_token:
+                self.md_token = self._api.md_access_token
+                logger.info("Full re-auth succeeded, retrying WebSocket connection...")
+                self._connect()
+                if self._connected.wait(timeout=15):
+                    for symbol in list(self._callbacks.keys()):
+                        self._send("md/subscribeQuote", {"symbol": symbol})
+                        logger.info("Re-subscribed to: %s", symbol)
 
     def _send(self, endpoint: str, body: dict):
         """Send a message using the Tradovate WebSocket protocol."""
