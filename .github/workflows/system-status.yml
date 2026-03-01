@@ -35,15 +35,28 @@ jobs:
       - name: Install requests
         run: pip install requests
 
-      # ── Step A: Try to get token + server status via SSH ──
+      # ── Step A: Check if SSH is configured ──
+      - name: Check SSH availability
+        id: ssh_check
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          if [ -n "$SSH_HOST" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "SSH not configured — skipping server check"
+          fi
+
+      # ── Step B: Try to get token + server status via SSH ──
       - name: Get server status via SSH
         id: ssh_status
-        if: vars.SERVER_HOST != ''
+        if: steps.ssh_check.outputs.available == 'true'
         continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: false
           script: |
@@ -83,7 +96,7 @@ jobs:
             " 2>/dev/null || echo '{}'
             echo "==SERVER_END=="
 
-      # ── Step B: Check system status (API + optional SSH token) ──
+      # ── Step C: Check system status (API + optional SSH token) ──
       - name: Check system status
         env:
           TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
