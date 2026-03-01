@@ -66,6 +66,16 @@ MEMORY=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2,
 LIVE_STATUS="{}"
 [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
+# ── 2b. Run deep health check (if script exists) ──
+HEALTH_DATA="{}"
+if [ -f "$BOT_DIR/bot_health_check.py" ]; then
+    PYTHON="${BOT_DIR}/venv/bin/python3"
+    [ ! -f "$PYTHON" ] && PYTHON="python3"
+    echo "[$(date)] Running health check..."
+    $PYTHON "$BOT_DIR/bot_health_check.py" --quick >> /var/log/tradovate-cron.log 2>&1 || true
+    [ -f "$BOT_DIR/bot_health.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/bot_health.json" 2>/dev/null || echo "{}")
+fi
+
 # ── 3. Write server_status.json ──
 cat > "$STATUS_FILE" <<STATUSEOF
 {
@@ -80,7 +90,8 @@ cat > "$STATUS_FILE" <<STATUSEOF
   "disk_usage": "$DISK_USAGE",
   "memory": "$MEMORY",
   "last_log": $(echo "$LAST_LOG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo '""'),
-  "live_status": $LIVE_STATUS
+  "live_status": $LIVE_STATUS,
+  "health_check": $HEALTH_DATA
 }
 STATUSEOF
 
@@ -92,7 +103,9 @@ if [ -z "${GH_PAT:-}" ]; then
     exit 0
 fi
 
-COMMIT_MSG="bot-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE"
+# Include health verdict in commit message
+HEALTH_VERDICT=$(python3 -c "import json; print(json.load(open('bot_health.json')).get('verdict',{}).get('overall','?'))" 2>/dev/null || echo "?")
+COMMIT_MSG="bot-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE | health=$HEALTH_VERDICT"
 API_URL="https://api.github.com/repos/$GITHUB_REPO/contents/$STATUS_FILE"
 
 # Push function: fetches current SHA, builds payload, pushes
