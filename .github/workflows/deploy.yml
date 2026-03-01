@@ -8,6 +8,7 @@ on:
       - 'docs/**'
       - '*.md'
       - '.github/workflows/deploy-pages.yml'
+      - 'server_status.json'
   workflow_dispatch:
 
 env:
@@ -110,17 +111,15 @@ jobs:
             echo ""
             echo "--- Setting up status cron ---"
 
-            # Write GH_PAT to server if provided
+            # Write GH_PAT to server if provided as secret
             if [ -n "${SERVER_GH_PAT:-}" ]; then
-              echo "GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
+              echo "export GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
               chmod 600 "$BOT_DIR/.gh_pat"
               echo "GH_PAT saved."
             fi
 
-            # Build cron command
-            CRON_CMD="cd $BOT_DIR && export GH_PAT=\$(cat $BOT_DIR/.gh_pat 2>/dev/null | grep GH_PAT | cut -d= -f2); bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
-
             # Install cron if not already present
+            CRON_CMD="cd $BOT_DIR && . $BOT_DIR/.gh_pat 2>/dev/null; bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
             if ! crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
               (crontab -l 2>/dev/null; echo "*/5 * * * * $CRON_CMD") | crontab -
               echo "Cron job installed (every 5 min)."

@@ -1,16 +1,11 @@
 #!/bin/bash
-# server_cron.sh — Deploy script for server cron
-# Pulls latest code, restarts bot, reports status back to repo.
+# server_cron.sh — Pulls latest code, restarts bot, pushes status via GitHub API.
 #
-# Required env vars (set in crontab or /etc/environment):
-#   GH_PAT          — GitHub Personal Access Token (repo scope) for push
-#   GITHUB_REPO     — e.g. "motitap-dotcom/Tradovate-Bot" (optional, auto-detected)
+# Required env var:
+#   GH_PAT — GitHub Personal Access Token (repo scope) for pushing status
 #
-# Usage: Add to crontab:
-#   */5 * * * * cd /root/tradovate-bot && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1
-#
-# Or with env vars inline:
-#   */5 * * * * GH_PAT=ghp_xxx cd /root/tradovate-bot && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1
+# Auto-installed by deploy workflow. Manual setup:
+#   */5 * * * * cd /root/tradovate-bot && . .gh_pat 2>/dev/null; bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1
 #
 set -euo pipefail
 
@@ -18,26 +13,15 @@ BOT_DIR="${BOT_DIR:-/root/tradovate-bot}"
 SERVICE="tradovate-bot"
 BRANCH="${DEPLOY_BRANCH:-main}"
 STATUS_FILE="server_status.json"
-STATUS_BRANCH="${STATUS_BRANCH:-main}"
 
 cd "$BOT_DIR"
 
-# ── 0. Configure git auth (GitHub PAT) ──
-if [ -n "${GH_PAT:-}" ]; then
-    # Auto-detect repo from remote URL if not set
-    if [ -z "${GITHUB_REPO:-}" ]; then
-        GITHUB_REPO=$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')
-    fi
-    # Set push URL with token auth
-    git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPO}.git" 2>/dev/null || true
-fi
-
-git config user.name "tradovate-bot-server" 2>/dev/null || true
-git config user.email "bot@server" 2>/dev/null || true
+# Auto-detect repo from git remote
+GITHUB_REPO="${GITHUB_REPO:-$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')}"
 
 # ── 1. Pull latest code ──
 echo "[$(date)] Checking for updates on $BRANCH..."
-git fetch origin "$BRANCH" 2>/dev/null || { echo "[$(date)] Fetch failed"; }
+git fetch origin "$BRANCH" 2>/dev/null || echo "[$(date)] Fetch failed"
 
 LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
@@ -50,7 +34,7 @@ if [ "$LOCAL" != "$REMOTE" ]; then
     echo "[$(date)] Now at: $(git log -1 --oneline)"
     CODE_UPDATED="true"
 
-    # Update dependencies if needed
+    # Update dependencies
     if [ -f venv/bin/pip ]; then
         venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
     fi
@@ -67,31 +51,20 @@ fi
 BOT_ACTIVE="false"
 BOT_PID=""
 BOT_UPTIME=""
-LAST_LOG=""
-DISK_USAGE=""
-MEMORY=""
 
 if systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
     BOT_ACTIVE="true"
     BOT_PID=$(systemctl show "$SERVICE" --property=MainPID --value 2>/dev/null || echo "")
     ACTIVE_ENTER=$(systemctl show "$SERVICE" --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
-    if [ -n "$ACTIVE_ENTER" ]; then
-        BOT_UPTIME="$ACTIVE_ENTER"
-    fi
+    [ -n "$ACTIVE_ENTER" ] && BOT_UPTIME="$ACTIVE_ENTER"
 fi
 
-# Last 5 log lines
 LAST_LOG=$(journalctl -u "$SERVICE" --no-pager -n 5 2>/dev/null | tail -5 || echo "no logs")
-
-# System info
 DISK_USAGE=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "unknown")
 MEMORY=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "unknown")
 
-# live_status.json from bot (written every 30s)
 LIVE_STATUS="{}"
-if [ -f "$BOT_DIR/live_status.json" ]; then
-    LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
-fi
+[ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
 # ── 3. Write server_status.json ──
 cat > "$STATUS_FILE" <<STATUSEOF
@@ -113,30 +86,61 @@ STATUSEOF
 
 echo "[$(date)] Status: bot_active=$BOT_ACTIVE, pid=$BOT_PID"
 
-# ── 4. Push status back to repo ──
-git add "$STATUS_FILE"
+# ── 4. Push status to GitHub via API (directly to main, no git push needed) ──
+if [ -z "${GH_PAT:-}" ]; then
+    echo "[$(date)] No GH_PAT set — status written locally only."
+    exit 0
+fi
 
-if git diff --cached --quiet; then
-    echo "[$(date)] No status change to push."
-else
-    git commit -m "bot-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE" --no-verify
+COMMIT_MSG="bot-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE"
+API_URL="https://api.github.com/repos/$GITHUB_REPO/contents/$STATUS_FILE"
 
-    # Push with retry (up to 3 attempts)
-    PUSH_OK="false"
-    for i in 1 2 3; do
-        if git push origin HEAD:"$STATUS_BRANCH" 2>&1; then
-            PUSH_OK="true"
-            echo "[$(date)] Status pushed (attempt $i)."
-            break
-        else
-            echo "[$(date)] Push attempt $i failed. Retrying in ${i}s..."
-            sleep "$i"
-        fi
-    done
+# Push function: fetches current SHA, builds payload, pushes
+push_status() {
+    # Get current file SHA on main (required for updates, empty for first create)
+    local file_sha
+    file_sha=$(curl -sf -H "Authorization: token $GH_PAT" \
+      "${API_URL}?ref=main" 2>/dev/null | \
+      python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
 
-    if [ "$PUSH_OK" = "false" ]; then
-        echo "[$(date)] Push failed after 3 attempts. Will retry next cycle."
+    # Build JSON payload via python3 (safe escaping)
+    local payload
+    payload=$(STATUS_FILE="$STATUS_FILE" COMMIT_MSG="$COMMIT_MSG" FILE_SHA="$file_sha" python3 << 'PYEOF'
+import json, base64, os
+with open(os.environ['STATUS_FILE'], 'rb') as f:
+    content = base64.b64encode(f.read()).decode()
+payload = {'message': os.environ['COMMIT_MSG'], 'content': content, 'branch': 'main'}
+sha = os.environ.get('FILE_SHA', '')
+if sha:
+    payload['sha'] = sha
+print(json.dumps(payload))
+PYEOF
+    )
+
+    # PUT to GitHub Contents API
+    curl -sf -X PUT \
+      -H "Authorization: token $GH_PAT" \
+      -H "Accept: application/vnd.github.v3+json" \
+      -H "Content-Type: application/json" \
+      "$API_URL" \
+      -d "$payload" > /dev/null 2>&1
+}
+
+# Retry up to 3 times (handles SHA conflicts automatically)
+PUSH_OK="false"
+for i in 1 2 3; do
+    if push_status; then
+        PUSH_OK="true"
+        echo "[$(date)] Status pushed via API (attempt $i)."
+        break
+    else
+        echo "[$(date)] API push attempt $i failed. Retrying in ${i}s..."
+        sleep "$i"
     fi
+done
+
+if [ "$PUSH_OK" = "false" ]; then
+    echo "[$(date)] Push failed after 3 attempts. Will retry next cycle."
 fi
 
 echo "[$(date)] Done."

@@ -9,6 +9,7 @@ on:
     paths-ignore:
       - 'docs/**'
       - '*.md'
+      - 'server_status.json'
 
 env:
   DEPLOY_BRANCH: claude/tradovate-api-research-DPnl9
@@ -104,12 +105,11 @@ jobs:
 
             # ── Setup status cron ──
             if [ -n "${SERVER_GH_PAT:-}" ]; then
-              echo "GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
+              echo "export GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
               chmod 600 "$BOT_DIR/.gh_pat"
             fi
 
-            CRON_CMD="cd $BOT_DIR && export GH_PAT=\$(cat $BOT_DIR/.gh_pat 2>/dev/null | grep GH_PAT | cut -d= -f2); bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
-
+            CRON_CMD="cd $BOT_DIR && . $BOT_DIR/.gh_pat 2>/dev/null; bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
             if ! crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
               (crontab -l 2>/dev/null; echo "*/5 * * * * $CRON_CMD") | crontab -
               echo "Status cron installed."
