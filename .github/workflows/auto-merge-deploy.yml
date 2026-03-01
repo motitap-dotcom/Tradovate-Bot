@@ -1,18 +1,18 @@
 name: Auto-merge & Deploy
 
-# Triggers on push to any claude/* branch EXCEPT the deploy target itself
+# Triggers on push to any claude/* branch — merges into main and deploys
 on:
   push:
     branches:
       - 'claude/**'
-      - '!claude/tradovate-api-research-DPnl9'
     paths-ignore:
       - 'docs/**'
       - '*.md'
       - 'server_status.json'
+      - 'system_status.json'
 
 env:
-  DEPLOY_BRANCH: claude/tradovate-api-research-DPnl9
+  DEPLOY_BRANCH: main
   BOT_DIR: /root/tradovate-bot
   SERVICE_NAME: tradovate-bot
 

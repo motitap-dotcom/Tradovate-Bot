@@ -3,18 +3,19 @@ name: Deploy to Server
 # Fires on push to main/master or the deploy branch.
 on:
   push:
-    branches: [main, master, claude/tradovate-api-research-DPnl9]
+    branches: [main, master]
     paths-ignore:
       - 'docs/**'
       - '*.md'
       - '.github/workflows/deploy-pages.yml'
       - 'server_status.json'
+      - 'system_status.json'
   workflow_dispatch:
 
 env:
   BOT_DIR: /root/tradovate-bot
   SERVICE_NAME: tradovate-bot
-  DEPLOY_BRANCH: claude/tradovate-api-research-DPnl9
+  DEPLOY_BRANCH: main
 
 jobs:
   # ── Step 1: Quick syntax check before deploying ──
