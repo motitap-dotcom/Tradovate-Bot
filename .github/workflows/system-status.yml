@@ -9,6 +9,7 @@ on:
     paths:
       - '.github/workflows/system-status.yml'
       - 'system_status.json'
+      - 'verify_bot.py'
   workflow_dispatch:
 
 permissions:
@@ -48,7 +49,7 @@ jobs:
             echo "SSH not configured — skipping server check"
           fi
 
-      # ── Step B: Try to get token + server status via SSH ──
+      # ── Step B: Get token + run verify_bot.py on server via SSH ──
       - name: Get server status via SSH
         id: ssh_status
         if: steps.ssh_check.outputs.available == 'true'
@@ -78,7 +79,15 @@ jobs:
             UPTIME=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
             DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
             MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
-            LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 3 2>/dev/null | tail -3 || echo "no logs")
+            LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 5 2>/dev/null | tail -5 || echo "no logs")
+
+            # Read live_status.json if exists
+            LIVE_STATUS="{}"
+            [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
+
+            # Read bot.log tail
+            BOT_LOG_TAIL=""
+            [ -f "$BOT_DIR/bot.log" ] && BOT_LOG_TAIL=$(tail -15 "$BOT_DIR/bot.log" 2>/dev/null || echo "")
 
             # Output as JSON
             python3 -c "
@@ -90,6 +99,8 @@ jobs:
                 'disk': '$DISK',
                 'memory': '$MEM',
                 'last_log': '''$LAST_LOG'''.strip(),
+                'bot_log_tail': '''$BOT_LOG_TAIL'''.strip()[:500],
+                'live_status': $LIVE_STATUS,
                 'git_commit': '$(git log -1 --format=\"%h %s\" 2>/dev/null || echo \"?\")',
             }))
             " 2>/dev/null || echo '{}'
@@ -158,11 +169,9 @@ jobs:
                       print("  Could not parse token from server")
 
               # Extract server status
-              server_match = re.search(r"==SERVER_END==\s*$", ssh_output)
               server_match = re.search(r"==SERVER_START==\s*([\s\S]*?)\s*==SERVER_END==", ssh_output)
               if server_match:
                   server_lines = server_match.group(1).strip().split("\n")
-                  # Last line should be JSON
                   for line in reversed(server_lines):
                       line = line.strip()
                       if line.startswith("{"):
@@ -171,6 +180,10 @@ jobs:
                               print(f"  Server: bot_active={status['server'].get('bot_active')}")
                               print(f"  Memory: {status['server'].get('memory')}")
                               print(f"  Disk: {status['server'].get('disk')}")
+                              if status["server"].get("bot_log_tail"):
+                                  print(f"  Bot log tail:")
+                                  for log_line in status["server"]["bot_log_tail"].split("\n")[-5:]:
+                                      print(f"    {log_line}")
                           except Exception:
                               pass
                           break
@@ -293,6 +306,7 @@ jobs:
                           "unrealizedPnl": bal.get("unrealizedPnl"),
                           "totalCashValue": bal.get("totalCashValue"),
                           "initialMargin": bal.get("initialMargin"),
+                          "netLiq": bal.get("netLiq"),
                       }
                       print(f"  Balance: ${bal.get('totalCashValue', 'N/A')}")
                       print(f"  P&L: realized=${bal.get('realizedPnl', 'N/A')} unrealized=${bal.get('unrealizedPnl', 'N/A')}")
@@ -336,6 +350,14 @@ jobs:
           print(f"  API: {'OK' if status['api_reachable'] else 'DOWN'}")
           print(f"  Auth: {status['auth_method'] or 'none'}")
           print(f"  Server: {'connected' if status['server'] else 'no data'}")
+          if status['server']:
+              bot_active = status['server'].get('bot_active', False)
+              print(f"  Bot active: {bot_active}")
+              live = status['server'].get('live_status', {})
+              if live:
+                  print(f"  Live balance: ${live.get('balance', 'N/A')}")
+                  print(f"  Day P&L: ${live.get('day_pnl', 'N/A')}")
+                  print(f"  Trades today: {live.get('trades_today', 'N/A')}")
           print(f"  Errors: {len(status['errors'])}")
 
           with open("system_status.json", "w") as f:
@@ -353,7 +375,8 @@ jobs:
           else
             AUTH=$(python3 -c "import json; d=json.load(open('system_status.json')); print(d.get('auth_method','none'))")
             API=$(python3 -c "import json; d=json.load(open('system_status.json')); print('ok' if d['api_reachable'] else 'down')")
-            git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$API auth=$AUTH"
+            BOT=$(python3 -c "import json; d=json.load(open('system_status.json')); s=d.get('server',{}); print('running' if s and s.get('bot_active') else 'unknown')")
+            git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$API auth=$AUTH bot=$BOT"
             git push origin main
             echo "Pushed to main"
           fi
@@ -382,6 +405,7 @@ jobs:
           bal = d.get("balance", {})
           if bal:
               print(f"| Balance | ${bal.get('totalCashValue', 'N/A')} |")
+              print(f"| Net Liq | ${bal.get('netLiq', 'N/A')} |")
               print(f"| Realized P&L | ${bal.get('realizedPnl', 'N/A')} |")
               print(f"| Unrealized P&L | ${bal.get('unrealizedPnl', 'N/A')} |")
 
@@ -391,8 +415,26 @@ jobs:
           srv = d.get("server")
           if srv:
               print(f"| Bot Active | {srv.get('bot_active', '?')} |")
+              print(f"| Bot PID | {srv.get('bot_pid', '?')} |")
               print(f"| Memory | {srv.get('memory', '?')} |")
               print(f"| Disk | {srv.get('disk', '?')} |")
+              print(f"| Server Commit | `{srv.get('git_commit', '?')}` |")
+
+              live = srv.get('live_status', {})
+              if live:
+                  print("")
+                  print("### Live Bot Status (from server)")
+                  print("| Field | Value |")
+                  print("|-------|-------|")
+                  print(f"| Balance | ${live.get('balance', 'N/A')} |")
+                  print(f"| Equity | ${live.get('equity', 'N/A')} |")
+                  print(f"| Day P&L | ${live.get('day_pnl', 'N/A')} |")
+                  print(f"| Distance to Floor | ${live.get('distance_to_floor', 'N/A')} |")
+                  print(f"| Open Contracts | {live.get('open_contracts', 'N/A')} |")
+                  print(f"| Trades Today | {live.get('trades_today', 'N/A')} |")
+                  print(f"| Locked | {live.get('locked', 'N/A')} |")
+                  print(f"| Active Symbols | {', '.join(live.get('active_symbols', []))} |")
+                  print(f"| Last Update | `{live.get('timestamp_et', '?')}` |")
 
           errs = d.get("errors", [])
           if errs:
@@ -409,4 +451,13 @@ jobs:
               print("|----------|-----|-------|")
               for p in pos:
                   print(f"| {p['contractId']} | {p['netPos']} | {p.get('netPrice','?')} |")
+
+          if not errs and not srv:
+              print("")
+              print("### Setup Required")
+              print("To get full server monitoring, configure these GitHub secrets:")
+              print("- `SERVER_HOST` — VPS IP address")
+              print("- `SERVER_SSH_KEY` — SSH private key for the VPS")
+              print("- `TRADOVATE_USERNAME` / `TRADOVATE_PASSWORD` — for API auth")
+              print("- `TRADOVATE_ACCESS_TOKEN` — valid bearer token (optional)")
           PYEOF

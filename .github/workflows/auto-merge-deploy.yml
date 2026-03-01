@@ -63,11 +63,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge to deploy branch
+      - name: Merge to main
         run: |
-          git fetch origin ${{ env.DEPLOY_BRANCH }}
-          git checkout ${{ env.DEPLOY_BRANCH }}
-          git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
+          # Create main from source if it doesn't exist yet
+          if git fetch origin ${{ env.DEPLOY_BRANCH }} 2>/dev/null; then
+            git checkout ${{ env.DEPLOY_BRANCH }}
+            git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
+          else
+            echo "Branch ${{ env.DEPLOY_BRANCH }} does not exist — creating from ${{ github.sha }}"
+            git checkout -b ${{ env.DEPLOY_BRANCH }} ${{ github.sha }}
+          fi
           git push origin ${{ env.DEPLOY_BRANCH }}
 
       # SSH deploy (only if SERVER_HOST is configured as a repo variable)
@@ -79,8 +84,8 @@ jobs:
           username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           envs: SERVER_GH_PAT
-          script_stop: true
           script: |
+            set -e
             echo "=== Auto-merge deploy: ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }} ==="
             BOT_DIR="${{ env.BOT_DIR }}"
             cd "$BOT_DIR" || exit 1

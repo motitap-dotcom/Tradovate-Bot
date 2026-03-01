@@ -23,7 +23,6 @@ if [ -n "${DEPLOY_BRANCH:-}" ]; then
     BRANCH="$DEPLOY_BRANCH"
 elif git ls-remote --heads origin main 2>/dev/null | grep -q main; then
     BRANCH="main"
-    # Switch local checkout to main if needed
     CURRENT=$(git branch --show-current 2>/dev/null || echo "")
     if [ -n "$CURRENT" ] && [ "$CURRENT" != "main" ]; then
         echo "[$(date)] Switching from $CURRENT to main..."
@@ -99,7 +98,7 @@ MEMORY=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2,
 LIVE_STATUS="{}"
 [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
-# ── 2b. Run health checks (connection_check.py preferred, bot_health_check.py fallback) ──
+# ── 2b. Run health checks (connection_check > bot_health_check > verify_bot) ──
 HEALTH_DATA="{}"
 PYTHON="${BOT_DIR}/venv/bin/python3"
 [ ! -f "$PYTHON" ] && PYTHON="python3"
@@ -112,6 +111,9 @@ elif [ -f "$BOT_DIR/bot_health_check.py" ]; then
     echo "[$(date)] Running health check..."
     $PYTHON "$BOT_DIR/bot_health_check.py" --quick >> /var/log/tradovate-cron.log 2>&1 || true
     [ -f "$BOT_DIR/bot_health.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/bot_health.json" 2>/dev/null || echo "{}")
+elif [ -f "$BOT_DIR/verify_bot.py" ]; then
+    $PYTHON "$BOT_DIR/verify_bot.py" --server > /dev/null 2>&1 || true
+    [ -f "$BOT_DIR/verify_report.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/verify_report.json" 2>/dev/null || echo "{}")
 fi
 
 # ── 2c. Check for ping request and respond ──
@@ -169,13 +171,11 @@ API_URL="https://api.github.com/repos/$GITHUB_REPO/contents/$STATUS_FILE"
 
 # Push function: fetches current SHA, builds payload, pushes
 push_status() {
-    # Get current file SHA on main (required for updates, empty for first create)
     local file_sha
     file_sha=$(curl -sf -H "Authorization: token $GH_PAT" \
       "${API_URL}?ref=main" 2>/dev/null | \
       python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
 
-    # Build JSON payload via python3 (safe escaping)
     local payload
     payload=$(STATUS_FILE="$STATUS_FILE" COMMIT_MSG="$COMMIT_MSG" FILE_SHA="$file_sha" python3 << 'PYEOF'
 import json, base64, os
@@ -189,7 +189,6 @@ print(json.dumps(payload))
 PYEOF
     )
 
-    # PUT to GitHub Contents API
     curl -sf -X PUT \
       -H "Authorization: token $GH_PAT" \
       -H "Accept: application/vnd.github.v3+json" \
@@ -198,7 +197,7 @@ PYEOF
       -d "$payload" > /dev/null 2>&1
 }
 
-# Retry up to 3 times (handles SHA conflicts automatically)
+# Retry up to 3 times
 PUSH_OK="false"
 for i in 1 2 3; do
     if push_status; then
