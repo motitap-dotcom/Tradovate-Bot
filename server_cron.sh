@@ -7,44 +7,77 @@
 # Auto-installed by deploy workflow. Manual setup:
 #   */5 * * * * cd /root/tradovate-bot && . .gh_pat 2>/dev/null; bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1
 #
-set -euo pipefail
+# Use set -u (catch unset vars) but NOT set -e (don't exit on failure).
+# This cron must ALWAYS reach the auto-heal and status sections, even if
+# git fetch or pip fails due to transient network issues.
+set -u
 
 BOT_DIR="${BOT_DIR:-/root/tradovate-bot}"
 SERVICE="tradovate-bot"
-BRANCH="${DEPLOY_BRANCH:-main}"
 STATUS_FILE="server_status.json"
 
-cd "$BOT_DIR"
+cd "$BOT_DIR" || { echo "[$(date)] FATAL: $BOT_DIR not found"; exit 1; }
+
+# ── 0. Auto-detect deploy branch: prefer main, fall back to old branch ──
+if [ -n "${DEPLOY_BRANCH:-}" ]; then
+    BRANCH="$DEPLOY_BRANCH"
+elif git ls-remote --heads origin main 2>/dev/null | grep -q main; then
+    BRANCH="main"
+    # Switch local checkout to main if needed
+    CURRENT=$(git branch --show-current 2>/dev/null || echo "")
+    if [ -n "$CURRENT" ] && [ "$CURRENT" != "main" ]; then
+        echo "[$(date)] Switching from $CURRENT to main..."
+        git fetch origin main 2>/dev/null && git checkout -B main origin/main || echo "[$(date)] Warning: failed to switch to main"
+    fi
+else
+    BRANCH="claude/tradovate-api-research-DPnl9"
+fi
 
 # Auto-detect repo from git remote
 GITHUB_REPO="${GITHUB_REPO:-$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')}"
 
 # ── 1. Pull latest code ──
 echo "[$(date)] Checking for updates on $BRANCH..."
-git fetch origin "$BRANCH" 2>/dev/null || echo "[$(date)] Fetch failed"
+if git fetch origin "$BRANCH" 2>/dev/null; then
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
+    CODE_UPDATED="false"
 
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
-CODE_UPDATED="false"
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "[$(date)] New code found. Updating..."
+        git reset --hard "origin/$BRANCH"
+        echo "[$(date)] Now at: $(git log -1 --oneline)"
+        CODE_UPDATED="true"
 
-if [ "$LOCAL" != "$REMOTE" ]; then
-    echo "[$(date)] New code found. Updating..."
-    git stash --include-untracked 2>/dev/null || true
-    git reset --hard "origin/$BRANCH"
-    echo "[$(date)] Now at: $(git log -1 --oneline)"
-    CODE_UPDATED="true"
+        # Update dependencies if needed
+        if [ -f venv/bin/pip ]; then
+            venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3 || true
+        fi
 
-    # Update dependencies
-    if [ -f venv/bin/pip ]; then
-        venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+        # Restart bot
+        echo "[$(date)] Restarting bot..."
+        systemctl restart "$SERVICE"
+        sleep 5
+    else
+        echo "[$(date)] No changes."
     fi
-
-    # Restart bot
-    echo "[$(date)] Restarting bot..."
-    systemctl restart "$SERVICE" 2>/dev/null || echo "[$(date)] systemctl restart failed"
-    sleep 5
 else
-    echo "[$(date)] No changes."
+    echo "[$(date)] Warning: git fetch failed (network issue?). Skipping code update."
+    LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    REMOTE="$LOCAL"
+    CODE_UPDATED="false"
+fi
+
+# ── 1b. Auto-heal: restart bot if it's not running ──
+if ! systemctl is-active --quiet "$SERVICE"; then
+    echo "[$(date)] Bot is DOWN — attempting auto-restart..."
+    systemctl restart "$SERVICE"
+    sleep 5
+    if systemctl is-active --quiet "$SERVICE"; then
+        echo "[$(date)] Auto-restart SUCCEEDED."
+    else
+        echo "[$(date)] Auto-restart FAILED. Check: journalctl -u $SERVICE -n 50"
+    fi
 fi
 
 # ── 2. Collect status ──
@@ -66,14 +99,18 @@ MEMORY=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2,
 LIVE_STATUS="{}"
 [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
-# ── 2b. Run deep health check (if script exists) ──
+# ── 2b. Run deep health check (bot_health_check.py preferred, verify_bot.py fallback) ──
 HEALTH_DATA="{}"
+PYTHON="${BOT_DIR}/venv/bin/python3"
+[ ! -f "$PYTHON" ] && PYTHON="python3"
+
 if [ -f "$BOT_DIR/bot_health_check.py" ]; then
-    PYTHON="${BOT_DIR}/venv/bin/python3"
-    [ ! -f "$PYTHON" ] && PYTHON="python3"
     echo "[$(date)] Running health check..."
     $PYTHON "$BOT_DIR/bot_health_check.py" --quick >> /var/log/tradovate-cron.log 2>&1 || true
     [ -f "$BOT_DIR/bot_health.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/bot_health.json" 2>/dev/null || echo "{}")
+elif [ -f "$BOT_DIR/verify_bot.py" ]; then
+    $PYTHON "$BOT_DIR/verify_bot.py" --server > /dev/null 2>&1 || true
+    [ -f "$BOT_DIR/verify_report.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/verify_report.json" 2>/dev/null || echo "{}")
 fi
 
 # ── 3. Write server_status.json ──
