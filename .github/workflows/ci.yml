@@ -2,9 +2,9 @@ name: CI — Tests & Lint
 
 on:
   push:
-    branches: [main, master, claude/tradovate-api-research-DPnl9]
+    branches: [main, master, 'claude/**']
   pull_request:
-    branches: [main, master, claude/tradovate-api-research-DPnl9]
+    branches: [main, master]
 
 jobs:
   test:
