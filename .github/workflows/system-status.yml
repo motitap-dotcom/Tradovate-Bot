@@ -1,0 +1,342 @@
+name: System Status Check
+
+# Runs every 30 min, on push to key branches, or manually
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - '.github/workflows/system-status.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-status:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Check system status
+        env:
+          TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
+          TRADOVATE_USERNAME: ${{ secrets.TRADOVATE_USERNAME }}
+          TRADOVATE_PASSWORD: ${{ secrets.TRADOVATE_PASSWORD }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, sys, time, base64, hashlib, hmac, uuid
+          from datetime import datetime, timezone
+
+          try:
+              import requests
+          except ImportError:
+              print("requests not installed")
+              sys.exit(1)
+
+          DEMO_URL = "https://demo.tradovateapi.com/v1"
+          LIVE_URL = "https://live.tradovateapi.com/v1"
+          ACCOUNT_ID = 39996695
+
+          status = {
+              "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "api_reachable": False,
+              "authenticated": False,
+              "auth_method": None,
+              "account": {},
+              "balance": {},
+              "positions": [],
+              "orders": [],
+              "errors": [],
+          }
+
+          # ── 1. API Connectivity ──
+          print("=== 1. API Connectivity ===")
+          for label, url in [("Demo", DEMO_URL), ("Live", LIVE_URL)]:
+              try:
+                  r = requests.post(f"{url}/auth/accesstokenrequest",
+                                    json={"name": "test"}, timeout=10)
+                  print(f"  {label}: {r.status_code} OK")
+                  status["api_reachable"] = True
+              except Exception as e:
+                  print(f"  {label}: FAIL - {e}")
+                  status["errors"].append(f"{label} API unreachable: {e}")
+
+          # ── 2. Authentication ──
+          print("\n=== 2. Authentication ===")
+          token = os.environ.get("TRADOVATE_ACCESS_TOKEN", "").strip()
+          username = os.environ.get("TRADOVATE_USERNAME", "").strip()
+          password = os.environ.get("TRADOVATE_PASSWORD", "").strip()
+
+          # Try saved token first
+          if token:
+              print("  Trying saved token...")
+              r = requests.get(f"{DEMO_URL}/account/list",
+                               headers={"Authorization": f"Bearer {token}"}, timeout=10)
+              if r.status_code == 200:
+                  print("  Token valid!")
+                  status["authenticated"] = True
+                  status["auth_method"] = "saved_token"
+              else:
+                  print(f"  Token expired/invalid: {r.status_code}")
+                  token = ""
+
+          # Try web-style auth if token didn't work
+          if not token and username and password:
+              print("  Trying web-style auth...")
+              offset = len(username) % len(password)
+              rearranged = password[offset:] + password[:offset]
+              reversed_pw = rearranged[::-1]
+              encrypted_pw = base64.b64encode(reversed_pw.encode()).decode()
+
+              device_id = f"gh-status-{uuid.uuid4()}"
+              hmac_key = "1259-11e7-485a-aeae-9b6016579351"
+
+              payload = {
+                  "name": username,
+                  "password": encrypted_pw,
+                  "appId": "tradovate_trader(web)",
+                  "appVersion": "3.260220.0",
+                  "deviceId": device_id,
+                  "cid": 8,
+                  "sec": "",
+                  "chl": "",
+                  "organization": "",
+              }
+              fields = ["chl", "deviceId", "name", "password", "appId"]
+              message = "".join(str(payload.get(f, "")) for f in fields)
+              payload["sec"] = hmac.new(
+                  hmac_key.encode(), message.encode(), hashlib.sha256
+              ).hexdigest()
+
+              try:
+                  r = requests.post(f"{LIVE_URL}/auth/accesstokenrequest",
+                                    json=payload, timeout=30)
+                  data = r.json()
+                  if "accessToken" in data:
+                      token = data["accessToken"]
+                      print(f"  Auth success! userId={data.get('userId')}")
+                      status["authenticated"] = True
+                      status["auth_method"] = "web_auth"
+                  elif "p-ticket" in data:
+                      print(f"  Credentials valid but CAPTCHA required")
+                      status["auth_method"] = "captcha_needed"
+                      status["errors"].append("CAPTCHA required - token needed from server")
+                  else:
+                      err = data.get("errorText", str(data))
+                      print(f"  Auth failed: {err}")
+                      status["errors"].append(f"Auth failed: {err}")
+              except Exception as e:
+                  print(f"  Auth error: {e}")
+                  status["errors"].append(f"Auth error: {e}")
+
+          if not token and not username:
+              print("  No credentials configured")
+              status["errors"].append("No TRADOVATE_ACCESS_TOKEN or TRADOVATE_USERNAME secrets configured")
+
+          # ── 3. Account Status ──
+          if token:
+              headers = {"Authorization": f"Bearer {token}"}
+              print("\n=== 3. Account Status ===")
+
+              # Account info
+              try:
+                  r = requests.get(f"{DEMO_URL}/account/list", headers=headers, timeout=10)
+                  if r.status_code == 200:
+                      accounts = r.json()
+                      for a in accounts:
+                          print(f"  Account: {a.get('name')} | ID: {a.get('id')} | Active: {a.get('active')}")
+                          if a.get("id") == ACCOUNT_ID or len(accounts) == 1:
+                              status["account"] = {
+                                  "name": a.get("name"),
+                                  "id": a.get("id"),
+                                  "active": a.get("active"),
+                              }
+              except Exception as e:
+                  status["errors"].append(f"Account fetch: {e}")
+
+              # Cash balance
+              try:
+                  r = requests.get(f"{DEMO_URL}/cashBalance/getcashbalancesnapshot",
+                                   headers=headers, timeout=10,
+                                   params={"accountId": ACCOUNT_ID})
+                  if r.status_code == 200:
+                      bal = r.json()
+                      status["balance"] = {
+                          "realizedPnl": bal.get("realizedPnl"),
+                          "unrealizedPnl": bal.get("unrealizedPnl"),
+                          "cashOnHand": bal.get("cashOnHand"),
+                          "totalCashValue": bal.get("totalCashValue"),
+                          "initialMargin": bal.get("initialMargin"),
+                      }
+                      print(f"  Cash: ${bal.get('totalCashValue', 'N/A')}")
+                      print(f"  Realized P&L: ${bal.get('realizedPnl', 'N/A')}")
+                      print(f"  Unrealized P&L: ${bal.get('unrealizedPnl', 'N/A')}")
+              except Exception as e:
+                  status["errors"].append(f"Balance fetch: {e}")
+
+              # Open positions
+              try:
+                  r = requests.get(f"{DEMO_URL}/position/list", headers=headers, timeout=10)
+                  if r.status_code == 200:
+                      positions = r.json()
+                      open_pos = [p for p in positions if p.get("netPos", 0) != 0]
+                      status["positions"] = [
+                          {
+                              "contractId": p.get("contractId"),
+                              "netPos": p.get("netPos"),
+                              "netPrice": p.get("netPrice"),
+                              "timestamp": p.get("timestamp"),
+                          }
+                          for p in open_pos
+                      ]
+                      print(f"  Open positions: {len(open_pos)}")
+                      for p in open_pos:
+                          print(f"    Contract {p.get('contractId')}: qty={p.get('netPos')} @ {p.get('netPrice')}")
+              except Exception as e:
+                  status["errors"].append(f"Positions fetch: {e}")
+
+              # Open orders
+              try:
+                  r = requests.get(f"{DEMO_URL}/order/list", headers=headers, timeout=10)
+                  if r.status_code == 200:
+                      orders = r.json()
+                      active = [o for o in orders if o.get("ordStatus") in ("Working", "Accepted")]
+                      status["orders"] = [
+                          {
+                              "orderId": o.get("id"),
+                              "action": o.get("action"),
+                              "orderQty": o.get("orderQty"),
+                              "ordStatus": o.get("ordStatus"),
+                              "orderType": o.get("ordType"),
+                          }
+                          for o in active
+                      ]
+                      print(f"  Active orders: {len(active)}")
+              except Exception as e:
+                  status["errors"].append(f"Orders fetch: {e}")
+
+          # ── 4. Server status from repo ──
+          print("\n=== 4. Server Status File ===")
+          if os.path.exists("server_status.json"):
+              try:
+                  with open("server_status.json") as f:
+                      srv = json.load(f)
+                  status["server"] = srv
+                  print(f"  Bot active: {srv.get('bot_active')}")
+                  print(f"  Last report: {srv.get('timestamp')}")
+              except Exception:
+                  print("  server_status.json exists but unreadable")
+          else:
+              print("  No server_status.json found")
+              status["server"] = None
+
+          # ── 5. Write results ──
+          print("\n=== Summary ===")
+          print(f"  API reachable: {status['api_reachable']}")
+          print(f"  Authenticated: {status['authenticated']}")
+          print(f"  Auth method: {status['auth_method']}")
+          print(f"  Errors: {len(status['errors'])}")
+          for err in status["errors"]:
+              print(f"    - {err}")
+
+          with open("system_status.json", "w") as f:
+              json.dump(status, f, indent=2)
+          print("\nWrote system_status.json")
+          PYEOF
+
+      - name: Commit and push status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add status file
+          git add system_status.json
+
+          # Only commit if there are changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$(python3 -c 'import json; d=json.load(open("system_status.json")); print("ok" if d["api_reachable"] else "down")') auth=$(python3 -c 'import json; d=json.load(open("system_status.json")); print(d.get("auth_method","none"))')"
+            git push origin main
+            echo "Status pushed to main"
+          fi
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## System Status Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ ! -f system_status.json ]; then
+            echo "Status check failed to produce output." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          API=$(python3 -c "import json; d=json.load(open('system_status.json')); print('Reachable' if d['api_reachable'] else 'DOWN')")
+          AUTH=$(python3 -c "import json; d=json.load(open('system_status.json')); print(d.get('auth_method') or 'none')")
+          AUTHED=$(python3 -c "import json; d=json.load(open('system_status.json')); print('Yes' if d['authenticated'] else 'No')")
+          CASH=$(python3 -c "import json; d=json.load(open('system_status.json')); print(d.get('balance',{}).get('totalCashValue','N/A'))" 2>/dev/null || echo "N/A")
+          PNL=$(python3 -c "import json; d=json.load(open('system_status.json')); print(d.get('balance',{}).get('realizedPnl','N/A'))" 2>/dev/null || echo "N/A")
+          UREAL=$(python3 -c "import json; d=json.load(open('system_status.json')); print(d.get('balance',{}).get('unrealizedPnl','N/A'))" 2>/dev/null || echo "N/A")
+          POS=$(python3 -c "import json; d=json.load(open('system_status.json')); print(len(d.get('positions',[])))" 2>/dev/null || echo "0")
+          ORDERS=$(python3 -c "import json; d=json.load(open('system_status.json')); print(len(d.get('orders',[])))" 2>/dev/null || echo "0")
+          ERRORS=$(python3 -c "import json; d=json.load(open('system_status.json')); errs=d.get('errors',[]); print(len(errs))" 2>/dev/null || echo "0")
+
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tradovate API | $API |" >> $GITHUB_STEP_SUMMARY
+          echo "| Authenticated | $AUTHED ($AUTH) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cash Balance | \$$CASH |" >> $GITHUB_STEP_SUMMARY
+          echo "| Realized P&L | \$$PNL |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unrealized P&L | \$$UREAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| Open Positions | $POS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Active Orders | $ORDERS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Errors | $ERRORS |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Show errors if any
+          if [ "$ERRORS" != "0" ]; then
+            echo "### Errors" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json
+          d = json.load(open('system_status.json'))
+          for e in d.get('errors', []):
+              print(f'- {e}')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Show positions if any
+          if [ "$POS" != "0" ]; then
+            echo "### Open Positions" >> $GITHUB_STEP_SUMMARY
+            echo "| Contract | Qty | Price |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|-----|-------|" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json
+          d = json.load(open('system_status.json'))
+          for p in d.get('positions', []):
+              print(f'| {p[\"contractId\"]} | {p[\"netPos\"]} | {p.get(\"netPrice\",\"N/A\")} |')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Full data in \`system_status.json\` on main branch*" >> $GITHUB_STEP_SUMMARY
