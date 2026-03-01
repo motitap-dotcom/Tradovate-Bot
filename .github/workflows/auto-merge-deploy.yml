@@ -77,10 +77,12 @@ jobs:
           host: ${{ vars.SERVER_HOST }}
           username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: SERVER_GH_PAT
           script_stop: true
           script: |
             echo "=== Auto-merge deploy: ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }} ==="
-            cd ${{ env.BOT_DIR }} || exit 1
+            BOT_DIR="${{ env.BOT_DIR }}"
+            cd "$BOT_DIR" || exit 1
             git fetch origin ${{ env.DEPLOY_BRANCH }}
             git reset --hard origin/${{ env.DEPLOY_BRANCH }}
             echo "Now at: $(git log -1 --oneline)"
@@ -99,6 +101,23 @@ jobs:
               journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 15
               exit 1
             fi
+
+            # ── Setup status cron ──
+            if [ -n "${SERVER_GH_PAT:-}" ]; then
+              echo "GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
+              chmod 600 "$BOT_DIR/.gh_pat"
+            fi
+
+            CRON_CMD="cd $BOT_DIR && export GH_PAT=\$(cat $BOT_DIR/.gh_pat 2>/dev/null | grep GH_PAT | cut -d= -f2); bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
+
+            if ! crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
+              (crontab -l 2>/dev/null; echo "*/5 * * * * $CRON_CMD") | crontab -
+              echo "Status cron installed."
+            else
+              echo "Status cron already exists."
+            fi
+        env:
+          SERVER_GH_PAT: ${{ secrets.SERVER_GH_PAT }}
 
       # Fallback: webhook if no SSH host configured
       - name: Trigger server webhook (fallback)

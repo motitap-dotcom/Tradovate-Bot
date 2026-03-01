@@ -56,6 +56,7 @@ jobs:
           host: ${{ vars.SERVER_HOST }}
           username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: SERVER_GH_PAT
           script_stop: true
           script: |
             echo "========================================"
@@ -105,10 +106,34 @@ jobs:
               exit 1
             fi
 
+            # ── Setup status cron ──
+            echo ""
+            echo "--- Setting up status cron ---"
+
+            # Write GH_PAT to server if provided
+            if [ -n "${SERVER_GH_PAT:-}" ]; then
+              echo "GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
+              chmod 600 "$BOT_DIR/.gh_pat"
+              echo "GH_PAT saved."
+            fi
+
+            # Build cron command
+            CRON_CMD="cd $BOT_DIR && export GH_PAT=\$(cat $BOT_DIR/.gh_pat 2>/dev/null | grep GH_PAT | cut -d= -f2); bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
+
+            # Install cron if not already present
+            if ! crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
+              (crontab -l 2>/dev/null; echo "*/5 * * * * $CRON_CMD") | crontab -
+              echo "Cron job installed (every 5 min)."
+            else
+              echo "Cron job already exists."
+            fi
+
             echo ""
             echo "========================================"
             echo "  Deploy complete!"
             echo "========================================"
+        env:
+          SERVER_GH_PAT: ${{ secrets.SERVER_GH_PAT }}
 
       - name: Deploy summary
         if: always()
