@@ -66,6 +66,16 @@ MEMORY=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2,
 LIVE_STATUS="{}"
 [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
+# ── 2b. Run connect_verify.py (quick mode) for deep health check ──
+CONNECT_STATUS="{}"
+if [ -f "$BOT_DIR/connect_verify.py" ]; then
+    echo "[$(date)] Running connection verifier..."
+    PYTHON="${BOT_DIR}/venv/bin/python"
+    [ ! -f "$PYTHON" ] && PYTHON="python3"
+    timeout 45 "$PYTHON" "$BOT_DIR/connect_verify.py" --quick >> /var/log/tradovate-cron.log 2>&1 || true
+    [ -f "$BOT_DIR/connect_status.json" ] && CONNECT_STATUS=$(cat "$BOT_DIR/connect_status.json" 2>/dev/null || echo "{}")
+fi
+
 # ── 3. Write server_status.json ──
 cat > "$STATUS_FILE" <<STATUSEOF
 {
@@ -80,7 +90,8 @@ cat > "$STATUS_FILE" <<STATUSEOF
   "disk_usage": "$DISK_USAGE",
   "memory": "$MEMORY",
   "last_log": $(echo "$LAST_LOG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo '""'),
-  "live_status": $LIVE_STATUS
+  "live_status": $LIVE_STATUS,
+  "connect_verify": $CONNECT_STATUS
 }
 STATUSEOF
 
@@ -93,23 +104,26 @@ if [ -z "${GH_PAT:-}" ]; then
 fi
 
 COMMIT_MSG="bot-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE"
-API_URL="https://api.github.com/repos/$GITHUB_REPO/contents/$STATUS_FILE"
 
-# Push function: fetches current SHA, builds payload, pushes
-push_status() {
+# Push a file to GitHub via Contents API
+push_file_to_github() {
+    local file_path="$1"
+    local commit_msg="$2"
+    local api_url="https://api.github.com/repos/$GITHUB_REPO/contents/$file_path"
+
     # Get current file SHA on main (required for updates, empty for first create)
     local file_sha
     file_sha=$(curl -sf -H "Authorization: token $GH_PAT" \
-      "${API_URL}?ref=main" 2>/dev/null | \
+      "${api_url}?ref=main" 2>/dev/null | \
       python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
 
     # Build JSON payload via python3 (safe escaping)
     local payload
-    payload=$(STATUS_FILE="$STATUS_FILE" COMMIT_MSG="$COMMIT_MSG" FILE_SHA="$file_sha" python3 << 'PYEOF'
+    payload=$(FILE_PATH="$file_path" COMMIT_MSG_="$commit_msg" FILE_SHA="$file_sha" python3 << 'PYEOF'
 import json, base64, os
-with open(os.environ['STATUS_FILE'], 'rb') as f:
+with open(os.environ['FILE_PATH'], 'rb') as f:
     content = base64.b64encode(f.read()).decode()
-payload = {'message': os.environ['COMMIT_MSG'], 'content': content, 'branch': 'main'}
+payload = {'message': os.environ['COMMIT_MSG_'], 'content': content, 'branch': 'main'}
 sha = os.environ.get('FILE_SHA', '')
 if sha:
     payload['sha'] = sha
@@ -122,22 +136,30 @@ PYEOF
       -H "Authorization: token $GH_PAT" \
       -H "Accept: application/vnd.github.v3+json" \
       -H "Content-Type: application/json" \
-      "$API_URL" \
+      "$api_url" \
       -d "$payload" > /dev/null 2>&1
 }
 
-# Retry up to 3 times (handles SHA conflicts automatically)
+# Push server_status.json (retry up to 3 times)
 PUSH_OK="false"
 for i in 1 2 3; do
-    if push_status; then
+    if push_file_to_github "$STATUS_FILE" "$COMMIT_MSG"; then
         PUSH_OK="true"
-        echo "[$(date)] Status pushed via API (attempt $i)."
+        echo "[$(date)] server_status.json pushed via API (attempt $i)."
         break
     else
         echo "[$(date)] API push attempt $i failed. Retrying in ${i}s..."
         sleep "$i"
     fi
 done
+
+# Also push connect_status.json if it exists
+if [ -f "$BOT_DIR/connect_status.json" ]; then
+    CONNECT_MSG="connect-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE"
+    push_file_to_github "connect_status.json" "$CONNECT_MSG" 2>/dev/null && \
+        echo "[$(date)] connect_status.json pushed." || \
+        echo "[$(date)] connect_status.json push failed."
+fi
 
 if [ "$PUSH_OK" = "false" ]; then
     echo "[$(date)] Push failed after 3 attempts. Will retry next cycle."

@@ -38,6 +38,9 @@ Thumbs.db
 trades/
 backtest_results/
 live_status.json
+connect_status.json
+bot_health.json
+verify_report.json
 
 # VPS generated files
 bot-ctl.sh
