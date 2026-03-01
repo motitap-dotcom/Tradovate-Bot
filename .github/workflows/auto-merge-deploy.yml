@@ -1,17 +1,16 @@
 name: Auto-merge & Deploy
 
-# Triggers on push to any claude/* branch EXCEPT the deploy target itself
+# Triggers on push to any claude/* branch — merges into main and deploys
 on:
   push:
     branches:
       - 'claude/**'
-      - '!claude/tradovate-api-research-DPnl9'
     paths-ignore:
       - 'docs/**'
       - '*.md'
 
 env:
-  DEPLOY_BRANCH: claude/tradovate-api-research-DPnl9
+  DEPLOY_BRANCH: main
   BOT_DIR: /root/tradovate-bot
   SERVICE_NAME: tradovate-bot
 
@@ -62,7 +61,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge to deploy branch
+      - name: Merge to main
         run: |
           git fetch origin ${{ env.DEPLOY_BRANCH }}
           git checkout ${{ env.DEPLOY_BRANCH }}

@@ -9,7 +9,7 @@ set -euo pipefail
 
 BOT_DIR="${BOT_DIR:-/root/tradovate-bot}"
 SERVICE="tradovate-bot"
-BRANCH="${DEPLOY_BRANCH:-claude/tradovate-api-research-DPnl9}"
+BRANCH="${DEPLOY_BRANCH:-main}"
 STATUS_FILE="server_status.json"
 
 cd "$BOT_DIR"
@@ -37,6 +37,18 @@ if [ "$LOCAL" != "$REMOTE" ]; then
     sleep 5
 else
     echo "[$(date)] No changes."
+fi
+
+# ── 1b. Auto-heal: restart bot if it's not running ──
+if ! systemctl is-active --quiet "$SERVICE"; then
+    echo "[$(date)] Bot is DOWN — attempting auto-restart..."
+    systemctl restart "$SERVICE"
+    sleep 5
+    if systemctl is-active --quiet "$SERVICE"; then
+        echo "[$(date)] Auto-restart SUCCEEDED."
+    else
+        echo "[$(date)] Auto-restart FAILED. Check: journalctl -u $SERVICE -n 50"
+    fi
 fi
 
 # ── 2. Collect status ──
