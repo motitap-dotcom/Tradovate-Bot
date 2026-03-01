@@ -8,6 +8,7 @@ on:
       - 'docs/**'
       - '*.md'
       - '.github/workflows/deploy-pages.yml'
+      - 'server_status.json'
   workflow_dispatch:
 
 env:
@@ -55,8 +56,9 @@ jobs:
           host: ${{ vars.SERVER_HOST }}
           username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script_stop: true
+          envs: SERVER_GH_PAT
           script: |
+            set -e
             echo "========================================"
             echo "  Deploying commit ${{ github.sha }}"
             echo "  Branch: ${{ github.ref_name }}"
@@ -104,10 +106,32 @@ jobs:
               exit 1
             fi
 
+            # ── Setup status cron ──
+            echo ""
+            echo "--- Setting up status cron ---"
+
+            # Write GH_PAT to server if provided as secret
+            if [ -n "${SERVER_GH_PAT:-}" ]; then
+              echo "export GH_PAT=${SERVER_GH_PAT}" > "$BOT_DIR/.gh_pat"
+              chmod 600 "$BOT_DIR/.gh_pat"
+              echo "GH_PAT saved."
+            fi
+
+            # Install cron if not already present
+            CRON_CMD="cd $BOT_DIR && . $BOT_DIR/.gh_pat 2>/dev/null; bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
+            if ! crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
+              (crontab -l 2>/dev/null; echo "*/5 * * * * $CRON_CMD") | crontab -
+              echo "Cron job installed (every 5 min)."
+            else
+              echo "Cron job already exists."
+            fi
+
             echo ""
             echo "========================================"
             echo "  Deploy complete!"
             echo "========================================"
+        env:
+          SERVER_GH_PAT: ${{ secrets.SERVER_GH_PAT }}
 
       - name: Deploy summary
         if: always()

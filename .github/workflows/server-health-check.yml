@@ -49,7 +49,7 @@ jobs:
         id: analyze
         run: |
           python3 -c "
-          import json, datetime, sys
+          import json, datetime, sys, os
 
           d = json.load(open('server_status.json'))
           bot_active = d.get('bot_active', False)
@@ -64,21 +64,26 @@ jobs:
           print(f'age_minutes={age_minutes}')
 
           # Write outputs
-          with open('$GITHUB_OUTPUT' if '$GITHUB_OUTPUT' != '' else '/dev/null', 'a') as f:
-              f.write(f'bot_active={bot_active}\n')
-              f.write(f'age_minutes={age_minutes}\n')
-              f.write(f'stale={\"true\" if age_minutes > 15 else \"false\"}\n')
+          gh_output = os.environ.get('GITHUB_OUTPUT', '')
+          if gh_output:
+              with open(gh_output, 'a') as f:
+                  f.write(f'bot_active={bot_active}\n')
+                  f.write(f'age_minutes={age_minutes}\n')
+                  stale = 'true' if age_minutes > 15 else 'false'
+                  f.write(f'stale={stale}\n')
 
           # Summary
-          with open('$GITHUB_STEP_SUMMARY' if '$GITHUB_STEP_SUMMARY' != '' else '/dev/null', 'a') as f:
-              f.write('\n')
-              if bot_active:
-                  f.write('### Bot is RUNNING\n')
-              else:
-                  f.write('### Bot is DOWN\n')
-              f.write(f'\nStatus age: {age_minutes} minutes\n')
-              if age_minutes > 15:
-                  f.write('\n**WARNING:** Status is stale (>15 min). Server cron may have stopped.\n')
+          gh_summary = os.environ.get('GITHUB_STEP_SUMMARY', '')
+          if gh_summary:
+              with open(gh_summary, 'a') as f:
+                  f.write('\n')
+                  if bot_active:
+                      f.write('### Bot is RUNNING\n')
+                  else:
+                      f.write('### Bot is DOWN\n')
+                  f.write(f'\nStatus age: {age_minutes} minutes\n')
+                  if age_minutes > 15:
+                      f.write('\n**WARNING:** Status is stale (>15 min). Server cron may have stopped.\n')
           " 2>/dev/null || echo "Parse failed"
 
       # SSH auto-restart if bot is down and SSH is configured
@@ -93,7 +98,6 @@ jobs:
           host: ${{ vars.SERVER_HOST }}
           username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script_stop: false
           script: |
             echo "=== Health Check Auto-Recovery ==="
             SERVICE="${{ env.SERVICE_NAME }}"
