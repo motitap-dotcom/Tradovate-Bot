@@ -5,13 +5,16 @@
 # Usage: Add to crontab:
 #   */5 * * * * cd /root/tradovate-bot && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1
 #
-set -euo pipefail
+# Use set -u (catch unset vars) but NOT set -e (don't exit on failure).
+# This cron must ALWAYS reach the auto-heal and status sections, even if
+# git fetch or pip fails due to transient network issues.
+set -u
 
 BOT_DIR="${BOT_DIR:-/root/tradovate-bot}"
 SERVICE="tradovate-bot"
 STATUS_FILE="server_status.json"
 
-cd "$BOT_DIR"
+cd "$BOT_DIR" || { echo "[$(date)] FATAL: $BOT_DIR not found"; exit 1; }
 
 # ── 0. Auto-detect deploy branch: prefer main, fall back to old branch ──
 if [ -n "${DEPLOY_BRANCH:-}" ]; then
@@ -19,11 +22,10 @@ if [ -n "${DEPLOY_BRANCH:-}" ]; then
 elif git ls-remote --heads origin main 2>/dev/null | grep -q main; then
     BRANCH="main"
     # Switch local checkout to main if needed
-    CURRENT=$(git branch --show-current)
-    if [ "$CURRENT" != "main" ]; then
+    CURRENT=$(git branch --show-current 2>/dev/null || echo "")
+    if [ -n "$CURRENT" ] && [ "$CURRENT" != "main" ]; then
         echo "[$(date)] Switching from $CURRENT to main..."
-        git fetch origin main
-        git checkout -B main origin/main
+        git fetch origin main 2>/dev/null && git checkout -B main origin/main || echo "[$(date)] Warning: failed to switch to main"
     fi
 else
     BRANCH="claude/tradovate-api-research-DPnl9"
@@ -31,27 +33,31 @@ fi
 
 # ── 1. Pull latest code ──
 echo "[$(date)] Checking for updates on $BRANCH..."
-git fetch origin "$BRANCH" 2>/dev/null
+if git fetch origin "$BRANCH" 2>/dev/null; then
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
 
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "[$(date)] New code found. Updating..."
+        git reset --hard "origin/$BRANCH"
+        echo "[$(date)] Now at: $(git log -1 --oneline)"
 
-if [ "$LOCAL" != "$REMOTE" ]; then
-    echo "[$(date)] New code found. Updating..."
-    git reset --hard "origin/$BRANCH"
-    echo "[$(date)] Now at: $(git log -1 --oneline)"
+        # Update dependencies if needed
+        if [ -f venv/bin/pip ]; then
+            venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3 || true
+        fi
 
-    # Update dependencies if needed
-    if [ -f venv/bin/pip ]; then
-        venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+        # Restart bot
+        echo "[$(date)] Restarting bot..."
+        systemctl restart "$SERVICE"
+        sleep 5
+    else
+        echo "[$(date)] No changes."
     fi
-
-    # Restart bot
-    echo "[$(date)] Restarting bot..."
-    systemctl restart "$SERVICE"
-    sleep 5
 else
-    echo "[$(date)] No changes."
+    echo "[$(date)] Warning: git fetch failed (network issue?). Skipping code update."
+    LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    REMOTE="$LOCAL"
 fi
 
 # ── 1b. Auto-heal: restart bot if it's not running ──

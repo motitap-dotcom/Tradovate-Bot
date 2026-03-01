@@ -900,8 +900,15 @@ def main():
                 sleep_seconds -= 60
             continue
 
-        bot = TradovateBot(dry_run=args.dry_run)
-        bot.start()
+        try:
+            bot = TradovateBot(dry_run=args.dry_run)
+            bot.start()
+        except SystemExit:
+            # Auth failure calls sys.exit(1) — don't swallow it on first try,
+            # but in the daily loop we retry next session instead of dying.
+            logger.error("Bot exited with SystemExit. Will retry next session.")
+        except Exception:
+            logger.exception("Unexpected error in bot session. Will retry next session.")
 
         if _shutdown_requested:
             break
