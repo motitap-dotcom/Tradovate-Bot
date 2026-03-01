@@ -9,6 +9,7 @@ on:
       - '*.md'
       - '.github/workflows/deploy-pages.yml'
       - 'server_status.json'
+      - 'system_status.json'
   workflow_dispatch:
 
 env:

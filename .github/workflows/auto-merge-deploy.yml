@@ -9,6 +9,7 @@ on:
       - 'docs/**'
       - '*.md'
       - 'server_status.json'
+      - 'system_status.json'
 
 env:
   DEPLOY_BRANCH: main

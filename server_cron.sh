@@ -99,6 +99,17 @@ MEMORY=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2,
 LIVE_STATUS="{}"
 [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
+# Run verify_bot.py for comprehensive check (if it exists)
+VERIFY_STATUS="{}"
+if [ -f "$BOT_DIR/verify_bot.py" ]; then
+    if [ -f "$BOT_DIR/venv/bin/python" ]; then
+        "$BOT_DIR/venv/bin/python" "$BOT_DIR/verify_bot.py" --server > /dev/null 2>&1 || true
+    else
+        python3 "$BOT_DIR/verify_bot.py" --server > /dev/null 2>&1 || true
+    fi
+    [ -f "$BOT_DIR/verify_report.json" ] && VERIFY_STATUS=$(cat "$BOT_DIR/verify_report.json" 2>/dev/null || echo "{}")
+fi
+
 # ── 3. Write server_status.json ──
 cat > "$STATUS_FILE" <<STATUSEOF
 {
@@ -113,7 +124,8 @@ cat > "$STATUS_FILE" <<STATUSEOF
   "disk_usage": "$DISK_USAGE",
   "memory": "$MEMORY",
   "last_log": $(echo "$LAST_LOG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo '""'),
-  "live_status": $LIVE_STATUS
+  "live_status": $LIVE_STATUS,
+  "verify": $VERIFY_STATUS
 }
 STATUSEOF
 
