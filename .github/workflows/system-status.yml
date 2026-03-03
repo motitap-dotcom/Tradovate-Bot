@@ -83,35 +83,69 @@ jobs:
           DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
           MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
 
-          # ── Token: read from file, renew if needed, then query API ──
+          # ── Token: read from file, try both DEMO and LIVE endpoints ──
           TOKEN=$(python3 -c "import json; print(json.load(open('.tradovate_token.json')).get('accessToken',''))" 2>/dev/null || echo "")
           TOKEN_EXPIRY=$(python3 -c "import json; print(json.load(open('.tradovate_token.json')).get('expirationTime',''))" 2>/dev/null || echo "")
 
-          API_URL="https://demo.tradovateapi.com/v1"
           AUTH_OK=false
+          API_URL=""
           ACCOUNT_JSON="{}"
           BALANCE_JSON="{}"
           POSITIONS_JSON="[]"
           ORDERS_JSON="[]"
 
           if [ -n "$TOKEN" ]; then
-              # Try using the token directly
-              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$API_URL/account/list" 2>/dev/null)
+              # Try token on both DEMO and LIVE endpoints
+              for TRY_URL in "https://demo.tradovateapi.com/v1" "https://live.tradovateapi.com/v1"; do
+                  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$TRY_URL/account/list" 2>/dev/null)
+                  if [ "$HTTP_CODE" = "200" ]; then
+                      API_URL="$TRY_URL"
+                      break
+                  fi
+              done
 
-              if [ "$HTTP_CODE" != "200" ]; then
-                  # Token expired — try renewal
-                  RENEWED=$(curl -s -X POST "$API_URL/auth/renewaccesstoken" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d "{}" 2>/dev/null)
-                  NEW_TOKEN=$(echo "$RENEWED" | python3 -c "import sys,json; print(json.load(sys.stdin).get('accessToken',''))" 2>/dev/null || echo "")
-                  if [ -n "$NEW_TOKEN" ]; then
-                      TOKEN="$NEW_TOKEN"
-                      # Save renewed token to file
-                      echo "$RENEWED" | python3 -c "import sys,json; d=json.load(sys.stdin); json.dump(d,open('.tradovate_token.json','w'),indent=2)" 2>/dev/null
-                      TOKEN_EXPIRY=$(echo "$RENEWED" | python3 -c "import sys,json; print(json.load(sys.stdin).get('expirationTime',''))" 2>/dev/null || echo "")
+              # If token expired, try renewal on both endpoints
+              if [ -z "$API_URL" ]; then
+                  for TRY_URL in "https://demo.tradovateapi.com/v1" "https://live.tradovateapi.com/v1"; do
+                      RENEWED=$(curl -s -X POST "$TRY_URL/auth/renewaccesstoken" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d "{}" 2>/dev/null)
+                      NEW_TOKEN=$(echo "$RENEWED" | python3 -c "import sys,json; print(json.load(sys.stdin).get('accessToken',''))" 2>/dev/null || echo "")
+                      if [ -n "$NEW_TOKEN" ]; then
+                          TOKEN="$NEW_TOKEN"
+                          API_URL="$TRY_URL"
+                          echo "$RENEWED" | python3 -c "import sys,json; d=json.load(sys.stdin); json.dump(d,open('.tradovate_token.json','w'),indent=2)" 2>/dev/null
+                          TOKEN_EXPIRY=$(echo "$RENEWED" | python3 -c "import sys,json; print(json.load(sys.stdin).get('expirationTime',''))" 2>/dev/null || echo "")
+                          break
+                      fi
+                  done
+              fi
+
+              # If still no API_URL, try getting fresh token from the running bot
+              if [ -z "$API_URL" ]; then
+                  # Read .env for credentials and try a fresh auth from the server
+                  if [ -f .env ]; then
+                      source <(grep -E '^TRADOVATE_(USERNAME|PASSWORD)=' .env 2>/dev/null)
+                      if [ -n "$TRADOVATE_USERNAME" ] && [ -n "$TRADOVATE_PASSWORD" ]; then
+                          FRESH=$(python3 -c "
+          import sys, os
+          sys.path.insert(0, '.')
+          from tradovate_api import TradovateClient
+          c = TradovateClient()
+          c.authenticate()
+          if c.access_token:
+              print(c.access_token)
+          " 2>/dev/null || echo "")
+                          if [ -n "$FRESH" ]; then
+                              TOKEN="$FRESH"
+                              API_URL="https://demo.tradovateapi.com/v1"
+                          fi
+                      fi
                   fi
               fi
 
-              # Query everything using the (possibly renewed) token
-              ACCOUNT_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/account/list" 2>/dev/null || echo "[]")
+              # Query everything using the working token
+              if [ -n "$API_URL" ]; then
+                  ACCOUNT_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/account/list" 2>/dev/null || echo "[]")
+              fi
               CHECK=$(echo "$ACCOUNT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print('ok' if isinstance(d,list) and len(d)>0 else 'fail')" 2>/dev/null || echo "fail")
 
               if [ "$CHECK" = "ok" ]; then
