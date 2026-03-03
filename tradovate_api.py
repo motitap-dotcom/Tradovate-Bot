@@ -134,6 +134,10 @@ class TradovateAPI:
                 self._save_token()
                 return True
             logger.warning("Saved token expired, trying fresh auth...")
+            # Clear the expired token so it doesn't interfere with fresh auth
+            self.access_token = None
+            self.md_access_token = None
+            self.token_expiry = None
 
         url = f"{self.base_url}/auth/accesstokenrequest"
 
@@ -202,6 +206,14 @@ class TradovateAPI:
             return False
         try:
             data = json.loads(_TOKEN_FILE.read_text())
+            # Skip tokens expired more than 2 hours ago (can't be renewed)
+            if data.get("expirationTime"):
+                expiry = datetime.fromisoformat(data["expirationTime"])
+                age = (datetime.now(timezone.utc) - expiry).total_seconds()
+                if age > 7200:  # 2 hours past expiry
+                    logger.warning("Saved token expired %.0f hours ago — skipping", age / 3600)
+                    _TOKEN_FILE.unlink(missing_ok=True)
+                    return False
             self.access_token = data.get("accessToken")
             self.md_access_token = data.get("mdAccessToken")
             self.user_id = data.get("userId")

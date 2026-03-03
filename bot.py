@@ -566,6 +566,13 @@ class TradovateBot:
                             self._subscribe_market_data()
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
+                        # If too many consecutive failures, exit so systemd can restart us
+                        if self._consecutive_api_failures >= _MAX_API_FAILURES_BEFORE_REAUTH * 3:
+                            logger.critical(
+                                "=== FATAL: %d consecutive API failures with no recovery. Exiting for systemd restart. ===",
+                                self._consecutive_api_failures,
+                            )
+                            sys.exit(1)
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
