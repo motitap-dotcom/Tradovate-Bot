@@ -291,8 +291,9 @@ jobs:
                   ]
                   print(f"  Active orders: {len(active)}")
               else:
-                  print("  Auth: token expired or missing on server")
-                  status["errors"].append("Server token expired — bot may need restart")
+                  token_exp = ssh_data.get("token_expiry", "unknown")
+                  print(f"  Auth: token expired or missing (expiry: {token_exp})")
+                  status["errors"].append(f"Server token expired (expiry: {token_exp}) — bot may need restart")
           elif ssh_data and "error" in ssh_data:
               print(f"\n  SSH error: {ssh_data['error']}")
               status["errors"].append(f"SSH: {ssh_data['error']}")
