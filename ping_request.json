@@ -1,6 +1,1 @@
-{
-  "ping_id": "5eb14d3e",
-  "created_at": "2026-03-01T20:14:24.845962+00:00",
-  "source": "claude-session",
-  "message": "verify-bot-alive"
-}
+{"trigger":"manual","time":"2026-03-03T20:13:28Z"}
