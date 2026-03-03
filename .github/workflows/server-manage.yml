@@ -1,3 +1,4 @@
+# Trigger: server check
 name: Server Management
 
 # Remote server management via GitHub Actions
