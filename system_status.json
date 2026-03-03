@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T21:02:33Z",
+  "timestamp": "2026-03-03T21:20:48Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -8,7 +8,21 @@
   "positions": [],
   "orders": [],
   "server": null,
+  "trading_activity": null,
   "errors": [
     "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
-  ]
+  ],
+  "debug": {
+    "ssh_available": "false",
+    "ssh_ok": "false",
+    "ssh_output_len": 0,
+    "has_server_host": "false",
+    "has_ssh_key": "false",
+    "has_username": true,
+    "username_len": 16,
+    "has_password": true,
+    "password_len": 9,
+    "has_access_token": false,
+    "username_first3": "FNF"
+  }
 }
