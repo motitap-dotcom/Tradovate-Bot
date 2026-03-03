@@ -1,0 +1,322 @@
+name: Server Management
+
+# Remote server management via GitHub Actions
+# Trigger manually or via push to claude/* branches
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Command to run on server'
+        required: false
+        default: 'status'
+        type: choice
+        options:
+          - status          # Full bot + server status check
+          - restart-bot     # Restart the bot service
+          - bot-logs        # Last 50 lines of bot logs
+          - check-trades    # Check open positions/orders via API
+          - fix-bot         # Pull latest code + restart
+          - cron-status     # Check if cron is running
+          - full-diagnostic # Everything above combined
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - '.github/workflows/server-manage.yml'
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  BOT_DIR: /root/tradovate-bot
+  SERVICE: tradovate-bot
+
+jobs:
+  manage-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      # ── Determine command ──
+      - name: Set command
+        id: cmd
+        run: |
+          CMD="${{ github.event.inputs.command || 'full-diagnostic' }}"
+          echo "command=$CMD" >> $GITHUB_OUTPUT
+          echo "Running command: $CMD"
+
+      # ── Check if SSH is available ──
+      - name: Check SSH config
+        id: ssh
+        run: |
+          if [ -n "${{ secrets.SERVER_SSH_KEY }}" ] && [ -n "${{ vars.SERVER_HOST }}" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "SSH is configured"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "SSH NOT configured. Need: vars.SERVER_HOST + secrets.SERVER_SSH_KEY"
+            echo ""
+            echo "=== Setup Instructions ==="
+            echo "1. Go to GitHub repo → Settings → Secrets and variables → Actions"
+            echo "2. Under 'Variables' tab, add: SERVER_HOST = 77.237.234.2"
+            echo "3. Under 'Secrets' tab, add: SERVER_SSH_KEY = (your private SSH key)"
+            echo "4. Optional: SERVER_USER = root (defaults to root)"
+          fi
+
+      # ── SSH: Full Diagnostic ──
+      - name: Server diagnostic via SSH
+        id: ssh_diag
+        if: steps.ssh.outputs.available == 'true'
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 60s
+          script: |
+            BOT_DIR="${{ env.BOT_DIR }}"
+            SERVICE="${{ env.SERVICE }}"
+            CMD="${{ steps.cmd.outputs.command }}"
+
+            echo "==JSON_START=="
+            python3 << 'PYEOF'
+            import json, subprocess, os, sys
+            from datetime import datetime, timezone
+
+            BOT_DIR = os.environ.get("BOT_DIR", "/root/tradovate-bot")
+            SERVICE = os.environ.get("SERVICE", "tradovate-bot")
+            CMD = os.environ.get("CMD", "full-diagnostic")
+
+            def run(cmd, timeout=10):
+                try:
+                    r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+                    return r.stdout.strip()
+                except:
+                    return ""
+
+            result = {
+                "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "server_time": run("date '+%Y-%m-%d %H:%M:%S %Z'"),
+                "command": CMD,
+            }
+
+            # Always include basic status
+            bot_active = run(f"systemctl is-active {SERVICE}") == "active"
+            result["bot_active"] = bot_active
+            result["bot_pid"] = run(f"systemctl show {SERVICE} --property=MainPID --value")
+            result["uptime_since"] = run(f"systemctl show {SERVICE} --property=ActiveEnterTimestamp --value")
+
+            if CMD in ("status", "full-diagnostic"):
+                result["disk"] = run("df -h / | tail -1 | awk '{print $5}'")
+                result["memory"] = run("free -m | awk '/^Mem:/{printf \"%dMB/%dMB (%.0f%%)\", $3, $2, $3/$2*100}'")
+                result["git_commit"] = run(f"cd {BOT_DIR} && git log -1 --format='%h %s'")
+                result["git_branch"] = run(f"cd {BOT_DIR} && git branch --show-current")
+                result["cron_active"] = "server_cron" in run("crontab -l 2>/dev/null")
+                result["gh_pat_exists"] = os.path.exists(f"{BOT_DIR}/.gh_pat")
+                result["token_exists"] = os.path.exists(f"{BOT_DIR}/.tradovate_token.json")
+                result["env_exists"] = os.path.exists(f"{BOT_DIR}/.env")
+                result["venv_exists"] = os.path.exists(f"{BOT_DIR}/venv/bin/python")
+
+                # Token info
+                if result["token_exists"]:
+                    try:
+                        import json as j
+                        with open(f"{BOT_DIR}/.tradovate_token.json") as f:
+                            td = j.load(f)
+                        result["token_expires"] = td.get("expirationTime", "?")[:19]
+                        exp = datetime.fromisoformat(td.get("expirationTime", "").replace("Z", "+00:00"))
+                        remaining = (exp - datetime.now(timezone.utc)).total_seconds() / 60
+                        result["token_remaining_min"] = round(remaining, 1)
+                        result["token_valid"] = remaining > 0
+                    except:
+                        result["token_valid"] = False
+
+            if CMD in ("bot-logs", "full-diagnostic"):
+                result["bot_logs"] = run(f"journalctl -u {SERVICE} --no-pager -n 50 2>/dev/null || tail -50 {BOT_DIR}/bot.log 2>/dev/null")
+
+            if CMD in ("cron-status", "full-diagnostic"):
+                result["cron_list"] = run("crontab -l 2>/dev/null | grep -v '^#'")
+                result["cron_log"] = run("tail -20 /var/log/tradovate-cron.log 2>/dev/null")
+
+            if CMD == "restart-bot":
+                run(f"systemctl restart {SERVICE}")
+                import time; time.sleep(3)
+                result["bot_active"] = run(f"systemctl is-active {SERVICE}") == "active"
+                result["restart_logs"] = run(f"journalctl -u {SERVICE} --no-pager -n 10")
+                result["restarted"] = True
+
+            if CMD == "fix-bot":
+                run(f"cd {BOT_DIR} && git fetch origin main && git reset --hard origin/main")
+                result["git_commit"] = run(f"cd {BOT_DIR} && git log -1 --format='%h %s'")
+                if os.path.exists(f"{BOT_DIR}/venv/bin/pip"):
+                    run(f"cd {BOT_DIR} && venv/bin/pip install -r requirements.txt -q")
+                run(f"systemctl restart {SERVICE}")
+                import time; time.sleep(3)
+                result["bot_active"] = run(f"systemctl is-active {SERVICE}") == "active"
+                result["restart_logs"] = run(f"journalctl -u {SERVICE} --no-pager -n 10")
+                result["fixed"] = True
+
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            PYEOF
+            echo "==JSON_END=="
+
+      # ── Parse SSH output and save ──
+      - name: Process results
+        id: results
+        env:
+          SSH_OUTPUT: ${{ steps.ssh_diag.outputs.stdout || '' }}
+          SSH_OK: ${{ steps.ssh_diag.outcome == 'success' && 'true' || 'false' }}
+          SSH_AVAIL: ${{ steps.ssh.outputs.available }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, re, sys
+          from datetime import datetime, timezone
+
+          ssh_output = os.environ.get("SSH_OUTPUT", "")
+          ssh_ok = os.environ.get("SSH_OK") == "true"
+          ssh_avail = os.environ.get("SSH_AVAIL") == "true"
+
+          result = {
+              "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "ssh_available": ssh_avail,
+              "ssh_connected": ssh_ok,
+          }
+
+          if ssh_ok and ssh_output:
+              # Parse JSON from SSH output
+              match = re.search(r"==JSON_START==\s*([\s\S]*?)\s*==JSON_END==", ssh_output)
+              if match:
+                  try:
+                      server_data = json.loads(match.group(1).strip())
+                      result["server"] = server_data
+                  except:
+                      result["server_raw"] = match.group(1).strip()[:2000]
+              else:
+                  result["server_raw"] = ssh_output[:2000]
+          elif not ssh_avail:
+              result["error"] = "SSH not configured. Add SERVER_HOST variable and SERVER_SSH_KEY secret in GitHub Settings."
+              result["setup_url"] = "https://github.com/motitap-dotcom/Tradovate-Bot/settings/secrets/actions"
+
+          with open("server_manage_result.json", "w") as f:
+              json.dump(result, f, indent=2, ensure_ascii=False)
+
+          # Print summary
+          print("\n" + "=" * 60)
+          print("  SERVER MANAGEMENT RESULT")
+          print("=" * 60)
+
+          if not ssh_avail:
+              print("\n  SSH NOT CONFIGURED")
+              print("  Add these in GitHub Settings → Secrets and variables → Actions:")
+              print("  - Variable: SERVER_HOST = 77.237.234.2")
+              print("  - Secret:   SERVER_SSH_KEY = <private key>")
+          elif not ssh_ok:
+              print("\n  SSH CONNECTION FAILED")
+              print("  Check that SERVER_SSH_KEY is correct and server is accessible")
+          else:
+              srv = result.get("server", {})
+              bot_active = srv.get("bot_active", False)
+              print(f"\n  Bot:     {'RUNNING' if bot_active else 'STOPPED'}")
+              print(f"  PID:     {srv.get('bot_pid', '?')}")
+              print(f"  Uptime:  {srv.get('uptime_since', '?')}")
+              print(f"  Disk:    {srv.get('disk', '?')}")
+              print(f"  Memory:  {srv.get('memory', '?')}")
+              print(f"  Commit:  {srv.get('git_commit', '?')}")
+              print(f"  Token:   {'Valid' if srv.get('token_valid') else 'EXPIRED/MISSING'}")
+              print(f"  Cron:    {'Active' if srv.get('cron_active') else 'INACTIVE'}")
+
+              if srv.get("bot_logs"):
+                  print(f"\n  --- Last Bot Logs ---")
+                  for line in srv["bot_logs"].split("\n")[-15:]:
+                      print(f"  {line}")
+
+          print("\n" + "=" * 60)
+          PYEOF
+
+      # ── Commit result to main ──
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add server_manage_result.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "server-manage: ${{ steps.cmd.outputs.command }} $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push origin main
+          fi
+
+      # ── Summary ──
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Server Management" >> $GITHUB_STEP_SUMMARY
+          echo "**Command:** \`${{ steps.cmd.outputs.command }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f server_manage_result.json ]; then
+            python3 << 'PYEOF' >> $GITHUB_STEP_SUMMARY
+          import json
+          d = json.load(open("server_manage_result.json"))
+
+          if not d.get("ssh_available"):
+              print("### SSH Not Configured")
+              print("")
+              print("Add these in [Settings → Secrets](https://github.com/motitap-dotcom/Tradovate-Bot/settings/secrets/actions):")
+              print("- **Variable:** `SERVER_HOST` = `77.237.234.2`")
+              print("- **Secret:** `SERVER_SSH_KEY` = your SSH private key")
+              print("- **Optional Secret:** `SERVER_USER` = `root`")
+          elif not d.get("ssh_connected"):
+              print("### SSH Connection Failed")
+              print("Check SERVER_SSH_KEY and server accessibility")
+          else:
+              srv = d.get("server", {})
+              active = srv.get("bot_active", False)
+              status_icon = "🟢" if active else "🔴"
+              print(f"### {status_icon} Bot is {'RUNNING' if active else 'STOPPED'}")
+              print("")
+              print("| Metric | Value |")
+              print("|--------|-------|")
+              print(f"| PID | `{srv.get('bot_pid', '?')}` |")
+              print(f"| Uptime | `{srv.get('uptime_since', '?')}` |")
+              print(f"| Disk | `{srv.get('disk', '?')}` |")
+              print(f"| Memory | `{srv.get('memory', '?')}` |")
+              print(f"| Git | `{srv.get('git_commit', '?')}` |")
+              print(f"| Token | `{'Valid' if srv.get('token_valid') else 'Expired/Missing'}` |")
+              print(f"| Cron | `{'Active' if srv.get('cron_active') else 'Inactive'}` |")
+              print(f"| .env | `{'Exists' if srv.get('env_exists') else 'MISSING'}` |")
+              print(f"| venv | `{'Exists' if srv.get('venv_exists') else 'MISSING'}` |")
+
+              logs = srv.get("bot_logs", "")
+              if logs:
+                  print("")
+                  print("### Bot Logs (last lines)")
+                  print("```")
+                  for line in logs.split("\n")[-20:]:
+                      print(line)
+                  print("```")
+
+              cron_log = srv.get("cron_log", "")
+              if cron_log:
+                  print("")
+                  print("### Cron Log")
+                  print("```")
+                  for line in cron_log.split("\n")[-10:]:
+                      print(line)
+                  print("```")
+          PYEOF
+          fi
