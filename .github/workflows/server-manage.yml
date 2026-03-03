@@ -59,20 +59,30 @@ jobs:
           echo "Running command: $CMD"
 
       # ── Check if SSH is available ──
+      # SERVER_HOST can be either a Variable or a Secret
       - name: Check SSH config
         id: ssh
+        env:
+          HOST_FROM_VAR: ${{ vars.SERVER_HOST }}
+          HOST_FROM_SECRET: ${{ secrets.SERVER_HOST }}
+          HAS_KEY: ${{ secrets.SERVER_SSH_KEY && 'yes' || 'no' }}
         run: |
-          if [ -n "${{ secrets.SERVER_SSH_KEY }}" ] && [ -n "${{ vars.SERVER_HOST }}" ]; then
+          # Accept SERVER_HOST as either variable or secret
+          SSH_HOST="${HOST_FROM_VAR:-$HOST_FROM_SECRET}"
+          echo "ssh_host=$SSH_HOST" >> $GITHUB_OUTPUT
+
+          if [ -n "$SSH_HOST" ] && [ "$HAS_KEY" = "yes" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
-            echo "SSH is configured"
+            echo "SSH is configured (host=$SSH_HOST)"
           else
             echo "available=false" >> $GITHUB_OUTPUT
-            echo "SSH NOT configured. Need: vars.SERVER_HOST + secrets.SERVER_SSH_KEY"
+            echo "SSH NOT configured."
+            echo "  HOST_FROM_VAR='${HOST_FROM_VAR:+set}' HOST_FROM_SECRET='${HOST_FROM_SECRET:+set}' HAS_KEY=$HAS_KEY"
             echo ""
             echo "=== Setup Instructions ==="
             echo "1. Go to GitHub repo → Settings → Secrets and variables → Actions"
-            echo "2. Under 'Variables' tab, add: SERVER_HOST = 77.237.234.2"
-            echo "3. Under 'Secrets' tab, add: SERVER_SSH_KEY = (your private SSH key)"
+            echo "2. Add Secret: SERVER_HOST = 77.237.234.2"
+            echo "3. Add Secret: SERVER_SSH_KEY = (your private SSH key)"
             echo "4. Optional: SERVER_USER = root (defaults to root)"
           fi
 
@@ -83,8 +93,8 @@ jobs:
         continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
+          host: ${{ steps.ssh.outputs.ssh_host }}
+          username: ${{ vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 60s
           script: |
@@ -278,9 +288,9 @@ jobs:
               print("### SSH Not Configured")
               print("")
               print("Add these in [Settings → Secrets](https://github.com/motitap-dotcom/Tradovate-Bot/settings/secrets/actions):")
-              print("- **Variable:** `SERVER_HOST` = `77.237.234.2`")
+              print("- **Secret:** `SERVER_HOST` = `77.237.234.2`")
               print("- **Secret:** `SERVER_SSH_KEY` = your SSH private key")
-              print("- **Optional Secret:** `SERVER_USER` = `root`")
+              print("- **Optional:** `SERVER_USER` = `root`")
           elif not d.get("ssh_connected"):
               print("### SSH Connection Failed")
               print("Check SERVER_SSH_KEY and server accessibility")
