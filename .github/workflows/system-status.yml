@@ -91,16 +91,9 @@ jobs:
           DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
           MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
 
-          python3 -c "
-          import json
-          print(json.dumps({
-              'bot_active': $BOT_ACTIVE,
-              'bot_pid': '$BOT_PID',
-              'uptime_since': '$UPTIME',
-              'disk': '$DISK',
-              'memory': '$MEM',
-          }))
-          " 2>/dev/null || echo '{}'
+          # Use printf for JSON to avoid Python bool issues
+          printf '{"bot_active":%s,"bot_pid":"%s","uptime_since":"%s","disk":"%s","memory":"%s"}\n' \
+              "$BOT_ACTIVE" "$BOT_PID" "$UPTIME" "$DISK" "$MEM"
           echo "==SERVER_END=="
           REMOTESCRIPT
           )
@@ -207,16 +200,24 @@ jobs:
 
           if ssh_ok and ssh_output:
               print("\n=== 2. Server SSH Data ===")
+              print(f"  SSH output ({len(ssh_output)} chars): {ssh_output[:200]}")
               # Extract token from SSH output
               token_match = re.search(r"==TOKEN_START==\s*(.*?)\s*==TOKEN_END==", ssh_output, re.DOTALL)
               if token_match:
+                  raw_token = token_match.group(1).strip()
+                  print(f"  Token section: {raw_token[:80]}...")
                   try:
-                      token_data = json.loads(token_match.group(1).strip())
+                      token_data = json.loads(raw_token)
                       ssh_token = token_data.get("accessToken", "")
                       if ssh_token:
-                          print(f"  Got token from server (expires: {token_data.get('expirationTime', '?')[:19]})")
-                  except Exception:
-                      print("  Could not parse token from server")
+                          print(f"  Got token from server! (expires: {token_data.get('expirationTime', '?')[:19]})")
+                      else:
+                          print(f"  Token file exists but no accessToken key. Keys: {list(token_data.keys())}")
+                  except Exception as e:
+                      print(f"  Could not parse token: {e}")
+                      print(f"  Raw: {raw_token[:100]}")
+              else:
+                  print("  No ==TOKEN_START== marker found in SSH output")
 
               # Extract server status
               server_match = re.search(r"==SERVER_START==\s*([\s\S]*?)\s*==SERVER_END==", ssh_output)
