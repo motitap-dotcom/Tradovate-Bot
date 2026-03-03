@@ -35,28 +35,29 @@ jobs:
       # ── Step A: Check if SSH is configured ──
       - name: Check SSH availability
         id: ssh_check
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_HOST_VAR: ${{ vars.SERVER_HOST }}
         run: |
-          if [ -n "${{ vars.SERVER_HOST }}" ]; then
+          # Check both secrets and vars for SERVER_HOST
+          HOST="${SSH_HOST:-$SSH_HOST_VAR}"
+          if [ -n "$HOST" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
-            echo "Using vars.SERVER_HOST"
-          elif [ -n "${{ secrets.SERVER_HOST }}" ]; then
-            echo "available=true" >> $GITHUB_OUTPUT
-            echo "Using secrets.SERVER_HOST"
+            echo "SSH host configured (len=${#HOST})"
           else
             echo "available=false" >> $GITHUB_OUTPUT
             echo "SSH not configured — skipping server check"
           fi
 
       # ── Step B: Get token + server status via SSH ──
-      # Uses same host/user pattern as deploy.yml (which works)
       - name: Get server status via SSH
         id: ssh_status
         if: steps.ssh_check.outputs.available == 'true'
         continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST || secrets.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             BOT_DIR="${{ env.BOT_DIR }}"
@@ -206,11 +207,17 @@ jobs:
       # ── Debug: Show SSH step outcome ──
       - name: SSH debug info
         if: always()
+        env:
+          HAS_SECRET: ${{ secrets.SERVER_HOST != '' }}
+          HAS_VAR: ${{ vars.SERVER_HOST != '' }}
+          HAS_KEY: ${{ secrets.SERVER_SSH_KEY != '' }}
         run: |
           echo "SSH check available: ${{ steps.ssh_check.outputs.available }}"
           echo "SSH status outcome: ${{ steps.ssh_status.outcome }}"
-          echo "SSH stdout length: $(echo '${{ steps.ssh_status.outputs.stdout }}' | wc -c)"
-          echo "vars.SERVER_HOST set: ${{ vars.SERVER_HOST != '' }}"
+          echo "Has SERVER_HOST secret: $HAS_SECRET"
+          echo "Has SERVER_HOST var: $HAS_VAR"
+          echo "Has SSH_KEY secret: $HAS_KEY"
+          echo "SSH stdout lines: $(echo '${{ steps.ssh_status.outputs.stdout }}' | wc -l)"
 
       # ── Step C: Check system status (API + optional SSH token) ──
       - name: Check system status
@@ -220,6 +227,9 @@ jobs:
           TRADOVATE_PASSWORD: ${{ secrets.TRADOVATE_PASSWORD }}
           SSH_OUTPUT: ${{ steps.ssh_status.outputs.stdout || '' }}
           SSH_OK: ${{ steps.ssh_status.outcome == 'success' && 'true' || 'false' }}
+          SSH_AVAILABLE: ${{ steps.ssh_check.outputs.available }}
+          HAS_SERVER_HOST: ${{ secrets.SERVER_HOST != '' }}
+          HAS_SSH_KEY: ${{ secrets.SERVER_SSH_KEY != '' }}
         run: |
           python3 << 'PYEOF'
           import json, os, sys, re, base64, hashlib, hmac, uuid
@@ -243,6 +253,13 @@ jobs:
               "server": None,
               "trading_activity": None,
               "errors": [],
+              "debug": {
+                  "ssh_available": os.environ.get("SSH_AVAILABLE", "?"),
+                  "ssh_ok": os.environ.get("SSH_OK", "?"),
+                  "ssh_output_len": len(os.environ.get("SSH_OUTPUT", "")),
+                  "has_server_host": os.environ.get("HAS_SERVER_HOST", "?"),
+                  "has_ssh_key": os.environ.get("HAS_SSH_KEY", "?"),
+              },
           }
 
           # ── 1. API Connectivity ──
