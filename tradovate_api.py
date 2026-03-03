@@ -993,6 +993,102 @@ YAHOO_SYMBOLS = {
 _YAHOO_SYMBOLS = YAHOO_SYMBOLS  # backward compat
 
 
+class YahooFinanceSession:
+    """
+    Handles Yahoo Finance API authentication (crumb + cookies).
+
+    Yahoo's v8 chart API requires a valid crumb and session cookies.
+    This class fetches them once and reuses them for subsequent requests.
+    Falls back to unauthenticated requests if crumb fetch fails.
+    """
+
+    _instance: Optional["YahooFinanceSession"] = None
+
+    def __init__(self):
+        self._session = requests.Session()
+        self._session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/121.0.0.0 Safari/537.36"
+            ),
+        })
+        self._crumb: Optional[str] = None
+        self._initialized = False
+
+    @classmethod
+    def get(cls) -> "YahooFinanceSession":
+        """Get or create the singleton session."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def _init_crumb(self):
+        """Fetch crumb and cookies from Yahoo Finance."""
+        if self._initialized:
+            return
+        self._initialized = True
+        try:
+            # Step 1: Get cookies by visiting Yahoo Finance consent page
+            self._session.get("https://fc.yahoo.com", timeout=10)
+            # Step 2: Fetch crumb using the cookies
+            resp = self._session.get(
+                "https://query2.finance.yahoo.com/v1/test/getcrumb",
+                timeout=10,
+            )
+            if resp.status_code == 200 and resp.text:
+                self._crumb = resp.text.strip()
+                logger.info("Yahoo Finance crumb acquired")
+            else:
+                logger.warning(
+                    "Yahoo Finance crumb fetch returned %d", resp.status_code
+                )
+        except Exception as e:
+            logger.warning("Yahoo Finance crumb init failed: %s", e)
+
+    def reset(self):
+        """Reset session state to force re-authentication on next use."""
+        self._crumb = None
+        self._initialized = False
+        self._session.cookies.clear()
+
+    def fetch_chart(self, yahoo_symbol: str, interval: str = "1m", range_: str = "1d") -> Optional[dict]:
+        """
+        Fetch chart data for a Yahoo Finance symbol.
+        Returns the parsed JSON response or None on failure.
+        """
+        self._init_crumb()
+
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}"
+        params = {"interval": interval, "range": range_}
+        if self._crumb:
+            params["crumb"] = self._crumb
+
+        try:
+            resp = self._session.get(url, params=params, timeout=10)
+
+            # If 401/403, reset crumb and retry once
+            if resp.status_code in (401, 403) and self._crumb:
+                logger.info("Yahoo returned %d, refreshing crumb...", resp.status_code)
+                self.reset()
+                self._init_crumb()
+                if self._crumb:
+                    params["crumb"] = self._crumb
+                resp = self._session.get(url, params=params, timeout=10)
+
+            if resp.status_code != 200:
+                logger.warning(
+                    "Yahoo chart request for %s returned %d",
+                    yahoo_symbol, resp.status_code,
+                )
+                return None
+
+            return resp.json()
+        except requests.RequestException as e:
+            logger.warning("Yahoo chart request failed for %s: %s", yahoo_symbol, e)
+            return None
+
+
 class RestMarketDataPoller:
     """
     Polls Yahoo Finance REST API for market data when WebSocket is unavailable.
@@ -1056,19 +1152,13 @@ class RestMarketDataPoller:
         if not self._symbols:
             return
 
-        headers = {"User-Agent": "Mozilla/5.0"}
+        yahoo = YahooFinanceSession.get()
 
         for contract_name, yahoo_sym in list(self._symbols.items()):
             try:
-                chart_url = (
-                    f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}"
-                    f"?interval=1m&range=1d"
-                )
-                resp = requests.get(chart_url, headers=headers, timeout=10)
-                if resp.status_code != 200:
+                data = yahoo.fetch_chart(yahoo_sym)
+                if data is None:
                     continue
-
-                data = resp.json()
                 result = data.get("chart", {}).get("result", [{}])[0]
                 timestamps = result.get("timestamp") or []
                 quotes = result.get("indicators", {}).get("quote", [{}])[0]
@@ -1114,7 +1204,5 @@ class RestMarketDataPoller:
 
                 self._last_ts[contract_name] = timestamps[-1]
 
-            except requests.RequestException as e:
-                logger.warning("Yahoo Finance request failed for %s: %s", yahoo_sym, e)
             except Exception as e:
                 logger.error("REST poller error for %s: %s", contract_name, e)
