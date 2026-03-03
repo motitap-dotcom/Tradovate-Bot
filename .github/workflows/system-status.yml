@@ -398,7 +398,9 @@ jobs:
                   reversed_pw = rearranged[::-1]
                   encrypted_pw = base64.b64encode(reversed_pw.encode()).decode()
 
-                  device_id = f"gh-status-{uuid.uuid4()}"
+                  # Use a FIXED device ID to avoid Tradovate treating each
+                  # workflow run as a "new device" (which triggers CAPTCHA/rate-limit)
+                  device_id = "gh-status-tradovate-bot-monitor"
                   hmac_key = "1259-11e7-485a-aeae-9b6016579351"
                   payload = {
                       "name": username, "password": encrypted_pw,

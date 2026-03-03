@@ -140,7 +140,8 @@ def check_web_auth() -> dict:
 
     result["attempted"] = True
     encrypted_pw = _encrypt_password(username, password)
-    device_id = f"verify-{uuid.uuid4()}"
+    # Fixed device ID to avoid Tradovate rate-limiting new device registrations
+    device_id = "verify-tradovate-bot-001"
 
     payload = {
         "name": username,
