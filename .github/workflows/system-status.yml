@@ -241,6 +241,9 @@ jobs:
                   print("  SSH connection failed")
                   status["errors"].append("SSH connection to server failed")
 
+          # Add token diagnostics to status
+          status["ssh_token_status"] = "found" if ssh_token else ("no_token_file" if not ssh_output else "token_parse_failed")
+
           # ── 3. Authentication ──
           print("\n=== 3. Authentication ===")
           token = ""
