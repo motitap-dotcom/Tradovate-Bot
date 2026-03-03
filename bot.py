@@ -111,18 +111,23 @@ class TradovateBot:
         if not self.dry_run:
             auth_ok = False
             for attempt in range(1, 4):
+                logger.info("Authentication attempt %d/3...", attempt)
                 if self.api.authenticate():
                     auth_ok = True
                     break
-                wait = attempt * 10
+                wait = attempt * 15
                 logger.warning(
                     "Authentication attempt %d/3 failed. Retrying in %ds...", attempt, wait
                 )
+                # Write a status file even during auth failure so monitoring can see
+                self._write_auth_status(attempt)
                 time.sleep(wait)
             if not auth_ok:
                 logger.error("Authentication failed after 3 attempts. Exiting.")
+                self._write_auth_status(3, final=True)
                 sys.exit(1)
-            logger.info("Authenticated successfully")
+            logger.info("Authenticated successfully (userId=%s, account=%s)",
+                        self.api.user_id, self.api.account_spec)
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
@@ -670,6 +675,24 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     _STATUS_FILE = Path(__file__).parent / "live_status.json"
+
+    def _write_auth_status(self, attempt: int, final: bool = False):
+        """Write minimal status during auth phase so monitoring can track progress."""
+        try:
+            payload = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp_et": now_et().isoformat(),
+                "auth_phase": True,
+                "auth_attempt": attempt,
+                "auth_failed": final,
+                "environment": config.ENVIRONMENT,
+                "dry_run": self.dry_run,
+            }
+            tmp = self._STATUS_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(payload, indent=2))
+            tmp.replace(self._STATUS_FILE)
+        except Exception:
+            pass
 
     def _write_live_status(self):
         """Write current bot status to live_status.json for external monitoring."""
