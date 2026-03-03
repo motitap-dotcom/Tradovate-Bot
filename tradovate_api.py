@@ -258,7 +258,15 @@ class TradovateAPI:
                 return self._handle_p_ticket(url, data, payload)
 
             error = data.get("errorText", "")
-            logger.info("Web auth response: %s", error)
+            # Tradovate returns "Incorrect password" when rate-limited
+            if "Incorrect" in error and "p-ticket" not in str(data):
+                logger.warning(
+                    "Web auth: '%s' — may be rate-limited. "
+                    "Waiting 20s before next attempt...", error,
+                )
+                time.sleep(20)
+            else:
+                logger.info("Web auth response: %s", error)
         except requests.RequestException as e:
             logger.warning("Web auth request failed: %s", e)
         return None
@@ -794,6 +802,8 @@ class MarketDataStream:
     # Reconnect settings
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_BASE_DELAY = 2  # seconds
+    # After this many consecutive reconnect failures, signal caller to fall back
+    FALLBACK_THRESHOLD = 3
 
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
@@ -805,6 +815,8 @@ class MarketDataStream:
         self._thread: Optional[threading.Thread] = None
         self._should_run = False
         self._reconnect_count = 0
+        self._consecutive_failures = 0
+        self.fell_back = threading.Event()  # Signals that WS is unrecoverable
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -924,8 +936,10 @@ class MarketDataStream:
         error_str = str(error)
         if "403" in error_str:
             logger.error("Market data WebSocket 403 Forbidden (token expired). Will re-auth on reconnect.")
+            self._consecutive_failures += 1
         else:
             logger.error("Market data WebSocket error: %s", error)
+            self._consecutive_failures += 1
 
     def _on_close(self, ws, close_status_code, close_msg):
         logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
@@ -933,6 +947,15 @@ class MarketDataStream:
         # Auto-reconnect (unlimited attempts — bot should never stop trying)
         if self._should_run:
             self._reconnect_count += 1
+            # Signal fallback after too many consecutive failures
+            if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
+                logger.warning(
+                    "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
+                    self._consecutive_failures,
+                )
+                self._should_run = False
+                self.fell_back.set()
+                return
             # Cap delay at 60 seconds
             delay = min(60, self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1)))
             logger.info(
@@ -958,6 +981,7 @@ class MarketDataStream:
 
         self._connect()
         if self._connected.wait(timeout=15):
+            self._consecutive_failures = 0  # Reset on successful reconnect
             for symbol in list(self._callbacks.keys()):
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
@@ -969,6 +993,7 @@ class MarketDataStream:
                 logger.info("Full re-auth succeeded, retrying WebSocket connection...")
                 self._connect()
                 if self._connected.wait(timeout=15):
+                    self._consecutive_failures = 0
                     for symbol in list(self._callbacks.keys()):
                         self._send("md/subscribeQuote", {"symbol": symbol})
                         logger.info("Re-subscribed to: %s", symbol)

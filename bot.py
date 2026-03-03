@@ -567,6 +567,18 @@ class TradovateBot:
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
 
+                # Auto-fallback: if WebSocket died, switch to REST polling
+                if not self.dry_run and self.md_stream and hasattr(self.md_stream, "fell_back"):
+                    if isinstance(self.md_stream, MarketDataStream) and self.md_stream.fell_back.is_set():
+                        logger.warning("=== WebSocket unrecoverable. Switching to REST polling... ===")
+                        self.md_stream.stop()
+                        poller = RestMarketDataPoller()
+                        poller._last_ts.update(self._warmup_last_ts)
+                        poller.start()
+                        self.md_stream = poller
+                        self._subscribe_market_data()
+                        logger.info("=== Switched to REST market data polling ===")
+
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
                 logger.info(

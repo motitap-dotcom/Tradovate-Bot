@@ -39,13 +39,28 @@ jobs:
       - name: Check SSH availability
         id: ssh_check
         env:
-          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          HOST_VAR: ${{ vars.SERVER_HOST }}
+          HOST_SEC: ${{ secrets.SERVER_HOST }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VPS_KEY: ${{ secrets.VPS_KEY }}
         run: |
-          if [ -n "$SSH_HOST" ]; then
+          # Try all common naming patterns
+          SSH_HOST="${HOST_VAR:-${HOST_SEC:-${VPS_HOST:-${SERVER_IP:-}}}}"
+          SSH_KEY_FINAL="${SSH_KEY:-${SSH_PRIVATE_KEY:-${VPS_KEY:-}}}"
+
+          echo "ssh_host=$SSH_HOST" >> $GITHUB_OUTPUT
+
+          if [ -n "$SSH_HOST" ] && [ -n "$SSH_KEY_FINAL" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
+            echo "SSH configured: host found"
           else
             echo "available=false" >> $GITHUB_OUTPUT
             echo "SSH not configured — skipping server check"
+            [ -z "$SSH_HOST" ] && echo "  Missing: SERVER_HOST"
+            [ -z "$SSH_KEY_FINAL" ] && echo "  Missing: SERVER_SSH_KEY"
           fi
 
       # ── Step B: Try to get token + server status via SSH ──
@@ -55,9 +70,9 @@ jobs:
         continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ steps.ssh_check.outputs.ssh_host }}
+          username: ${{ vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
           script: |
             BOT_DIR="${{ env.BOT_DIR }}"
             cd "$BOT_DIR" 2>/dev/null || exit 1
@@ -243,25 +258,56 @@ jobs:
                       hmac_key.encode(), message.encode(), hashlib.sha256
                   ).hexdigest()
 
-                  try:
-                      r = requests.post(f"{LIVE_URL}/auth/accesstokenrequest",
-                                        json=payload, timeout=30)
-                      data = r.json()
-                      if "accessToken" in data:
-                          token = data["accessToken"]
-                          print(f"  Auth success! userId={data.get('userId')}")
-                          status["authenticated"] = True
-                          status["auth_method"] = "web_auth"
-                      elif "p-ticket" in data:
-                          print("  Credentials valid, CAPTCHA required")
-                          status["auth_method"] = "captcha_needed"
-                          status["errors"].append("CAPTCHA required — need SSH to server for token")
-                      else:
-                          err = data.get("errorText", str(data))
-                          print(f"  Auth failed: {err}")
-                          status["errors"].append(f"Auth: {err}")
-                  except Exception as e:
-                      status["errors"].append(f"Auth error: {e}")
+                  # Try both live and demo endpoints (some prop firms only work on one)
+                  auth_urls = [
+                      ("Live", f"{LIVE_URL}/auth/accesstokenrequest"),
+                      ("Demo", f"{DEMO_URL}/auth/accesstokenrequest"),
+                  ]
+                  for label, auth_url in auth_urls:
+                      if token:
+                          break
+                      try:
+                          print(f"  Trying {label} endpoint...")
+                          r = requests.post(auth_url, json=payload, timeout=30)
+                          data = r.json()
+                          if "accessToken" in data:
+                              token = data["accessToken"]
+                              print(f"  Auth success via {label}! userId={data.get('userId')}")
+                              status["authenticated"] = True
+                              status["auth_method"] = f"web_auth_{label.lower()}"
+                          elif "p-ticket" in data:
+                              needs_captcha = data.get("p-captcha", False)
+                              p_time = data.get("p-time", 15)
+                              print(f"  {label}: Credentials valid! CAPTCHA={needs_captcha}, wait={p_time}s")
+                              if not needs_captcha:
+                                  # No CAPTCHA — wait and verify with p-ticket
+                                  import time as _time
+                                  print(f"  Waiting {p_time+1}s for device verification...")
+                                  _time.sleep(p_time + 1)
+                                  verify_payload = dict(payload)
+                                  verify_payload["p-ticket"] = data["p-ticket"]
+                                  r2 = requests.post(auth_url, json=verify_payload, timeout=30)
+                                  d2 = r2.json()
+                                  if "accessToken" in d2:
+                                      token = d2["accessToken"]
+                                      print(f"  Device verified via {label}! userId={d2.get('userId')}")
+                                      status["authenticated"] = True
+                                      status["auth_method"] = f"web_auth_{label.lower()}_verified"
+                                  else:
+                                      print(f"  {label} verification: {d2.get('errorText', str(d2)[:100])}")
+                              else:
+                                  status["auth_method"] = "captcha_needed"
+                                  status["errors"].append(f"{label}: CAPTCHA required — use SSH token from server")
+                          else:
+                              err = data.get("errorText", str(data))
+                              print(f"  {label} auth: {err}")
+                              # Only add as error if both endpoints fail
+                              if label == "Demo":
+                                  status["errors"].append(f"Auth: {err}")
+                      except Exception as e:
+                          print(f"  {label} auth error: {e}")
+                          if label == "Demo":
+                              status["errors"].append(f"Auth error: {e}")
               elif not ssh_token:
                   print("  No credentials configured")
                   status["errors"].append("Configure SSH secrets (recommended) or TRADOVATE_USERNAME/PASSWORD")
