@@ -67,10 +67,13 @@ jobs:
           SSH_PORT="${VPS_PORT:-22}"
           SSH_CMD="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ~/.ssh/vps_key -p $SSH_PORT ${VPS_USER}@${VPS_HOST}"
 
-          # Run remote commands and capture output
-          SSH_RESULT=$($SSH_CMD bash << 'REMOTESCRIPT'
+          echo "Connecting to ${VPS_USER}@${VPS_HOST}:${SSH_PORT}..."
+
+          # Run remote commands and capture output + errors
+          SSH_RESULT=$($SSH_CMD 'bash -s' 2>/tmp/ssh_stderr.txt << 'REMOTESCRIPT' || true
           BOT_DIR="/root/tradovate-bot"
           cd "$BOT_DIR" 2>/dev/null || cd "/root/Tradovate-Bot" 2>/dev/null || { echo "DIR_NOT_FOUND"; exit 0; }
+          echo "BOT_DIR=$(pwd)"
 
           echo "==TOKEN_START=="
           cat .tradovate_token.json 2>/dev/null || echo "{}"
@@ -87,7 +90,6 @@ jobs:
           UPTIME=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
           DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
           MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
-          LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 3 2>/dev/null | tail -3 || echo "no logs")
 
           python3 -c "
           import json
@@ -97,19 +99,22 @@ jobs:
               'uptime_since': '$UPTIME',
               'disk': '$DISK',
               'memory': '$MEM',
-              'last_log': '''$LAST_LOG'''.strip()[:200],
-              'git_commit': '$(git log -1 --format=\"%h %s\" 2>/dev/null || echo \"?\")',
           }))
           " 2>/dev/null || echo '{}'
           echo "==SERVER_END=="
           REMOTESCRIPT
           )
 
-          echo "SSH output length: ${#SSH_RESULT}"
+          SSH_ERR=$(cat /tmp/ssh_stderr.txt 2>/dev/null || echo "")
+
+          echo "SSH stdout length: ${#SSH_RESULT}"
+          echo "SSH stderr: ${SSH_ERR}"
+          echo "SSH stdout:"
           echo "$SSH_RESULT"
 
-          # Save to file for next step
+          # Save to files for next step
           echo "$SSH_RESULT" > /tmp/ssh_output.txt
+          echo "$SSH_ERR" > /tmp/ssh_stderr.txt
 
           # Clean up
           rm -f ~/.ssh/vps_key
@@ -156,16 +161,31 @@ jobs:
           print(f"  TRADOVATE_ACCESS_TOKEN: {'set' if has_token else 'NOT SET'}")
           print(f"  TRADOVATE_USERNAME: {'set (' + username_val[:5] + '...)' if has_user else 'NOT SET'}")
           print(f"  TRADOVATE_PASSWORD: {'set (' + str(len(os.environ.get('TRADOVATE_PASSWORD','').strip())) + ' chars)' if has_pass else 'NOT SET'}")
-          ssh_output_len = len(os.environ.get("SSH_OUTPUT", ""))
-          print(f"  SSH_OUTPUT length: {ssh_output_len} chars")
-          if ssh_output_len > 0:
-              print(f"  SSH_OUTPUT preview: {os.environ.get('SSH_OUTPUT', '')[:100]}...")
+          # Read SSH output from file (written by previous step)
+          ssh_file_output = ""
+          ssh_stderr = ""
+          try:
+              with open("/tmp/ssh_output.txt") as f:
+                  ssh_file_output = f.read().strip()
+          except FileNotFoundError:
+              pass
+          try:
+              with open("/tmp/ssh_stderr.txt") as f:
+                  ssh_stderr = f.read().strip()
+          except FileNotFoundError:
+              pass
+          print(f"  SSH output: {len(ssh_file_output)} chars")
+          if ssh_file_output:
+              print(f"  SSH preview: {ssh_file_output[:150]}")
+          if ssh_stderr:
+              print(f"  SSH errors: {ssh_stderr[:200]}")
           status["secrets_configured"] = {
               "ssh": has_ssh, "access_token": has_token,
               "username": has_user, "password": has_pass,
               "username_prefix": username_val[:8] if has_user else None,
               "password_length": len(os.environ.get("TRADOVATE_PASSWORD", "").strip()) if has_pass else 0,
-              "ssh_output_len": ssh_output_len,
+              "ssh_output_len": len(ssh_file_output),
+              "ssh_stderr": ssh_stderr[:150] if ssh_stderr else None,
           }
 
           # ── 1. API Connectivity ──
@@ -181,12 +201,7 @@ jobs:
                   status["errors"].append(f"{label} API unreachable: {e}")
 
           # ── 2. Parse SSH output (token + server info) ──
-          ssh_output = ""
-          try:
-              with open("/tmp/ssh_output.txt") as f:
-                  ssh_output = f.read()
-          except FileNotFoundError:
-              pass
+          ssh_output = ssh_file_output  # already read in step 0
           ssh_ok = os.environ.get("SSH_OK", "false") == "true"
           ssh_token = ""
 
