@@ -107,20 +107,23 @@ class TradovateBot:
         logger.info("Prop firm: %s | Account size: %s", config.PROP_FIRM, config.ACTIVE_CHALLENGE["account_size"])
         logger.info("=" * 60)
 
-        # Authenticate (retry up to 3 times with backoff)
+        # Authenticate (retry up to 5 times with exponential backoff)
         if not self.dry_run:
             auth_ok = False
-            for attempt in range(1, 4):
+            for attempt in range(1, 6):
                 if self.api.authenticate():
                     auth_ok = True
                     break
-                wait = attempt * 10
+                # Clear stale token so next attempt starts fresh
+                self.api.access_token = None
+                self.api.md_access_token = None
+                wait = min(attempt * 15, 60)  # 15, 30, 45, 60, 60
                 logger.warning(
-                    "Authentication attempt %d/3 failed. Retrying in %ds...", attempt, wait
+                    "Authentication attempt %d/5 failed. Retrying in %ds...", attempt, wait
                 )
                 time.sleep(wait)
             if not auth_ok:
-                logger.error("Authentication failed after 3 attempts. Exiting.")
+                logger.error("Authentication failed after 5 attempts. Exiting.")
                 sys.exit(1)
             logger.info("Authenticated successfully")
         else:

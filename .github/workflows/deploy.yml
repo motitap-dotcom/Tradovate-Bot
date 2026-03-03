@@ -86,6 +86,12 @@ jobs:
             echo "--- Updating dependencies ---"
             if [ -f venv/bin/pip ]; then
               venv/bin/pip install -r requirements.txt -q 2>&1 | tail -5
+              # Ensure Playwright is installed for CAPTCHA bypass
+              if ! venv/bin/python -c "import playwright" 2>/dev/null; then
+                echo "Installing Playwright for CAPTCHA bypass..."
+                venv/bin/pip install playwright -q 2>&1 | tail -3
+                venv/bin/python -m playwright install chromium 2>&1 | tail -5
+              fi
             else
               echo "No venv found — skipping pip install"
             fi
@@ -94,14 +100,18 @@ jobs:
             echo ""
             echo "--- Restarting bot service ---"
             systemctl restart "$SERVICE"
-            sleep 3
+            sleep 5
 
             # Verify it's running
             echo ""
             echo "--- Service status ---"
             if systemctl is-active --quiet "$SERVICE"; then
-              echo "SERVICE: RUNNING"
-              systemctl status "$SERVICE" --no-pager -l 2>&1 | head -10
+              echo "SERVICE: RUNNING (PID $(systemctl show "$SERVICE" --property=MainPID --value))"
+              # Show first log lines to verify auth works
+              sleep 10
+              echo ""
+              echo "--- Recent bot logs ---"
+              journalctl -u "$SERVICE" --no-pager -n 20 | tail -20
             else
               echo "SERVICE: FAILED TO START"
               journalctl -u "$SERVICE" --no-pager -n 20

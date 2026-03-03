@@ -127,13 +127,36 @@ class TradovateAPI:
 
         # 2. Try saved token from file
         if self._load_token():
-            logger.info("Loaded saved token, attempting renewal...")
-            if self.renew_token():
-                logger.info("Saved token renewed successfully")
-                self._fetch_account_id()
-                self._save_token()
-                return True
-            logger.warning("Saved token expired, trying fresh auth...")
+            # Check if token is clearly expired (>1 hour ago) — skip renewal, go straight to fresh auth
+            if self.token_expiry:
+                remaining = (self.token_expiry - datetime.now(timezone.utc)).total_seconds()
+                if remaining < -3600:
+                    logger.warning(
+                        "Saved token expired %.0f min ago. Deleting stale token...",
+                        -remaining / 60,
+                    )
+                    self.access_token = None
+                    self.md_access_token = None
+                    try:
+                        _TOKEN_FILE.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                else:
+                    logger.info("Loaded saved token, attempting renewal...")
+                    if self.renew_token():
+                        logger.info("Saved token renewed successfully")
+                        self._fetch_account_id()
+                        self._save_token()
+                        return True
+                    logger.warning("Token renewal failed, trying fresh auth...")
+            else:
+                logger.info("Loaded saved token (no expiry), attempting renewal...")
+                if self.renew_token():
+                    logger.info("Saved token renewed successfully")
+                    self._fetch_account_id()
+                    self._save_token()
+                    return True
+                logger.warning("Token renewal failed, trying fresh auth...")
 
         url = f"{self.base_url}/auth/accesstokenrequest"
 
