@@ -143,6 +143,13 @@ class TradovateBot:
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
 
+        # Sync actual balance from API BEFORE main loop so the risk manager
+        # uses the real SOD balance instead of the nominal account size.
+        # Without this, day_pnl = (real_balance - 50000) which immediately
+        # triggers either the daily loss brake or profit cap on startup.
+        if not self.dry_run:
+            self._init_risk_from_api()
+
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
             self.md_stream = self._start_market_data()
@@ -169,6 +176,56 @@ class TradovateBot:
 
         self._print_summary()
         logger.info("Bot stopped.")
+
+    # ─────────────────────────────────────────
+    # Risk manager initialization from API
+    # ─────────────────────────────────────────
+
+    def _init_risk_from_api(self):
+        """
+        Fetch the real account balance from the API and initialize the risk
+        manager with it.  The risk manager defaults to the nominal account
+        size ($50,000) which may differ from the actual balance, causing
+        day_pnl to be wildly wrong and immediately locking trading.
+        """
+        try:
+            snapshot = self.api.get_cash_balance()
+            if not snapshot or snapshot.get("errorText"):
+                logger.warning("Could not fetch initial balance: %s", snapshot)
+                return
+
+            balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+            if balance is None:
+                logger.warning("Initial balance snapshot has no value: %s", snapshot)
+                return
+
+            unrealized = snapshot.get("openPnL", 0.0)
+
+            # Set the risk manager's baseline to the real balance
+            self.risk.current_balance = balance
+            self.risk.day_start_balance = balance
+            self.risk.starting_balance = balance
+
+            # Update peak if actual balance exceeds nominal
+            equity = balance + unrealized
+            if equity > self.risk.peak_balance:
+                self.risk.peak_balance = equity
+                self.risk.drawdown_floor = equity - self.risk.max_trailing_drawdown
+
+            self.risk.unrealized_pnl = unrealized
+            self.risk.day_pnl = 0.0  # Fresh start for the day
+
+            logger.info(
+                "Risk manager initialized from API | balance=%.2f | "
+                "peak=%.2f | floor=%.2f | unrealized=%.2f",
+                balance,
+                self.risk.peak_balance,
+                self.risk.drawdown_floor,
+                unrealized,
+            )
+
+        except Exception as e:
+            logger.error("Failed to initialize risk from API: %s", e)
 
     # ─────────────────────────────────────────
     # Contract resolution
