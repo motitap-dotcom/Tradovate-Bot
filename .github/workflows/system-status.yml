@@ -128,6 +128,22 @@ jobs:
               "errors": [],
           }
 
+          # ── 0. Secrets diagnostics ──
+          print("=== 0. Secrets Configured ===")
+          has_ssh = bool(os.environ.get("SSH_OK") == "true")
+          has_token = bool(os.environ.get("TRADOVATE_ACCESS_TOKEN", "").strip())
+          has_user = bool(os.environ.get("TRADOVATE_USERNAME", "").strip())
+          has_pass = bool(os.environ.get("TRADOVATE_PASSWORD", "").strip())
+          username_val = os.environ.get("TRADOVATE_USERNAME", "").strip()
+          print(f"  SSH connected: {has_ssh}")
+          print(f"  TRADOVATE_ACCESS_TOKEN: {'set' if has_token else 'NOT SET'}")
+          print(f"  TRADOVATE_USERNAME: {'set (' + username_val[:5] + '...)' if has_user else 'NOT SET'}")
+          print(f"  TRADOVATE_PASSWORD: {'set (' + str(len(os.environ.get('TRADOVATE_PASSWORD','').strip())) + ' chars)' if has_pass else 'NOT SET'}")
+          status["secrets_configured"] = {
+              "ssh": has_ssh, "access_token": has_token,
+              "username": has_user, "password": has_pass,
+          }
+
           # ── 1. API Connectivity ──
           print("=== 1. API Connectivity ===")
           for label, url in [("Demo", DEMO_URL), ("Live", LIVE_URL)]:
@@ -159,7 +175,6 @@ jobs:
                       print("  Could not parse token from server")
 
               # Extract server status
-              server_match = re.search(r"==SERVER_END==\s*$", ssh_output)
               server_match = re.search(r"==SERVER_START==\s*([\s\S]*?)\s*==SERVER_END==", ssh_output)
               if server_match:
                   server_lines = server_match.group(1).strip().split("\n")
