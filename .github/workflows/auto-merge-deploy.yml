@@ -39,7 +39,7 @@ jobs:
         run: |
           for f in bot.py tradovate_api.py strategies.py risk_manager.py config.py \
                    trade_journal.py auto_tuner.py dashboard.py status.py \
-                   connection_check.py verify_bot.py bot_health_check.py; do
+                   connection_check.py verify_bot.py bot_health_check.py check_server.py; do
             [ -f "$f" ] && python -m py_compile "$f" && echo "  OK: $f" || echo "  SKIP: $f"
           done
 
@@ -75,16 +75,18 @@ jobs:
           fi
           git push origin ${{ env.DEPLOY_BRANCH }}
 
-      # Resolve server host from vars or secrets
+      # Resolve server host from vars or secrets (try multiple naming patterns)
       - name: Check server host
         id: server_check
         env:
           HOST_VAR: ${{ vars.SERVER_HOST }}
           HOST_SECRET: ${{ secrets.SERVER_HOST }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
           USER_VAR: ${{ vars.SERVER_USER }}
           USER_SECRET: ${{ secrets.SERVER_USER }}
         run: |
-          HOST="${HOST_VAR:-$HOST_SECRET}"
+          HOST="${HOST_VAR:-${HOST_SECRET:-${VPS_HOST:-${SERVER_IP:-}}}}"
           USER="${USER_VAR:-${USER_SECRET:-root}}"
           if [ -n "$HOST" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
@@ -103,7 +105,7 @@ jobs:
         with:
           host: ${{ steps.server_check.outputs.host }}
           username: ${{ steps.server_check.outputs.user }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
           envs: SERVER_GH_PAT
           script: |
             set -e
@@ -176,8 +178,8 @@ jobs:
           echo "**Target:** \`${{ env.DEPLOY_BRANCH }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ vars.SERVER_HOST }}" != "" ]; then
-            echo "Merged and deployed via SSH." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.server_check.outputs.available }}" == "true" ]; then
+            echo "Merged and deployed via SSH to \`${{ steps.server_check.outputs.host }}\`." >> $GITHUB_STEP_SUMMARY
           else
             echo "Merged. No server configured for deploy." >> $GITHUB_STEP_SUMMARY
           fi
