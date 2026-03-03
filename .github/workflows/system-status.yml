@@ -35,28 +35,28 @@ jobs:
       # ── Step A: Check if SSH is configured ──
       - name: Check SSH availability
         id: ssh_check
-        env:
-          SSH_HOST_SECRET: ${{ secrets.SERVER_HOST }}
-          SSH_HOST_VAR: ${{ vars.SERVER_HOST }}
         run: |
-          SSH_HOST="${SSH_HOST_SECRET:-$SSH_HOST_VAR}"
-          if [ -n "$SSH_HOST" ]; then
+          if [ -n "${{ vars.SERVER_HOST }}" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
-            echo "host=$SSH_HOST" >> $GITHUB_OUTPUT
+            echo "Using vars.SERVER_HOST"
+          elif [ -n "${{ secrets.SERVER_HOST }}" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "Using secrets.SERVER_HOST"
           else
             echo "available=false" >> $GITHUB_OUTPUT
             echo "SSH not configured — skipping server check"
           fi
 
-      # ── Step B: Get token + run verify_bot.py on server via SSH ──
+      # ── Step B: Get token + server status via SSH ──
+      # Uses same host/user pattern as deploy.yml (which works)
       - name: Get server status via SSH
         id: ssh_status
         if: steps.ssh_check.outputs.available == 'true'
         continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ steps.ssh_check.outputs.host }}
-          username: ${{ secrets.SERVER_USER || vars.SERVER_USER || 'root' }}
+          host: ${{ vars.SERVER_HOST || secrets.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             BOT_DIR="${{ env.BOT_DIR }}"
@@ -202,6 +202,15 @@ jobs:
             print(json.dumps(result))
             PYEOF
             echo "==TRADING_END=="
+
+      # ── Debug: Show SSH step outcome ──
+      - name: SSH debug info
+        if: always()
+        run: |
+          echo "SSH check available: ${{ steps.ssh_check.outputs.available }}"
+          echo "SSH status outcome: ${{ steps.ssh_status.outcome }}"
+          echo "SSH stdout length: $(echo '${{ steps.ssh_status.outputs.stdout }}' | wc -c)"
+          echo "vars.SERVER_HOST set: ${{ vars.SERVER_HOST != '' }}"
 
       # ── Step C: Check system status (API + optional SSH token) ──
       - name: Check system status
@@ -632,4 +641,3 @@ jobs:
               print("- `TRADOVATE_USERNAME` / `TRADOVATE_PASSWORD` — for API auth")
               print("- `TRADOVATE_ACCESS_TOKEN` — valid bearer token (optional)")
           PYEOF
-# Status check trigger - 2026-03-03T13:56:55Z
