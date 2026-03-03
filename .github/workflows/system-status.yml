@@ -6,9 +6,6 @@ on:
     - cron: '*/30 * * * *'
   push:
     branches: [main, 'claude/**']
-    paths:
-      - '.github/workflows/system-status.yml'
-      - 'system_status.json'
   workflow_dispatch:
 
 permissions:
@@ -95,6 +92,104 @@ jobs:
             " 2>/dev/null || echo '{}'
             echo "==SERVER_END=="
 
+            # ── Deep trading activity check ──
+            echo "==TRADING_START=="
+            python3 << 'PYEOF'
+            import json, os, re, glob
+            from datetime import datetime, timezone
+
+            bot_dir = os.environ.get("BOT_DIR", "/root/tradovate-bot")
+            result = {
+                "live_status": {},
+                "token_status": "missing",
+                "token_expiry": "",
+                "recent_signals": [],
+                "recent_trades": [],
+                "bot_log_tail": [],
+                "journal_summary": {},
+                "trading_active": False,
+                "websocket_connected": False,
+                "errors_in_log": [],
+            }
+
+            # 1. Check live_status.json
+            ls_path = os.path.join(bot_dir, "live_status.json")
+            if os.path.exists(ls_path):
+                try:
+                    with open(ls_path) as f:
+                        result["live_status"] = json.load(f)
+                except Exception:
+                    pass
+
+            # 2. Check token
+            tk_path = os.path.join(bot_dir, ".tradovate_token.json")
+            if os.path.exists(tk_path):
+                try:
+                    with open(tk_path) as f:
+                        td = json.load(f)
+                    exp = td.get("expirationTime", "")
+                    result["token_expiry"] = exp
+                    if exp:
+                        exp_dt = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+                        remaining = (exp_dt - datetime.now(timezone.utc)).total_seconds()
+                        result["token_status"] = "valid" if remaining > 0 else "expired"
+                    else:
+                        result["token_status"] = "no_expiry"
+                except Exception:
+                    result["token_status"] = "error"
+
+            # 3. Parse bot.log for recent activity
+            log_path = os.path.join(bot_dir, "bot.log")
+            if os.path.exists(log_path):
+                try:
+                    with open(log_path, "rb") as f:
+                        # Read last 50KB
+                        f.seek(0, 2)
+                        size = f.tell()
+                        f.seek(max(0, size - 50000))
+                        lines = f.read().decode("utf-8", errors="replace").strip().split("\n")
+
+                    # Last 30 log lines
+                    result["bot_log_tail"] = lines[-30:]
+
+                    # Find signals, trades, errors
+                    for line in lines[-200:]:
+                        if "SIGNAL:" in line or "bracket order" in line:
+                            result["recent_signals"].append(line.strip()[-200:])
+                        if "Journal: ENTRY" in line or "Journal: EXIT" in line:
+                            result["recent_trades"].append(line.strip()[-200:])
+                        if "WebSocket" in line and "connect" in line.lower():
+                            result["websocket_connected"] = True
+                        if "ERROR" in line or "CRITICAL" in line or "Traceback" in line:
+                            result["errors_in_log"].append(line.strip()[-200:])
+                        if "Status |" in line:
+                            result["trading_active"] = True
+
+                    # Trim lists
+                    result["recent_signals"] = result["recent_signals"][-10:]
+                    result["recent_trades"] = result["recent_trades"][-10:]
+                    result["errors_in_log"] = result["errors_in_log"][-10:]
+                except Exception as e:
+                    result["errors_in_log"].append(f"Log parse error: {e}")
+
+            # 4. Trade journal summary
+            tj_path = os.path.join(bot_dir, "trade_journal.json")
+            if os.path.exists(tj_path):
+                try:
+                    with open(tj_path) as f:
+                        tj = json.load(f)
+                    result["journal_summary"] = tj.get("summary", {})
+                    trades = tj.get("trades", [])
+                    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    today_trades = [t for t in trades if t.get("entry_time", "").startswith(today)]
+                    result["journal_summary"]["trades_today"] = len(today_trades)
+                except Exception:
+                    pass
+
+            print(json.dumps(result))
+            PYEOF
+            echo "==TRADING_END=="
+
       # ── Step C: Check system status (API + optional SSH token) ──
       - name: Check system status
         env:
@@ -124,6 +219,7 @@ jobs:
               "positions": [],
               "orders": [],
               "server": None,
+              "trading_activity": None,
               "errors": [],
           }
 
@@ -174,6 +270,26 @@ jobs:
                           except Exception:
                               pass
                           break
+              # Extract trading activity data
+              trading_match = re.search(r"==TRADING_START==\s*([\s\S]*?)\s*==TRADING_END==", ssh_output)
+              if trading_match:
+                  trading_lines = trading_match.group(1).strip().split("\n")
+                  for line in reversed(trading_lines):
+                      line = line.strip()
+                      if line.startswith("{"):
+                          try:
+                              status["trading_activity"] = json.loads(line)
+                              ta = status["trading_activity"]
+                              print(f"  Token: {ta.get('token_status')} (expires: {ta.get('token_expiry', '?')[:19]})")
+                              print(f"  Trading active: {ta.get('trading_active')}")
+                              print(f"  Signals: {len(ta.get('recent_signals', []))}")
+                              print(f"  Trades: {len(ta.get('recent_trades', []))}")
+                              print(f"  WS connected: {ta.get('websocket_connected')}")
+                              print(f"  Errors in log: {len(ta.get('errors_in_log', []))}")
+                          except Exception:
+                              pass
+                          break
+
           else:
               if os.environ.get("SSH_OK") == "false" and os.environ.get("SSH_OUTPUT"):
                   print("\n=== 2. Server SSH ===")
@@ -353,7 +469,9 @@ jobs:
           else
             AUTH=$(python3 -c "import json; d=json.load(open('system_status.json')); print(d.get('auth_method','none'))")
             API=$(python3 -c "import json; d=json.load(open('system_status.json')); print('ok' if d['api_reachable'] else 'down')")
-            git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$API auth=$AUTH"
+            BOT=$(python3 -c "import json; d=json.load(open('system_status.json')); s=d.get('server') or {}; print('running' if s.get('bot_active') else 'down')")
+            TRADING=$(python3 -c "import json; d=json.load(open('system_status.json')); t=d.get('trading_activity') or {}; print('active' if t.get('trading_active') else 'inactive')")
+            git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$API auth=$AUTH bot=$BOT trading=$TRADING"
             git push origin main
             echo "Pushed to main"
           fi
@@ -393,6 +511,58 @@ jobs:
               print(f"| Bot Active | {srv.get('bot_active', '?')} |")
               print(f"| Memory | {srv.get('memory', '?')} |")
               print(f"| Disk | {srv.get('disk', '?')} |")
+
+          # Trading activity section
+          ta = d.get("trading_activity")
+          if ta:
+              print("")
+              print("### Trading Activity")
+              print("| Metric | Value |")
+              print("|--------|-------|")
+              print(f"| Token | {ta.get('token_status', '?')} |")
+              print(f"| Token Expiry | {ta.get('token_expiry', '?')[:19] if ta.get('token_expiry') else 'N/A'} |")
+              print(f"| Trading Active | {ta.get('trading_active', False)} |")
+              print(f"| WebSocket | {'Connected' if ta.get('websocket_connected') else 'Disconnected'} |")
+              print(f"| Recent Signals | {len(ta.get('recent_signals', []))} |")
+              print(f"| Recent Trades | {len(ta.get('recent_trades', []))} |")
+              print(f"| Log Errors | {len(ta.get('errors_in_log', []))} |")
+
+              js = ta.get("journal_summary", {})
+              if js.get("total_trades", 0) > 0:
+                  print(f"| Total Trades (journal) | {js.get('total_trades', 0)} |")
+                  print(f"| Win Rate | {js.get('win_rate', 0):.0%} |")
+                  print(f"| Total P&L | ${js.get('total_pnl', 0):,.2f} |")
+                  print(f"| Trades Today | {js.get('trades_today', 0)} |")
+
+              signals = ta.get("recent_signals", [])
+              if signals:
+                  print("")
+                  print("### Recent Signals")
+                  for s in signals[-5:]:
+                      print(f"- `{s[-120:]}`")
+
+              trades = ta.get("recent_trades", [])
+              if trades:
+                  print("")
+                  print("### Recent Trades")
+                  for t in trades[-5:]:
+                      print(f"- `{t[-120:]}`")
+
+              errors = ta.get("errors_in_log", [])
+              if errors:
+                  print("")
+                  print("### Bot Log Errors")
+                  for e in errors[-5:]:
+                      print(f"- `{e[-120:]}`")
+
+              log_tail = ta.get("bot_log_tail", [])
+              if log_tail:
+                  print("")
+                  print("### Last 15 Log Lines")
+                  print("```")
+                  for line in log_tail[-15:]:
+                      print(line[-150:])
+                  print("```")
 
           errs = d.get("errors", [])
           if errs:
