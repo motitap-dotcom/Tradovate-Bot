@@ -14,6 +14,9 @@ on:
 permissions:
   contents: write
 
+env:
+  BOT_DIR: /root/tradovate-bot
+
 jobs:
   check-status:
     runs-on: ubuntu-latest
@@ -36,8 +39,10 @@ jobs:
       - name: Check SSH availability
         id: ssh_check
         env:
-          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_HOST_1: ${{ secrets.VPS_HOST }}
+          SSH_HOST_2: ${{ secrets.SERVER_HOST }}
         run: |
+          SSH_HOST="${SSH_HOST_1:-$SSH_HOST_2}"
           if [ -n "$SSH_HOST" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
           else
@@ -45,10 +50,7 @@ jobs:
             echo "SSH not configured — skipping server check"
           fi
 
-      # ── Step B: Query everything from server via SSH ──
-      # The bot on the server has a valid token. We run API queries
-      # FROM the server and return the results — no need to pass
-      # tokens or passwords through GitHub.
+      # ── Step B: SSH into server, maintain, query API, return results ──
       - name: Get full status from server via SSH
         id: ssh_status
         if: steps.ssh_check.outputs.available == 'true'
@@ -58,62 +60,74 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
+          # Use whichever secrets are configured
+          SSH_HOST="${VPS_HOST:-$SERVER_HOST}"
+          SSH_USER="${VPS_USER:-${SERVER_USER:-root}}"
+          SSH_KEY="${VPS_SSH_KEY:-$SERVER_SSH_KEY}"
+          SSH_PORT="${VPS_PORT:-22}"
+
           mkdir -p ~/.ssh
-          echo "$VPS_SSH_KEY" > ~/.ssh/vps_key
+          echo "$SSH_KEY" > ~/.ssh/vps_key
           chmod 600 ~/.ssh/vps_key
 
-          SSH_PORT="${VPS_PORT:-22}"
-          SSH_CMD="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i ~/.ssh/vps_key -p $SSH_PORT ${VPS_USER}@${VPS_HOST}"
+          SSH_CMD="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i ~/.ssh/vps_key -p $SSH_PORT ${SSH_USER}@${SSH_HOST}"
 
-          echo "Connecting to ${VPS_USER}@${VPS_HOST}:${SSH_PORT}..."
+          echo "Connecting to ${SSH_USER}@${SSH_HOST}:${SSH_PORT}..."
 
-          # Run everything on the server: maintain, read token, query API, return JSON
           SSH_RESULT=$($SSH_CMD 'bash -s' 2>/tmp/ssh_stderr.txt << 'REMOTESCRIPT' || true
           cd /root/tradovate-bot 2>/dev/null || cd /root/Tradovate-Bot 2>/dev/null || { echo '{"error":"DIR_NOT_FOUND"}'; exit 0; }
 
-          # ── 0. Maintenance: pull latest code & fix expired tokens ──
+          # ── 0. Maintenance: pull latest code ──
           git pull origin main --ff-only 2>/dev/null || true
 
-          # Check if token is expired > 2 hours — if so, delete it and restart bot
-          TOKEN_EXPIRY_CHECK=$(python3 -c "
+          # ── 1. Check if token is expired and needs bot restart ──
+          TOKEN_STATE=$(python3 -c "
           import json
           from datetime import datetime, timezone
           try:
               d = json.load(open('.tradovate_token.json'))
               exp = datetime.fromisoformat(d['expirationTime'])
               age = (datetime.now(timezone.utc) - exp).total_seconds()
-              print('expired' if age > 7200 else 'ok')
+              if age > 7200:
+                  print('stale')
+              elif age > 0:
+                  print('expired')
+              else:
+                  print('ok')
           except:
               print('missing')
           " 2>/dev/null || echo "missing")
 
-          if [ "$TOKEN_EXPIRY_CHECK" != "ok" ]; then
-              # Token is stale — remove it and restart bot so it re-authenticates
+          RESTARTED=false
+          if [ "$TOKEN_STATE" = "stale" ] || [ "$TOKEN_STATE" = "missing" ]; then
               rm -f .tradovate_token.json
               systemctl restart tradovate-bot 2>/dev/null || true
-              # Wait for bot to authenticate (up to 60s)
+              RESTARTED=true
               for i in $(seq 1 12); do
                   sleep 5
                   if [ -f .tradovate_token.json ]; then
-                      NEW_EXP=$(python3 -c "
+                      FRESH_CHECK=$(python3 -c "
           import json
           from datetime import datetime, timezone
           try:
               d = json.load(open('.tradovate_token.json'))
               exp = datetime.fromisoformat(d['expirationTime'])
-              print('ok' if (exp - datetime.now(timezone.utc)).total_seconds() > 0 else 'expired')
+              print('ok' if (exp - datetime.now(timezone.utc)).total_seconds() > 0 else 'bad')
           except:
-              print('missing')
-          " 2>/dev/null || echo "missing")
-                      if [ "$NEW_EXP" = "ok" ]; then
+              print('bad')
+          " 2>/dev/null || echo "bad")
+                      if [ "$FRESH_CHECK" = "ok" ]; then
                           break
                       fi
                   fi
               done
           fi
 
-          # ── 1. Server health ──
+          # ── 2. Server health ──
           BOT_ACTIVE=false
           BOT_PID=""
           if systemctl is-active --quiet tradovate-bot 2>/dev/null; then
@@ -123,20 +137,24 @@ jobs:
           UPTIME=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
           DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
           MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
+          GIT_COMMIT=$(git log -1 --format="%h %s" 2>/dev/null || echo "?")
 
-          # ── 2. Token: read from file, try both DEMO and LIVE endpoints ──
+          # Read live_status.json if exists
+          LIVE_STATUS_FILE=""
+          [ -f live_status.json ] && LIVE_STATUS_FILE=$(cat live_status.json 2>/dev/null || echo "")
+
+          # ── 3. Token + API queries ──
           TOKEN=$(python3 -c "import json; print(json.load(open('.tradovate_token.json')).get('accessToken',''))" 2>/dev/null || echo "")
           TOKEN_EXPIRY=$(python3 -c "import json; print(json.load(open('.tradovate_token.json')).get('expirationTime',''))" 2>/dev/null || echo "")
 
           AUTH_OK=false
           API_URL=""
-          ACCOUNT_JSON="{}"
+          ACCOUNT_JSON="[]"
           BALANCE_JSON="{}"
           POSITIONS_JSON="[]"
           ORDERS_JSON="[]"
 
           if [ -n "$TOKEN" ]; then
-              # Try token on both DEMO and LIVE endpoints
               for TRY_URL in "https://demo.tradovateapi.com/v1" "https://live.tradovateapi.com/v1"; do
                   HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$TRY_URL/account/list" 2>/dev/null)
                   if [ "$HTTP_CODE" = "200" ]; then
@@ -145,7 +163,6 @@ jobs:
                   fi
               done
 
-              # If token expired, try renewal on both endpoints
               if [ -z "$API_URL" ]; then
                   for TRY_URL in "https://demo.tradovateapi.com/v1" "https://live.tradovateapi.com/v1"; do
                       RENEWED=$(curl -s -X POST "$TRY_URL/auth/renewaccesstoken" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d "{}" 2>/dev/null)
@@ -160,47 +177,24 @@ jobs:
                   done
               fi
 
-              # If still no API_URL, try fresh auth from server using bot code
-              if [ -z "$API_URL" ] && [ -f .env ] && [ -f bot.py ]; then
-                  # Source .env and try to authenticate fresh
-                  set -a
-                  source .env 2>/dev/null
-                  set +a
-                  FRESH=$(python3 -c "
-          import sys; sys.path.insert(0, '.')
-          from tradovate_api import TradovateClient
-          c = TradovateClient()
-          c.authenticate()
-          if c.access_token:
-              print(c.access_token)
-          " 2>/dev/null || echo "")
-                  if [ -n "$FRESH" ]; then
-                      TOKEN="$FRESH"
-                      API_URL="https://demo.tradovateapi.com/v1"
-                      TOKEN_EXPIRY="fresh"
-                  fi
-              fi
-
-              # Query everything using the working token
               if [ -n "$API_URL" ]; then
                   ACCOUNT_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/account/list" 2>/dev/null || echo "[]")
-              fi
-              CHECK=$(echo "$ACCOUNT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print('ok' if isinstance(d,list) and len(d)>0 else 'fail')" 2>/dev/null || echo "fail")
-
-              if [ "$CHECK" = "ok" ]; then
-                  AUTH_OK=true
-                  BALANCE_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/cashBalance/getcashbalancesnapshot?accountId=39996695" 2>/dev/null || echo "{}")
-                  POSITIONS_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/position/list" 2>/dev/null || echo "[]")
-                  ORDERS_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/order/list" 2>/dev/null || echo "[]")
+                  CHECK=$(echo "$ACCOUNT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print('ok' if isinstance(d,list) and len(d)>0 else 'fail')" 2>/dev/null || echo "fail")
+                  if [ "$CHECK" = "ok" ]; then
+                      AUTH_OK=true
+                      BALANCE_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/cashBalance/getcashbalancesnapshot?accountId=39996695" 2>/dev/null || echo "{}")
+                      POSITIONS_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/position/list" 2>/dev/null || echo "[]")
+                      ORDERS_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" "$API_URL/order/list" 2>/dev/null || echo "[]")
+                  fi
               fi
           fi
 
-          # ── Output everything as single JSON ──
-          # Write data to temp files to avoid shell quoting issues with JSON
+          # ── 4. Output as JSON ──
           echo "$ACCOUNT_JSON" > /tmp/_accounts.json 2>/dev/null
           echo "$BALANCE_JSON" > /tmp/_balance.json 2>/dev/null
           echo "$POSITIONS_JSON" > /tmp/_positions.json 2>/dev/null
           echo "$ORDERS_JSON" > /tmp/_orders.json 2>/dev/null
+          [ -n "$LIVE_STATUS_FILE" ] && echo "$LIVE_STATUS_FILE" > /tmp/_live_status.json 2>/dev/null || echo "{}" > /tmp/_live_status.json
           python3 -c "
           import json
           def load(path, default):
@@ -209,20 +203,15 @@ jobs:
                       return json.load(f)
               except:
                   return default
-          server = {'bot_active': '$BOT_ACTIVE' == 'true', 'bot_pid': '$BOT_PID', 'uptime_since': '$UPTIME', 'disk': '$DISK', 'memory': '$MEM'}
-          accounts = load('/tmp/_accounts.json', [])
-          balance = load('/tmp/_balance.json', {})
-          positions = load('/tmp/_positions.json', [])
-          orders = load('/tmp/_orders.json', [])
-          print(json.dumps({'server': server, 'auth_ok': '$AUTH_OK' == 'true', 'token_expiry': '$TOKEN_EXPIRY', 'accounts': accounts if isinstance(accounts, list) else [], 'balance': balance if isinstance(balance, dict) else {}, 'positions': positions if isinstance(positions, list) else [], 'orders': orders if isinstance(orders, list) else []}))
+          server = {'bot_active': '$BOT_ACTIVE' == 'true', 'bot_pid': '$BOT_PID', 'uptime_since': '$UPTIME', 'disk': '$DISK', 'memory': '$MEM', 'git_commit': '$GIT_COMMIT', 'restarted': '$RESTARTED' == 'true', 'live_status': load('/tmp/_live_status.json', {})}
+          print(json.dumps({'server': server, 'auth_ok': '$AUTH_OK' == 'true', 'token_expiry': '$TOKEN_EXPIRY', 'accounts': load('/tmp/_accounts.json', []), 'balance': load('/tmp/_balance.json', {}), 'positions': load('/tmp/_positions.json', []), 'orders': load('/tmp/_orders.json', [])}))
           " 2>/dev/null || echo '{"error":"python_failed"}'
-          rm -f /tmp/_accounts.json /tmp/_balance.json /tmp/_positions.json /tmp/_orders.json
+          rm -f /tmp/_accounts.json /tmp/_balance.json /tmp/_positions.json /tmp/_orders.json /tmp/_live_status.json
           REMOTESCRIPT
           )
 
           SSH_ERR=$(cat /tmp/ssh_stderr.txt 2>/dev/null || echo "")
           echo "SSH stdout length: ${#SSH_RESULT}"
-          echo "SSH stderr: ${SSH_ERR}"
           echo "$SSH_RESULT" > /tmp/ssh_output.txt
           rm -f ~/.ssh/vps_key
 
@@ -232,7 +221,7 @@ jobs:
           SSH_OK: ${{ steps.ssh_status.outcome == 'success' && 'true' || 'false' }}
         run: |
           python3 << 'PYEOF'
-          import json, os, sys, re
+          import json, os, sys
           from datetime import datetime, timezone
 
           import requests
@@ -265,7 +254,7 @@ jobs:
               except Exception as e:
                   print(f"  {label}: FAIL - {e}")
 
-          # ── 2. Parse SSH output (all data from server) ──
+          # ── 2. Parse SSH output ──
           ssh_ok = os.environ.get("SSH_OK", "false") == "true"
           ssh_data = None
           try:
@@ -285,6 +274,9 @@ jobs:
               print(f"  Bot active: {srv.get('bot_active')}")
               print(f"  Memory: {srv.get('memory')}")
               print(f"  Disk: {srv.get('disk')}")
+              print(f"  Commit: {srv.get('git_commit')}")
+              if srv.get("restarted"):
+                  print("  ** Bot was restarted by status check **")
 
               # Auth & account data
               if ssh_data.get("auth_ok"):
@@ -292,7 +284,6 @@ jobs:
                   status["auth_method"] = "server_ssh"
                   print(f"  Auth: OK (token expires {ssh_data.get('token_expiry', '?')[:19]})")
 
-                  # Account
                   accounts = ssh_data.get("accounts", [])
                   for a in accounts:
                       if a.get("id") == ACCOUNT_ID or len(accounts) == 1:
@@ -301,7 +292,6 @@ jobs:
                           }
                           print(f"  Account: {a.get('name')} (ID: {a.get('id')})")
 
-                  # Balance
                   bal = ssh_data.get("balance", {})
                   if bal:
                       status["balance"] = {
@@ -309,10 +299,10 @@ jobs:
                           "unrealizedPnl": bal.get("unrealizedPnl"),
                           "totalCashValue": bal.get("totalCashValue"),
                           "initialMargin": bal.get("initialMargin"),
+                          "netLiq": bal.get("netLiq"),
                       }
                       print(f"  Balance: ${bal.get('totalCashValue', 'N/A')}")
 
-                  # Positions
                   positions = ssh_data.get("positions", [])
                   open_pos = [p for p in positions if p.get("netPos", 0) != 0]
                   status["positions"] = [
@@ -321,7 +311,6 @@ jobs:
                   ]
                   print(f"  Open positions: {len(open_pos)}")
 
-                  # Orders
                   orders = ssh_data.get("orders", [])
                   active = [o for o in orders if o.get("ordStatus") in ("Working", "Accepted")]
                   status["orders"] = [
@@ -332,7 +321,7 @@ jobs:
               else:
                   token_exp = ssh_data.get("token_expiry", "unknown")
                   print(f"  Auth: token expired or missing (expiry: {token_exp})")
-                  status["errors"].append(f"Server token expired (expiry: {token_exp}) — bot may need restart")
+                  status["errors"].append(f"Server token expired (expiry: {token_exp})")
           elif ssh_data and "error" in ssh_data:
               print(f"\n  SSH error: {ssh_data['error']}")
               status["errors"].append(f"SSH: {ssh_data['error']}")
@@ -364,7 +353,8 @@ jobs:
           else
             AUTH=$(python3 -c "import json; d=json.load(open('system_status.json')); print(d.get('auth_method','none'))")
             API=$(python3 -c "import json; d=json.load(open('system_status.json')); print('ok' if d['api_reachable'] else 'down')")
-            git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$API auth=$AUTH"
+            BOT=$(python3 -c "import json; d=json.load(open('system_status.json')); s=d.get('server',{}); print('running' if s and s.get('bot_active') else 'unknown')")
+            git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$API auth=$AUTH bot=$BOT"
             git push origin main
             echo "Pushed to main"
           fi
@@ -393,6 +383,7 @@ jobs:
           bal = d.get("balance", {})
           if bal:
               print(f"| Balance | ${bal.get('totalCashValue', 'N/A')} |")
+              print(f"| Net Liq | ${bal.get('netLiq', 'N/A')} |")
               print(f"| Realized P&L | ${bal.get('realizedPnl', 'N/A')} |")
               print(f"| Unrealized P&L | ${bal.get('unrealizedPnl', 'N/A')} |")
 
@@ -404,6 +395,19 @@ jobs:
               print(f"| Bot Active | {srv.get('bot_active', '?')} |")
               print(f"| Memory | {srv.get('memory', '?')} |")
               print(f"| Disk | {srv.get('disk', '?')} |")
+              print(f"| Server Commit | `{srv.get('git_commit', '?')}` |")
+              if srv.get("restarted"):
+                  print(f"| **Restarted** | Yes (auto-healed) |")
+
+              live = srv.get('live_status', {})
+              if live and live.get('balance'):
+                  print("")
+                  print("### Live Bot Status")
+                  print("| Field | Value |")
+                  print("|-------|-------|")
+                  for k in ['balance', 'equity', 'day_pnl', 'distance_to_floor', 'open_contracts', 'trades_today']:
+                      if k in live:
+                          print(f"| {k} | {live[k]} |")
 
           errs = d.get("errors", [])
           if errs:
