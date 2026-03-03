@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T11:18:43Z",
+  "timestamp": "2026-03-03T11:22:21Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -7,7 +7,7 @@
   "balance": {},
   "positions": [],
   "orders": [],
-  "server": null,
+  "server": {},
   "errors": [
     "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
   ],
