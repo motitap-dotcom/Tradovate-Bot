@@ -270,6 +270,13 @@ jobs:
                   "ssh_output_len": len(os.environ.get("SSH_OUTPUT", "")),
                   "has_server_host": os.environ.get("HAS_SERVER_HOST", "?"),
                   "has_ssh_key": os.environ.get("HAS_SSH_KEY", "?"),
+                  # Credential diagnostics (no values exposed)
+                  "has_username": bool(os.environ.get("TRADOVATE_USERNAME", "").strip()),
+                  "username_len": len(os.environ.get("TRADOVATE_USERNAME", "").strip()),
+                  "has_password": bool(os.environ.get("TRADOVATE_PASSWORD", "").strip()),
+                  "password_len": len(os.environ.get("TRADOVATE_PASSWORD", "").strip()),
+                  "has_access_token": bool(os.environ.get("TRADOVATE_ACCESS_TOKEN", "").strip()),
+                  "username_first3": os.environ.get("TRADOVATE_USERNAME", "")[:3] or "EMPTY",
               },
           }
 
