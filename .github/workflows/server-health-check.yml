@@ -1,119 +1,136 @@
-name: Bot Status Check
+name: Bot Health Check
 
+# Runs every 15 minutes during US market hours (Mon-Fri 9:25-17:05 ET)
+# and once per hour outside market hours for general liveness
 on:
-  # Check status every 15 minutes
   schedule:
-    - cron: '*/15 * * * *'
-  # Also on push to claude/* branches or manual trigger
-  push:
-    branches:
-      - 'main'
-      - 'claude/**'
-    paths:
-      - 'server_status.json'
-      - '.github/workflows/server-health-check.yml'
+    # Every 15 min during market hours (13:25-21:05 UTC = 9:25 AM - 5:05 PM ET)
+    - cron: '25,40,55 13 * * 1-5'
+    - cron: '10,25,40,55 14-20 * * 1-5'
+    - cron: '5 21 * * 1-5'
+    # Once per hour outside market hours (liveness check)
+    - cron: '0 0-12,22-23 * * 1-5'
+    # Weekend: once every 6 hours
+    - cron: '0 */6 * * 0,6'
   workflow_dispatch:
 
+env:
+  BOT_DIR: /root/tradovate-bot
+  SERVICE_NAME: tradovate-bot
+
 jobs:
-  check-status:
+  health-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
           fetch-depth: 1
 
-      - name: Read server_status.json
-        id: status
+      - name: Check server_status.json
+        id: file-check
         run: |
-          echo "## Bot Status Report" >> $GITHUB_STEP_SUMMARY
+          echo "## Bot Health Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ ! -f server_status.json ]; then
-            echo "**server_status.json not found on main branch.**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The server hasn't pushed status yet. Setup steps:" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "1. Create a GitHub PAT with \`repo\` scope" >> $GITHUB_STEP_SUMMARY
-            echo "2. On the server, set it as env var:" >> $GITHUB_STEP_SUMMARY
-            echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo 'echo "GH_PAT=ghp_your_token_here" >> /etc/environment' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "3. Add crontab entry:" >> $GITHUB_STEP_SUMMARY
-            echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo 'crontab -e' >> $GITHUB_STEP_SUMMARY
-            echo '*/5 * * * * cd /root/tradovate-bot && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
             echo "status=missing" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          echo '```json' >> $GITHUB_STEP_SUMMARY
-          cat server_status.json >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Parse key fields
-          BOT_ACTIVE=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('bot_active', False))" 2>/dev/null || echo "unknown")
-          TIMESTAMP=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('timestamp', 'unknown'))" 2>/dev/null || echo "unknown")
-          COMMIT=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('git_commit', 'unknown'))" 2>/dev/null || echo "unknown")
-          DISK=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('disk_usage', 'N/A'))" 2>/dev/null || echo "N/A")
-          MEMORY=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('memory', 'N/A'))" 2>/dev/null || echo "N/A")
-
-          # Live status (nested)
-          BALANCE=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('live_status',{}).get('balance','N/A'))" 2>/dev/null || echo "N/A")
-          DAY_PNL=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('live_status',{}).get('day_pnl','N/A'))" 2>/dev/null || echo "N/A")
-          TRADES=$(python3 -c "import json; d=json.load(open('server_status.json')); print(d.get('live_status',{}).get('trades_today','N/A'))" 2>/dev/null || echo "N/A")
-
-          if [ "$BOT_ACTIVE" = "True" ]; then
-            echo "### Bot is RUNNING" >> $GITHUB_STEP_SUMMARY
+            echo "**server_status.json not found.** Server cron may not be running." >> $GITHUB_STEP_SUMMARY
           else
-            echo "### Bot is DOWN" >> $GITHUB_STEP_SUMMARY
+            echo "status=found" >> $GITHUB_OUTPUT
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat server_status.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Last report | \`$TIMESTAMP\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Server commit | \`$COMMIT\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Bot active | \`$BOT_ACTIVE\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Balance | \`$BALANCE\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Day P&L | \`$DAY_PNL\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Trades today | \`$TRADES\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Disk usage | \`$DISK\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Memory | \`$MEMORY\` |" >> $GITHUB_STEP_SUMMARY
-
-          echo "status=$BOT_ACTIVE" >> $GITHUB_OUTPUT
-          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
-
-      - name: Check staleness
+      - name: Analyze status
+        if: steps.file-check.outputs.status == 'found'
+        id: analyze
         run: |
-          if [ ! -f server_status.json ]; then
-            echo "No status file yet."
-            exit 0
-          fi
+          python3 -c "
+          import json, datetime, sys, os
 
-          AGE_SECONDS=$(python3 -c "
-          import json, datetime
           d = json.load(open('server_status.json'))
+          bot_active = d.get('bot_active', False)
           ts = d.get('timestamp', '')
+
+          age_minutes = -1
           if ts:
               dt = datetime.datetime.fromisoformat(ts.replace('Z', '+00:00'))
-              age = (datetime.datetime.now(datetime.timezone.utc) - dt).total_seconds()
-              print(int(age))
-          else:
-              print(-1)
-          " 2>/dev/null || echo "-1")
+              age_minutes = int((datetime.datetime.now(datetime.timezone.utc) - dt).total_seconds() / 60)
 
+          print(f'bot_active={bot_active}')
+          print(f'age_minutes={age_minutes}')
+
+          # Write outputs
+          gh_output = os.environ.get('GITHUB_OUTPUT', '')
+          if gh_output:
+              with open(gh_output, 'a') as f:
+                  f.write(f'bot_active={bot_active}\n')
+                  f.write(f'age_minutes={age_minutes}\n')
+                  stale = 'true' if age_minutes > 15 else 'false'
+                  f.write(f'stale={stale}\n')
+
+          # Summary
+          gh_summary = os.environ.get('GITHUB_STEP_SUMMARY', '')
+          if gh_summary:
+              with open(gh_summary, 'a') as f:
+                  f.write('\n')
+                  if bot_active:
+                      f.write('### Bot is RUNNING\n')
+                  else:
+                      f.write('### Bot is DOWN\n')
+                  f.write(f'\nStatus age: {age_minutes} minutes\n')
+                  if age_minutes > 15:
+                      f.write('\n**WARNING:** Status is stale (>15 min). Server cron may have stopped.\n')
+          " 2>/dev/null || echo "Parse failed"
+
+      # SSH auto-restart if bot is down and SSH is configured
+      - name: Auto-restart bot via SSH
+        if: |
+          vars.SERVER_HOST != '' &&
+          (steps.file-check.outputs.status == 'missing' ||
+           steps.analyze.outputs.bot_active == 'False' ||
+           steps.analyze.outputs.stale == 'true')
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            echo "=== Health Check Auto-Recovery ==="
+            SERVICE="${{ env.SERVICE_NAME }}"
+            BOT_DIR="${{ env.BOT_DIR }}"
+
+            # Pull latest code first
+            cd "$BOT_DIR" && git pull origin main 2>/dev/null || true
+
+            # Check and restart
+            if systemctl is-active --quiet "$SERVICE"; then
+              echo "Bot is actually running — status file may be stale."
+              echo "Re-running cron to update status..."
+              bash server_cron.sh 2>&1 | tail -5
+            else
+              echo "Bot is DOWN — restarting..."
+              systemctl restart "$SERVICE"
+              sleep 5
+              if systemctl is-active --quiet "$SERVICE"; then
+                echo "RESTART SUCCESSFUL"
+                systemctl status "$SERVICE" --no-pager | head -5
+              else
+                echo "RESTART FAILED"
+                journalctl -u "$SERVICE" --no-pager -n 20
+              fi
+            fi
+
+      - name: Final summary
+        if: always()
+        run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "$AGE_SECONDS" -gt 900 ] 2>/dev/null; then
-            MINS=$((AGE_SECONDS / 60))
-            echo "### WARNING: Status is ${MINS} minutes old — server cron may be down" >> $GITHUB_STEP_SUMMARY
-          elif [ "$AGE_SECONDS" -gt 600 ] 2>/dev/null; then
-            MINS=$((AGE_SECONDS / 60))
-            echo "### Status is ${MINS} minutes old — may be slightly stale" >> $GITHUB_STEP_SUMMARY
-          elif [ "$AGE_SECONDS" -ge 0 ] 2>/dev/null; then
-            MINS=$((AGE_SECONDS / 60))
-            echo "### Status is ${MINS} minutes old" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ vars.SERVER_HOST }}" != "" ]; then
+            echo "SSH auto-recovery: **enabled**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "SSH auto-recovery: **disabled** (set SERVER_HOST variable to enable)" >> $GITHUB_STEP_SUMMARY
           fi

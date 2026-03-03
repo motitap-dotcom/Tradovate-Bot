@@ -127,46 +127,46 @@ class TradovateAPI:
 
         # 2. Try saved token from file
         if self._load_token():
-            # Check if token is clearly expired (>1 hour ago) — skip renewal, go straight to fresh auth
+            # Skip renewal if token has no expiry or expired more than 1 hour ago
+            skip_renew = False
             if self.token_expiry:
                 remaining = (self.token_expiry - datetime.now(timezone.utc)).total_seconds()
                 if remaining < -3600:
                     logger.warning(
-                        "Saved token expired %.0f min ago. Deleting stale token...",
+                        "Saved token expired %.0f min ago. Skipping renewal...",
                         -remaining / 60,
                     )
-                    self.access_token = None
-                    self.md_access_token = None
-                    try:
-                        _TOKEN_FILE.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                else:
-                    logger.info("Loaded saved token, attempting renewal...")
-                    if self.renew_token():
-                        logger.info("Saved token renewed successfully")
-                        self._fetch_account_id()
-                        self._save_token()
-                        return True
-                    logger.warning("Token renewal failed, trying fresh auth...")
+                    skip_renew = True
             else:
-                logger.info("Loaded saved token (no expiry), attempting renewal...")
+                logger.warning("Saved token has no expiry time, skipping renewal")
+                skip_renew = True
+
+            if not skip_renew:
+                logger.info("Loaded saved token, attempting renewal...")
                 if self.renew_token():
                     logger.info("Saved token renewed successfully")
                     self._fetch_account_id()
                     self._save_token()
                     return True
-                logger.warning("Token renewal failed, trying fresh auth...")
+                logger.warning("Saved token renewal failed, trying fresh auth...")
+            # Clear stale token and delete file before fresh auth
+            self.access_token = None
+            self.md_access_token = None
+            try:
+                _TOKEN_FILE.unlink(missing_ok=True)
+            except OSError:
+                pass
 
         url = f"{self.base_url}/auth/accesstokenrequest"
+        live_url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"
 
-        # 3. Web-style auth (no CID/Secret needed)
-        data = self._try_web_auth(url)
-        # 3b. If demo auth failed, try live endpoint (some prop firms require it)
+        # 3. Web-style auth — try live endpoint first (FundedNext works better on live)
+        logger.info("Trying web auth on live endpoint first...")
+        data = self._try_web_auth(live_url)
+        # 3b. If live failed, try demo endpoint
         if data is None and "demo" in self.base_url:
-            live_url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"
-            logger.info("Retrying auth via live endpoint...")
-            data = self._try_web_auth(live_url)
+            logger.info("Trying web auth on demo endpoint...")
+            data = self._try_web_auth(url)
         # 4. API-key auth
         if data is None:
             data = self._try_api_auth(url)
@@ -174,6 +174,7 @@ class TradovateAPI:
         if data is None:
             data = self._try_browser_auth()
         if data is None:
+            logger.error("All authentication methods exhausted")
             return False
 
         if "accessToken" not in data:
@@ -408,67 +409,76 @@ class TradovateAPI:
             except Exception:
                 pass
 
-        logger.info("Attempting browser-based login at %s ...", trader_url)
-        try:
-            with sync_playwright() as pw:
-                launch_args = {
-                    "headless": True,
-                    "args": [
-                        "--no-sandbox",
-                        "--disable-blink-features=AutomationControlled",
-                    ],
-                }
-                if proxy_cfg:
-                    launch_args["proxy"] = proxy_cfg
+        # Retry browser auth up to 2 times (page load can be flaky)
+        for attempt in range(1, 3):
+            logger.info("Attempting browser-based login at %s (attempt %d/2)...", trader_url, attempt)
+            try:
+                with sync_playwright() as pw:
+                    launch_args = {
+                        "headless": True,
+                        "args": [
+                            "--no-sandbox",
+                            "--disable-blink-features=AutomationControlled",
+                        ],
+                    }
+                    if proxy_cfg:
+                        launch_args["proxy"] = proxy_cfg
 
-                browser = pw.chromium.launch(**launch_args)
-                ctx = browser.new_context(
-                    viewport={"width": 1920, "height": 1080},
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/121.0.0.0 Safari/537.36"
-                    ),
-                    ignore_https_errors=True,
-                )
-                ctx.add_init_script(
-                    "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
-                )
-                page = ctx.new_page()
-                page.on("response", _on_response)
+                    browser = pw.chromium.launch(**launch_args)
+                    ctx = browser.new_context(
+                        viewport={"width": 1920, "height": 1080},
+                        user_agent=(
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/121.0.0.0 Safari/537.36"
+                        ),
+                        ignore_https_errors=True,
+                    )
+                    ctx.add_init_script(
+                        "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
+                    )
+                    page = ctx.new_page()
+                    page.on("response", _on_response)
 
-                page.goto(trader_url, timeout=60000, wait_until="domcontentloaded")
-                page.wait_for_timeout(10000)
+                    page.goto(trader_url, timeout=60000, wait_until="domcontentloaded")
+                    page.wait_for_timeout(10000)
 
-                # Fill login form
-                text_input = page.query_selector('input[type="text"]')
-                pass_input = page.query_selector('input[type="password"]')
-                if text_input and pass_input:
-                    text_input.fill(config.TRADOVATE_USERNAME)
-                    pass_input.fill(config.TRADOVATE_PASSWORD)
-                    page.wait_for_timeout(500)
+                    # Fill login form
+                    text_input = page.query_selector('input[type="text"]')
+                    pass_input = page.query_selector('input[type="password"]')
+                    if text_input and pass_input:
+                        text_input.fill(config.TRADOVATE_USERNAME)
+                        pass_input.fill(config.TRADOVATE_PASSWORD)
+                        page.wait_for_timeout(500)
 
-                    # Click login button
-                    for btn in page.query_selector_all("button"):
-                        if "login" in (btn.inner_text() or "").lower():
-                            btn.click()
-                            break
+                        # Click login button
+                        for btn in page.query_selector_all("button"):
+                            if "login" in (btn.inner_text() or "").lower():
+                                btn.click()
+                                break
+                        else:
+                            page.keyboard.press("Enter")
+
+                        # Wait for token capture (up to 45 seconds)
+                        for _ in range(45):
+                            if captured:
+                                break
+                            page.wait_for_timeout(1000)
                     else:
-                        page.keyboard.press("Enter")
+                        logger.warning("Browser auth: login form not found on page")
 
-                    # Wait for token capture
-                    for _ in range(30):
-                        if captured:
-                            break
-                        page.wait_for_timeout(1000)
+                    browser.close()
 
-                browser.close()
+                if captured and "accessToken" in captured:
+                    logger.info("Browser auth succeeded! userId=%s", captured.get("userId"))
+                    return captured
+                logger.warning("Browser auth attempt %d: no token captured", attempt)
+            except Exception as e:
+                logger.warning("Browser auth attempt %d failed: %s", attempt, e)
 
-            if captured and "accessToken" in captured:
-                logger.info("Browser auth succeeded! userId=%s", captured.get("userId"))
-                return captured
-        except Exception as e:
-            logger.warning("Browser auth failed: %s", e)
+            if attempt < 2:
+                import time as _t
+                _t.sleep(5)
 
         return None
 

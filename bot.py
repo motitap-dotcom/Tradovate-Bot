@@ -111,6 +111,7 @@ class TradovateBot:
         if not self.dry_run:
             auth_ok = False
             for attempt in range(1, 6):
+                logger.info("Authentication attempt %d/5...", attempt)
                 if self.api.authenticate():
                     auth_ok = True
                     break
@@ -121,11 +122,15 @@ class TradovateBot:
                 logger.warning(
                     "Authentication attempt %d/5 failed. Retrying in %ds...", attempt, wait
                 )
+                # Write a status file even during auth failure so monitoring can see
+                self._write_auth_status(attempt)
                 time.sleep(wait)
             if not auth_ok:
                 logger.error("Authentication failed after 5 attempts. Exiting.")
+                self._write_auth_status(5, final=True)
                 sys.exit(1)
-            logger.info("Authenticated successfully")
+            logger.info("Authenticated successfully (userId=%s, account=%s)",
+                        self.api.user_id, self.api.account_spec)
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
@@ -674,6 +679,24 @@ class TradovateBot:
 
     _STATUS_FILE = Path(__file__).parent / "live_status.json"
 
+    def _write_auth_status(self, attempt: int, final: bool = False):
+        """Write minimal status during auth phase so monitoring can track progress."""
+        try:
+            payload = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp_et": now_et().isoformat(),
+                "auth_phase": True,
+                "auth_attempt": attempt,
+                "auth_failed": final,
+                "environment": config.ENVIRONMENT,
+                "dry_run": self.dry_run,
+            }
+            tmp = self._STATUS_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(payload, indent=2))
+            tmp.replace(self._STATUS_FILE)
+        except Exception:
+            pass
+
     def _write_live_status(self):
         """Write current bot status to live_status.json for external monitoring."""
         try:
@@ -735,13 +758,115 @@ class TradovateBot:
 # ─────────────────────────────────────────────
 
 
+def _us_market_holidays(year: int) -> set:
+    """
+    Return a set of dates that are US futures market holidays (CME closed).
+    Covers fixed holidays and rule-based holidays (e.g. 3rd Monday of January).
+    """
+    from datetime import date
+
+    holidays = set()
+
+    # New Year's Day (Jan 1, or observed on nearest weekday)
+    nyd = date(year, 1, 1)
+    if nyd.weekday() == 6:  # Sunday → observe Monday
+        holidays.add(date(year, 1, 2))
+    elif nyd.weekday() == 5:  # Saturday → observe Friday (prev year)
+        pass  # Falls in previous year
+    else:
+        holidays.add(nyd)
+
+    # MLK Day: 3rd Monday of January
+    d = date(year, 1, 1)
+    while d.weekday() != 0:
+        d += timedelta(days=1)
+    holidays.add(d + timedelta(weeks=2))
+
+    # Presidents' Day: 3rd Monday of February
+    d = date(year, 2, 1)
+    while d.weekday() != 0:
+        d += timedelta(days=1)
+    holidays.add(d + timedelta(weeks=2))
+
+    # Good Friday: 2 days before Easter Sunday
+    # Easter calculation (Anonymous Gregorian algorithm)
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d_val = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d_val - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    easter = date(year, month, day)
+    holidays.add(easter - timedelta(days=2))  # Good Friday
+
+    # Memorial Day: last Monday of May
+    d = date(year, 5, 31)
+    while d.weekday() != 0:
+        d -= timedelta(days=1)
+    holidays.add(d)
+
+    # Juneteenth (June 19)
+    jn = date(year, 6, 19)
+    if jn.weekday() == 6:
+        holidays.add(date(year, 6, 20))
+    elif jn.weekday() == 5:
+        holidays.add(date(year, 6, 18))
+    else:
+        holidays.add(jn)
+
+    # Independence Day (July 4)
+    july4 = date(year, 7, 4)
+    if july4.weekday() == 6:
+        holidays.add(date(year, 7, 5))
+    elif july4.weekday() == 5:
+        holidays.add(date(year, 7, 3))
+    else:
+        holidays.add(july4)
+
+    # Labor Day: 1st Monday of September
+    d = date(year, 9, 1)
+    while d.weekday() != 0:
+        d += timedelta(days=1)
+    holidays.add(d)
+
+    # Thanksgiving: 4th Thursday of November
+    d = date(year, 11, 1)
+    while d.weekday() != 3:
+        d += timedelta(days=1)
+    holidays.add(d + timedelta(weeks=3))
+
+    # Christmas (Dec 25)
+    xmas = date(year, 12, 25)
+    if xmas.weekday() == 6:
+        holidays.add(date(year, 12, 26))
+    elif xmas.weekday() == 5:
+        holidays.add(date(year, 12, 24))
+    else:
+        holidays.add(xmas)
+
+    return holidays
+
+
+def _is_market_holiday(d) -> bool:
+    """Check if a date is a US futures market holiday."""
+    return d in _us_market_holidays(d.year)
+
+
 def _next_trading_morning() -> datetime:
-    """Return the next weekday at 09:25 ET (5 min before market open)."""
+    """Return the next weekday at 09:25 ET, skipping weekends and US market holidays."""
     now = now_et()
     # Start from tomorrow
     candidate = now.replace(hour=9, minute=25, second=0, microsecond=0) + timedelta(days=1)
-    # Skip weekends: Saturday=5, Sunday=6
-    while candidate.weekday() >= 5:
+    # Skip weekends and holidays
+    while candidate.weekday() >= 5 or _is_market_holiday(candidate.date()):
         candidate += timedelta(days=1)
     return candidate
 
@@ -785,8 +910,31 @@ def main():
     # ── Daily loop: run bot, sleep until next trading morning, repeat ──
     bot = None
     while not _shutdown_requested:
-        bot = TradovateBot(dry_run=args.dry_run)
-        bot.start()
+        # Skip holidays — sleep until next trading day
+        today = now_et().date()
+        if _is_market_holiday(today):
+            logger.info("Today %s is a US market holiday. Skipping.", today)
+            wake_up = _next_trading_morning()
+            sleep_seconds = (wake_up - now_et()).total_seconds()
+            logger.info(
+                "Next trading session: %s ET (sleeping %.0f minutes)",
+                wake_up.strftime("%Y-%m-%d %H:%M"),
+                sleep_seconds / 60,
+            )
+            while sleep_seconds > 0 and not _shutdown_requested:
+                time.sleep(min(60, sleep_seconds))
+                sleep_seconds -= 60
+            continue
+
+        try:
+            bot = TradovateBot(dry_run=args.dry_run)
+            bot.start()
+        except SystemExit:
+            # Auth failure calls sys.exit(1) — don't swallow it on first try,
+            # but in the daily loop we retry next session instead of dying.
+            logger.error("Bot exited with SystemExit. Will retry next session.")
+        except Exception:
+            logger.exception("Unexpected error in bot session. Will retry next session.")
 
         if _shutdown_requested:
             break

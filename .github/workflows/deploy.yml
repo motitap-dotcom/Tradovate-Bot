@@ -1,6 +1,6 @@
 name: Deploy to Server
 
-# Fires on push to main/master or the deploy branch.
+# Fires on push to main/master.
 on:
   push:
     branches: [main, master]
@@ -37,13 +37,12 @@ jobs:
       - name: Create dummy .env for syntax check
         run: cp .env.example .env
 
-      - name: Syntax check
+      - name: Syntax check all Python modules
         run: |
-          python -m py_compile bot.py
-          python -m py_compile tradovate_api.py
-          python -m py_compile strategies.py
-          python -m py_compile risk_manager.py
-          python -m py_compile config.py
+          for f in bot.py tradovate_api.py strategies.py risk_manager.py config.py \
+                   trade_journal.py auto_tuner.py dashboard.py status.py; do
+            python -m py_compile "$f" && echo "  OK: $f" || exit 1
+          done
 
   # ── Step 2: Deploy via SSH (requires SERVER_HOST var) ──
   deploy:
@@ -59,8 +58,8 @@ jobs:
           username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           envs: SERVER_GH_PAT
-          script_stop: true
           script: |
+            set -e
             echo "========================================"
             echo "  Deploying commit ${{ github.sha }}"
             echo "  Branch: ${{ github.ref_name }}"
