@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T12:09:17Z",
+  "timestamp": "2026-03-03T12:16:22Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -9,12 +9,15 @@
   "orders": [],
   "server": {
     "bot_active": true,
-    "bot_pid": "1638772",
-    "uptime_since": "Tue 2026-03-03 12:08:16 UTC",
+    "bot_pid": "1641138",
+    "uptime_since": "Tue 2026-03-03 12:15:21 UTC",
     "disk": "11%",
-    "memory": "1279MB/7941MB (16%)"
+    "memory": "1233MB/7941MB (16%)",
+    "git_commit": "c45ae10 bot-status: 2026-02-28 22:10 UTC | active=true",
+    "restarted": true,
+    "live_status": {}
   },
   "errors": [
-    "Server token expired (expiry: ) \u2014 bot may need restart"
+    "Server token expired (expiry: )"
   ]
 }
