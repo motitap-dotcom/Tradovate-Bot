@@ -29,7 +29,7 @@ import requests
 import config
 from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
-from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
+from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS, YahooFinanceSession
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 
@@ -236,16 +236,12 @@ class TradovateBot:
                 continue
 
             try:
-                url = (
-                    f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}"
-                    f"?interval=1m&range=1d"
-                )
-                resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-                if resp.status_code != 200:
-                    logger.warning("Warmup: Yahoo returned %d for %s", resp.status_code, yahoo_sym)
+                yahoo = YahooFinanceSession.get()
+                data = yahoo.fetch_chart(yahoo_sym)
+                if data is None:
+                    logger.warning("Warmup: Yahoo data unavailable for %s", yahoo_sym)
                     continue
 
-                data = resp.json()
                 result = data.get("chart", {}).get("result", [{}])[0]
                 timestamps = result.get("timestamp") or []
                 quotes = result.get("indicators", {}).get("quote", [{}])[0]
