@@ -463,6 +463,37 @@ jobs:
                           print(f"  {label} auth error: {e}")
                           if label == "Demo":
                               status["errors"].append(f"Auth error: {e}")
+                  # Priority 3b: Try with plain password (no encryption)
+                  # Some prop firm accounts may not use the web-style encryption
+                  if not token:
+                      print("  Web-style auth failed. Trying plain password...")
+                      plain_payload = dict(payload)
+                      plain_payload["password"] = password  # plain text, not encrypted
+                      # Recompute HMAC with plain password
+                      plain_message = "".join(str(plain_payload.get(f, "")) for f in fields)
+                      plain_payload["sec"] = hmac.new(
+                          hmac_key.encode(), plain_message.encode(), hashlib.sha256
+                      ).hexdigest()
+                      for label, auth_url in auth_urls:
+                          if token:
+                              break
+                          try:
+                              r = requests.post(auth_url, json=plain_payload, timeout=30)
+                              data = r.json()
+                              if "accessToken" in data:
+                                  token = data["accessToken"]
+                                  print(f"  Plain auth success via {label}! userId={data.get('userId')}")
+                                  status["authenticated"] = True
+                                  status["auth_method"] = f"plain_auth_{label.lower()}"
+                              elif "p-ticket" in data:
+                                  print(f"  {label} plain: Credentials valid! p-ticket received")
+                                  status["auth_method"] = "plain_captcha_needed"
+                              else:
+                                  err = data.get("errorText", "")
+                                  print(f"  {label} plain: {err}")
+                          except Exception as e:
+                              print(f"  {label} plain auth error: {e}")
+
               elif not ssh_token:
                   print("  No credentials configured")
                   status["errors"].append("Configure SSH secrets (recommended) or TRADOVATE_USERNAME/PASSWORD")
