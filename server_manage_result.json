@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T18:43:57Z",
+  "timestamp": "2026-03-03T18:49:07Z",
   "ssh_available": false,
   "ssh_connected": false,
   "error": "SSH not configured. Add SERVER_HOST variable and SERVER_SSH_KEY secret in GitHub Settings.",
