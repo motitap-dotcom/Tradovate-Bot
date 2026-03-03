@@ -87,14 +87,8 @@ jobs:
                   -d "{}" 2>/dev/null || echo "{}")
               NEW_TOKEN=$(echo "$RENEWED" | python3 -c "import sys,json; print(json.load(sys.stdin).get('accessToken',''))" 2>/dev/null || echo "")
               if [ -n "$NEW_TOKEN" ]; then
-                  # Update the token file with renewed token
-                  echo "$RENEWED" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-with open('.tradovate_token.json', 'w') as f:
-    json.dump(d, f, indent=2)
-print(json.dumps(d))
-" 2>/dev/null || echo "$TOKEN_JSON"
+                  # Update the token file with renewed token and output it
+                  echo "$RENEWED" | python3 -c "import sys,json; d=json.load(sys.stdin); json.dump(d,open('.tradovate_token.json','w'),indent=2); print(json.dumps(d))" 2>/dev/null || echo "$TOKEN_JSON"
               else
                   echo "$TOKEN_JSON"
               fi
