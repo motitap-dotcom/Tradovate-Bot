@@ -92,6 +92,23 @@ Push to `main` is the only way to deploy. The server webhook automatically pulls
 ### נוהל סיום משימה
 בכל פעם שסיימת לכתוב קוד, לתקן באג או לבצע שינוי לבקשת המשתמש, בצע Push ל-main ודווח: **"הקוד מוכן, ביצעתי Push ל-main כדי שהשרת יתעדכן."** אל תריץ בדיקות אבחון (ping/curl/ssh) – הן לא רלוונטיות מהסביבה הזו.
 
+### בדיקת מצב השרת (חובה!)
+**כשהמשתמש מבקש לבדוק את השרת / הבוט** — תמיד בצע את הצעדים הבאים:
+1. **הפעל את ה-workflow `System Status Check`** דרך GitHub API:
+   ```bash
+   gh workflow run system-status.yml
+   ```
+2. **המתן שה-run יסתיים** (בד"כ 1-2 דקות):
+   ```bash
+   gh run list --workflow=system-status.yml --limit=1
+   gh run view <run-id>
+   ```
+3. **קרא את ה-`system_status.json` המעודכן** מ-main ודווח למשתמש.
+
+**זו הדרך היחידה לבדוק את השרת מהסביבה הזו.** ה-workflow מתחבר בSSH לשרת, קורא את הטוקן, בודק אם הבוט רץ, זיכרון, דיסק, ומושך נתוני חשבון מה-API.
+
+אל תסתפק בקריאת `system_status.json` ישן — תמיד תפעיל workflow חדש כדי לקבל נתונים טריים.
+
 ## Common Issues
 1. **"Incorrect password"**: Credentials are correct; try `live` API (not `demo` for auth)
 2. **CAPTCHA required**: Bot auto-handles via Playwright browser login
