@@ -632,3 +632,4 @@ jobs:
               print("- `TRADOVATE_USERNAME` / `TRADOVATE_PASSWORD` — for API auth")
               print("- `TRADOVATE_ACCESS_TOKEN` — valid bearer token (optional)")
           PYEOF
+# Status check trigger - 2026-03-03T13:56:55Z
