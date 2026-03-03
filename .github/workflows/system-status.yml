@@ -76,7 +76,31 @@ jobs:
           echo "BOT_DIR=$(pwd)"
 
           echo "==TOKEN_START=="
-          cat .tradovate_token.json 2>/dev/null || echo "{}"
+          # Try to get a fresh token: first renew existing, then fallback to file
+          TOKEN_JSON=$(cat .tradovate_token.json 2>/dev/null || echo "{}")
+          SAVED_TOKEN=$(echo "$TOKEN_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('accessToken',''))" 2>/dev/null || echo "")
+          if [ -n "$SAVED_TOKEN" ]; then
+              # Try renewal to get a fresh token
+              RENEWED=$(curl -s -X POST "https://demo.tradovateapi.com/v1/auth/renewaccesstoken" \
+                  -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer $SAVED_TOKEN" \
+                  -d "{}" 2>/dev/null || echo "{}")
+              NEW_TOKEN=$(echo "$RENEWED" | python3 -c "import sys,json; print(json.load(sys.stdin).get('accessToken',''))" 2>/dev/null || echo "")
+              if [ -n "$NEW_TOKEN" ]; then
+                  # Update the token file with renewed token
+                  echo "$RENEWED" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+with open('.tradovate_token.json', 'w') as f:
+    json.dump(d, f, indent=2)
+print(json.dumps(d))
+" 2>/dev/null
+              else
+                  echo "$TOKEN_JSON"
+              fi
+          else
+              echo "$TOKEN_JSON"
+          fi
           echo "==TOKEN_END=="
 
           echo "==SERVER_START=="
