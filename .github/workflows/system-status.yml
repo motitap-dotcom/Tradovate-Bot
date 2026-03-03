@@ -48,53 +48,71 @@ jobs:
             echo "SSH not configured — skipping server check"
           fi
 
-      # ── Step B: Try to get token + server status via SSH ──
+      # ── Step B: Get token + server status via SSH ──
       - name: Get server status via SSH
         id: ssh_status
         if: steps.ssh_check.outputs.available == 'true'
         continue-on-error: true
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT }}
-          script: |
-            BOT_DIR="${{ env.BOT_DIR }}"
-            cd "$BOT_DIR" 2>/dev/null || exit 1
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          # Write SSH key to temp file
+          mkdir -p ~/.ssh
+          echo "$VPS_SSH_KEY" > ~/.ssh/vps_key
+          chmod 600 ~/.ssh/vps_key
 
-            echo "==TOKEN_START=="
-            cat .tradovate_token.json 2>/dev/null || echo "{}"
-            echo "==TOKEN_END=="
+          SSH_PORT="${VPS_PORT:-22}"
+          SSH_CMD="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ~/.ssh/vps_key -p $SSH_PORT ${VPS_USER}@${VPS_HOST}"
 
-            echo "==SERVER_START=="
-            # Bot status
-            BOT_ACTIVE="false"
-            BOT_PID=""
-            if systemctl is-active --quiet tradovate-bot 2>/dev/null; then
-                BOT_ACTIVE="true"
-                BOT_PID=$(systemctl show tradovate-bot --property=MainPID --value 2>/dev/null)
-            fi
+          # Run remote commands and capture output
+          SSH_RESULT=$($SSH_CMD bash << 'REMOTESCRIPT'
+          BOT_DIR="/root/tradovate-bot"
+          cd "$BOT_DIR" 2>/dev/null || cd "/root/Tradovate-Bot" 2>/dev/null || { echo "DIR_NOT_FOUND"; exit 0; }
 
-            UPTIME=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
-            DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
-            MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
-            LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 3 2>/dev/null | tail -3 || echo "no logs")
+          echo "==TOKEN_START=="
+          cat .tradovate_token.json 2>/dev/null || echo "{}"
+          echo "==TOKEN_END=="
 
-            # Output as JSON
-            python3 -c "
-            import json, sys
-            print(json.dumps({
-                'bot_active': $BOT_ACTIVE,
-                'bot_pid': '$BOT_PID',
-                'uptime_since': '$UPTIME',
-                'disk': '$DISK',
-                'memory': '$MEM',
-                'last_log': '''$LAST_LOG'''.strip(),
-                'git_commit': '$(git log -1 --format=\"%h %s\" 2>/dev/null || echo \"?\")',
-            }))
-            " 2>/dev/null || echo '{}'
-            echo "==SERVER_END=="
+          echo "==SERVER_START=="
+          BOT_ACTIVE="false"
+          BOT_PID=""
+          if systemctl is-active --quiet tradovate-bot 2>/dev/null; then
+              BOT_ACTIVE="true"
+              BOT_PID=$(systemctl show tradovate-bot --property=MainPID --value 2>/dev/null)
+          fi
+
+          UPTIME=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
+          DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
+          MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
+          LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 3 2>/dev/null | tail -3 || echo "no logs")
+
+          python3 -c "
+          import json
+          print(json.dumps({
+              'bot_active': $BOT_ACTIVE,
+              'bot_pid': '$BOT_PID',
+              'uptime_since': '$UPTIME',
+              'disk': '$DISK',
+              'memory': '$MEM',
+              'last_log': '''$LAST_LOG'''.strip()[:200],
+              'git_commit': '$(git log -1 --format=\"%h %s\" 2>/dev/null || echo \"?\")',
+          }))
+          " 2>/dev/null || echo '{}'
+          echo "==SERVER_END=="
+          REMOTESCRIPT
+          )
+
+          echo "SSH output length: ${#SSH_RESULT}"
+          echo "$SSH_RESULT"
+
+          # Save to file for next step
+          echo "$SSH_RESULT" > /tmp/ssh_output.txt
+
+          # Clean up
+          rm -f ~/.ssh/vps_key
 
       # ── Step C: Check system status (API + optional SSH token) ──
       - name: Check system status
@@ -102,7 +120,6 @@ jobs:
           TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
           TRADOVATE_USERNAME: ${{ secrets.TRADOVATE_USERNAME }}
           TRADOVATE_PASSWORD: ${{ secrets.TRADOVATE_PASSWORD }}
-          SSH_OUTPUT: ${{ steps.ssh_status.outputs.response || steps.ssh_status.outputs.stdout || '' }}
           SSH_OK: ${{ steps.ssh_status.outcome == 'success' && 'true' || 'false' }}
         run: |
           python3 << 'PYEOF'
@@ -164,7 +181,12 @@ jobs:
                   status["errors"].append(f"{label} API unreachable: {e}")
 
           # ── 2. Parse SSH output (token + server info) ──
-          ssh_output = os.environ.get("SSH_OUTPUT", "")
+          ssh_output = ""
+          try:
+              with open("/tmp/ssh_output.txt") as f:
+                  ssh_output = f.read()
+          except FileNotFoundError:
+              pass
           ssh_ok = os.environ.get("SSH_OK", "false") == "true"
           ssh_token = ""
 
@@ -281,8 +303,32 @@ jobs:
                           status["errors"].append("CAPTCHA required — need SSH to server for token")
                       else:
                           err = data.get("errorText", str(data))
-                          print(f"  Auth failed: {err}")
-                          status["errors"].append(f"Auth: {err}")
+                          print(f"  Auth failed (encoded pw): {err}")
+
+                          # Fallback: try plain password (no encoding)
+                          print("  Retrying with plain password...")
+                          payload2 = dict(payload)
+                          payload2["password"] = password
+                          msg2 = "".join(str(payload2.get(f, "")) for f in fields)
+                          payload2["sec"] = hmac.new(
+                              hmac_key.encode(), msg2.encode(), hashlib.sha256
+                          ).hexdigest()
+                          r2 = requests.post(f"{LIVE_URL}/auth/accesstokenrequest",
+                                             json=payload2, timeout=30)
+                          data2 = r2.json()
+                          if "accessToken" in data2:
+                              token = data2["accessToken"]
+                              print(f"  Auth success (plain pw)! userId={data2.get('userId')}")
+                              status["authenticated"] = True
+                              status["auth_method"] = "web_auth_plain"
+                          elif "p-ticket" in data2:
+                              print("  Credentials valid (plain pw), CAPTCHA required")
+                              status["auth_method"] = "captcha_needed"
+                              status["errors"].append("CAPTCHA required — need SSH to server for token")
+                          else:
+                              err2 = data2.get("errorText", str(data2))
+                              print(f"  Auth failed (plain pw): {err2}")
+                              status["errors"].append(f"Auth: {err}")
                   except Exception as e:
                       status["errors"].append(f"Auth error: {e}")
               elif not ssh_token:
