@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T11:16:10Z",
+  "timestamp": "2026-03-03T11:18:43Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -15,6 +15,9 @@
     "ssh": true,
     "access_token": false,
     "username": true,
-    "password": true
+    "password": true,
+    "username_prefix": "FNFTMOTI",
+    "password_length": 9,
+    "ssh_output_len": 0
   }
 }
