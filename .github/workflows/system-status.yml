@@ -119,26 +119,24 @@ jobs:
                   done
               fi
 
-              # If still no API_URL, try getting fresh token from the running bot
-              if [ -z "$API_URL" ]; then
-                  # Read .env for credentials and try a fresh auth from the server
-                  if [ -f .env ]; then
-                      source <(grep -E '^TRADOVATE_(USERNAME|PASSWORD)=' .env 2>/dev/null)
-                      if [ -n "$TRADOVATE_USERNAME" ] && [ -n "$TRADOVATE_PASSWORD" ]; then
-                          FRESH=$(python3 -c "
-          import sys, os
-          sys.path.insert(0, '.')
+              # If still no API_URL, try fresh auth from server using bot code
+              if [ -z "$API_URL" ] && [ -f .env ] && [ -f bot.py ]; then
+                  # Source .env and try to authenticate fresh
+                  set -a
+                  source .env 2>/dev/null
+                  set +a
+                  FRESH=$(python3 -c "
+          import sys; sys.path.insert(0, '.')
           from tradovate_api import TradovateClient
           c = TradovateClient()
           c.authenticate()
           if c.access_token:
               print(c.access_token)
           " 2>/dev/null || echo "")
-                          if [ -n "$FRESH" ]; then
-                              TOKEN="$FRESH"
-                              API_URL="https://demo.tradovateapi.com/v1"
-                          fi
-                      fi
+                  if [ -n "$FRESH" ]; then
+                      TOKEN="$FRESH"
+                      API_URL="https://demo.tradovateapi.com/v1"
+                      TOKEN_EXPIRY="fresh"
                   fi
               fi
 
