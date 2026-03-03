@@ -127,12 +127,15 @@ class TradovateAPI:
 
         # 2. Try saved token from file
         if self._load_token():
-            # Skip renewal if token has no expiry or expired more than 2 hours ago
+            # Skip renewal if token has no expiry or expired more than 1 hour ago
             skip_renew = False
             if self.token_expiry:
-                age = (datetime.now(timezone.utc) - self.token_expiry).total_seconds()
-                if age > 7200:
-                    logger.warning("Saved token expired %.0f hours ago, skipping renewal", age / 3600)
+                remaining = (self.token_expiry - datetime.now(timezone.utc)).total_seconds()
+                if remaining < -3600:
+                    logger.warning(
+                        "Saved token expired %.0f min ago. Skipping renewal...",
+                        -remaining / 60,
+                    )
                     skip_renew = True
             else:
                 logger.warning("Saved token has no expiry time, skipping renewal")
@@ -146,9 +149,13 @@ class TradovateAPI:
                     self._save_token()
                     return True
                 logger.warning("Saved token renewal failed, trying fresh auth...")
-            # Clear stale token before fresh auth
+            # Clear stale token and delete file before fresh auth
             self.access_token = None
             self.md_access_token = None
+            try:
+                _TOKEN_FILE.unlink(missing_ok=True)
+            except OSError:
+                pass
 
         url = f"{self.base_url}/auth/accesstokenrequest"
         live_url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"

@@ -115,17 +115,29 @@ jobs:
             echo "Now at: $(git log -1 --oneline)"
 
             # Update deps if needed
-            [ -f venv/bin/pip ] && venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+            if [ -f venv/bin/pip ]; then
+              venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+              # Ensure Playwright is installed for CAPTCHA bypass
+              if ! venv/bin/python -c "import playwright" 2>/dev/null; then
+                echo "Installing Playwright for CAPTCHA bypass..."
+                venv/bin/pip install playwright -q 2>&1 | tail -3
+                venv/bin/python -m playwright install chromium 2>&1 | tail -5
+              fi
+            fi
 
             # Restart bot
             systemctl restart ${{ env.SERVICE_NAME }}
-            sleep 3
+            sleep 5
 
             if systemctl is-active --quiet ${{ env.SERVICE_NAME }}; then
-              echo "BOT: RUNNING"
+              echo "BOT: RUNNING (PID $(systemctl show ${{ env.SERVICE_NAME }} --property=MainPID --value))"
+              # Show first few log lines to verify auth
+              sleep 10
+              echo "--- Recent bot logs ---"
+              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 20 | tail -20
             else
               echo "BOT: FAILED"
-              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 15
+              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 20
               exit 1
             fi
 
