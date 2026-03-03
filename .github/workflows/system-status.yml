@@ -94,7 +94,7 @@ d = json.load(sys.stdin)
 with open('.tradovate_token.json', 'w') as f:
     json.dump(d, f, indent=2)
 print(json.dumps(d))
-" 2>/dev/null
+" 2>/dev/null || echo "$TOKEN_JSON"
               else
                   echo "$TOKEN_JSON"
               fi
