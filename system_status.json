@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T12:16:22Z",
+  "timestamp": "2026-03-03T13:29:52Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -7,17 +7,9 @@
   "balance": {},
   "positions": [],
   "orders": [],
-  "server": {
-    "bot_active": true,
-    "bot_pid": "1641138",
-    "uptime_since": "Tue 2026-03-03 12:15:21 UTC",
-    "disk": "11%",
-    "memory": "1233MB/7941MB (16%)",
-    "git_commit": "c45ae10 bot-status: 2026-02-28 22:10 UTC | active=true",
-    "restarted": true,
-    "live_status": {}
-  },
+  "server": null,
+  "trading_activity": null,
   "errors": [
-    "Server token expired (expiry: )"
+    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
   ]
 }
