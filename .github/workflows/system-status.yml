@@ -102,7 +102,7 @@ jobs:
           TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
           TRADOVATE_USERNAME: ${{ secrets.TRADOVATE_USERNAME }}
           TRADOVATE_PASSWORD: ${{ secrets.TRADOVATE_PASSWORD }}
-          SSH_OUTPUT: ${{ steps.ssh_status.outputs.stdout || '' }}
+          SSH_OUTPUT: ${{ steps.ssh_status.outputs.response || steps.ssh_status.outputs.stdout || '' }}
           SSH_OK: ${{ steps.ssh_status.outcome == 'success' && 'true' || 'false' }}
         run: |
           python3 << 'PYEOF'
@@ -139,9 +139,16 @@ jobs:
           print(f"  TRADOVATE_ACCESS_TOKEN: {'set' if has_token else 'NOT SET'}")
           print(f"  TRADOVATE_USERNAME: {'set (' + username_val[:5] + '...)' if has_user else 'NOT SET'}")
           print(f"  TRADOVATE_PASSWORD: {'set (' + str(len(os.environ.get('TRADOVATE_PASSWORD','').strip())) + ' chars)' if has_pass else 'NOT SET'}")
+          ssh_output_len = len(os.environ.get("SSH_OUTPUT", ""))
+          print(f"  SSH_OUTPUT length: {ssh_output_len} chars")
+          if ssh_output_len > 0:
+              print(f"  SSH_OUTPUT preview: {os.environ.get('SSH_OUTPUT', '')[:100]}...")
           status["secrets_configured"] = {
               "ssh": has_ssh, "access_token": has_token,
               "username": has_user, "password": has_pass,
+              "username_prefix": username_val[:8] if has_user else None,
+              "password_length": len(os.environ.get("TRADOVATE_PASSWORD", "").strip()) if has_pass else 0,
+              "ssh_output_len": ssh_output_len,
           }
 
           # ── 1. API Connectivity ──
