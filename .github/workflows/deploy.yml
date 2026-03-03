@@ -45,19 +45,32 @@ jobs:
           python -m py_compile risk_manager.py
           python -m py_compile config.py
 
-  # ── Step 2: Deploy via SSH (requires SERVER_HOST var) ──
+  # ── Step 2: Deploy via SSH (requires VPS_HOST secret) ──
   deploy:
     needs: pre-check
     runs-on: ubuntu-latest
-    if: vars.SERVER_HOST != ''
 
     steps:
+      - name: Check SSH availability
+        id: ssh_check
+        env:
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          if [ -n "$SSH_HOST" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "VPS_HOST secret not configured — skipping SSH deploy"
+          fi
+
       - name: Deploy to server via SSH
+        if: steps.ssh_check.outputs.available == 'true'
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
           envs: SERVER_GH_PAT
           script_stop: true
           script: |
@@ -143,17 +156,27 @@ jobs:
           echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deploy via SSH to \`${{ vars.SERVER_HOST }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ── Fallback: Webhook if no SSH host configured ──
   webhook-fallback:
     needs: pre-check
     runs-on: ubuntu-latest
-    if: vars.SERVER_HOST == '' && vars.DEPLOY_WEBHOOK_URL != ''
 
     steps:
+      - name: Check webhook availability
+        id: webhook_check
+        env:
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          WEBHOOK_URL: ${{ vars.DEPLOY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SSH_HOST" ] && [ -n "$WEBHOOK_URL" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Trigger server webhook
+        if: steps.webhook_check.outputs.available == 'true'
         run: |
           curl -s -X POST \
             -H "Content-Type: application/json" \
@@ -162,6 +185,7 @@ jobs:
             --max-time 10 || echo "Webhook sent"
 
       - name: Summary
+        if: steps.webhook_check.outputs.available == 'true'
         run: |
           echo "## Deploy via Webhook" >> $GITHUB_STEP_SUMMARY
           echo "Webhook triggered for commit \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
