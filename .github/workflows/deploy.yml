@@ -52,6 +52,7 @@ jobs:
 
     steps:
       - name: Deploy to server via SSH
+        continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ vars.SERVER_HOST || secrets.SERVER_HOST || secrets.VPS_HOST || secrets.SERVER_IP }}

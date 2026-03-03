@@ -99,8 +99,10 @@ jobs:
           fi
 
       # SSH deploy (if SERVER_HOST is configured as variable OR secret)
+      # continue-on-error: SSH is best-effort — server cron pulls main every 5 min
       - name: Deploy to server via SSH
         if: steps.server_check.outputs.available == 'true'
+        continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.server_check.outputs.host }}
