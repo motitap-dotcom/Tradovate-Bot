@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-03T11:46:27Z",
+  "timestamp": "2026-03-03T11:52:31Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -7,25 +7,8 @@
   "balance": {},
   "positions": [],
   "orders": [],
-  "server": {
-    "bot_active": true,
-    "bot_pid": "1428715",
-    "uptime_since": "Mon 2026-03-02 16:02:58 UTC",
-    "disk": "11%",
-    "memory": "1256MB/7941MB (16%)"
-  },
+  "server": null,
   "errors": [
     "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
-  ],
-  "secrets_configured": {
-    "ssh": true,
-    "access_token": false,
-    "username": true,
-    "password": true,
-    "username_prefix": "FNFTMOTI",
-    "password_length": 9,
-    "ssh_output_len": 1156,
-    "ssh_stderr": "Warning: Permanently added '77.237.234.2' (ED25519) to the list of known hosts."
-  },
-  "ssh_token_status": "found"
+  ]
 }
