@@ -49,6 +49,11 @@ logging.basicConfig(
 logger = logging.getLogger("bot")
 
 
+class AuthenticationError(Exception):
+    """Raised when all authentication attempts are exhausted."""
+    pass
+
+
 # ─────────────────────────────────────────────
 # Eastern Time helper
 # ─────────────────────────────────────────────
@@ -127,9 +132,9 @@ class TradovateBot:
                 self._write_auth_status(attempt)
                 time.sleep(wait)
             if not auth_ok:
-                logger.error("Authentication failed after 5 attempts. Exiting.")
+                logger.error("Authentication failed after 5 attempts.")
                 self._write_auth_status(5, final=True)
-                sys.exit(1)
+                raise AuthenticationError("All 5 authentication attempts failed")
             logger.info("Authenticated successfully (userId=%s, account=%s)",
                         self.api.user_id, self.api.account_spec)
         else:
@@ -995,10 +1000,18 @@ def main():
         try:
             bot = TradovateBot(dry_run=args.dry_run)
             bot.start()
+        except AuthenticationError:
+            # Auth failed — retry in 5 minutes, NOT next morning.
+            # The server might just need time for CAPTCHA/rate-limit to clear.
+            logger.error("Authentication failed. Retrying in 5 minutes...")
+            retry_wait = 300  # 5 minutes
+            while retry_wait > 0 and not _shutdown_requested:
+                time.sleep(min(60, retry_wait))
+                retry_wait -= 60
+            continue  # Skip the sleep-until-next-morning logic
         except SystemExit:
-            # Auth failure calls sys.exit(1) — don't swallow it on first try,
-            # but in the daily loop we retry next session instead of dying.
-            logger.error("Bot exited with SystemExit. Will retry next session.")
+            # Unexpected sys.exit — let systemd restart us
+            raise
         except Exception:
             logger.exception("Unexpected error in bot session. Will retry next session.")
 

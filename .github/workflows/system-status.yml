@@ -465,7 +465,14 @@ jobs:
                               print(f"  {label} auth: {err}")
                               # Only add as error if both endpoints fail
                               if label == "Demo":
-                                  status["errors"].append(f"Auth: {err}")
+                                  if "Incorrect" in err and not ssh_ok:
+                                      status["errors"].append(
+                                          f"Auth from GH Actions: {err} "
+                                          "(expected — GH runners need CAPTCHA. "
+                                          "Configure SERVER_HOST + SERVER_SSH_KEY to check bot on server)"
+                                      )
+                                  else:
+                                      status["errors"].append(f"Auth: {err}")
                       except Exception as e:
                           print(f"  {label} auth error: {e}")
                           if label == "Demo":
