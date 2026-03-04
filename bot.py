@@ -113,28 +113,35 @@ class TradovateBot:
         logger.info("Prop firm: %s | Account size: %s", config.PROP_FIRM, config.ACTIVE_CHALLENGE["account_size"])
         logger.info("=" * 60)
 
-        # Authenticate (retry up to 5 times with exponential backoff)
+        # Authenticate (retry up to 3 times with longer backoff to avoid rate limits)
         if not self.dry_run:
             auth_ok = False
-            for attempt in range(1, 6):
-                logger.info("Authentication attempt %d/5...", attempt)
+            max_attempts = 3
+            for attempt in range(1, max_attempts + 1):
+                logger.info("Authentication attempt %d/%d...", attempt, max_attempts)
                 if self.api.authenticate():
                     auth_ok = True
                     break
                 # Clear stale token so next attempt starts fresh
                 self.api.access_token = None
                 self.api.md_access_token = None
-                wait = min(attempt * 15, 60)  # 15, 30, 45, 60, 60
+                wait = min(attempt * 30, 120)  # 30, 60, 90 — longer waits to let rate limits clear
                 logger.warning(
-                    "Authentication attempt %d/5 failed. Retrying in %ds...", attempt, wait
+                    "Authentication attempt %d/%d failed. Retrying in %ds...", attempt, max_attempts, wait
                 )
                 # Write a status file even during auth failure so monitoring can see
                 self._write_auth_status(attempt)
-                time.sleep(wait)
+                # Check for shutdown between attempts
+                elapsed = 0
+                while elapsed < wait and not _shutdown_requested:
+                    time.sleep(min(10, wait - elapsed))
+                    elapsed += 10
+                if _shutdown_requested:
+                    break
             if not auth_ok:
-                logger.error("Authentication failed after 5 attempts.")
-                self._write_auth_status(5, final=True)
-                raise AuthenticationError("All 5 authentication attempts failed")
+                logger.error("Authentication failed after %d attempts.", max_attempts)
+                self._write_auth_status(max_attempts, final=True)
+                raise AuthenticationError("All %d authentication attempts failed" % max_attempts)
             logger.info("Authenticated successfully (userId=%s, account=%s)",
                         self.api.user_id, self.api.account_spec)
         else:
