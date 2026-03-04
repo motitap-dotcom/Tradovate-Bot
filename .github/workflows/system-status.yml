@@ -120,8 +120,8 @@ jobs:
           [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
           GIT_COMMIT=""
           [ -n "$BOT_DIR" ] && GIT_COMMIT=$(cd "$BOT_DIR" && git log -1 --format="%h %s" 2>/dev/null || echo "?")
-          # Get journal log (last 20 lines)
-          JOURNAL=$(journalctl -u tradovate-bot --no-pager -n 20 2>/dev/null | tail -20 || echo "no journal")
+          # Get journal log — use -o cat to see actual Python output (not just systemd start/stop)
+          JOURNAL=$(journalctl -u tradovate-bot --no-pager -n 50 -o cat 2>/dev/null | tail -50 || echo "no journal")
           # Get bot.log tail
           BOT_LOG=""
           [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/bot.log" ] && BOT_LOG=$(tail -20 "$BOT_DIR/bot.log" 2>/dev/null || echo "")
