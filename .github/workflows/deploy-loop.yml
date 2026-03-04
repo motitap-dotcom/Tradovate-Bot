@@ -47,14 +47,15 @@ jobs:
       # ①  D E P L O Y
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: "① Deploy to server"
-        if: ${{ vars.SERVER_HOST != '' && github.event.inputs.skip_deploy != 'true' }}
+        if: ${{ (vars.SERVER_HOST != '' || secrets.VPS_HOST != '') && github.event.inputs.skip_deploy != 'true' }}
         id: deploy
         continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ vars.SERVER_HOST || secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           envs: BRANCH,BOT_DIR,SERVICE
           command_timeout: 2m
           script: |
@@ -88,20 +89,22 @@ jobs:
       # ②  L I S T E N
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: "② Setup SSH for feedback"
-        if: ${{ vars.SERVER_HOST != '' }}
+        if: ${{ vars.SERVER_HOST != '' || secrets.VPS_HOST != '' }}
         run: |
           mkdir -p ~/.ssh /tmp/fb
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/key
+          echo "${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY }}" > ~/.ssh/key
           chmod 600 ~/.ssh/key
-          ssh-keyscan -H "${{ vars.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
-          echo "SSH=ssh -i ~/.ssh/key -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new ${{ vars.SERVER_USER || 'root' }}@${{ vars.SERVER_HOST }}" >> "$GITHUB_ENV"
+          VPS_H="${{ vars.SERVER_HOST || secrets.VPS_HOST }}"
+          VPS_U="${{ secrets.VPS_USER || vars.SERVER_USER || 'root' }}"
+          ssh-keyscan -H "$VPS_H" >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "SSH=ssh -i ~/.ssh/key -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new ${VPS_U}@${VPS_H}" >> "$GITHUB_ENV"
 
       - name: "② Wait for bot to initialize"
-        if: ${{ vars.SERVER_HOST != '' && github.event.inputs.skip_deploy != 'true' }}
+        if: ${{ (vars.SERVER_HOST != '' || secrets.VPS_HOST != '') && github.event.inputs.skip_deploy != 'true' }}
         run: sleep 15
 
       - name: "② Collect server feedback"
-        if: ${{ vars.SERVER_HOST != '' }}
+        if: ${{ vars.SERVER_HOST != '' || secrets.VPS_HOST != '' }}
         continue-on-error: true
         run: |
           echo "Collecting data from server..."

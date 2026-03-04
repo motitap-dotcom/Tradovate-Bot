@@ -43,10 +43,11 @@ jobs:
           SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           VPS_KEY: ${{ secrets.VPS_KEY }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
           # Try all common naming patterns
           SSH_HOST="${HOST_VAR:-${HOST_SEC:-${VPS_HOST:-${SERVER_IP:-}}}}"
-          SSH_KEY_FINAL="${SSH_KEY:-${SSH_PRIVATE_KEY:-${VPS_KEY:-}}}"
+          SSH_KEY_FINAL="${SSH_KEY:-${SSH_PRIVATE_KEY:-${VPS_KEY:-${VPS_SSH_KEY:-}}}}"
 
           echo "ssh_host=$SSH_HOST" >> $GITHUB_OUTPUT
 
@@ -68,8 +69,9 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.ssh_check.outputs.ssh_host }}
-          username: ${{ vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
+          username: ${{ secrets.VPS_USER || vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           script: |
             BOT_DIR="${{ env.BOT_DIR }}"
             cd "$BOT_DIR" 2>/dev/null || exit 1
@@ -239,8 +241,8 @@ jobs:
           SSH_OUTPUT: ${{ steps.ssh_status.outputs.stdout || '' }}
           SSH_OK: ${{ steps.ssh_status.outcome == 'success' && 'true' || 'false' }}
           SSH_AVAILABLE: ${{ steps.ssh_check.outputs.available }}
-          HAS_SERVER_HOST: ${{ secrets.SERVER_HOST != '' }}
-          HAS_SSH_KEY: ${{ secrets.SERVER_SSH_KEY != '' }}
+          HAS_SERVER_HOST: ${{ secrets.SERVER_HOST != '' || secrets.VPS_HOST != '' }}
+          HAS_SSH_KEY: ${{ secrets.SERVER_SSH_KEY != '' || secrets.VPS_SSH_KEY != '' }}
         run: |
           python3 << 'PYEOF'
           import json, os, sys, re, base64, hashlib, hmac, uuid

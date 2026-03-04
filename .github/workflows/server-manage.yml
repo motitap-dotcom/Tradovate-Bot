@@ -67,8 +67,9 @@ jobs:
           HOST_SEC: ${{ secrets.SERVER_HOST }}
           SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_KEY: ${{ secrets.VPS_KEY }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_USER: ${{ secrets.VPS_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
         run: |
           echo "=== Debug: Checking all possible secret/variable names ==="
@@ -78,12 +79,13 @@ jobs:
           echo "secrets.SSH_PRIVATE_KEY length: ${#SSH_PRIVATE_KEY}"
           echo "secrets.VPS_HOST: '${VPS_HOST:+SET}'"
           echo "secrets.VPS_KEY length: ${#VPS_KEY}"
+          echo "secrets.VPS_SSH_KEY length: ${#VPS_SSH_KEY}"
           echo "secrets.SERVER_IP: '${SERVER_IP:+SET}'"
 
           # Try all common naming patterns for host
           SSH_HOST="${HOST_VAR:-${HOST_SEC:-${VPS_HOST:-${SERVER_IP:-}}}}"
           # Try all common naming patterns for key
-          SSH_KEY_FINAL="${SSH_KEY:-${SSH_PRIVATE_KEY:-${VPS_KEY:-}}}"
+          SSH_KEY_FINAL="${SSH_KEY:-${SSH_PRIVATE_KEY:-${VPS_KEY:-${VPS_SSH_KEY:-}}}}"
 
           echo ""
           echo "Resolved SSH_HOST: '${SSH_HOST:+found}' (${#SSH_HOST} chars)"
@@ -133,8 +135,9 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ steps.ssh.outputs.ssh_host }}
-          username: ${{ vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
+          username: ${{ secrets.VPS_USER || vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           command_timeout: 60s
           script: |
             BOT_DIR="${{ env.BOT_DIR }}"

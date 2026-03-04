@@ -89,15 +89,16 @@ jobs:
       # SSH auto-restart if bot is down and SSH is configured
       - name: Auto-restart bot via SSH
         if: |
-          vars.SERVER_HOST != '' &&
+          (vars.SERVER_HOST != '' || secrets.VPS_HOST != '') &&
           (steps.file-check.outputs.status == 'missing' ||
            steps.analyze.outputs.bot_active == 'False' ||
            steps.analyze.outputs.stale == 'true')
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ vars.SERVER_HOST || secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           script: |
             echo "=== Health Check Auto-Recovery ==="
             SERVICE="${{ env.SERVICE_NAME }}"
