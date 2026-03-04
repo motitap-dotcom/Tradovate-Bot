@@ -452,14 +452,14 @@ print("=" * 60)
 def test_orb_range_accumulation():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
-    # Feed prices during first 5 minutes (09:30 - 09:35)
+    # Feed prices during first 2 minutes (09:30 - 09:32), within 3-min window
     ET = ZoneInfo("America/New_York")
-    t1 = datetime(2026, 2, 23, 9, 31, tzinfo=ET)
-    t2 = datetime(2026, 2, 23, 9, 33, tzinfo=ET)
+    t1 = datetime(2026, 2, 23, 9, 30, tzinfo=ET)
+    t2 = datetime(2026, 2, 23, 9, 31, tzinfo=ET)
 
     s1 = strategy.on_price(21050.0, t1, 21060.0, 21040.0)
-    s2 = strategy.on_price(21070.0, t2, 21080.0, 21030.0)
-    # Still in accumulation, no signal
+    s2 = strategy.on_price(21055.0, t2, 21058.0, 21045.0)
+    # Still in accumulation (within 3-min window), no signal
     assert s1 is None
     assert s2 is None
 
@@ -549,7 +549,7 @@ def test_orb_cooldown():
 def test_orb_max_trades():
     from strategies import ORBStrategy
     strategy = ORBStrategy("NQ")
-    assert strategy.max_trades == 2  # Default from config
+    assert strategy.max_trades == 3  # Updated to 3 for aggressive settings
 
 
 @test("VWAP: running VWAP calculation")

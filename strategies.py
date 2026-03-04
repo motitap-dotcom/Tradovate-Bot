@@ -271,7 +271,7 @@ class VWAPStrategy:
         self.max_per_direction: int = spec.get("max_vwap_trades_per_direction", 2)
         self.cooldown_minutes: int = spec.get("vwap_cooldown_minutes", 30)
         # Minimum time between ANY trades (regardless of direction) to prevent whipsaw
-        self.min_trade_gap_minutes: int = 5
+        self.min_trade_gap_minutes: int = 3
 
         # VWAP calculation state
         self._cum_vol: float = 0.0

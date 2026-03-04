@@ -102,7 +102,7 @@ ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
 
 # Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 12
+MAX_DAILY_TRADES = 16
 
 # ─────────────────────────────────────────────
 # Contract Specifications
@@ -116,13 +116,13 @@ CONTRACT_SPECS = {
         "point_value": 20.00,
         "strategy": "ORB",
         "enabled": True,
-        # Dual ORB windows: 5-min (aggressive) + 15-min (conservative, stronger signal)
-        "orb_windows": [5, 15],
-        "max_orb_trades": 2,            # max trades across all ORB windows
-        "orb_cooldown_minutes": 15,     # min time between ORB trades
-        "stop_loss_points": 25,
-        "take_profit_points": 50,
-        "risk_reward_ratio": 2.0,
+        # Triple ORB windows: 3-min (ultra-fast) + 5-min (aggressive) + 15-min (conservative)
+        "orb_windows": [3, 5, 15],
+        "max_orb_trades": 3,            # max trades across all ORB windows
+        "orb_cooldown_minutes": 10,     # min time between ORB trades (was 15)
+        "stop_loss_points": 20,         # tighter stop (was 25)
+        "take_profit_points": 30,       # closer TP (was 50)
+        "risk_reward_ratio": 1.5,       # was 2.0
     },
     "ES": {
         "name": "E-mini S&P 500",
@@ -132,12 +132,12 @@ CONTRACT_SPECS = {
         "point_value": 50.00,
         "strategy": "ORB",
         "enabled": True,
-        "orb_windows": [5, 15],
-        "max_orb_trades": 2,
-        "orb_cooldown_minutes": 15,
-        "stop_loss_points": 6,
-        "take_profit_points": 12,
-        "risk_reward_ratio": 2.0,
+        "orb_windows": [3, 5, 15],
+        "max_orb_trades": 3,
+        "orb_cooldown_minutes": 10,     # was 15
+        "stop_loss_points": 5,          # tighter stop (was 6)
+        "take_profit_points": 7.5,      # closer TP (was 12)
+        "risk_reward_ratio": 1.5,       # was 2.0
     },
     "GC": {
         "name": "Gold (COMEX)",
@@ -147,13 +147,13 @@ CONTRACT_SPECS = {
         "point_value": 100.00,
         "strategy": "VWAP",
         "enabled": True,
-        # VWAP / momentum params
-        "stop_loss_points": 5.0,
-        "take_profit_points": 10.0,
-        "risk_reward_ratio": 2.0,
+        # VWAP / momentum params — more aggressive
+        "stop_loss_points": 4.0,        # tighter stop (was 5.0)
+        "take_profit_points": 6.0,      # closer TP (was 10.0)
+        "risk_reward_ratio": 1.5,       # was 2.0
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,  # allow 2 longs + 2 shorts per day
-        "vwap_cooldown_minutes": 30,         # min 30 min between same-direction trades
+        "max_vwap_trades_per_direction": 3,  # was 2
+        "vwap_cooldown_minutes": 15,         # was 30
     },
     "CL": {
         "name": "WTI Crude Oil",
@@ -163,12 +163,12 @@ CONTRACT_SPECS = {
         "point_value": 1_000.00,
         "strategy": "VWAP",
         "enabled": True,
-        "stop_loss_points": 0.20,
-        "take_profit_points": 0.40,
-        "risk_reward_ratio": 2.0,
+        "stop_loss_points": 0.15,       # tighter stop (was 0.20)
+        "take_profit_points": 0.22,     # closer TP (was 0.40)
+        "risk_reward_ratio": 1.5,       # was 2.0
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
-        "vwap_cooldown_minutes": 30,
+        "max_vwap_trades_per_direction": 3,  # was 2
+        "vwap_cooldown_minutes": 15,         # was 30
     },
     "SI": {
         "name": "Silver (COMEX)",
@@ -209,7 +209,7 @@ CONTRACT_SPECS = {
 MARKET_OPEN_ET = "09:30"
 
 # Stop placing new trades after this time
-TRADING_CUTOFF_ET = "15:30"
+TRADING_CUTOFF_ET = "16:15"
 
 # Force-close everything before this time
 FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
@@ -219,7 +219,7 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # ─────────────────────────────────────────────
 # Max risk per trade as % of daily loss budget
 # Lowered from 2% to 1.5% to compensate for increased trade frequency
-RISK_PER_TRADE_PCT = 0.015  # 1.5% of account per trade
+RISK_PER_TRADE_PCT = 0.012  # 1.2% of account per trade (lower per-trade, more trades)
 
 # ─────────────────────────────────────────────
 # Logging
