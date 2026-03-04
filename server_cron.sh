@@ -67,7 +67,19 @@ else
     CODE_UPDATED="false"
 fi
 
-# ── 1b. Auto-heal: restart bot if it's not running ──
+# ── 1b. Ensure Playwright is installed (needed for CAPTCHA bypass) ──
+PYTHON="${BOT_DIR}/venv/bin/python3"
+if [ -f "$PYTHON" ] && ! "$PYTHON" -c "import playwright" 2>/dev/null; then
+    echo "[$(date)] Playwright not installed — installing for CAPTCHA bypass..."
+    "${BOT_DIR}/venv/bin/pip" install playwright -q 2>&1 | tail -3 || true
+    "$PYTHON" -m playwright install chromium 2>&1 | tail -5 || true
+    echo "[$(date)] Playwright installation done."
+    # Restart bot to pick up new auth method
+    systemctl restart "$SERVICE" 2>/dev/null || true
+    sleep 5
+fi
+
+# ── 1c. Auto-heal: restart bot if it's not running ──
 if ! systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
     echo "[$(date)] Bot is DOWN — attempting auto-restart..."
     systemctl restart "$SERVICE"
