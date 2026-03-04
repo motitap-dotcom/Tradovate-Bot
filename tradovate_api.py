@@ -1245,6 +1245,8 @@ class RestMarketDataPoller:
         self._thread: Optional[threading.Thread] = None
         self._should_run = False
         self._last_ts: dict[str, int] = {}  # last processed candle timestamp per symbol
+        self._total_candles_dispatched = 0
+        self._poll_count = 0
 
     def start(self):
         """Start polling in a background thread."""
@@ -1284,6 +1286,13 @@ class RestMarketDataPoller:
                 self._fetch_and_dispatch()
             except Exception as e:
                 logger.error("REST poller error: %s", e)
+            self._poll_count += 1
+            # Log data health every ~60 seconds (12 polls × 5s)
+            if self._poll_count % 12 == 0:
+                logger.info(
+                    "REST poller health: %d candles dispatched, %d symbols tracked, %d polls",
+                    self._total_candles_dispatched, len(self._symbols), self._poll_count,
+                )
             time.sleep(self.POLL_INTERVAL)
 
     def _fetch_and_dispatch(self):
@@ -1335,6 +1344,7 @@ class RestMarketDataPoller:
                         "low": {"price": l},
                     }
 
+                    self._total_candles_dispatched += 1
                     for cb in cbs:
                         try:
                             cb(contract_name, quote)
