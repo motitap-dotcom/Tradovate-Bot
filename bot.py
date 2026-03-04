@@ -738,7 +738,13 @@ class TradovateBot:
                         if self.md_stream:
                             self._subscribe_market_data()
                     else:
-                        logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
+                        logger.error(
+                            "=== AUTO-RECOVERY: Re-authentication FAILED (attempt %d). "
+                            "Token may be expired and password auth failing. "
+                            "Bot will keep retrying every %d cycles. ===",
+                            self._consecutive_api_failures,
+                            _MAX_API_FAILURES_BEFORE_REAUTH,
+                        )
 
                 # Auto-fallback: if WebSocket died, switch to REST polling
                 if not self.dry_run and self.md_stream and hasattr(self.md_stream, "fell_back"):
