@@ -56,8 +56,9 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ vars.SERVER_HOST || secrets.SERVER_HOST || secrets.VPS_HOST || secrets.SERVER_IP }}
-          username: ${{ vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
+          username: ${{ secrets.VPS_USER || vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           envs: SERVER_GH_PAT
           script: |
             set -e
