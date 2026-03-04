@@ -131,6 +131,12 @@ jobs:
               fi
             fi
 
+            # Update systemd service file (memory limits etc.)
+            if [ -f tradovate-bot.service ]; then
+              cp tradovate-bot.service /etc/systemd/system/tradovate-bot.service
+              systemctl daemon-reload
+            fi
+
             # Restart bot
             systemctl restart ${{ env.SERVICE_NAME }}
             sleep 5

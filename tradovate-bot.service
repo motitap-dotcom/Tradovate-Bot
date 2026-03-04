@@ -23,6 +23,10 @@ StandardError=journal
 SyslogIdentifier=tradovate-bot
 Environment=PYTHONUNBUFFERED=1
 
+# Memory limit — prevents OOM kill from Playwright/Chrome
+MemoryMax=2G
+MemoryHigh=1500M
+
 # Security
 NoNewPrivileges=true
 

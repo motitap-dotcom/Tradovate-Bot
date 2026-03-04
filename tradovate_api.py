@@ -415,6 +415,12 @@ class TradovateAPI:
                         "args": [
                             "--no-sandbox",
                             "--disable-blink-features=AutomationControlled",
+                            "--disable-dev-shm-usage",
+                            "--disable-gpu",
+                            "--single-process",
+                            "--no-zygote",
+                            "--disable-extensions",
+                            "--js-flags=--max-old-space-size=256",
                         ],
                     }
                     if proxy_cfg:
@@ -422,7 +428,7 @@ class TradovateAPI:
 
                     browser = pw.chromium.launch(**launch_args)
                     ctx = browser.new_context(
-                        viewport={"width": 1920, "height": 1080},
+                        viewport={"width": 1280, "height": 720},
                         user_agent=(
                             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                             "AppleWebKit/537.36 (KHTML, like Gecko) "
