@@ -773,8 +773,19 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
+                # Identify active data source
+                if isinstance(self.md_stream, MarketDataStream):
+                    ds = "WS"
+                    if self.md_stream._connected.is_set():
+                        ds = "WS-OK"
+                    elif self.md_stream.data_stale:
+                        ds = "WS-STALE"
+                elif self.md_stream is not None:
+                    ds = "REST"
+                else:
+                    ds = "NONE"
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s | data=%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -783,6 +794,7 @@ class TradovateBot:
                     status["trades_today"],
                     status["max_daily_trades"],
                     status["locked"],
+                    ds,
                     "" if api_ok else " | API-ERROR",
                 )
 
@@ -918,6 +930,7 @@ class TradovateBot:
                 "environment": config.ENVIRONMENT,
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
+                "data_source": "websocket" if isinstance(self.md_stream, MarketDataStream) else "rest_polling",
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
