@@ -77,8 +77,13 @@ jobs:
           chmod 600 ~/.ssh/vps_key
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          ssh -i ~/.ssh/vps_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
-            "${SSH_USER}@${SSH_HOST}" 'bash -s' > /tmp/ssh_output.txt 2>&1 <<'REMOTE_EOF'
+          # Retry SSH up to 3 times with exponential backoff
+          SSH_OK=false
+          for attempt in 1 2 3; do
+            echo "SSH attempt $attempt/3..."
+            if ssh -i ~/.ssh/vps_key -o ConnectTimeout=30 -o ServerAliveInterval=10 \
+              -o StrictHostKeyChecking=accept-new \
+              "${SSH_USER}@${SSH_HOST}" 'bash -s' > /tmp/ssh_output.txt 2>&1 <<'REMOTE_EOF'
           BOT_DIR=""
           for d in /root/tradovate-bot /root/Tradovate-Bot \
                    /home/*/tradovate-bot /home/*/Tradovate-Bot \
@@ -208,11 +213,22 @@ jobs:
           fi
           echo "==TRADING_END=="
           REMOTE_EOF
+            then
+              SSH_OK=true
+              echo "SSH attempt $attempt succeeded"
+              break
+            else
+              SSH_EXIT=$?
+              echo "SSH attempt $attempt failed (exit=$SSH_EXIT)"
+              if [ "$attempt" -lt 3 ]; then
+                WAIT=$((attempt * 3))
+                echo "Retrying in ${WAIT}s..."
+                sleep "$WAIT"
+              fi
+            fi
+          done
 
-          SSH_EXIT=$?
-          echo "SSH exit code: $SSH_EXIT"
-
-          if [ -f /tmp/ssh_output.txt ] && [ -s /tmp/ssh_output.txt ]; then
+          if [ "$SSH_OK" = "true" ] && [ -f /tmp/ssh_output.txt ] && [ -s /tmp/ssh_output.txt ]; then
             echo "SSH output: $(wc -c < /tmp/ssh_output.txt) bytes"
             {
               echo 'stdout<<SSHEOF'
@@ -220,7 +236,7 @@ jobs:
               echo 'SSHEOF'
             } >> $GITHUB_OUTPUT
           else
-            echo "No SSH output captured"
+            echo "SSH failed after 3 attempts"
             echo "stdout=" >> $GITHUB_OUTPUT
           fi
           rm -f ~/.ssh/vps_key
@@ -588,14 +604,49 @@ jobs:
               except Exception:
                   pass
 
+          # ── 5b. Preserve last known good data when current check fails ──
+          if not status["authenticated"] and os.path.exists("system_status.json"):
+              try:
+                  with open("system_status.json") as f:
+                      prev = json.load(f)
+                  # Carry forward account/balance/positions from last successful check
+                  if prev.get("authenticated") and prev.get("balance"):
+                      status["last_known"] = {
+                          "timestamp": prev.get("timestamp"),
+                          "auth_method": prev.get("auth_method"),
+                          "account": prev.get("account", {}),
+                          "balance": prev.get("balance", {}),
+                          "positions": prev.get("positions", []),
+                          "orders": prev.get("orders", []),
+                      }
+                      print(f"  Preserved last known data from {prev.get('timestamp')}")
+                  # Carry forward server data if we lost SSH
+                  if not status["server"] and prev.get("server"):
+                      status["server"] = prev["server"]
+                      status["server"]["_stale"] = True
+                      print(f"  Using stale server data from previous check")
+                  # Carry forward trading activity
+                  if not status.get("trading_activity") and prev.get("trading_activity"):
+                      status["trading_activity"] = prev["trading_activity"]
+                      status["trading_activity"]["_stale"] = True
+              except Exception:
+                  pass
+
           # ── 6. Write results ──
           print("\n=== Summary ===")
           print(f"  API: {'OK' if status['api_reachable'] else 'DOWN'}")
           print(f"  Auth: {status['auth_method'] or 'none'}")
           print(f"  Server: {'connected' if status['server'] else 'no data'}")
+          if status.get("last_known"):
+              lk = status["last_known"]
+              print(f"  Last known good: {lk.get('timestamp')} (auth={lk.get('auth_method')})")
+              bal = lk.get("balance", {})
+              if bal:
+                  print(f"  Last known balance: ${bal.get('totalCashValue', 'N/A')}")
           if status['server']:
               bot_active = status['server'].get('bot_active', False)
-              print(f"  Bot active: {bot_active}")
+              stale = status['server'].get('_stale', False)
+              print(f"  Bot active: {bot_active}{' (stale)' if stale else ''}")
               live = status['server'].get('live_status', {})
               if live:
                   print(f"  Live balance: ${live.get('balance', 'N/A')}")
@@ -658,7 +709,8 @@ jobs:
 
           srv = d.get("server")
           if srv:
-              print(f"| Bot Active | {srv.get('bot_active', '?')} |")
+              stale_tag = " (stale)" if srv.get("_stale") else ""
+              print(f"| Bot Active | {srv.get('bot_active', '?')}{stale_tag} |")
               print(f"| Bot PID | {srv.get('bot_pid', '?')} |")
               print(f"| Memory | {srv.get('memory', '?')} |")
               print(f"| Disk | {srv.get('disk', '?')} |")
@@ -732,6 +784,22 @@ jobs:
                       print(line[-150:])
                   print("```")
 
+          # Last known good data (when current check failed)
+          lk = d.get("last_known")
+          if lk:
+              print("")
+              print(f"### Last Known Good Data (from {lk.get('timestamp', '?')})")
+              print(f"*Auth method: {lk.get('auth_method', '?')}*")
+              print("")
+              lk_bal = lk.get("balance", {})
+              if lk_bal:
+                  print("| Check | Last Known Value |")
+                  print("|-------|-----------------|")
+                  print(f"| Balance | ${lk_bal.get('totalCashValue', 'N/A')} |")
+                  print(f"| Realized P&L | ${lk_bal.get('realizedPnl', 'N/A')} |")
+                  print(f"| Unrealized P&L | ${lk_bal.get('unrealizedPnl', 'N/A')} |")
+                  print(f"| Positions | {len(lk.get('positions', []))} |")
+
           errs = d.get("errors", [])
           if errs:
               print("")
@@ -752,8 +820,8 @@ jobs:
               print("")
               print("### Setup Required")
               print("To get full server monitoring, configure these GitHub secrets:")
-              print("- `SERVER_HOST` — VPS IP address")
+              print("- `SERVER_HOST` — VPS IP address (or as repo variable)")
               print("- `SERVER_SSH_KEY` — SSH private key for the VPS")
-              print("- `TRADOVATE_USERNAME` / `TRADOVATE_PASSWORD` — for API auth")
+              print("- `TRADOVATE_USERNAME` / `TRADOVATE_PASSWORD` — for API auth fallback")
               print("- `TRADOVATE_ACCESS_TOKEN` — valid bearer token (optional)")
           PYEOF
