@@ -879,6 +879,15 @@ class TradovateBot:
         """
         try:
             positions = self.api.get_positions()
+            # Log positions for diagnostics
+            if positions:
+                for p in positions:
+                    net = p.get("netPos", 0)
+                    if net != 0:
+                        logger.info(
+                            "Open position: contractId=%s netPos=%s avgPrice=%s",
+                            p.get("contractId"), net, p.get("avgPrice"),
+                        )
 
             # Build contractId -> base symbol mapping from our contract_map
             if not hasattr(self, "_contract_id_to_symbol"):
@@ -932,8 +941,11 @@ class TradovateBot:
                         # Remove from open positions tracker
                         self._open_positions.pop(sym, None)
                         logger.info(
-                            "Position closed for %s (flat) | P&L=%.2f | exit=%.2f",
+                            "Position closed for %s (flat) | P&L=%.2f | exit=%.2f | order=%s sl=%s tp=%s",
                             sym, actual_pnl, exit_price,
+                            trade_info.get("order_id"),
+                            trade_info.get("sl_order_id"),
+                            trade_info.get("tp_order_id"),
                         )
 
         except Exception as e:
@@ -945,6 +957,10 @@ class TradovateBot:
             fills = self.api.get_fills()
             order_id = trade_info.get("order_id")
             if not fills or not order_id:
+                logger.info(
+                    "P&L calc skip: fills=%d order_id=%s",
+                    len(fills) if fills else 0, order_id,
+                )
                 return 0.0
 
             entry_fill_price = 0.0
@@ -957,6 +973,13 @@ class TradovateBot:
             tp_order_id = trade_info.get("tp_order_id")
             exit_order_ids = {oid for oid in (sl_order_id, tp_order_id) if oid}
 
+            # Log all fills for debugging
+            fill_order_ids = [f.get("orderId") for f in fills[-20:]]
+            logger.info(
+                "P&L calc: looking for entry=%s exit_ids=%s in %d fills | recent_fill_orderIds=%s",
+                order_id, exit_order_ids, len(fills), fill_order_ids,
+            )
+
             for fill in fills:
                 foid = fill.get("orderId")
                 if foid == order_id:
@@ -965,6 +988,10 @@ class TradovateBot:
                     exit_fill_price = fill.get("price", 0)
 
             if not entry_fill_price:
+                logger.info(
+                    "P&L calc: NO entry fill found for orderId=%s (fills checked: %d)",
+                    order_id, len(fills),
+                )
                 return 0.0
 
             # Fallback: if no exit fill matched by known IDs, search by contract
@@ -1045,10 +1072,16 @@ class TradovateBot:
                 balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
                 if balance is not None:
                     unrealized = snapshot.get("openPnL", 0.0)
+                    realized_api = snapshot.get("realizedPnL")
+                    logger.debug(
+                        "CashBalance: totalCash=%.2f netLiq=%s openPnL=%.2f realizedPnL=%s | raw=%s",
+                        balance, snapshot.get("netLiq"), unrealized, realized_api,
+                        {k: v for k, v in snapshot.items() if k not in ("timestamp",)},
+                    )
                     with self._lock:
                         self.risk.update_balance(balance, unrealized)
                 else:
-                    logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
+                    logger.warning("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
             else:
                 logger.debug("get_cash_balance returned None (account_id=%s)", self.api.account_id)
         except Exception as e:

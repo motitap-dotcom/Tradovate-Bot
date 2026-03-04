@@ -738,7 +738,40 @@ class TradovateAPI:
             return None
 
         entry_order_id = entry_result["orderId"]
-        logger.info("Entry order placed: orderId=%s", entry_order_id)
+        entry_status = entry_result.get("ordStatus", "Unknown")
+        logger.info(
+            "Entry order placed: orderId=%s status=%s | full=%s",
+            entry_order_id, entry_status,
+            {k: v for k, v in entry_result.items() if k in (
+                "orderId", "ordStatus", "action", "orderQty", "avgPrice",
+                "filledQty", "rejectReason", "text",
+            )},
+        )
+
+        # Check if order was rejected
+        if entry_status == "Rejected":
+            reject_reason = entry_result.get("rejectReason", entry_result.get("text", "unknown"))
+            logger.error("Entry order REJECTED: %s", reject_reason)
+            return None
+
+        # For market orders, verify fill after brief delay
+        if order_type == "Market":
+            time.sleep(1)
+            order_detail = self._get(f"/order/item?id={entry_order_id}")
+            if order_detail:
+                detail_status = order_detail.get("ordStatus", "Unknown")
+                filled_qty = order_detail.get("filledQty", 0)
+                avg_price = order_detail.get("avgPrice", 0)
+                logger.info(
+                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s",
+                    entry_order_id, detail_status, filled_qty, avg_price,
+                )
+                if detail_status == "Rejected":
+                    logger.error(
+                        "Entry order REJECTED after submit: %s",
+                        order_detail.get("rejectReason", order_detail.get("text", "unknown")),
+                    )
+                    return None
 
         # --- Step 2: OCO stop-loss + take-profit ---
         oco_payload: dict[str, Any] = {
