@@ -1,5 +1,55 @@
 # Tradovate Bot — Claude Code Guide
 
+## ⚠️ Server Management — Workflow Only (MANDATORY)
+
+**אין גישה ישירה לשרת. כל פעולה על השרת מתבצעת אך ורק דרך זרימת עבודה (GitHub Actions + Push).**
+
+This is the **#1 rule** for this project. Claude Code does NOT have SSH access, cannot ping the server, cannot run curl to the server, and cannot execute any remote commands directly. The ONLY way to manage the bot on its production server is through the repository workflow:
+
+### How It Works (Push → Deploy → Listen)
+
+```
+1. PUSH   — Make code changes and push to `main` branch
+2. DEPLOY — GitHub Actions (deploy.yml) SSHs to server, pulls code, restarts service
+3. LISTEN — Server cron (server_cron.sh) pushes status back to GitHub every 5 min
+```
+
+### What You CAN Do
+- **Deploy changes**: Edit code → commit → push to `main` → server auto-updates
+- **Check server status**: Read `server_status.json` (updated every 5 min by server cron)
+- **Check system status**: Read `system_status.json` (updated every 30 min by GitHub Actions)
+- **Trigger manual checks**: Push to main triggers `system-status.yml` and `server-health-check.yml`
+- **Modify bot behavior**: Change code files → push → server restarts with new code
+- **Start/stop bot**: Modify the service configuration in deploy workflow → push
+
+### What You MUST NOT Do
+- ❌ Do NOT try to SSH to the server
+- ❌ Do NOT run ping, curl, or any network diagnostic to the server
+- ❌ Do NOT attempt direct API calls to the server
+- ❌ Do NOT try to read server logs directly — they come through `server_status.json`
+- ❌ Do NOT suggest the user needs to manually do anything on the server
+
+### Workflow Files Reference
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `deploy.yml` | Push to main | Deploy code to server via SSH |
+| `auto-merge-deploy.yml` | Push to claude/** | Auto-merge to main + deploy |
+| `ci.yml` | Push/PR | Run tests and syntax checks |
+| `server-health-check.yml` | Every 15 min | Read server_status.json |
+| `system-status.yml` | Every 30 min | Full system check via SSH |
+| `connectivity-test.yml` | Every 6 hours | Test Tradovate API endpoints |
+
+### Task Completion Protocol
+בכל פעם שסיימת לכתוב קוד, לתקן באג או לבצע שינוי:
+1. **Commit** the changes with a clear message
+2. **Push to `main`** (or merge from feature branch)
+3. **Report**: "הקוד מוכן, ביצעתי Push ל-main כדי שהשרת יתעדכן."
+4. **Check status**: Read `server_status.json` after ~5 minutes to confirm deployment
+
+**זה חל על כל חלון חדש, כל שיחה חדשה, וכל בקשה. אין חריגים.**
+
+---
+
 ## Account Info
 - **Prop Firm**: FundedNext (Futures Challenge)
 - **Username**: FNFTMOTITAPWnBks
@@ -87,10 +137,8 @@ python -m pytest test_all.py -v
 ```
 
 ## Development Workflow
-Push to `main` is the only way to deploy. The server webhook automatically pulls changes.
-
-### נוהל סיום משימה
-בכל פעם שסיימת לכתוב קוד, לתקן באג או לבצע שינוי לבקשת המשתמש, בצע Push ל-main ודווח: **"הקוד מוכן, ביצעתי Push ל-main כדי שהשרת יתעדכן."** אל תריץ בדיקות אבחון (ping/curl/ssh) – הן לא רלוונטיות מהסביבה הזו.
+See **"Server Management — Workflow Only"** section at the top of this file.
+All deployment and server management is done exclusively through GitHub workflows (push → deploy → listen).
 
 ## Common Issues
 1. **"Incorrect password"**: Credentials are correct; try `live` API (not `demo` for auth)
