@@ -659,6 +659,8 @@ class TradovateBot:
                     take_profit=signal.take_profit,
                 )
                 self._open_positions[signal.symbol]["order_id"] = result.get("orderId")
+                self._open_positions[signal.symbol]["sl_order_id"] = result.get("slOrderId")
+                self._open_positions[signal.symbol]["tp_order_id"] = result.get("tpOrderId")
                 self._open_positions[signal.symbol]["journal_id"] = trade_id
                 self.trades_today.append(
                     {
@@ -670,6 +672,8 @@ class TradovateBot:
                         "target": signal.take_profit,
                         "reason": signal.reason,
                         "order_id": result.get("orderId"),
+                        "sl_order_id": result.get("slOrderId"),
+                        "tp_order_id": result.get("tpOrderId"),
                         "journal_id": trade_id,
                         "_placed_at": time.time(),
                     }
@@ -943,35 +947,55 @@ class TradovateBot:
             if not fills or not order_id:
                 return 0.0
 
-            # Find fills related to this trade's orders
             entry_fill_price = 0.0
             exit_fill_price = 0.0
             qty = trade_info.get("qty", 1)
             direction = trade_info.get("direction", "Buy")
 
-            for fill in fills:
-                if fill.get("orderId") == order_id:
-                    entry_fill_price = fill.get("price", 0)
+            # Known SL/TP order IDs from the bracket placement
+            sl_order_id = trade_info.get("sl_order_id")
+            tp_order_id = trade_info.get("tp_order_id")
+            exit_order_ids = {oid for oid in (sl_order_id, tp_order_id) if oid}
 
-            # If we can't find fills, estimate from balance change
+            for fill in fills:
+                foid = fill.get("orderId")
+                if foid == order_id:
+                    entry_fill_price = fill.get("price", 0)
+                elif exit_order_ids and foid in exit_order_ids:
+                    exit_fill_price = fill.get("price", 0)
+
             if not entry_fill_price:
                 return 0.0
 
-            # Get the most recent fill for the same contract (the SL/TP exit)
-            contract_name = self.contract_map.get(trade_info.get("symbol", ""))
-            for fill in reversed(fills):
-                foid = fill.get("orderId")
-                if foid and foid != order_id:
-                    exit_fill_price = fill.get("price", 0)
-                    break
+            # Fallback: if no exit fill matched by known IDs, search by contract
+            if not exit_fill_price:
+                contract_name = self.contract_map.get(trade_info.get("symbol", ""))
+                for fill in reversed(fills):
+                    foid = fill.get("orderId")
+                    if foid and foid != order_id and fill.get("contractId"):
+                        # Match by contract if we can resolve it
+                        if contract_name:
+                            cid = self._contract_id_to_symbol if hasattr(self, "_contract_id_to_symbol") else {}
+                            fill_sym = cid.get(fill.get("contractId"))
+                            if fill_sym == trade_info.get("symbol"):
+                                exit_fill_price = fill.get("price", 0)
+                                break
+                        else:
+                            exit_fill_price = fill.get("price", 0)
+                            break
 
             if entry_fill_price and exit_fill_price:
                 spec = config.CONTRACT_SPECS.get(trade_info.get("symbol", ""), {})
                 pv = spec.get("point_value", 1)
                 if direction == "Buy":
-                    return (exit_fill_price - entry_fill_price) * qty * pv
+                    pnl = (exit_fill_price - entry_fill_price) * qty * pv
                 else:
-                    return (entry_fill_price - exit_fill_price) * qty * pv
+                    pnl = (entry_fill_price - exit_fill_price) * qty * pv
+                logger.info(
+                    "P&L calc for %s: entry=%.4f exit=%.4f qty=%d pv=%s => $%.2f",
+                    trade_info.get("symbol"), entry_fill_price, exit_fill_price, qty, pv, pnl,
+                )
+                return pnl
 
         except Exception as e:
             logger.debug("Could not calculate trade P&L: %s", e)
@@ -984,12 +1008,24 @@ class TradovateBot:
             order_id = trade_info.get("order_id")
             if not fills:
                 return 0.0
-            # Return the most recent fill price (likely the SL/TP fill)
-            contract_name = self.contract_map.get(trade_info.get("symbol", ""))
+
+            # Try known SL/TP order IDs first
+            sl_order_id = trade_info.get("sl_order_id")
+            tp_order_id = trade_info.get("tp_order_id")
+            exit_order_ids = {oid for oid in (sl_order_id, tp_order_id) if oid}
+
+            if exit_order_ids:
+                for fill in reversed(fills):
+                    if fill.get("orderId") in exit_order_ids:
+                        return fill.get("price", 0)
+
+            # Fallback: match by contract
             for fill in reversed(fills):
                 foid = fill.get("orderId")
-                if foid and foid != order_id:
-                    return fill.get("price", 0)
+                if foid and foid != order_id and hasattr(self, "_contract_id_to_symbol"):
+                    fill_sym = self._contract_id_to_symbol.get(fill.get("contractId"))
+                    if fill_sym == trade_info.get("symbol"):
+                        return fill.get("price", 0)
         except Exception:
             pass
         return 0.0
