@@ -915,10 +915,12 @@ class MarketDataStream:
         self._reconnect_count = 0
         self._consecutive_failures = 0
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
+        self._last_data_time: float = 0  # Track when we last received real data
 
     def start(self):
         """Connect and start listening in a background thread."""
         self._should_run = True
+        self._last_data_time = time.time()  # Grace period before staleness check
         self._connect()
         self._connected.wait(timeout=15)
 
@@ -953,11 +955,21 @@ class MarketDataStream:
             "proxy_type": "http",
         }
 
+    # No data for 2 minutes means the connection is stale
+    DATA_TIMEOUT = 120
+
     def stop(self):
         """Close the WebSocket."""
         self._should_run = False
         if self.ws:
             self.ws.close()
+
+    @property
+    def data_stale(self) -> bool:
+        """True if connected but no data received for DATA_TIMEOUT seconds."""
+        if not self._last_data_time:
+            return False  # Haven't started receiving yet
+        return (time.time() - self._last_data_time) > self.DATA_TIMEOUT
 
     def subscribe_quote(self, symbol: str, callback: Callable):
         """Subscribe to real-time quotes for a symbol."""
@@ -1019,6 +1031,8 @@ class MarketDataStream:
 
             # Quote data — dispatched by symbol from the "d" field
             if "e" in item and item["e"] == "md" and "d" in item:
+                self._last_data_time = time.time()
+                self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
                 for quote in quotes:
@@ -1042,6 +1056,7 @@ class MarketDataStream:
     def _on_close(self, ws, close_status_code, close_msg):
         logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
         self._connected.clear()
+        self._consecutive_failures += 1  # Every close counts as a failure
         # Auto-reconnect (unlimited attempts — bot should never stop trying)
         if self._should_run:
             self._reconnect_count += 1
@@ -1079,7 +1094,9 @@ class MarketDataStream:
 
         self._connect()
         if self._connected.wait(timeout=15):
-            self._consecutive_failures = 0  # Reset on successful reconnect
+            # Don't reset _consecutive_failures here — only reset when
+            # real data flows (in _handle_payload). This prevents a cycle
+            # of connect→die→reconnect that never reaches fallback threshold.
             for symbol in list(self._callbacks.keys()):
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
@@ -1091,7 +1108,6 @@ class MarketDataStream:
                 logger.info("Full re-auth succeeded, retrying WebSocket connection...")
                 self._connect()
                 if self._connected.wait(timeout=15):
-                    self._consecutive_failures = 0
                     for symbol in list(self._callbacks.keys()):
                         self._send("md/subscribeQuote", {"symbol": symbol})
                         logger.info("Re-subscribed to: %s", symbol)

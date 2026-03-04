@@ -746,10 +746,23 @@ class TradovateBot:
                             _MAX_API_FAILURES_BEFORE_REAUTH,
                         )
 
-                # Auto-fallback: if WebSocket died, switch to REST polling
-                if not self.dry_run and self.md_stream and hasattr(self.md_stream, "fell_back"):
-                    if isinstance(self.md_stream, MarketDataStream) and self.md_stream.fell_back.is_set():
-                        logger.warning("=== WebSocket unrecoverable. Switching to REST polling... ===")
+                # Auto-fallback: if WebSocket died or stopped delivering data,
+                # switch to REST polling
+                if not self.dry_run and self.md_stream and isinstance(self.md_stream, MarketDataStream):
+                    should_fallback = False
+                    reason = ""
+                    if self.md_stream.fell_back.is_set():
+                        should_fallback = True
+                        reason = "WebSocket unrecoverable (too many consecutive failures)"
+                    elif self.md_stream.data_stale:
+                        should_fallback = True
+                        reason = "WebSocket stale (no data for %ds)" % self.md_stream.DATA_TIMEOUT
+                    elif not self.md_stream._connected.is_set() and not self.md_stream._should_run:
+                        should_fallback = True
+                        reason = "WebSocket disconnected and stopped"
+
+                    if should_fallback:
+                        logger.warning("=== FALLBACK: %s. Switching to REST polling... ===", reason)
                         self.md_stream.stop()
                         poller = RestMarketDataPoller()
                         poller._last_ts.update(self._warmup_last_ts)
