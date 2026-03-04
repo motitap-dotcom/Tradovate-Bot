@@ -672,7 +672,13 @@ jobs:
             BOT=$(python3 -c "import json; d=json.load(open('system_status.json')); s=d.get('server') or {}; print('running' if s.get('bot_active') else 'down')")
             TRADING=$(python3 -c "import json; d=json.load(open('system_status.json')); t=d.get('trading_activity') or {}; print('active' if t.get('trading_active') else 'inactive')")
             git commit -m "status: $(date -u '+%Y-%m-%d %H:%M UTC') | api=$API auth=$AUTH bot=$BOT trading=$TRADING"
-            git push origin main
+            # Pull with rebase to avoid conflicts with auto-merge workflow
+            git pull --rebase origin main || true
+            git push origin main || {
+              echo "Push failed, retrying with pull..."
+              git pull --rebase origin main || true
+              git push origin main || echo "Push failed after retry"
+            }
             echo "Pushed to main"
           fi
 
