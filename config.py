@@ -218,8 +218,8 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # Position Sizing
 # ─────────────────────────────────────────────
 # Max risk per trade as % of daily loss budget
-# Lowered from 2% to 1.5% to compensate for increased trade frequency
-RISK_PER_TRADE_PCT = 0.015  # 1.5% of account per trade
+# Lowered from 2% to 1.5% to 1.0% — tighter risk with small drawdown buffer
+RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
 
 # ─────────────────────────────────────────────
 # Logging

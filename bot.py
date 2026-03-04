@@ -32,6 +32,7 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+from bot_state import save_state, load_state, build_state, restore_strategies
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -86,8 +87,9 @@ class TradovateBot:
         # Active strategy instances
         self.strategies: dict[str, object] = {}
 
-        # Track daily trades for logging
+        # Track daily trades for logging (restored from journal on startup)
         self.trades_today: list[dict] = []
+        self._restore_trades_from_journal()
 
         # Global cooldown: minimum seconds between any two order placements
         self._min_order_gap_seconds: int = 30
@@ -95,6 +97,26 @@ class TradovateBot:
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
+
+    def _restore_trades_from_journal(self):
+        """Load today's open trades from journal so _sync_fills can close them."""
+        from datetime import date as _date
+        today_str = _date.today().isoformat()
+        for trade in self.journal.trades:
+            if trade.get("date") == today_str and trade.get("status") == "open":
+                self.trades_today.append({
+                    "time": trade.get("entry_time", ""),
+                    "symbol": trade.get("symbol", ""),
+                    "direction": trade.get("direction", ""),
+                    "qty": trade.get("qty", 0),
+                    "stop": trade.get("stop_loss", 0),
+                    "target": trade.get("take_profit", 0),
+                    "reason": trade.get("reason", ""),
+                    "order_id": None,
+                    "journal_id": trade.get("id"),
+                })
+        if self.trades_today:
+            logger.info("Restored %d open trades from journal for today", len(self.trades_today))
 
     # ─────────────────────────────────────────
     # Lifecycle
@@ -134,6 +156,9 @@ class TradovateBot:
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
+
+        # Restore persisted state (trade counts, breakout flags) from previous run today
+        self._restore_state()
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -206,6 +231,33 @@ class TradovateBot:
             logger.info(
                 "Strategy for %s: %s", symbol, type(strategy).__name__
             )
+
+    # ─────────────────────────────────────────
+    # State persistence (survives restarts)
+    # ─────────────────────────────────────────
+
+    def _restore_state(self):
+        """Restore trade counts and cooldowns from previous run today."""
+        state = load_state()
+        if state is None:
+            logger.info("No persisted state for today. Starting fresh.")
+            return
+
+        restore_strategies(state, self.strategies)
+
+        # Restore daily trade count in risk manager
+        saved_count = state.get("trades_today_count", 0)
+        self.risk.trades_today = saved_count
+        logger.info("Restored trades_today=%d from persisted state", saved_count)
+
+    def _persist_state(self):
+        """Save current strategy state to disk. Call after every trade."""
+        state = build_state(
+            self.strategies,
+            self.risk.trades_today,
+            self.trades_today,
+        )
+        save_state(state)
 
     # ─────────────────────────────────────────
     # Strategy warmup (late-start recovery)
@@ -458,10 +510,14 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
+
+            # Try to get actual fill price from the order
+            fill_price = self._get_fill_price(result.get("orderId"))
+
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=fill_price or signal.entry_price or 0,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -481,9 +537,39 @@ class TradovateBot:
                     "journal_id": trade_id,
                 }
             )
-            logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+            logger.info("Order placed: orderId=%s fill=%.2f (journal: %s)", result.get("orderId"), fill_price or 0, trade_id)
+
+            # Persist state after every trade to survive restarts
+            self._persist_state()
         else:
             logger.error("Order placement failed for %s", signal.symbol)
+
+    # ─────────────────────────────────────────
+    # Fill price capture
+    # ─────────────────────────────────────────
+
+    def _get_fill_price(self, order_id: int) -> float | None:
+        """
+        Try to get the actual fill price for a market order.
+        Market orders fill nearly instantly, but we give a brief pause.
+        Returns the fill price or None if not yet filled.
+        """
+        if not order_id or self.dry_run:
+            return None
+        try:
+            # Brief pause for market order to fill
+            time.sleep(1)
+            fills = self.api.get_fills()
+            for fill in fills:
+                if fill.get("orderId") == order_id:
+                    return fill.get("price")
+            # Also try order/item for avgFillPrice
+            order = self.api._get(f"/order/item?id={order_id}")
+            if order:
+                return order.get("avgFillPrice") or order.get("price")
+        except Exception as e:
+            logger.debug("Could not get fill price for order %s: %s", order_id, e)
+        return None
 
     # ─────────────────────────────────────────
     # Main loop
