@@ -127,28 +127,16 @@ class TradovateAPI:
 
         # 2. Try saved token from file
         if self._load_token():
-            # Skip renewal if token has no expiry or expired more than 1 hour ago
-            skip_renew = False
-            if self.token_expiry:
-                remaining = (self.token_expiry - datetime.now(timezone.utc)).total_seconds()
-                if remaining < -3600:
-                    logger.warning(
-                        "Saved token expired %.0f min ago. Skipping renewal...",
-                        -remaining / 60,
-                    )
-                    skip_renew = True
-            else:
-                logger.warning("Saved token has no expiry time, skipping renewal")
-                skip_renew = True
-
-            if not skip_renew:
-                logger.info("Loaded saved token, attempting renewal...")
-                if self.renew_token():
-                    logger.info("Saved token renewed successfully")
-                    self._fetch_account_id()
-                    self._save_token()
-                    return True
-                logger.warning("Saved token renewal failed, trying fresh auth...")
+            # Always attempt renewal — even for expired tokens.
+            # Tradovate may accept renewal for recently-expired tokens.
+            # Only skip if there's literally no token string.
+            logger.info("Loaded saved token, attempting renewal...")
+            if self.renew_token():
+                logger.info("Saved token renewed successfully")
+                self._fetch_account_id()
+                self._save_token()
+                return True
+            logger.warning("Saved token renewal failed, trying fresh auth...")
             # Clear stale token and delete file before fresh auth
             self.access_token = None
             self.md_access_token = None
@@ -523,23 +511,34 @@ class TradovateAPI:
         return None
 
     def renew_token(self) -> bool:
-        """Renew the access token before it expires."""
-        url = f"{self.base_url}/auth/renewaccesstoken"
-        try:
-            resp = requests.post(url, headers=self._headers(), timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            self.access_token = data.get("accessToken", self.access_token)
-            if data.get("expirationTime"):
-                self.token_expiry = datetime.fromisoformat(
-                    data["expirationTime"].replace("Z", "+00:00")
-                )
-            logger.info("Token renewed. Expires: %s", self.token_expiry)
-            self._save_token()
-            return True
-        except requests.RequestException as e:
-            logger.error("Token renewal failed: %s", e)
-            return False
+        """Renew the access token before it expires.
+
+        Tries the configured base_url first, then falls back to the other
+        environment (live↔demo) since the token may have been issued there.
+        """
+        urls = [f"{self.base_url}/auth/renewaccesstoken"]
+        # Add the other environment as fallback
+        if "demo" in self.base_url:
+            urls.append("https://live.tradovateapi.com/v1/auth/renewaccesstoken")
+        else:
+            urls.append("https://demo.tradovateapi.com/v1/auth/renewaccesstoken")
+
+        for url in urls:
+            try:
+                resp = requests.post(url, headers=self._headers(), timeout=30)
+                resp.raise_for_status()
+                data = resp.json()
+                self.access_token = data.get("accessToken", self.access_token)
+                if data.get("expirationTime"):
+                    self.token_expiry = datetime.fromisoformat(
+                        data["expirationTime"].replace("Z", "+00:00")
+                    )
+                logger.info("Token renewed via %s. Expires: %s", url.split("/")[2], self.token_expiry)
+                self._save_token()
+                return True
+            except requests.RequestException as e:
+                logger.warning("Token renewal failed on %s: %s", url.split("/")[2], e)
+        return False
 
     def ensure_token_valid(self):
         """Renew token if close to expiry. Falls back to full re-auth if renewal fails."""
