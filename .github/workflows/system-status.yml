@@ -118,27 +118,43 @@ jobs:
           LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 5 2>/dev/null | tail -5 || echo "no logs")
           LIVE_STATUS="{}"
           [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
-          BOT_LOG_TAIL=""
-          [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/bot.log" ] && BOT_LOG_TAIL=$(tail -15 "$BOT_DIR/bot.log" 2>/dev/null || echo "")
           GIT_COMMIT=""
           [ -n "$BOT_DIR" ] && GIT_COMMIT=$(cd "$BOT_DIR" && git log -1 --format="%h %s" 2>/dev/null || echo "?")
+          # Get journal log (last 20 lines)
+          JOURNAL=$(journalctl -u tradovate-bot --no-pager -n 20 2>/dev/null | tail -20 || echo "no journal")
+          # Get bot.log tail
+          BOT_LOG=""
+          [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/bot.log" ] && BOT_LOG=$(tail -20 "$BOT_DIR/bot.log" 2>/dev/null || echo "")
+          # Check cron log
+          CRON_LOG=$(tail -20 /var/log/tradovate-cron.log 2>/dev/null || echo "no cron log")
 
-          python3 -c "
-          import json
+          export JOURNAL BOT_LOG CRON_LOG
+          python3 - "$BOT_DIR" "$BOT_ACTIVE" "$BOT_PID" "$DISK" "$MEM" "$UPTIME" "$GIT_COMMIT" <<'SERVPY'
+          import json, sys, os
+          args = sys.argv[1:8]
+          bot_dir, bot_active, bot_pid, disk, mem, uptime, git_commit = args
+          live_status = {}
+          if bot_dir:
+              ls_path = os.path.join(bot_dir, "live_status.json")
+              if os.path.exists(ls_path):
+                  try:
+                      with open(ls_path) as f: live_status = json.load(f)
+                  except: pass
           print(json.dumps({
-            'bot_dir': '$BOT_DIR' or 'NOT_FOUND',
-            'bot_active': $BOT_ACTIVE,
-            'bot_pid': '$BOT_PID',
-            'uptime_since': '$UPTIME',
-            'disk': '$DISK',
-            'memory': '$MEM',
-            'hostname': '$(hostname)',
-            'last_log': '''$LAST_LOG'''.strip(),
-            'bot_log_tail': '''$BOT_LOG_TAIL'''.strip()[:500],
-            'live_status': $LIVE_STATUS,
-            'git_commit': '$GIT_COMMIT',
+              "bot_dir": bot_dir or "NOT_FOUND",
+              "bot_active": bot_active == "true",
+              "bot_pid": bot_pid,
+              "uptime_since": uptime,
+              "disk": disk,
+              "memory": mem,
+              "hostname": os.uname().nodename,
+              "git_commit": git_commit,
+              "live_status": live_status,
+              "journal_tail": os.environ.get("JOURNAL", "")[:2000],
+              "bot_log_tail": os.environ.get("BOT_LOG", "")[:2000],
+              "cron_log_tail": os.environ.get("CRON_LOG", "")[:2000],
           }))
-          " 2>/dev/null || echo "{\"bot_dir\":\"$BOT_DIR\",\"bot_active\":$BOT_ACTIVE,\"hostname\":\"$(hostname)\"}"
+          SERVPY
           echo "==SERVER_END=="
 
           echo "==TRADING_START=="
