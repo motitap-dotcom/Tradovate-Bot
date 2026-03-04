@@ -408,6 +408,7 @@ class TradovateAPI:
         # Retry browser auth up to 2 times (page load can be flaky)
         for attempt in range(1, 3):
             logger.info("Attempting browser-based login at %s (attempt %d/2)...", trader_url, attempt)
+            browser = None
             try:
                 with sync_playwright() as pw:
                     launch_args = {
@@ -417,15 +418,16 @@ class TradovateAPI:
                             "--disable-blink-features=AutomationControlled",
                             "--disable-dev-shm-usage",
                             "--disable-gpu",
-                            "--single-process",
-                            "--no-zygote",
                             "--disable-extensions",
+                            "--disable-software-rasterizer",
+                            "--disable-background-networking",
                             "--js-flags=--max-old-space-size=256",
                         ],
                     }
                     if proxy_cfg:
                         launch_args["proxy"] = proxy_cfg
 
+                    logger.info("Launching Chromium (headless)...")
                     browser = pw.chromium.launch(**launch_args)
                     ctx = browser.new_context(
                         viewport={"width": 1280, "height": 720},
@@ -442,34 +444,54 @@ class TradovateAPI:
                     page = ctx.new_page()
                     page.on("response", _on_response)
 
+                    logger.info("Loading %s ...", trader_url)
                     page.goto(trader_url, timeout=60000, wait_until="domcontentloaded")
+                    logger.info("Page loaded. Title: %s. Waiting for login form...", page.title())
                     page.wait_for_timeout(10000)
 
                     # Fill login form
                     text_input = page.query_selector('input[type="text"]')
                     pass_input = page.query_selector('input[type="password"]')
                     if text_input and pass_input:
+                        logger.info("Login form found. Filling credentials...")
                         text_input.fill(config.TRADOVATE_USERNAME)
                         pass_input.fill(config.TRADOVATE_PASSWORD)
                         page.wait_for_timeout(500)
 
                         # Click login button
+                        clicked = False
                         for btn in page.query_selector_all("button"):
-                            if "login" in (btn.inner_text() or "").lower():
+                            btn_text = (btn.inner_text() or "").strip().lower()
+                            if "login" in btn_text or "sign in" in btn_text or "log in" in btn_text:
+                                logger.info("Clicking login button: '%s'", btn_text)
                                 btn.click()
+                                clicked = True
                                 break
-                        else:
+                        if not clicked:
+                            logger.info("No login button found, pressing Enter")
                             page.keyboard.press("Enter")
 
-                        # Wait for token capture (up to 45 seconds)
-                        for _ in range(45):
+                        # Wait for token capture (up to 60 seconds)
+                        logger.info("Waiting for auth response (up to 60s)...")
+                        for i in range(60):
                             if captured:
                                 break
                             page.wait_for_timeout(1000)
+                            if i == 15:
+                                # Log page state at 15s for debugging
+                                cur_url = page.url
+                                logger.info("Still waiting... current URL: %s", cur_url)
                     else:
-                        logger.warning("Browser auth: login form not found on page")
+                        logger.warning(
+                            "Browser auth: login form not found. URL: %s, Title: %s",
+                            page.url, page.title(),
+                        )
+                        # Try to find any input fields for debugging
+                        inputs = page.query_selector_all("input")
+                        logger.info("Found %d input elements on page", len(inputs))
 
                     browser.close()
+                    browser = None
 
                 if captured and "accessToken" in captured:
                     logger.info("Browser auth succeeded! userId=%s", captured.get("userId"))
@@ -477,10 +499,15 @@ class TradovateAPI:
                 logger.warning("Browser auth attempt %d: no token captured", attempt)
             except Exception as e:
                 logger.warning("Browser auth attempt %d failed: %s", attempt, e)
+                if browser:
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
 
             if attempt < 2:
                 import time as _t
-                _t.sleep(5)
+                _t.sleep(10)
 
         return None
 
