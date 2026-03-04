@@ -80,9 +80,22 @@ jobs:
           ssh -i ~/.ssh/vps_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
             "${SSH_USER}@${SSH_HOST}" 'bash -s' > /tmp/ssh_output.txt 2>&1 <<'REMOTE_EOF'
           BOT_DIR=""
-          for d in /root/tradovate-bot /home/*/tradovate-bot /opt/tradovate-bot; do
+          for d in /root/tradovate-bot /root/Tradovate-Bot \
+                   /home/*/tradovate-bot /home/*/Tradovate-Bot \
+                   /opt/tradovate-bot ~/tradovate-bot ~/Tradovate-Bot; do
             [ -d "$d" ] && BOT_DIR="$d" && break
           done
+          # Also try: find systemd service WorkingDirectory
+          if [ -z "$BOT_DIR" ]; then
+            SVC_DIR=$(systemctl show tradovate-bot --property=WorkingDirectory --value 2>/dev/null)
+            [ -n "$SVC_DIR" ] && [ -d "$SVC_DIR" ] && BOT_DIR="$SVC_DIR"
+          fi
+          # Also try: find the process cwd
+          if [ -z "$BOT_DIR" ]; then
+            BOT_PID_TMP=$(systemctl show tradovate-bot --property=MainPID --value 2>/dev/null)
+            [ -n "$BOT_PID_TMP" ] && [ "$BOT_PID_TMP" != "0" ] && \
+              BOT_DIR=$(readlink -f "/proc/$BOT_PID_TMP/cwd" 2>/dev/null)
+          fi
 
           echo "==TOKEN_START=="
           if [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/.tradovate_token.json" ]; then
@@ -125,7 +138,7 @@ jobs:
             'live_status': $LIVE_STATUS,
             'git_commit': '$GIT_COMMIT',
           }))
-          " 2>/dev/null || echo '{"bot_dir":"$BOT_DIR","bot_active":'$BOT_ACTIVE',"hostname":"'$(hostname)'"}'
+          " 2>/dev/null || echo "{\"bot_dir\":\"$BOT_DIR\",\"bot_active\":$BOT_ACTIVE,\"hostname\":\"$(hostname)\"}"
           echo "==SERVER_END=="
 
           echo "==TRADING_START=="
