@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-04T07:10:49Z",
+  "timestamp": "2026-03-04T07:26:07Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -10,7 +10,7 @@
   "server": null,
   "trading_activity": null,
   "errors": [
-    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+    "Auth from GH Actions: Incorrect username or password. Please try again, noting that passwords are case-sensitive. (expected \u2014 GH runners need CAPTCHA. Configure SERVER_HOST + SERVER_SSH_KEY to check bot on server)"
   ],
   "debug": {
     "ssh_available": "false",
