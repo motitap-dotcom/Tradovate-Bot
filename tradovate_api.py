@@ -1332,7 +1332,7 @@ class RestMarketDataPoller:
                     c = closes[i] if i < len(closes) else None
                     h = highs[i] if i < len(highs) else None
                     l = lows[i] if i < len(lows) else None
-                    v = volumes[i] if i < len(volumes) else 0
+                    v = (volumes[i] or 0) if i < len(volumes) else 0
 
                     if c is None or h is None or l is None:
                         continue

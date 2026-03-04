@@ -20,6 +20,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -93,6 +94,13 @@ class TradovateBot:
         # Active strategy instances
         self.strategies: dict[str, object] = {}
 
+        # Track open positions per symbol to prevent contradictory orders
+        # Maps symbol -> {"direction": "Buy"/"Sell", "qty": int, "order_id": int}
+        self._open_positions: dict[str, dict] = {}
+
+        # Thread lock for shared state (risk manager, trades_today, _open_positions)
+        self._lock = threading.Lock()
+
         # Track daily trades for logging (restored from journal on startup)
         self.trades_today: list[dict] = []
         self._restore_trades_from_journal()
@@ -110,17 +118,28 @@ class TradovateBot:
         today_str = _date.today().isoformat()
         for trade in self.journal.trades:
             if trade.get("date") == today_str and trade.get("status") == "open":
+                sym = trade.get("symbol", "")
+                direction = trade.get("direction", "")
+                qty = trade.get("qty", 0)
                 self.trades_today.append({
                     "time": trade.get("entry_time", ""),
-                    "symbol": trade.get("symbol", ""),
-                    "direction": trade.get("direction", ""),
-                    "qty": trade.get("qty", 0),
+                    "symbol": sym,
+                    "direction": direction,
+                    "qty": qty,
                     "stop": trade.get("stop_loss", 0),
                     "target": trade.get("take_profit", 0),
                     "reason": trade.get("reason", ""),
                     "order_id": None,
                     "journal_id": trade.get("id"),
+                    "_placed_at": 0,  # old trade, no grace period
                 })
+                # Also track in _open_positions to prevent contradictory orders
+                if sym and direction:
+                    self._open_positions[sym] = {
+                        "direction": direction,
+                        "qty": qty,
+                        "journal_id": trade.get("id"),
+                    }
         if self.trades_today:
             logger.info("Restored %d open trades from journal for today", len(self.trades_today))
 
@@ -489,7 +508,7 @@ class TradovateBot:
 
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
+        volume = data.get("trade", {}).get("size", 0) or 0
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -501,10 +520,14 @@ class TradovateBot:
         if strategy is None:
             return
 
-        # Check if we can trade
-        ok, reason = self.risk.can_trade()
-        if not ok:
-            return
+        # Quick pre-check (don't bother running strategy if we can't trade)
+        with self._lock:
+            ok, reason = self.risk.can_trade()
+            if not ok:
+                return
+            # Skip if we already have an open position for this symbol
+            if symbol in self._open_positions:
+                return
 
         # Check time constraints
         current = now_et()
@@ -532,58 +555,81 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
-        # Global cooldown: prevent rapid-fire orders across all symbols
-        elapsed = time.time() - self._last_order_time
-        if elapsed < self._min_order_gap_seconds:
+        with self._lock:
+            # Global cooldown: prevent rapid-fire orders across all symbols
+            elapsed = time.time() - self._last_order_time
+            if elapsed < self._min_order_gap_seconds:
+                logger.info(
+                    "Signal for %s deferred: global cooldown (%ds remaining)",
+                    signal.symbol, int(self._min_order_gap_seconds - elapsed),
+                )
+                return
+
+            # Block contradictory orders: don't open opposite direction while position is open
+            existing = self._open_positions.get(signal.symbol)
+            if existing:
+                if existing["direction"] != signal.direction.value:
+                    logger.warning(
+                        "Signal BLOCKED: %s %s would contradict open %s position. Skipping.",
+                        signal.direction.value, signal.symbol, existing["direction"],
+                    )
+                    return
+                else:
+                    logger.info(
+                        "Signal skipped: already have open %s position for %s",
+                        existing["direction"], signal.symbol,
+                    )
+                    return
+
+            ok, reason = self.risk.can_trade()
+            if not ok:
+                logger.warning("Signal rejected by risk manager: %s", reason)
+                return
+
+            # Calculate position size
+            qty = self.risk.calculate_position_size(signal.symbol)
+            if qty <= 0:
+                logger.warning("Position size = 0 for %s. Signal skipped.", signal.symbol)
+                return
+            signal.qty = qty
+
+            contract_name = self.contract_map.get(signal.symbol)
+            if not contract_name:
+                logger.error("No contract mapping for %s", signal.symbol)
+                return
+
             logger.info(
-                "Signal for %s deferred: global cooldown (%ds remaining)",
-                signal.symbol, int(self._min_order_gap_seconds - elapsed),
+                "SIGNAL: %s %s %d @ market | SL=%.4f TP=%.4f | %s",
+                signal.direction.value,
+                signal.symbol,
+                signal.qty,
+                signal.stop_loss,
+                signal.take_profit,
+                signal.reason,
             )
-            return
 
-        ok, reason = self.risk.can_trade()
-        if not ok:
-            logger.warning("Signal rejected by risk manager: %s", reason)
-            return
+            if self.dry_run:
+                logger.info("[DRY RUN] Order would be placed: %s", signal)
+                self.trades_today.append(
+                    {
+                        "time": now_et().isoformat(),
+                        "symbol": signal.symbol,
+                        "direction": signal.direction.value,
+                        "qty": signal.qty,
+                        "stop": signal.stop_loss,
+                        "target": signal.take_profit,
+                        "reason": signal.reason,
+                    }
+                )
+                return
 
-        # Calculate position size
-        qty = self.risk.calculate_position_size(signal.symbol)
-        if qty <= 0:
-            logger.warning("Position size = 0 for %s. Signal skipped.", signal.symbol)
-            return
-        signal.qty = qty
+            # Mark position as open BEFORE placing order (prevents race with another signal)
+            self._open_positions[signal.symbol] = {
+                "direction": signal.direction.value,
+                "qty": signal.qty,
+            }
 
-        contract_name = self.contract_map.get(signal.symbol)
-        if not contract_name:
-            logger.error("No contract mapping for %s", signal.symbol)
-            return
-
-        logger.info(
-            "SIGNAL: %s %s %d @ market | SL=%.4f TP=%.4f | %s",
-            signal.direction.value,
-            signal.symbol,
-            signal.qty,
-            signal.stop_loss,
-            signal.take_profit,
-            signal.reason,
-        )
-
-        if self.dry_run:
-            logger.info("[DRY RUN] Order would be placed: %s", signal)
-            self.trades_today.append(
-                {
-                    "time": now_et().isoformat(),
-                    "symbol": signal.symbol,
-                    "direction": signal.direction.value,
-                    "qty": signal.qty,
-                    "stop": signal.stop_loss,
-                    "target": signal.take_profit,
-                    "reason": signal.reason,
-                }
-            )
-            return
-
-        # Place bracket order via API
+        # Place bracket order via API (outside lock — this is a slow network call)
         result = self.api.place_bracket_order(
             symbol=contract_name,
             action=signal.direction.value,
@@ -594,42 +640,48 @@ class TradovateBot:
             order_type="Market",
         )
 
-        if result:
-            self._last_order_time = time.time()
-            self.risk.register_open(signal.qty)
+        with self._lock:
+            if result:
+                self._last_order_time = time.time()
+                self.risk.register_open(signal.qty)
 
-            # Try to get actual fill price from the order
-            fill_price = self._get_fill_price(result.get("orderId"))
+                # Try to get actual fill price from the order
+                fill_price = self._get_fill_price(result.get("orderId"))
 
-            trade_id = self.journal.record_entry(
-                symbol=signal.symbol,
-                direction=signal.direction.value,
-                entry_price=fill_price or signal.entry_price or 0,
-                qty=signal.qty,
-                strategy=type(self.strategies.get(signal.symbol, "")).__name__,
-                reason=signal.reason,
-                stop_loss=signal.stop_loss,
-                take_profit=signal.take_profit,
-            )
-            self.trades_today.append(
-                {
-                    "time": now_et().isoformat(),
-                    "symbol": signal.symbol,
-                    "direction": signal.direction.value,
-                    "qty": signal.qty,
-                    "stop": signal.stop_loss,
-                    "target": signal.take_profit,
-                    "reason": signal.reason,
-                    "order_id": result.get("orderId"),
-                    "journal_id": trade_id,
-                }
-            )
-            logger.info("Order placed: orderId=%s fill=%.2f (journal: %s)", result.get("orderId"), fill_price or 0, trade_id)
+                trade_id = self.journal.record_entry(
+                    symbol=signal.symbol,
+                    direction=signal.direction.value,
+                    entry_price=fill_price or signal.entry_price or 0,
+                    qty=signal.qty,
+                    strategy=type(self.strategies.get(signal.symbol, "")).__name__,
+                    reason=signal.reason,
+                    stop_loss=signal.stop_loss,
+                    take_profit=signal.take_profit,
+                )
+                self._open_positions[signal.symbol]["order_id"] = result.get("orderId")
+                self._open_positions[signal.symbol]["journal_id"] = trade_id
+                self.trades_today.append(
+                    {
+                        "time": now_et().isoformat(),
+                        "symbol": signal.symbol,
+                        "direction": signal.direction.value,
+                        "qty": signal.qty,
+                        "stop": signal.stop_loss,
+                        "target": signal.take_profit,
+                        "reason": signal.reason,
+                        "order_id": result.get("orderId"),
+                        "journal_id": trade_id,
+                        "_placed_at": time.time(),
+                    }
+                )
+                logger.info("Order placed: orderId=%s fill=%.2f (journal: %s)", result.get("orderId"), fill_price or 0, trade_id)
 
-            # Persist state after every trade to survive restarts
-            self._persist_state()
-        else:
-            logger.error("Order placement failed for %s", signal.symbol)
+                # Persist state after every trade to survive restarts
+                self._persist_state()
+            else:
+                logger.error("Order placement failed for %s", signal.symbol)
+                # Remove the pre-reserved position since order failed
+                self._open_positions.pop(signal.symbol, None)
 
     # ─────────────────────────────────────────
     # Fill price capture
@@ -688,11 +740,14 @@ class TradovateBot:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
                     # Record force-close exits in journal
-                    for t in self.trades_today:
-                        if t.get("journal_id"):
-                            self.journal.record_exit_by_symbol(
-                                t["symbol"], 0, 0, exit_reason="force_close"
-                            )
+                    with self._lock:
+                        for t in self.trades_today:
+                            if t.get("journal_id") and not t.get("_closed"):
+                                self.journal.record_exit_by_symbol(
+                                    t["symbol"], 0, 0, exit_reason="force_close"
+                                )
+                                t["_closed"] = True
+                        self._open_positions.clear()
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -812,17 +867,18 @@ class TradovateBot:
         self.stop()
 
     def _sync_fills(self):
-        """Check positions and fills to close journal trades and update contract count."""
+        """Check positions and fills to close journal trades and update contract count.
+
+        Uses the API as the authoritative source for open positions. Detects when
+        a bracket order's SL/TP has been hit (position goes flat) and records the
+        actual realized P&L from the account balance change.
+        """
         try:
             positions = self.api.get_positions()
 
             # Build contractId -> base symbol mapping from our contract_map
-            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
-            # We need to match position contractId (int) to our symbols.
-            # Resolve this once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
-            # Lazily build the mapping from API contract lookups
             for symbol, contract_name in self.contract_map.items():
                 if symbol not in [v for v in self._contract_id_to_symbol.values()]:
                     contract = self.api.find_contract(contract_name)
@@ -831,7 +887,6 @@ class TradovateBot:
 
             # Count total open contracts from API (authoritative)
             total_open = 0
-            # Track which base symbols have open positions
             open_base_symbols = set()
             for p in positions:
                 net = abs(p.get("netPos", 0))
@@ -842,26 +897,102 @@ class TradovateBot:
                     if base_sym:
                         open_base_symbols.add(base_sym)
 
-            self.risk.open_contracts = total_open
+            with self._lock:
+                # Set open_contracts from API (authoritative) — do NOT also call register_close
+                self.risk.open_contracts = total_open
 
-            # Close journal trades where position is now flat
-            for trade_info in self.trades_today:
-                journal_id = trade_info.get("journal_id")
-                sym = trade_info.get("symbol")
-                if not journal_id or trade_info.get("_closed"):
-                    continue
+                # Close journal trades where position is now flat
+                for trade_info in self.trades_today:
+                    journal_id = trade_info.get("journal_id")
+                    sym = trade_info.get("symbol")
+                    if not journal_id or trade_info.get("_closed"):
+                        continue
 
-                if sym not in open_base_symbols:
-                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
-                    self.journal.record_exit_by_symbol(
-                        sym, 0, 0, exit_reason="bracket_fill"
-                    )
-                    self.risk.register_close(trade_info.get("qty", 1))
-                    trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    # Grace period: don't mark a trade as closed within 60s of placement.
+                    # This prevents a race where _sync_fills runs before the entry order
+                    # fills or before the OCO bracket is placed.
+                    placed_at = trade_info.get("_placed_at", 0)
+                    if placed_at and (time.time() - placed_at) < 60:
+                        continue
+
+                    if sym not in open_base_symbols:
+                        # Position is flat — trade was closed (by SL/TP/manual)
+                        # Try to get actual P&L from fills
+                        actual_pnl = self._get_trade_pnl(trade_info)
+                        exit_price = self._get_last_fill_price(trade_info)
+
+                        self.journal.record_exit_by_symbol(
+                            sym, exit_price, actual_pnl, exit_reason="bracket_fill"
+                        )
+                        trade_info["_closed"] = True
+                        # Remove from open positions tracker
+                        self._open_positions.pop(sym, None)
+                        logger.info(
+                            "Position closed for %s (flat) | P&L=%.2f | exit=%.2f",
+                            sym, actual_pnl, exit_price,
+                        )
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
+
+    def _get_trade_pnl(self, trade_info: dict) -> float:
+        """Try to calculate realized P&L for a closed trade from API fills."""
+        try:
+            fills = self.api.get_fills()
+            order_id = trade_info.get("order_id")
+            if not fills or not order_id:
+                return 0.0
+
+            # Find fills related to this trade's orders
+            entry_fill_price = 0.0
+            exit_fill_price = 0.0
+            qty = trade_info.get("qty", 1)
+            direction = trade_info.get("direction", "Buy")
+
+            for fill in fills:
+                if fill.get("orderId") == order_id:
+                    entry_fill_price = fill.get("price", 0)
+
+            # If we can't find fills, estimate from balance change
+            if not entry_fill_price:
+                return 0.0
+
+            # Get the most recent fill for the same contract (the SL/TP exit)
+            contract_name = self.contract_map.get(trade_info.get("symbol", ""))
+            for fill in reversed(fills):
+                foid = fill.get("orderId")
+                if foid and foid != order_id:
+                    exit_fill_price = fill.get("price", 0)
+                    break
+
+            if entry_fill_price and exit_fill_price:
+                spec = config.CONTRACT_SPECS.get(trade_info.get("symbol", ""), {})
+                pv = spec.get("point_value", 1)
+                if direction == "Buy":
+                    return (exit_fill_price - entry_fill_price) * qty * pv
+                else:
+                    return (entry_fill_price - exit_fill_price) * qty * pv
+
+        except Exception as e:
+            logger.debug("Could not calculate trade P&L: %s", e)
+        return 0.0
+
+    def _get_last_fill_price(self, trade_info: dict) -> float:
+        """Get exit fill price for a closed trade."""
+        try:
+            fills = self.api.get_fills()
+            order_id = trade_info.get("order_id")
+            if not fills:
+                return 0.0
+            # Return the most recent fill price (likely the SL/TP fill)
+            contract_name = self.contract_map.get(trade_info.get("symbol", ""))
+            for fill in reversed(fills):
+                foid = fill.get("orderId")
+                if foid and foid != order_id:
+                    return fill.get("price", 0)
+        except Exception:
+            pass
+        return 0.0
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
@@ -878,7 +1009,8 @@ class TradovateBot:
                 balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
                 if balance is not None:
                     unrealized = snapshot.get("openPnL", 0.0)
-                    self.risk.update_balance(balance, unrealized)
+                    with self._lock:
+                        self.risk.update_balance(balance, unrealized)
                 else:
                     logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
             else:
@@ -930,6 +1062,7 @@ class TradovateBot:
                 "environment": config.ENVIRONMENT,
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
+                "open_positions": {sym: pos.get("direction") for sym, pos in self._open_positions.items()},
                 "data_source": "websocket" if isinstance(self.md_stream, MarketDataStream) else "rest_polling",
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
