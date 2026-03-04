@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-04T08:15:18Z",
+  "timestamp": "2026-03-04T08:17:27Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -10,14 +10,14 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "1911745",
-    "uptime_since": "Wed 2026-03-04 08:07:19 UTC",
+    "bot_pid": "1913724",
+    "uptime_since": "Wed 2026-03-04 08:15:56 UTC",
     "disk": "12%",
-    "memory": "1241MB/7941MB (16%)",
+    "memory": "1249MB/7941MB (16%)",
     "hostname": "vmi3096165",
-    "git_commit": "5e7ea8a Auto-merge claude/fix-bot-server-connection-DJ7iK \u2192 main",
+    "git_commit": "579a58c Auto-merge claude/fix-bot-server-connection-DJ7iK \u2192 main",
     "live_status": {},
-    "journal_tail": "Mar 04 07:57:45 vmi3096165 systemd[1]: Stopping tradovate-bot.service - Tradovate Trading Bot...\nMar 04 07:58:06 vmi3096165 systemd[1]: tradovate-bot.service: Deactivated successfully.\nMar 04 07:58:06 vmi3096165 systemd[1]: Stopped tradovate-bot.service - Tradovate Trading Bot.\nMar 04 07:58:06 vmi3096165 systemd[1]: tradovate-bot.service: Consumed 11.825s CPU time, 576.8M memory peak, 0B memory swap peak.\nMar 04 07:58:06 vmi3096165 systemd[1]: Started tradovate-bot.service - Tradovate Trading Bot.\nMar 04 08:01:09 vmi3096165 systemd[1]: Stopping tradovate-bot.service - Tradovate Trading Bot...\nMar 04 08:01:11 vmi3096165 systemd[1]: tradovate-bot.service: Deactivated successfully.\nMar 04 08:01:11 vmi3096165 systemd[1]: Stopped tradovate-bot.service - Tradovate Trading Bot.\nMar 04 08:01:11 vmi3096165 systemd[1]: tradovate-bot.service: Consumed 5.799s CPU time, 33.9M memory peak, 0B memory swap peak.\nMar 04 08:01:11 vmi3096165 systemd[1]: Started tradovate-bot.service - Tradovate Trading Bot.\nMar 04 08:03:52 vmi3096165 systemd[1]: Stopping tradovate-bot.service - Tradovate Trading Bot...\nMar 04 08:04:15 vmi3096165 systemd[1]: tradovate-bot.service: Deactivated successfully.\nMar 04 08:04:15 vmi3096165 systemd[1]: Stopped tradovate-bot.service - Tradovate Trading Bot.\nMar 04 08:04:15 vmi3096165 systemd[1]: tradovate-bot.service: Consumed 5.386s CPU time, 34.8M memory peak, 0B memory swap peak.\nMar 04 08:04:15 vmi3096165 systemd[1]: Started tradovate-bot.service - Tradovate Trading Bot.\nMar 04 08:06:51 vmi3096165 systemd[1]: Stopping tradovate-bot.service - Tradovate Trading Bot...\nMar 04 08:07:19 vmi3096165 systemd[1]: tradovate-bot.service: Deactivated successfully.\nMar 04 08:07:19 vmi3096165 systemd[1]: Stopped tradovate-bot.service - Tradovate Trading Bot.\nMar 04 08:07:19 vmi3096165 systemd[1]: tradovate-bot.service: Consumed 6.279s CPU time, 33.9M memory peak, 0B memory swap peak.\nMar 04 08:07:19 vmi3096165 systemd[1]: Started tradovate-bot.service - Tradovate Trading",
+    "journal_tail": "tradovate-bot.service: Killing process 1761476 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761484 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761499 (exe) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761500 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761501 (exe) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761502 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761503 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761525 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761558 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761620 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761621 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761622 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761625 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Killing process 1761627 (chrome-headless) with signal SIGKILL.\ntradovate-bot.service: Failed to kill control group /system.slice/tradovate-bot.service, ignoring: Invalid argument\ntradovate-bot.service: Main process exited, code=killed, status=9/KILL\ntradovate-bot.service: Failed with result 'oom-kill'.\ntradovate-bot.service: Consumed 24min 238ms CPU time, 6.6G memory peak, 0B memory swap peak.\ntradovate-bot.service: Scheduled restart job, restart counter is at 24.\nStarted tradovate-bot.service - Tradovate Trading Bot.\nStopping tradovate-bot.service - Tradovate Trading Bot...\ntradovate-bot.service: Deactivated successfully.\nStopped tradovate-bot.service - Tradovate Trading Bot.\ntradovate-bot.service: Consumed 5min 28.660s CPU time, 53.6M memory peak, 0B memory swap peak.\nStarted tradovate-bot.service - Tradovate Trading Bot.\nStopping tradovate-bot.service - Tradovate Trad",
     "bot_log_tail": "",
     "cron_log_tail": "  Token: NOT FOUND\n\n[3/5] Account & Balance\n  Skipped (no valid token)\n\n[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: NOT FOUND\n  Disk: 12% | Memory: 15.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar  4 08:15:03 UTC 2026] Status: bot_active=true, pid=1911745\n[Wed Mar  4 08:15:03 UTC 2026] No GH_PAT set \u2014 status written locally only."
   },
@@ -47,7 +47,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 3414,
+    "ssh_output_len": 3420,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
