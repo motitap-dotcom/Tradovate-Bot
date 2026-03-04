@@ -202,6 +202,19 @@ class TradovateBot:
         day_pnl to be wildly wrong and immediately locking trading.
         """
         try:
+            # Pre-check: account_id must be set for get_cash_balance to work
+            if self.api.account_id is None:
+                logger.error(
+                    "Cannot init risk from API: account_id is None! "
+                    "Check _fetch_account_id and endpoint (base_url=%s)",
+                    self.api.base_url,
+                )
+                return
+
+            logger.info(
+                "Fetching initial balance for account_id=%s on %s...",
+                self.api.account_id, self.api.base_url,
+            )
             snapshot = self.api.get_cash_balance()
             if not snapshot or snapshot.get("errorText"):
                 logger.warning("Could not fetch initial balance: %s", snapshot)
@@ -736,6 +749,9 @@ class TradovateBot:
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
         try:
+            if self.api.account_id is None:
+                logger.warning("Balance sync skipped: account_id is None")
+                return
             snapshot = self.api.get_cash_balance()
             if snapshot:
                 if snapshot.get("errorText"):
@@ -748,6 +764,8 @@ class TradovateBot:
                     self.risk.update_balance(balance, unrealized)
                 else:
                     logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
+            else:
+                logger.debug("get_cash_balance returned None (account_id=%s)", self.api.account_id)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 

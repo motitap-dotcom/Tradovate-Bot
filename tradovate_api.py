@@ -604,12 +604,45 @@ class TradovateAPI:
         }
 
     def _fetch_account_id(self):
-        """Get the first account ID."""
+        """Get the first account ID. Tries alternate endpoint if none found."""
         accounts = self.get_accounts()
+        if not accounts:
+            # Challenge accounts (e.g. FundedNext) live on demo even if auth
+            # succeeded on live.  Try the other endpoint before giving up.
+            if "demo" in self.base_url:
+                alt = "https://live.tradovateapi.com/v1"
+            else:
+                alt = "https://demo.tradovateapi.com/v1"
+            logger.warning(
+                "No accounts on %s — trying %s...",
+                self.base_url.split("/")[2], alt.split("/")[2],
+            )
+            try:
+                resp = requests.get(
+                    f"{alt}/account/list", headers=self._headers(), timeout=30
+                )
+                if resp.status_code == 200:
+                    accounts = resp.json()
+                    if accounts:
+                        # Switch base_url to the endpoint that has the account
+                        old_url = self.base_url
+                        self.base_url = alt
+                        logger.info(
+                            "Found accounts on %s — switching base_url from %s",
+                            alt.split("/")[2], old_url.split("/")[2],
+                        )
+            except requests.RequestException as e:
+                logger.warning("Alternate endpoint account lookup failed: %s", e)
+
         if accounts:
             self.account_id = accounts[0]["id"]
             self.account_spec = accounts[0].get("name", self.account_spec)
             logger.info("Account ID: %s (%s)", self.account_id, self.account_spec)
+        else:
+            logger.error(
+                "No accounts found on any endpoint! account_id remains None. "
+                "Balance sync and order placement will not work."
+            )
 
     # ─────────────────────────────────────────
     # Account & Position queries
