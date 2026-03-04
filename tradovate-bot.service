@@ -9,7 +9,7 @@ StartLimitIntervalSec=600
 Type=simple
 WorkingDirectory=/root/tradovate-bot
 EnvironmentFile=/root/tradovate-bot/.env
-ExecStart=/root/tradovate-bot/venv/bin/python bot.py --live
+ExecStart=/root/tradovate-bot/venv/bin/python bot.py
 ExecStopPost=/bin/bash /root/tradovate-bot/alert.sh tradovate-bot
 
 # Always restart — the bot has its own daily sleep loop.
