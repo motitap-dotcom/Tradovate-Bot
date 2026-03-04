@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-04T08:00:56Z",
+  "timestamp": "2026-03-04T08:03:35Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -8,7 +8,7 @@
   "positions": [],
   "orders": [],
   "server": {
-    "bot_dir": "$BOT_DIR",
+    "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
     "hostname": "vmi3096165"
   },
@@ -38,7 +38,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 466,
+    "ssh_output_len": 477,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
