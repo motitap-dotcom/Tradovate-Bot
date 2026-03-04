@@ -72,9 +72,28 @@ jobs:
           username: ${{ secrets.VPS_USER || vars.SERVER_USER || secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
           password: ${{ secrets.VPS_PASSWORD }}
+          capture_command_output: true
           script: |
+            # Try multiple possible bot locations
             BOT_DIR="${{ env.BOT_DIR }}"
-            cd "$BOT_DIR" 2>/dev/null || exit 1
+            if [ ! -d "$BOT_DIR" ]; then
+              for d in /root/tradovate-bot /home/*/tradovate-bot /opt/tradovate-bot; do
+                [ -d "$d" ] && BOT_DIR="$d" && break
+              done
+            fi
+            if [ ! -d "$BOT_DIR" ]; then
+              echo "==TOKEN_START=="
+              echo "{}"
+              echo "==TOKEN_END=="
+              echo "==SERVER_START=="
+              echo "{\"error\": \"BOT_DIR not found\", \"searched\": \"${{ env.BOT_DIR }}, /root/tradovate-bot, /home/*/tradovate-bot\", \"hostname\": \"$(hostname)\", \"whoami\": \"$(whoami)\", \"home_ls\": \"$(ls /root/ 2>/dev/null | head -10)\"}"
+              echo "==SERVER_END=="
+              echo "==TRADING_START=="
+              echo "{}"
+              echo "==TRADING_END=="
+              exit 0
+            fi
+            cd "$BOT_DIR"
 
             echo "==TOKEN_START=="
             cat .tradovate_token.json 2>/dev/null || echo "{}"
