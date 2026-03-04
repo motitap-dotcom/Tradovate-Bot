@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-04T07:57:29Z",
+  "timestamp": "2026-03-04T08:00:56Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -7,15 +7,38 @@
   "balance": {},
   "positions": [],
   "orders": [],
-  "server": null,
-  "trading_activity": null,
+  "server": {
+    "bot_dir": "$BOT_DIR",
+    "bot_active": true,
+    "hostname": "vmi3096165"
+  },
+  "trading_activity": {
+    "live_status": {},
+    "token_status": "missing",
+    "token_expiry": "",
+    "recent_signals": [],
+    "recent_trades": [],
+    "bot_log_tail": [
+      ""
+    ],
+    "journal_summary": {
+      "total_trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "win_rate": 0,
+      "total_pnl": 0
+    },
+    "trading_active": false,
+    "websocket_connected": false,
+    "errors_in_log": []
+  },
   "errors": [
     "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
   ],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 0,
+    "ssh_output_len": 466,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
