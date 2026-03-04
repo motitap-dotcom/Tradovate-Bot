@@ -207,6 +207,10 @@ class TradovateBot:
         # Restore persisted state (trade counts, breakout flags) from previous run today
         self._restore_state()
 
+        # One-time diagnostic: dump fills and positions at startup
+        if not self.dry_run:
+            self._startup_diagnostic()
+
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
             self.md_stream = self._start_market_data()
@@ -233,6 +237,51 @@ class TradovateBot:
 
         self._print_summary()
         logger.info("Bot stopped.")
+
+    # ─────────────────────────────────────────
+    # Startup diagnostic
+    # ─────────────────────────────────────────
+
+    def _startup_diagnostic(self):
+        """Log diagnostic info at startup to help debug trading issues."""
+        try:
+            # Dump fills
+            fills = self.api.get_fills()
+            logger.info("DIAG: %d fills found", len(fills) if fills else 0)
+            for f in (fills or [])[-10:]:
+                logger.info(
+                    "DIAG fill: orderId=%s price=%s qty=%s contractId=%s timestamp=%s action=%s",
+                    f.get("orderId"), f.get("price"), f.get("qty"),
+                    f.get("contractId"), f.get("timestamp"), f.get("action"),
+                )
+
+            # Dump positions
+            positions = self.api.get_positions()
+            logger.info("DIAG: %d positions", len(positions) if positions else 0)
+            for p in (positions or []):
+                logger.info(
+                    "DIAG position: contractId=%s netPos=%s avgPrice=%s",
+                    p.get("contractId"), p.get("netPos"), p.get("avgPrice"),
+                )
+
+            # Dump orders (working)
+            orders = self.api._get("/order/list") or []
+            working = [o for o in orders if o.get("ordStatus") in ("Working", "Accepted")]
+            logger.info("DIAG: %d total orders, %d working", len(orders), len(working))
+            for o in orders[-10:]:
+                logger.info(
+                    "DIAG order: id=%s status=%s action=%s qty=%s filled=%s price=%s type=%s symbol=%s",
+                    o.get("orderId"), o.get("ordStatus"), o.get("action"),
+                    o.get("orderQty"), o.get("filledQty"), o.get("price", o.get("stopPrice")),
+                    o.get("orderType"), o.get("contractId"),
+                )
+
+            # Cash balance
+            snapshot = self.api.get_cash_balance()
+            if snapshot:
+                logger.info("DIAG cashBalance: %s", snapshot)
+        except Exception as e:
+            logger.error("DIAG error: %s", e)
 
     # ─────────────────────────────────────────
     # Risk manager initialization from API
@@ -1073,7 +1122,7 @@ class TradovateBot:
                 if balance is not None:
                     unrealized = snapshot.get("openPnL", 0.0)
                     realized_api = snapshot.get("realizedPnL")
-                    logger.debug(
+                    logger.info(
                         "CashBalance: totalCash=%.2f netLiq=%s openPnL=%.2f realizedPnL=%s | raw=%s",
                         balance, snapshot.get("netLiq"), unrealized, realized_api,
                         {k: v for k, v in snapshot.items() if k not in ("timestamp",)},
