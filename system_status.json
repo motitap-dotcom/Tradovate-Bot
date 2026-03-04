@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-04T10:31:32Z",
+  "timestamp": "2026-03-04T11:08:42Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -9,6 +9,6 @@
   "orders": [],
   "server": null,
   "errors": [
-    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+    "Web auth blocked (CAPTCHA/rate-limit from GH Actions IP). Fix: configure SERVER_HOST variable + SERVER_SSH_KEY secret in repo settings."
   ]
 }
