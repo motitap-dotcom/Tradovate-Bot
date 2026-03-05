@@ -32,6 +32,7 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+from status_reporter import write_status
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -584,6 +585,15 @@ class TradovateBot:
 
                 # Write live status file for external monitoring
                 self._write_live_status()
+
+                # Write status to /var/bots/ for centralized monitoring
+                last_trade = self.trades_today[-1] if self.trades_today else None
+                write_status(
+                    bot_name="tradovate",
+                    is_active=self.running,
+                    balance=status["balance"],
+                    last_trade=last_trade,
+                )
 
                 time.sleep(30)  # Status update every 30 seconds
 
