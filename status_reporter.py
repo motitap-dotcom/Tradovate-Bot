@@ -18,16 +18,28 @@ ET = ZoneInfo("America/New_York")
 STATUS_PATH = Path("/var/bots/Tradovate_status.json")
 
 
-def write_status(risk_status: dict, *, contract_map: dict | None = None, dry_run: bool = False):
+def write_status(
+    risk_status: dict,
+    *,
+    contract_map: dict | None = None,
+    dry_run: bool = False,
+    open_positions: list | None = None,
+    recent_closed_trades: list | None = None,
+):
     """Write current bot status to the shared status file.
 
     Args:
         risk_status: dict from RiskManager.status()
         contract_map: symbol -> contract name mapping
         dry_run: whether the bot is in dry-run mode
+        open_positions: list of open position dicts (symbol, direction, qty, entry_price, pnl_dollars)
+        recent_closed_trades: list of recently closed trade dicts (symbol, direction, pnl_dollars, closed_at)
     """
     try:
         STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+        open_pos = open_positions or []
+        closed = recent_closed_trades or []
 
         payload = {
             "bot": "Tradovate",
@@ -46,6 +58,9 @@ def write_status(risk_status: dict, *, contract_map: dict | None = None, dry_run
             "locked": risk_status.get("locked"),
             "lock_reason": risk_status.get("lock_reason"),
             "active_symbols": list(contract_map.keys()) if contract_map else [],
+            "open_positions": open_pos,
+            "open_positions_count": len(open_pos),
+            "recent_closed_trades": closed,
         }
 
         tmp = STATUS_PATH.with_suffix(".tmp")
