@@ -62,16 +62,16 @@ python get_token.py         # One-time token capture (needs display)
 - Max trailing drawdown: $2,500
 - Daily loss limit: $1,000
 - Profit target: $3,000
-- Max contracts: 10 (minis)
+- Max contracts: 50 (micros, ≈5 minis equivalent)
 - Close by: 4:59 PM ET
 - Drawdown trails unrealized intraday peaks
 - Current balance: ~$52,426 (as of 2026-02-24)
 
-## Enabled Contracts
-- **NQ** (E-mini Nasdaq): ORB strategy, 25pt stop / 50pt TP
-- **ES** (E-mini S&P): ORB strategy, 6pt stop / 12pt TP
-- **GC** (Gold): VWAP strategy, 5pt stop / 10pt TP
-- **CL** (Crude Oil): VWAP strategy, 0.20pt stop / 0.40pt TP
+## Enabled Contracts (Micros — 1/10 risk of minis)
+- **MNQ** (Micro Nasdaq): ORB strategy, 25pt stop / 50pt TP, $2/pt
+- **MES** (Micro S&P): ORB strategy, 6pt stop / 12pt TP, $5/pt
+- **MGC** (Micro Gold): VWAP strategy, 5pt stop / 10pt TP, $10/pt
+- **MCL** (Micro Crude): VWAP strategy, 0.20pt stop / 0.40pt TP, $100/pt
 
 ## API Notes
 - FundedNext accounts use `organization: ""` (empty string, NOT "funded-next")
