@@ -35,6 +35,7 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_state import save_state, load_state, build_state, restore_strategies
+from status_reporter import write_status
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -933,6 +934,7 @@ class TradovateBot:
 
                 # Write live status file for external monitoring
                 self._write_live_status()
+                write_status(status, contract_map=self.contract_map, dry_run=self.dry_run)
 
                 time.sleep(30)  # Status update every 30 seconds
 
