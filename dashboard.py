@@ -145,17 +145,36 @@ def _build_html():
         # Open positions table
         raw = bot.get("raw", {})
         open_pos = raw.get("open_positions", [])
-        open_count = raw.get("open_positions_count", 0)
+        # Normalize: ensure open_pos is a list of dicts
+        if isinstance(open_pos, str):
+            try:
+                open_pos = json.loads(open_pos)
+            except (json.JSONDecodeError, TypeError):
+                open_pos = []
+        if not isinstance(open_pos, list):
+            open_pos = []
+        open_count = raw.get("open_positions_count", len(open_pos))
         open_pos_html = ""
         if open_pos:
             open_pos_html = f'<div class="section-title">Open Positions ({open_count})</div>'
             open_pos_html += '<table class="trades-table"><tr><th>Symbol</th><th>Dir</th><th>Qty</th><th>P&L</th></tr>'
             for p in open_pos:
+                if isinstance(p, str):
+                    try:
+                        p = json.loads(p)
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                if not isinstance(p, dict):
+                    continue
                 direction = p.get("direction", "")
                 pnl = p.get("pnl_dollars", 0)
+                try:
+                    pnl = float(pnl)
+                except (ValueError, TypeError):
+                    pnl = 0
                 pnl_class = "green" if pnl >= 0 else "red"
                 pnl_sign = "+" if pnl >= 0 else ""
-                dir_class = "buy" if direction.lower() == "buy" else "sell"
+                dir_class = "buy" if str(direction).lower() == "buy" else "sell"
                 open_pos_html += (
                     f'<tr><td>{p.get("symbol", "")}</td>'
                     f'<td><span class="badge {dir_class}">{direction}</span></td>'
@@ -168,19 +187,38 @@ def _build_html():
 
         # Recent closed trades table
         closed_trades = raw.get("recent_closed_trades", [])
+        # Normalize: ensure closed_trades is a list of dicts
+        if isinstance(closed_trades, str):
+            try:
+                closed_trades = json.loads(closed_trades)
+            except (json.JSONDecodeError, TypeError):
+                closed_trades = []
+        if not isinstance(closed_trades, list):
+            closed_trades = []
         closed_html = ""
         if closed_trades:
             closed_html = '<div class="section-title">Recent Closed Trades</div>'
             closed_html += '<table class="trades-table"><tr><th>Symbol</th><th>Dir</th><th>P&L</th><th>Time</th></tr>'
             for ct in closed_trades:
+                if isinstance(ct, str):
+                    try:
+                        ct = json.loads(ct)
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                if not isinstance(ct, dict):
+                    continue
                 direction = ct.get("direction", "")
                 pnl = ct.get("pnl_dollars", 0)
+                try:
+                    pnl = float(pnl)
+                except (ValueError, TypeError):
+                    pnl = 0
                 pnl_class = "green" if pnl >= 0 else "red"
                 pnl_sign = "+" if pnl >= 0 else ""
-                dir_class = "buy" if direction.lower() == "buy" else "sell"
+                dir_class = "buy" if str(direction).lower() == "buy" else "sell"
                 closed_at = ct.get("closed_at", "")
                 # Show just the time portion if it's an ISO timestamp
-                if "T" in closed_at:
+                if isinstance(closed_at, str) and "T" in closed_at:
                     closed_at = closed_at.split("T")[1][:8]
                 closed_html += (
                     f'<tr><td>{ct.get("symbol", "")}</td>'
