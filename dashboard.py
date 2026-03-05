@@ -187,6 +187,18 @@ def _get_tuner_log():
         return []
 
 
+def _get_live_status():
+    """Read live_status.json written by the bot every 30 seconds."""
+    status_file = os.path.join(BOT_DIR, "live_status.json")
+    if not os.path.exists(status_file):
+        return {}
+    try:
+        with open(status_file) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 # ─────────────────────────────────────────
 # API endpoints
 # ─────────────────────────────────────────
@@ -208,10 +220,19 @@ def api_status():
             status["to_floor"] = equity - (50000 - 2500)
             status["api_live"] = True
 
+    # Enrich with live status data (open positions, closed trades)
+    live = _get_live_status()
+    open_positions = live.get("open_positions", [])
+    open_positions_count = live.get("open_positions_count", 0)
+    recent_closed = live.get("recent_closed_trades", [])
+
     return jsonify({
         "bot": {"running": running, "pid": pid},
         "token": token,
         "trading": status,
+        "open_positions": open_positions,
+        "open_positions_count": open_positions_count,
+        "recent_closed_trades": recent_closed,
         "server_time": datetime.now(timezone.utc).isoformat(),
     })
 
@@ -365,6 +386,18 @@ h1 { font-size: 1.5em; color: #58a6ff; margin-bottom: 16px; }
   <div id="prices" class="prices-grid">Loading...</div>
 </div>
 
+<!-- Open Positions -->
+<div class="card" style="margin-bottom:16px">
+  <h2>Open Positions <span id="open-count" class="gray" style="font-size:0.9em"></span></h2>
+  <div id="open-positions">No open positions</div>
+</div>
+
+<!-- Recent Closed Trades -->
+<div class="card" style="margin-bottom:16px">
+  <h2>Recent Closed Trades</h2>
+  <div id="closed-trades">No closed trades</div>
+</div>
+
 <div class="grid">
   <!-- Journal Summary -->
   <div class="card">
@@ -444,6 +477,51 @@ async function updateStatus() {
         <span class="value ${(t.to_floor||0) < 500 ? 'red' : 'green'}">$${fmt(t.to_floor||0)}</span></div>
     </div>
   `;
+
+  // Open positions
+  const openPos = d.open_positions || [];
+  const openCount = d.open_positions_count || 0;
+  document.getElementById('open-count').textContent = `(${openCount})`;
+  if (openPos.length === 0) {
+    document.getElementById('open-positions').innerHTML = '<div class="gray">No open positions</div>';
+  } else {
+    let opHtml = '<table class="trades-table"><tr><th>Symbol</th><th>Direction</th><th>Qty</th><th>Entry Price</th><th>P&L</th></tr>';
+    for (const p of openPos) {
+      const dir = (p.direction || '').toLowerCase();
+      const plVal = p.pnl_dollars || 0;
+      opHtml += `<tr>
+        <td>${p.symbol}</td>
+        <td><span class="badge ${dir}">${p.direction}</span></td>
+        <td>${p.qty}</td>
+        <td>$${fmt(p.entry_price)}</td>
+        <td class="${pnlClass(plVal)}">${pnlSign(plVal)}$${fmt(plVal)}</td>
+      </tr>`;
+    }
+    opHtml += '</table>';
+    document.getElementById('open-positions').innerHTML = opHtml;
+  }
+
+  // Recent closed trades
+  const closedTrades = d.recent_closed_trades || [];
+  if (closedTrades.length === 0) {
+    document.getElementById('closed-trades').innerHTML = '<div class="gray">No closed trades yet</div>';
+  } else {
+    let ctHtml = '<table class="trades-table"><tr><th>Symbol</th><th>Direction</th><th>Qty</th><th>P&L</th><th>Closed At</th></tr>';
+    for (const ct of closedTrades) {
+      const dir = (ct.direction || '').toLowerCase();
+      const plVal = ct.pnl_dollars || 0;
+      const closedAt = ct.closed_at ? new Date(ct.closed_at).toLocaleTimeString('he-IL') : '-';
+      ctHtml += `<tr>
+        <td>${ct.symbol}</td>
+        <td><span class="badge ${dir}">${ct.direction}</span></td>
+        <td>${ct.qty}</td>
+        <td class="${pnlClass(plVal)}">${pnlSign(plVal)}$${fmt(plVal)}</td>
+        <td>${closedAt}</td>
+      </tr>`;
+    }
+    ctHtml += '</table>';
+    document.getElementById('closed-trades').innerHTML = ctHtml;
+  }
 }
 
 async function updateChallenge() {
