@@ -142,6 +142,56 @@ def _build_html():
         if bot["stale"] and bot["available"]:
             stale_warning = '<div class="stale-warning">File not updated for over 2 minutes!</div>'
 
+        # Open positions table
+        raw = bot.get("raw", {})
+        open_pos = raw.get("open_positions", [])
+        open_count = raw.get("open_positions_count", 0)
+        open_pos_html = ""
+        if open_pos:
+            open_pos_html = f'<div class="section-title">Open Positions ({open_count})</div>'
+            open_pos_html += '<table class="trades-table"><tr><th>Symbol</th><th>Dir</th><th>Qty</th><th>P&L</th></tr>'
+            for p in open_pos:
+                direction = p.get("direction", "")
+                pnl = p.get("pnl_dollars", 0)
+                pnl_class = "green" if pnl >= 0 else "red"
+                pnl_sign = "+" if pnl >= 0 else ""
+                dir_class = "buy" if direction.lower() == "buy" else "sell"
+                open_pos_html += (
+                    f'<tr><td>{p.get("symbol", "")}</td>'
+                    f'<td><span class="badge {dir_class}">{direction}</span></td>'
+                    f'<td>{p.get("qty", 0)}</td>'
+                    f'<td class="{pnl_class}">{pnl_sign}${pnl:,.2f}</td></tr>'
+                )
+            open_pos_html += '</table>'
+        elif bot["available"]:
+            open_pos_html = '<div class="section-title">Open Positions (0)</div><div class="empty-msg">No open positions</div>'
+
+        # Recent closed trades table
+        closed_trades = raw.get("recent_closed_trades", [])
+        closed_html = ""
+        if closed_trades:
+            closed_html = '<div class="section-title">Recent Closed Trades</div>'
+            closed_html += '<table class="trades-table"><tr><th>Symbol</th><th>Dir</th><th>P&L</th><th>Time</th></tr>'
+            for ct in closed_trades:
+                direction = ct.get("direction", "")
+                pnl = ct.get("pnl_dollars", 0)
+                pnl_class = "green" if pnl >= 0 else "red"
+                pnl_sign = "+" if pnl >= 0 else ""
+                dir_class = "buy" if direction.lower() == "buy" else "sell"
+                closed_at = ct.get("closed_at", "")
+                # Show just the time portion if it's an ISO timestamp
+                if "T" in closed_at:
+                    closed_at = closed_at.split("T")[1][:8]
+                closed_html += (
+                    f'<tr><td>{ct.get("symbol", "")}</td>'
+                    f'<td><span class="badge {dir_class}">{direction}</span></td>'
+                    f'<td class="{pnl_class}">{pnl_sign}${pnl:,.2f}</td>'
+                    f'<td>{closed_at}</td></tr>'
+                )
+            closed_html += '</table>'
+        elif bot["available"]:
+            closed_html = '<div class="section-title">Recent Closed Trades</div><div class="empty-msg">No closed trades</div>'
+
         cards_html += f"""
         <div class="card" style="border-top: 4px solid {border_color};">
             <div class="card-header">
@@ -153,6 +203,8 @@ def _build_html():
             <div class="row"><span class="label">Last Trade</span><span class="value">{last_trade_str}</span></div>
             <div class="row"><span class="label">Updated</span><span class="value">{updated_str}</span></div>
             <div class="row"><span class="label">File</span><span class="value file-path">{bot['file']}</span></div>
+            {open_pos_html}
+            {closed_html}
         </div>
         """
 
@@ -185,6 +237,16 @@ h1 {{ font-size: 1.6em; color: #58a6ff; margin-bottom: 8px; }}
 .label {{ color: #8b949e; }}
 .value {{ font-weight: 600; direction: ltr; text-align: left; }}
 .file-path {{ font-family: monospace; font-size: 0.8em; color: #6e7681; word-break: break-all; }}
+.section-title {{ color: #8b949e; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; margin-top: 14px; margin-bottom: 8px; padding-top: 10px; border-top: 1px solid #21262d; }}
+.trades-table {{ width: 100%; border-collapse: collapse; font-size: 0.82em; }}
+.trades-table th {{ text-align: right; padding: 5px 6px; color: #8b949e; border-bottom: 1px solid #30363d; font-weight: 500; }}
+.trades-table td {{ padding: 5px 6px; border-bottom: 1px solid #21262d; }}
+.badge {{ display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.8em; font-weight: 600; }}
+.badge.buy {{ background: #0e4429; color: #3fb950; }}
+.badge.sell {{ background: #490d0d; color: #f85149; }}
+.green {{ color: #3fb950; }}
+.red {{ color: #f85149; }}
+.empty-msg {{ color: #484f58; font-size: 0.85em; font-style: italic; }}
 .footer {{ text-align: center; color: #484f58; font-size: 0.8em; margin-top: 24px; padding-top: 16px; border-top: 1px solid #21262d; }}
 </style>
 </head>
