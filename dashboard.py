@@ -518,13 +518,14 @@ async function updateJournal() {
   if (j.recent_trades && j.recent_trades.length > 0) {
     let thtml = '<table class="trades-table"><tr><th>Date</th><th>Symbol</th><th>Dir</th><th>Qty</th><th>P&L</th><th>R</th><th>Exit</th></tr>';
     for (const t of j.recent_trades.reverse()) {
-      const dir = t.direction === 'Buy' ? 'buy' : 'sell';
-      const pnl = t.pnl || 0;
+      const direction = t.direction || t.side || '';
+      const dir = direction === 'Buy' ? 'buy' : 'sell';
+      const pnl = t.pnl ?? t.closed_pnl ?? t.unrealised_pnl ?? 0;
       thtml += `<tr>
-        <td>${(t.date||'').slice(5)}</td>
+        <td>${(t.date || t.closed_at || '').slice(5)}</td>
         <td>${t.symbol}</td>
-        <td><span class="badge ${dir}">${t.direction}</span></td>
-        <td>${t.qty}</td>
+        <td><span class="badge ${dir}">${direction}</span></td>
+        <td>${t.qty ?? t.size ?? ''}</td>
         <td class="${pnlClass(pnl)}">${pnlSign(pnl)}$${fmt(pnl)}</td>
         <td>${fmt(t.r_multiple||0,1)}R</td>
         <td>${t.exit_reason||'-'}</td>
