@@ -2,7 +2,7 @@ name: Tradovate Connectivity Test
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, 'claude/**']
   schedule:
     - cron: '0 */6 * * *'  # Every 6 hours
   workflow_dispatch:
@@ -103,7 +103,8 @@ jobs:
           reversed_pw = rearranged[::-1]
           encrypted_pw = base64.b64encode(reversed_pw.encode()).decode()
 
-          device_id = f'gh-actions-{uuid.uuid4()}'
+          # Fixed device ID — random UUIDs cause Tradovate to rate-limit
+          device_id = 'gh-actions-tradovate-bot-monitor'
           hmac_key = '1259-11e7-485a-aeae-9b6016579351'
 
           payload = {

@@ -21,4 +21,4 @@ Check logs: journalctl -u $SERVICE -n 50"
 
 echo "$BODY" | mail -s "$SUBJECT" "$EMAIL" 2>/dev/null || \
 echo "$BODY" | sendmail "$EMAIL" 2>/dev/null || \
-echo "[$(date)] Alert: Could not send email - mail/sendmail not installed" >> /root/Tradovate-Bot/bot.log
+echo "[$(date)] Alert: Could not send email - mail/sendmail not installed" >> /root/tradovate-bot/bot.log
