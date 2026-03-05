@@ -3,6 +3,7 @@ Tradovate Trading Bot
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
+Initializes risk manager from actual account balance via API.
 
 Deployment: Push & Flow — push to main triggers automatic server update.
 No diagnostics (ping/curl/ssh) needed. (Updated 2026-02-27)
@@ -19,6 +20,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -29,9 +31,11 @@ import requests
 import config
 from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
-from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
+from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS, YahooFinanceSession
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+from bot_state import save_state, load_state, build_state, restore_strategies
+from status_reporter import write_status
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -46,6 +50,11 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger("bot")
+
+
+class AuthenticationError(Exception):
+    """Raised when all authentication attempts are exhausted."""
+    pass
 
 
 # ─────────────────────────────────────────────
@@ -86,8 +95,16 @@ class TradovateBot:
         # Active strategy instances
         self.strategies: dict[str, object] = {}
 
-        # Track daily trades for logging
+        # Track open positions per symbol to prevent contradictory orders
+        # Maps symbol -> {"direction": "Buy"/"Sell", "qty": int, "order_id": int}
+        self._open_positions: dict[str, dict] = {}
+
+        # Thread lock for shared state (risk manager, trades_today, _open_positions)
+        self._lock = threading.Lock()
+
+        # Track daily trades for logging (restored from journal on startup)
         self.trades_today: list[dict] = []
+        self._restore_trades_from_journal()
 
         # Global cooldown: minimum seconds between any two order placements
         self._min_order_gap_seconds: int = 30
@@ -95,6 +112,37 @@ class TradovateBot:
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
+
+    def _restore_trades_from_journal(self):
+        """Load today's open trades from journal so _sync_fills can close them."""
+        from datetime import date as _date
+        today_str = _date.today().isoformat()
+        for trade in self.journal.trades:
+            if trade.get("date") == today_str and trade.get("status") == "open":
+                sym = trade.get("symbol", "")
+                direction = trade.get("direction", "")
+                qty = trade.get("qty", 0)
+                self.trades_today.append({
+                    "time": trade.get("entry_time", ""),
+                    "symbol": sym,
+                    "direction": direction,
+                    "qty": qty,
+                    "stop": trade.get("stop_loss", 0),
+                    "target": trade.get("take_profit", 0),
+                    "reason": trade.get("reason", ""),
+                    "order_id": None,
+                    "journal_id": trade.get("id"),
+                    "_placed_at": 0,  # old trade, no grace period
+                })
+                # Also track in _open_positions to prevent contradictory orders
+                if sym and direction:
+                    self._open_positions[sym] = {
+                        "direction": direction,
+                        "qty": qty,
+                        "journal_id": trade.get("id"),
+                    }
+        if self.trades_today:
+            logger.info("Restored %d open trades from journal for today", len(self.trades_today))
 
     # ─────────────────────────────────────────
     # Lifecycle
@@ -107,22 +155,37 @@ class TradovateBot:
         logger.info("Prop firm: %s | Account size: %s", config.PROP_FIRM, config.ACTIVE_CHALLENGE["account_size"])
         logger.info("=" * 60)
 
-        # Authenticate (retry up to 3 times with backoff)
+        # Authenticate (retry up to 3 times with longer backoff to avoid rate limits)
         if not self.dry_run:
             auth_ok = False
-            for attempt in range(1, 4):
+            max_attempts = 3
+            for attempt in range(1, max_attempts + 1):
+                logger.info("Authentication attempt %d/%d...", attempt, max_attempts)
                 if self.api.authenticate():
                     auth_ok = True
                     break
-                wait = attempt * 10
+                # Clear stale token so next attempt starts fresh
+                self.api.access_token = None
+                self.api.md_access_token = None
+                wait = min(attempt * 30, 120)  # 30, 60, 90 — longer waits to let rate limits clear
                 logger.warning(
-                    "Authentication attempt %d/3 failed. Retrying in %ds...", attempt, wait
+                    "Authentication attempt %d/%d failed. Retrying in %ds...", attempt, max_attempts, wait
                 )
-                time.sleep(wait)
+                # Write a status file even during auth failure so monitoring can see
+                self._write_auth_status(attempt)
+                # Check for shutdown between attempts
+                elapsed = 0
+                while elapsed < wait and not _shutdown_requested:
+                    time.sleep(min(10, wait - elapsed))
+                    elapsed += 10
+                if _shutdown_requested:
+                    break
             if not auth_ok:
-                logger.error("Authentication failed after 3 attempts. Exiting.")
-                sys.exit(1)
-            logger.info("Authenticated successfully")
+                logger.error("Authentication failed after %d attempts.", max_attempts)
+                self._write_auth_status(max_attempts, final=True)
+                raise AuthenticationError("All %d authentication attempts failed" % max_attempts)
+            logger.info("Authenticated successfully (userId=%s, account=%s)",
+                        self.api.user_id, self.api.account_spec)
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
@@ -134,6 +197,20 @@ class TradovateBot:
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
+
+        # Sync actual balance from API BEFORE main loop so the risk manager
+        # uses the real SOD balance instead of the nominal account size.
+        # Without this, day_pnl = (real_balance - 50000) which immediately
+        # triggers either the daily loss brake or profit cap on startup.
+        if not self.dry_run:
+            self._init_risk_from_api()
+
+        # Restore persisted state (trade counts, breakout flags) from previous run today
+        self._restore_state()
+
+        # One-time diagnostic: dump fills and positions at startup
+        if not self.dry_run:
+            self._startup_diagnostic()
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -161,6 +238,136 @@ class TradovateBot:
 
         self._print_summary()
         logger.info("Bot stopped.")
+
+    # ─────────────────────────────────────────
+    # Startup diagnostic
+    # ─────────────────────────────────────────
+
+    def _startup_diagnostic(self):
+        """Log diagnostic info at startup to help debug trading issues."""
+        try:
+            # Dump fills
+            fills = self.api.get_fills()
+            logger.info("DIAG: %d fills found", len(fills) if fills else 0)
+            for f in (fills or [])[-10:]:
+                logger.info(
+                    "DIAG fill: orderId=%s price=%s qty=%s contractId=%s timestamp=%s action=%s",
+                    f.get("orderId"), f.get("price"), f.get("qty"),
+                    f.get("contractId"), f.get("timestamp"), f.get("action"),
+                )
+
+            # Dump positions
+            positions = self.api.get_positions()
+            logger.info("DIAG: %d positions", len(positions) if positions else 0)
+            for p in (positions or []):
+                logger.info(
+                    "DIAG position: contractId=%s netPos=%s avgPrice=%s",
+                    p.get("contractId"), p.get("netPos"), p.get("avgPrice"),
+                )
+
+            # Dump orders (working)
+            orders = self.api._get("/order/list") or []
+            working = [o for o in orders if o.get("ordStatus") in ("Working", "Accepted")]
+            logger.info("DIAG: %d total orders, %d working", len(orders), len(working))
+            for o in orders[-10:]:
+                logger.info(
+                    "DIAG order: id=%s status=%s action=%s qty=%s filled=%s price=%s type=%s symbol=%s",
+                    o.get("orderId"), o.get("ordStatus"), o.get("action"),
+                    o.get("orderQty"), o.get("filledQty"), o.get("price", o.get("stopPrice")),
+                    o.get("orderType"), o.get("contractId"),
+                )
+
+            # Cash balance
+            snapshot = self.api.get_cash_balance()
+            if snapshot:
+                logger.info("DIAG cashBalance: %s", snapshot)
+        except Exception as e:
+            logger.error("DIAG error: %s", e)
+
+    # ─────────────────────────────────────────
+    # Risk manager initialization from API
+    # ─────────────────────────────────────────
+
+    def _init_risk_from_api(self):
+        """
+        Fetch the real account balance from the API and initialize the risk
+        manager with it.  The risk manager defaults to the nominal account
+        size ($50,000) which may differ from the actual balance, causing
+        day_pnl to be wildly wrong and immediately locking trading.
+        """
+        try:
+            # Pre-check: account_id must be set for get_cash_balance to work
+            if self.api.account_id is None:
+                logger.error(
+                    "Cannot init risk from API: account_id is None! "
+                    "Check _fetch_account_id and endpoint (base_url=%s)",
+                    self.api.base_url,
+                )
+                return
+
+            logger.info(
+                "Fetching initial balance for account_id=%s on %s...",
+                self.api.account_id, self.api.base_url,
+            )
+            snapshot = self.api.get_cash_balance()
+            if not snapshot or snapshot.get("errorText"):
+                logger.warning("Could not fetch initial balance: %s", snapshot)
+                return
+
+            total_cash = snapshot.get("totalCashValue")
+            net_liq = snapshot.get("netLiq")
+            total_pnl = snapshot.get("totalPnL", 0.0) or 0.0
+            realized_pnl = snapshot.get("realizedPnL", 0.0) or 0.0
+            unrealized = snapshot.get("openPnL", 0.0) or 0.0
+
+            if total_cash is None and net_liq is None:
+                logger.warning("Initial balance snapshot has no value: %s", snapshot)
+                return
+
+            # totalCashValue includes realized P&L from today's fills.
+            # True SOD = totalCashValue - realizedPnL
+            if total_cash is not None:
+                sod_balance = total_cash - realized_pnl
+            else:
+                sod_balance = net_liq - total_pnl  # fallback
+
+            # Current equity = SOD + totalPnL (realized + unrealized)
+            balance = sod_balance + total_pnl
+
+            logger.info(
+                "Initial CashBalance: totalCash=%.2f realizedPnL=%.2f => SOD=%.2f | "
+                "totalPnL=%.2f => balance=%.2f | raw=%s",
+                total_cash or 0, realized_pnl, sod_balance,
+                total_pnl, balance, snapshot,
+            )
+
+            # Set the risk manager's baseline to the real balance
+            # Use true SOD balance as day_start so day_pnl reflects today's actual P&L
+            self.risk.current_balance = balance
+            self.risk.day_start_balance = sod_balance
+            self.risk.starting_balance = sod_balance
+
+            # Update peak if actual balance exceeds nominal
+            equity = balance
+            if equity > self.risk.peak_balance:
+                self.risk.peak_balance = equity
+                self.risk.drawdown_floor = equity - self.risk.max_trailing_drawdown
+
+            self.risk.unrealized_pnl = unrealized
+            # Calculate actual day P&L (don't assume 0 on mid-day restart)
+            self.risk.day_pnl = balance - sod_balance
+
+            logger.info(
+                "Risk manager initialized from API | balance=%.2f | "
+                "peak=%.2f | floor=%.2f | unrealized=%.2f",
+                balance,
+                self.risk.peak_balance,
+                self.risk.drawdown_floor,
+                unrealized,
+            )
+
+        except Exception as e:
+            logger.error("Failed to initialize risk from API: %s", e)
 
     # ─────────────────────────────────────────
     # Contract resolution
@@ -208,6 +415,33 @@ class TradovateBot:
             )
 
     # ─────────────────────────────────────────
+    # State persistence (survives restarts)
+    # ─────────────────────────────────────────
+
+    def _restore_state(self):
+        """Restore trade counts and cooldowns from previous run today."""
+        state = load_state()
+        if state is None:
+            logger.info("No persisted state for today. Starting fresh.")
+            return
+
+        restore_strategies(state, self.strategies)
+
+        # Restore daily trade count in risk manager
+        saved_count = state.get("trades_today_count", 0)
+        self.risk.trades_today = saved_count
+        logger.info("Restored trades_today=%d from persisted state", saved_count)
+
+    def _persist_state(self):
+        """Save current strategy state to disk. Call after every trade."""
+        state = build_state(
+            self.strategies,
+            self.risk.trades_today,
+            self.trades_today,
+        )
+        save_state(state)
+
+    # ─────────────────────────────────────────
     # Strategy warmup (late-start recovery)
     # ─────────────────────────────────────────
 
@@ -228,16 +462,12 @@ class TradovateBot:
                 continue
 
             try:
-                url = (
-                    f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}"
-                    f"?interval=1m&range=1d"
-                )
-                resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-                if resp.status_code != 200:
-                    logger.warning("Warmup: Yahoo returned %d for %s", resp.status_code, yahoo_sym)
+                yahoo = YahooFinanceSession.get()
+                data = yahoo.fetch_chart(yahoo_sym)
+                if data is None:
+                    logger.warning("Warmup: Yahoo data unavailable for %s", yahoo_sym)
                     continue
 
-                data = resp.json()
                 result = data.get("chart", {}).get("result", [{}])[0]
                 timestamps = result.get("timestamp") or []
                 quotes = result.get("indicators", {}).get("quote", [{}])[0]
@@ -350,7 +580,7 @@ class TradovateBot:
 
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
+        volume = data.get("trade", {}).get("size", 0) or 0
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -362,13 +592,20 @@ class TradovateBot:
         if strategy is None:
             return
 
-        # Check if we can trade
-        ok, reason = self.risk.can_trade()
-        if not ok:
-            return
+        # Quick pre-check (don't bother running strategy if we can't trade)
+        with self._lock:
+            ok, reason = self.risk.can_trade()
+            if not ok:
+                return
+            # Skip if we already have an open position for this symbol
+            if symbol in self._open_positions:
+                return
 
         # Check time constraints
         current = now_et()
+        trading_start = parse_time_et(config.TRADING_START_ET)
+        if current < trading_start:
+            return
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current >= cutoff:
             return
@@ -393,58 +630,81 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
-        # Global cooldown: prevent rapid-fire orders across all symbols
-        elapsed = time.time() - self._last_order_time
-        if elapsed < self._min_order_gap_seconds:
+        with self._lock:
+            # Global cooldown: prevent rapid-fire orders across all symbols
+            elapsed = time.time() - self._last_order_time
+            if elapsed < self._min_order_gap_seconds:
+                logger.info(
+                    "Signal for %s deferred: global cooldown (%ds remaining)",
+                    signal.symbol, int(self._min_order_gap_seconds - elapsed),
+                )
+                return
+
+            # Block contradictory orders: don't open opposite direction while position is open
+            existing = self._open_positions.get(signal.symbol)
+            if existing:
+                if existing["direction"] != signal.direction.value:
+                    logger.warning(
+                        "Signal BLOCKED: %s %s would contradict open %s position. Skipping.",
+                        signal.direction.value, signal.symbol, existing["direction"],
+                    )
+                    return
+                else:
+                    logger.info(
+                        "Signal skipped: already have open %s position for %s",
+                        existing["direction"], signal.symbol,
+                    )
+                    return
+
+            ok, reason = self.risk.can_trade()
+            if not ok:
+                logger.warning("Signal rejected by risk manager: %s", reason)
+                return
+
+            # Calculate position size
+            qty = self.risk.calculate_position_size(signal.symbol)
+            if qty <= 0:
+                logger.warning("Position size = 0 for %s. Signal skipped.", signal.symbol)
+                return
+            signal.qty = qty
+
+            contract_name = self.contract_map.get(signal.symbol)
+            if not contract_name:
+                logger.error("No contract mapping for %s", signal.symbol)
+                return
+
             logger.info(
-                "Signal for %s deferred: global cooldown (%ds remaining)",
-                signal.symbol, int(self._min_order_gap_seconds - elapsed),
+                "SIGNAL: %s %s %d @ market | SL=%.4f TP=%.4f | %s",
+                signal.direction.value,
+                signal.symbol,
+                signal.qty,
+                signal.stop_loss,
+                signal.take_profit,
+                signal.reason,
             )
-            return
 
-        ok, reason = self.risk.can_trade()
-        if not ok:
-            logger.warning("Signal rejected by risk manager: %s", reason)
-            return
+            if self.dry_run:
+                logger.info("[DRY RUN] Order would be placed: %s", signal)
+                self.trades_today.append(
+                    {
+                        "time": now_et().isoformat(),
+                        "symbol": signal.symbol,
+                        "direction": signal.direction.value,
+                        "qty": signal.qty,
+                        "stop": signal.stop_loss,
+                        "target": signal.take_profit,
+                        "reason": signal.reason,
+                    }
+                )
+                return
 
-        # Calculate position size
-        qty = self.risk.calculate_position_size(signal.symbol)
-        if qty <= 0:
-            logger.warning("Position size = 0 for %s. Signal skipped.", signal.symbol)
-            return
-        signal.qty = qty
+            # Mark position as open BEFORE placing order (prevents race with another signal)
+            self._open_positions[signal.symbol] = {
+                "direction": signal.direction.value,
+                "qty": signal.qty,
+            }
 
-        contract_name = self.contract_map.get(signal.symbol)
-        if not contract_name:
-            logger.error("No contract mapping for %s", signal.symbol)
-            return
-
-        logger.info(
-            "SIGNAL: %s %s %d @ market | SL=%.4f TP=%.4f | %s",
-            signal.direction.value,
-            signal.symbol,
-            signal.qty,
-            signal.stop_loss,
-            signal.take_profit,
-            signal.reason,
-        )
-
-        if self.dry_run:
-            logger.info("[DRY RUN] Order would be placed: %s", signal)
-            self.trades_today.append(
-                {
-                    "time": now_et().isoformat(),
-                    "symbol": signal.symbol,
-                    "direction": signal.direction.value,
-                    "qty": signal.qty,
-                    "stop": signal.stop_loss,
-                    "target": signal.take_profit,
-                    "reason": signal.reason,
-                }
-            )
-            return
-
-        # Place bracket order via API
+        # Place bracket order via API (outside lock — this is a slow network call)
         result = self.api.place_bracket_order(
             symbol=contract_name,
             action=signal.direction.value,
@@ -455,35 +715,79 @@ class TradovateBot:
             order_type="Market",
         )
 
-        if result:
-            self._last_order_time = time.time()
-            self.risk.register_open(signal.qty)
-            trade_id = self.journal.record_entry(
-                symbol=signal.symbol,
-                direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
-                qty=signal.qty,
-                strategy=type(self.strategies.get(signal.symbol, "")).__name__,
-                reason=signal.reason,
-                stop_loss=signal.stop_loss,
-                take_profit=signal.take_profit,
-            )
-            self.trades_today.append(
-                {
-                    "time": now_et().isoformat(),
-                    "symbol": signal.symbol,
-                    "direction": signal.direction.value,
-                    "qty": signal.qty,
-                    "stop": signal.stop_loss,
-                    "target": signal.take_profit,
-                    "reason": signal.reason,
-                    "order_id": result.get("orderId"),
-                    "journal_id": trade_id,
-                }
-            )
-            logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
-        else:
-            logger.error("Order placement failed for %s", signal.symbol)
+        with self._lock:
+            if result:
+                self._last_order_time = time.time()
+                self.risk.register_open(signal.qty)
+
+                # Try to get actual fill price from the order
+                fill_price = self._get_fill_price(result.get("orderId"))
+
+                trade_id = self.journal.record_entry(
+                    symbol=signal.symbol,
+                    direction=signal.direction.value,
+                    entry_price=fill_price or signal.entry_price or 0,
+                    qty=signal.qty,
+                    strategy=type(self.strategies.get(signal.symbol, "")).__name__,
+                    reason=signal.reason,
+                    stop_loss=signal.stop_loss,
+                    take_profit=signal.take_profit,
+                )
+                self._open_positions[signal.symbol]["order_id"] = result.get("orderId")
+                self._open_positions[signal.symbol]["sl_order_id"] = result.get("slOrderId")
+                self._open_positions[signal.symbol]["tp_order_id"] = result.get("tpOrderId")
+                self._open_positions[signal.symbol]["journal_id"] = trade_id
+                self.trades_today.append(
+                    {
+                        "time": now_et().isoformat(),
+                        "symbol": signal.symbol,
+                        "direction": signal.direction.value,
+                        "qty": signal.qty,
+                        "stop": signal.stop_loss,
+                        "target": signal.take_profit,
+                        "reason": signal.reason,
+                        "order_id": result.get("orderId"),
+                        "sl_order_id": result.get("slOrderId"),
+                        "tp_order_id": result.get("tpOrderId"),
+                        "journal_id": trade_id,
+                        "_placed_at": time.time(),
+                    }
+                )
+                logger.info("Order placed: orderId=%s fill=%.2f (journal: %s)", result.get("orderId"), fill_price or 0, trade_id)
+
+                # Persist state after every trade to survive restarts
+                self._persist_state()
+            else:
+                logger.error("Order placement failed for %s", signal.symbol)
+                # Remove the pre-reserved position since order failed
+                self._open_positions.pop(signal.symbol, None)
+
+    # ─────────────────────────────────────────
+    # Fill price capture
+    # ─────────────────────────────────────────
+
+    def _get_fill_price(self, order_id: int) -> float | None:
+        """
+        Try to get the actual fill price for a market order.
+        Market orders fill nearly instantly, but we give a brief pause.
+        Returns the fill price or None if not yet filled.
+        """
+        if not order_id or self.dry_run:
+            return None
+        try:
+            # Brief pause for market order to fill
+            time.sleep(1)
+            fills = self.api.get_fills()
+            for fill in fills:
+                if fill.get("orderId") == order_id:
+                    return fill.get("price")
+            # Also try order/item for avgFillPrice
+            order = self.api._get(f"/order/item?id={order_id}")
+            if order:
+                return order.get("avgFillPrice") or order.get("price")
+        except Exception as e:
+            logger.debug("Could not get fill price for order %s: %s", order_id, e)
+        return None
 
     # ─────────────────────────────────────────
     # Main loop
@@ -515,11 +819,14 @@ class TradovateBot:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
                     # Record force-close exits in journal
-                    for t in self.trades_today:
-                        if t.get("journal_id"):
-                            self.journal.record_exit_by_symbol(
-                                t["symbol"], 0, 0, exit_reason="force_close"
-                            )
+                    with self._lock:
+                        for t in self.trades_today:
+                            if t.get("journal_id") and not t.get("_closed"):
+                                self.journal.record_exit_by_symbol(
+                                    t["symbol"], 0, 0, exit_reason="force_close"
+                                )
+                                t["_closed"] = True
+                        self._open_positions.clear()
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -565,12 +872,54 @@ class TradovateBot:
                         if self.md_stream:
                             self._subscribe_market_data()
                     else:
-                        logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
+                        logger.error(
+                            "=== AUTO-RECOVERY: Re-authentication FAILED (attempt %d). "
+                            "Token may be expired and password auth failing. "
+                            "Bot will keep retrying every %d cycles. ===",
+                            self._consecutive_api_failures,
+                            _MAX_API_FAILURES_BEFORE_REAUTH,
+                        )
+
+                # Auto-fallback: if WebSocket died or stopped delivering data,
+                # switch to REST polling
+                if not self.dry_run and self.md_stream and isinstance(self.md_stream, MarketDataStream):
+                    should_fallback = False
+                    reason = ""
+                    if self.md_stream.fell_back.is_set():
+                        should_fallback = True
+                        reason = "WebSocket unrecoverable (too many consecutive failures)"
+                    elif self.md_stream.data_stale:
+                        should_fallback = True
+                        reason = "WebSocket stale (no data for %ds)" % self.md_stream.DATA_TIMEOUT
+                    elif not self.md_stream._connected.is_set() and not self.md_stream._should_run:
+                        should_fallback = True
+                        reason = "WebSocket disconnected and stopped"
+
+                    if should_fallback:
+                        logger.warning("=== FALLBACK: %s. Switching to REST polling... ===", reason)
+                        self.md_stream.stop()
+                        poller = RestMarketDataPoller()
+                        poller._last_ts.update(self._warmup_last_ts)
+                        poller.start()
+                        self.md_stream = poller
+                        self._subscribe_market_data()
+                        logger.info("=== Switched to REST market data polling ===")
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
+                # Identify active data source
+                if isinstance(self.md_stream, MarketDataStream):
+                    ds = "WS"
+                    if self.md_stream._connected.is_set():
+                        ds = "WS-OK"
+                    elif self.md_stream.data_stale:
+                        ds = "WS-STALE"
+                elif self.md_stream is not None:
+                    ds = "REST"
+                else:
+                    ds = "NONE"
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s | data=%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -579,11 +928,19 @@ class TradovateBot:
                     status["trades_today"],
                     status["max_daily_trades"],
                     status["locked"],
+                    ds,
                     "" if api_ok else " | API-ERROR",
                 )
 
                 # Write live status file for external monitoring
                 self._write_live_status()
+                write_status(
+                    status,
+                    contract_map=self.contract_map,
+                    dry_run=self.dry_run,
+                    open_positions=self._get_open_positions_detail(),
+                    recent_closed_trades=self._get_recent_closed_trades(limit=5),
+                )
 
                 time.sleep(30)  # Status update every 30 seconds
 
@@ -596,17 +953,27 @@ class TradovateBot:
         self.stop()
 
     def _sync_fills(self):
-        """Check positions and fills to close journal trades and update contract count."""
+        """Check positions and fills to close journal trades and update contract count.
+
+        Uses the API as the authoritative source for open positions. Detects when
+        a bracket order's SL/TP has been hit (position goes flat) and records the
+        actual realized P&L from the account balance change.
+        """
         try:
             positions = self.api.get_positions()
+            # Log positions for diagnostics
+            if positions:
+                for p in positions:
+                    net = p.get("netPos", 0)
+                    if net != 0:
+                        logger.info(
+                            "Open position: contractId=%s netPos=%s avgPrice=%s",
+                            p.get("contractId"), net, p.get("avgPrice"),
+                        )
 
             # Build contractId -> base symbol mapping from our contract_map
-            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
-            # We need to match position contractId (int) to our symbols.
-            # Resolve this once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
-            # Lazily build the mapping from API contract lookups
             for symbol, contract_name in self.contract_map.items():
                 if symbol not in [v for v in self._contract_id_to_symbol.values()]:
                     contract = self.api.find_contract(contract_name)
@@ -615,7 +982,6 @@ class TradovateBot:
 
             # Count total open contracts from API (authoritative)
             total_open = 0
-            # Track which base symbols have open positions
             open_base_symbols = set()
             for p in positions:
                 net = abs(p.get("netPos", 0))
@@ -626,42 +992,199 @@ class TradovateBot:
                     if base_sym:
                         open_base_symbols.add(base_sym)
 
-            self.risk.open_contracts = total_open
+            with self._lock:
+                # Set open_contracts from API (authoritative) — do NOT also call register_close
+                self.risk.open_contracts = total_open
 
-            # Close journal trades where position is now flat
-            for trade_info in self.trades_today:
-                journal_id = trade_info.get("journal_id")
-                sym = trade_info.get("symbol")
-                if not journal_id or trade_info.get("_closed"):
-                    continue
+                # Close journal trades where position is now flat
+                for trade_info in self.trades_today:
+                    journal_id = trade_info.get("journal_id")
+                    sym = trade_info.get("symbol")
+                    if not journal_id or trade_info.get("_closed"):
+                        continue
 
-                if sym not in open_base_symbols:
-                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
-                    self.journal.record_exit_by_symbol(
-                        sym, 0, 0, exit_reason="bracket_fill"
-                    )
-                    self.risk.register_close(trade_info.get("qty", 1))
-                    trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    # Grace period: don't mark a trade as closed within 60s of placement.
+                    # This prevents a race where _sync_fills runs before the entry order
+                    # fills or before the OCO bracket is placed.
+                    placed_at = trade_info.get("_placed_at", 0)
+                    if placed_at and (time.time() - placed_at) < 60:
+                        continue
+
+                    if sym not in open_base_symbols:
+                        # Position is flat — trade was closed (by SL/TP/manual)
+                        # Try to get actual P&L from fills
+                        actual_pnl = self._get_trade_pnl(trade_info)
+                        exit_price = self._get_last_fill_price(trade_info)
+
+                        self.journal.record_exit_by_symbol(
+                            sym, exit_price, actual_pnl, exit_reason="bracket_fill"
+                        )
+                        trade_info["_closed"] = True
+                        trade_info["_closed_at"] = now_et().isoformat()
+                        trade_info["_pnl"] = actual_pnl
+                        # Remove from open positions tracker
+                        self._open_positions.pop(sym, None)
+                        logger.info(
+                            "Position closed for %s (flat) | P&L=%.2f | exit=%.2f | order=%s sl=%s tp=%s",
+                            sym, actual_pnl, exit_price,
+                            trade_info.get("order_id"),
+                            trade_info.get("sl_order_id"),
+                            trade_info.get("tp_order_id"),
+                        )
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
 
+    def _get_trade_pnl(self, trade_info: dict) -> float:
+        """Try to calculate realized P&L for a closed trade from API fills."""
+        try:
+            fills = self.api.get_fills()
+            order_id = trade_info.get("order_id")
+            if not fills or not order_id:
+                logger.info(
+                    "P&L calc skip: fills=%d order_id=%s",
+                    len(fills) if fills else 0, order_id,
+                )
+                return 0.0
+
+            entry_fill_price = 0.0
+            exit_fill_price = 0.0
+            qty = trade_info.get("qty", 1)
+            direction = trade_info.get("direction", "Buy")
+
+            # Known SL/TP order IDs from the bracket placement
+            sl_order_id = trade_info.get("sl_order_id")
+            tp_order_id = trade_info.get("tp_order_id")
+            exit_order_ids = {oid for oid in (sl_order_id, tp_order_id) if oid}
+
+            # Log all fills for debugging
+            fill_order_ids = [f.get("orderId") for f in fills[-20:]]
+            logger.info(
+                "P&L calc: looking for entry=%s exit_ids=%s in %d fills | recent_fill_orderIds=%s",
+                order_id, exit_order_ids, len(fills), fill_order_ids,
+            )
+
+            for fill in fills:
+                foid = fill.get("orderId")
+                if foid == order_id:
+                    entry_fill_price = fill.get("price", 0)
+                elif exit_order_ids and foid in exit_order_ids:
+                    exit_fill_price = fill.get("price", 0)
+
+            if not entry_fill_price:
+                logger.info(
+                    "P&L calc: NO entry fill found for orderId=%s (fills checked: %d)",
+                    order_id, len(fills),
+                )
+                return 0.0
+
+            # Fallback: if no exit fill matched by known IDs, search by contract
+            if not exit_fill_price:
+                contract_name = self.contract_map.get(trade_info.get("symbol", ""))
+                for fill in reversed(fills):
+                    foid = fill.get("orderId")
+                    if foid and foid != order_id and fill.get("contractId"):
+                        # Match by contract if we can resolve it
+                        if contract_name:
+                            cid = self._contract_id_to_symbol if hasattr(self, "_contract_id_to_symbol") else {}
+                            fill_sym = cid.get(fill.get("contractId"))
+                            if fill_sym == trade_info.get("symbol"):
+                                exit_fill_price = fill.get("price", 0)
+                                break
+                        else:
+                            exit_fill_price = fill.get("price", 0)
+                            break
+
+            if entry_fill_price and exit_fill_price:
+                spec = config.CONTRACT_SPECS.get(trade_info.get("symbol", ""), {})
+                pv = spec.get("point_value", 1)
+                if direction == "Buy":
+                    pnl = (exit_fill_price - entry_fill_price) * qty * pv
+                else:
+                    pnl = (entry_fill_price - exit_fill_price) * qty * pv
+                logger.info(
+                    "P&L calc for %s: entry=%.4f exit=%.4f qty=%d pv=%s => $%.2f",
+                    trade_info.get("symbol"), entry_fill_price, exit_fill_price, qty, pv, pnl,
+                )
+                return pnl
+
+        except Exception as e:
+            logger.debug("Could not calculate trade P&L: %s", e)
+        return 0.0
+
+    def _get_last_fill_price(self, trade_info: dict) -> float:
+        """Get exit fill price for a closed trade."""
+        try:
+            fills = self.api.get_fills()
+            order_id = trade_info.get("order_id")
+            if not fills:
+                return 0.0
+
+            # Try known SL/TP order IDs first
+            sl_order_id = trade_info.get("sl_order_id")
+            tp_order_id = trade_info.get("tp_order_id")
+            exit_order_ids = {oid for oid in (sl_order_id, tp_order_id) if oid}
+
+            if exit_order_ids:
+                for fill in reversed(fills):
+                    if fill.get("orderId") in exit_order_ids:
+                        return fill.get("price", 0)
+
+            # Fallback: match by contract
+            for fill in reversed(fills):
+                foid = fill.get("orderId")
+                if foid and foid != order_id and hasattr(self, "_contract_id_to_symbol"):
+                    fill_sym = self._contract_id_to_symbol.get(fill.get("contractId"))
+                    if fill_sym == trade_info.get("symbol"):
+                        return fill.get("price", 0)
+        except Exception:
+            pass
+        return 0.0
+
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
         try:
+            if self.api.account_id is None:
+                logger.warning("Balance sync skipped: account_id is None")
+                return
             snapshot = self.api.get_cash_balance()
             if snapshot:
                 if snapshot.get("errorText"):
                     logger.warning("Cash balance error: %s", snapshot["errorText"])
                     return
-                # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
-                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
-                if balance is not None:
-                    unrealized = snapshot.get("openPnL", 0.0)
-                    self.risk.update_balance(balance, unrealized)
+                # CashBalanceSnapshot fields:
+                #   totalCashValue = SOD cash + realized P&L (updates with each fill)
+                #   realizedPnL    = realized P&L for the day
+                #   totalPnL       = realized + unrealized P&L for today
+                #   openPnL        = unrealized P&L (open positions only)
+                #   netLiq         = net liquidation value
+                # True SOD = totalCashValue - realizedPnL
+                # Equity = SOD + totalPnL
+                total_cash = snapshot.get("totalCashValue")
+                net_liq = snapshot.get("netLiq")
+                if total_cash is not None or net_liq is not None:
+                    total_pnl = snapshot.get("totalPnL", 0.0) or 0.0
+                    realized_pnl = snapshot.get("realizedPnL", 0.0) or 0.0
+                    unrealized = snapshot.get("openPnL", 0.0) or 0.0
+
+                    if total_cash is not None:
+                        sod_balance = total_cash - realized_pnl
+                    else:
+                        sod_balance = net_liq - total_pnl
+
+                    balance = sod_balance + total_pnl
+                    logger.info(
+                        "CashBalance: SOD=%.2f totalPnL=%.2f => balance=%.2f | "
+                        "realizedPnL=%.2f openPnL=%.2f netLiq=%s",
+                        sod_balance, total_pnl, balance,
+                        realized_pnl, unrealized, net_liq,
+                    )
+                    with self._lock:
+                        self.risk.update_balance(balance, unrealized)
                 else:
-                    logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
+                    logger.warning("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
+            else:
+                logger.debug("get_cash_balance returned None (account_id=%s)", self.api.account_id)
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 
@@ -670,6 +1193,24 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     _STATUS_FILE = Path(__file__).parent / "live_status.json"
+
+    def _write_auth_status(self, attempt: int, final: bool = False):
+        """Write minimal status during auth phase so monitoring can track progress."""
+        try:
+            payload = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp_et": now_et().isoformat(),
+                "auth_phase": True,
+                "auth_attempt": attempt,
+                "auth_failed": final,
+                "environment": config.ENVIRONMENT,
+                "dry_run": self.dry_run,
+            }
+            tmp = self._STATUS_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(payload, indent=2))
+            tmp.replace(self._STATUS_FILE)
+        except Exception:
+            pass
 
     def _write_live_status(self):
         """Write current bot status to live_status.json for external monitoring."""
@@ -691,12 +1232,163 @@ class TradovateBot:
                 "environment": config.ENVIRONMENT,
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
+                "open_positions": {sym: pos.get("direction") for sym, pos in self._open_positions.items()},
+                "data_source": "websocket" if isinstance(self.md_stream, MarketDataStream) else "rest_polling",
             }
+
+            # Open positions with details
+            open_positions = self._get_open_positions_detail()
+            payload["open_positions"] = open_positions
+            payload["open_positions_count"] = len(open_positions)
+
+            # Last 5 closed trades
+            payload["recent_closed_trades"] = self._get_recent_closed_trades(limit=5)
+
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
             tmp.replace(self._STATUS_FILE)
         except Exception as e:
             logger.warning("Failed to write live_status.json: %s", e)
+
+    def _get_open_positions_detail(self) -> list[dict]:
+        """Get open positions with symbol, direction, and current P&L."""
+        if self.dry_run:
+            return []
+        try:
+            positions = self.api.get_positions()
+            result = []
+            for pos in positions:
+                net_pos = pos.get("netPos", 0)
+                if net_pos == 0:
+                    continue
+
+                contract_id = pos.get("contractId")
+                # Resolve symbol name from contractId
+                symbol = self._resolve_contract_symbol(contract_id)
+
+                direction = "Buy" if net_pos > 0 else "Sell"
+                qty = abs(net_pos)
+                net_price = pos.get("netPrice", 0)
+
+                # Calculate P&L from bought/sold values
+                # boughtValue and soldValue are in points; P&L = soldValue - boughtValue
+                bought_val = pos.get("boughtValue", 0)
+                sold_val = pos.get("soldValue", 0)
+                # Tradovate stores values as price * qty, so the raw P&L in points
+                # is (soldValue - boughtValue). Convert to dollars using point_value.
+                base_symbol = self._contract_id_to_base_symbol(contract_id)
+                point_value = config.CONTRACT_SPECS.get(base_symbol, {}).get("point_value", 1)
+                pnl_dollars = (sold_val - bought_val) * point_value
+
+                result.append({
+                    "symbol": symbol,
+                    "direction": direction,
+                    "qty": qty,
+                    "entry_price": net_price,
+                    "pnl_dollars": round(pnl_dollars, 2),
+                })
+            return result
+        except Exception as e:
+            logger.warning("Failed to get open positions detail: %s", e)
+            return []
+
+    def _get_recent_closed_trades(self, limit: int = 5) -> list[dict]:
+        """Get the most recent closed trades from today's trade list and fills."""
+        closed = []
+
+        # First: gather closed trades from bot's internal tracking
+        for t in self.trades_today:
+            if t.get("_closed"):
+                closed.append({
+                    "symbol": t.get("symbol", ""),
+                    "direction": t.get("direction", ""),
+                    "qty": t.get("qty", 0),
+                    "pnl_dollars": t.get("_pnl", 0),
+                    "closed_at": t.get("_closed_at", ""),
+                })
+
+        # Supplement with fills from API if we have fewer than needed
+        if not self.dry_run and len(closed) < limit:
+            try:
+                fills = self.api.get_fills()
+                # Group fills by orderId to reconstruct closed trades
+                # Only include fills that are finallyPaired (complete round-trips)
+                paired_fills = [f for f in fills if f.get("finallyPaired", 0) > 0]
+                # Sort by timestamp descending
+                paired_fills.sort(key=lambda f: f.get("timestamp", ""), reverse=True)
+
+                seen_orders = {t.get("order_id") for t in self.trades_today}
+                for fill in paired_fills:
+                    if len(closed) >= limit:
+                        break
+                    order_id = fill.get("orderId")
+                    if order_id in seen_orders:
+                        continue
+                    seen_orders.add(order_id)
+
+                    contract_id = fill.get("contractId")
+                    symbol = self._resolve_contract_symbol(contract_id)
+                    base_symbol = self._contract_id_to_base_symbol(contract_id)
+                    point_value = config.CONTRACT_SPECS.get(base_symbol, {}).get("point_value", 1)
+
+                    closed.append({
+                        "symbol": symbol,
+                        "direction": fill.get("action", ""),
+                        "qty": fill.get("qty", 0),
+                        "price": fill.get("price", 0),
+                        "pnl_dollars": 0,  # Cannot calculate without entry price
+                        "closed_at": fill.get("timestamp", ""),
+                    })
+            except Exception as e:
+                logger.warning("Failed to fetch fills for closed trades: %s", e)
+
+        # Return only the last N, sorted by close time descending
+        closed.sort(key=lambda x: x.get("closed_at", ""), reverse=True)
+        return closed[:limit]
+
+    def _resolve_contract_symbol(self, contract_id: int) -> str:
+        """Resolve a contractId to its symbol name, with caching."""
+        if not hasattr(self, "_contract_id_cache"):
+            self._contract_id_cache = {}
+        if contract_id in self._contract_id_cache:
+            return self._contract_id_cache[contract_id]
+        try:
+            contract = self.api._get(f"/contract/item?id={contract_id}")
+            name = contract.get("name", str(contract_id)) if contract else str(contract_id)
+            self._contract_id_cache[contract_id] = name
+            return name
+        except Exception:
+            return str(contract_id)
+
+    def _contract_id_to_base_symbol(self, contract_id: int) -> str:
+        """Map a contractId to its base symbol (NQ, ES, GC, CL) using cached mapping."""
+        if not hasattr(self, "_contract_id_to_symbol"):
+            self._contract_id_to_symbol = {}
+        return self._contract_id_to_symbol.get(contract_id, "")
+
+    def _estimate_trade_pnl(self, trade_info: dict) -> float:
+        """Estimate P&L for a closed trade using fills from API."""
+        try:
+            order_id = trade_info.get("order_id")
+            if not order_id:
+                return 0
+            fills = self.api.get_fills()
+            # Find fills matching this order and its bracket legs
+            trade_fills = [f for f in fills if f.get("orderId") == order_id]
+            if not trade_fills:
+                return 0
+
+            contract_id = trade_fills[0].get("contractId")
+            base_symbol = self._contract_id_to_base_symbol(contract_id)
+            point_value = config.CONTRACT_SPECS.get(base_symbol, {}).get("point_value", 1)
+
+            # Sum buy and sell amounts
+            buy_total = sum(f["price"] * f["qty"] for f in trade_fills if f.get("action") == "Buy")
+            sell_total = sum(f["price"] * f["qty"] for f in trade_fills if f.get("action") == "Sell")
+
+            return round((sell_total - buy_total) * point_value, 2)
+        except Exception:
+            return 0
 
     # ─────────────────────────────────────────
     # Reporting
@@ -732,13 +1424,115 @@ class TradovateBot:
 # ─────────────────────────────────────────────
 
 
+def _us_market_holidays(year: int) -> set:
+    """
+    Return a set of dates that are US futures market holidays (CME closed).
+    Covers fixed holidays and rule-based holidays (e.g. 3rd Monday of January).
+    """
+    from datetime import date
+
+    holidays = set()
+
+    # New Year's Day (Jan 1, or observed on nearest weekday)
+    nyd = date(year, 1, 1)
+    if nyd.weekday() == 6:  # Sunday → observe Monday
+        holidays.add(date(year, 1, 2))
+    elif nyd.weekday() == 5:  # Saturday → observe Friday (prev year)
+        pass  # Falls in previous year
+    else:
+        holidays.add(nyd)
+
+    # MLK Day: 3rd Monday of January
+    d = date(year, 1, 1)
+    while d.weekday() != 0:
+        d += timedelta(days=1)
+    holidays.add(d + timedelta(weeks=2))
+
+    # Presidents' Day: 3rd Monday of February
+    d = date(year, 2, 1)
+    while d.weekday() != 0:
+        d += timedelta(days=1)
+    holidays.add(d + timedelta(weeks=2))
+
+    # Good Friday: 2 days before Easter Sunday
+    # Easter calculation (Anonymous Gregorian algorithm)
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d_val = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d_val - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    easter = date(year, month, day)
+    holidays.add(easter - timedelta(days=2))  # Good Friday
+
+    # Memorial Day: last Monday of May
+    d = date(year, 5, 31)
+    while d.weekday() != 0:
+        d -= timedelta(days=1)
+    holidays.add(d)
+
+    # Juneteenth (June 19)
+    jn = date(year, 6, 19)
+    if jn.weekday() == 6:
+        holidays.add(date(year, 6, 20))
+    elif jn.weekday() == 5:
+        holidays.add(date(year, 6, 18))
+    else:
+        holidays.add(jn)
+
+    # Independence Day (July 4)
+    july4 = date(year, 7, 4)
+    if july4.weekday() == 6:
+        holidays.add(date(year, 7, 5))
+    elif july4.weekday() == 5:
+        holidays.add(date(year, 7, 3))
+    else:
+        holidays.add(july4)
+
+    # Labor Day: 1st Monday of September
+    d = date(year, 9, 1)
+    while d.weekday() != 0:
+        d += timedelta(days=1)
+    holidays.add(d)
+
+    # Thanksgiving: 4th Thursday of November
+    d = date(year, 11, 1)
+    while d.weekday() != 3:
+        d += timedelta(days=1)
+    holidays.add(d + timedelta(weeks=3))
+
+    # Christmas (Dec 25)
+    xmas = date(year, 12, 25)
+    if xmas.weekday() == 6:
+        holidays.add(date(year, 12, 26))
+    elif xmas.weekday() == 5:
+        holidays.add(date(year, 12, 24))
+    else:
+        holidays.add(xmas)
+
+    return holidays
+
+
+def _is_market_holiday(d) -> bool:
+    """Check if a date is a US futures market holiday."""
+    return d in _us_market_holidays(d.year)
+
+
 def _next_trading_morning() -> datetime:
-    """Return the next weekday at 09:25 ET (5 min before market open)."""
+    """Return the next weekday at 09:25 ET, skipping weekends and US market holidays."""
     now = now_et()
     # Start from tomorrow
     candidate = now.replace(hour=9, minute=25, second=0, microsecond=0) + timedelta(days=1)
-    # Skip weekends: Saturday=5, Sunday=6
-    while candidate.weekday() >= 5:
+    # Skip weekends and holidays
+    while candidate.weekday() >= 5 or _is_market_holiday(candidate.date()):
         candidate += timedelta(days=1)
     return candidate
 
@@ -782,8 +1576,39 @@ def main():
     # ── Daily loop: run bot, sleep until next trading morning, repeat ──
     bot = None
     while not _shutdown_requested:
-        bot = TradovateBot(dry_run=args.dry_run)
-        bot.start()
+        # Skip holidays — sleep until next trading day
+        today = now_et().date()
+        if _is_market_holiday(today):
+            logger.info("Today %s is a US market holiday. Skipping.", today)
+            wake_up = _next_trading_morning()
+            sleep_seconds = (wake_up - now_et()).total_seconds()
+            logger.info(
+                "Next trading session: %s ET (sleeping %.0f minutes)",
+                wake_up.strftime("%Y-%m-%d %H:%M"),
+                sleep_seconds / 60,
+            )
+            while sleep_seconds > 0 and not _shutdown_requested:
+                time.sleep(min(60, sleep_seconds))
+                sleep_seconds -= 60
+            continue
+
+        try:
+            bot = TradovateBot(dry_run=args.dry_run)
+            bot.start()
+        except AuthenticationError:
+            # Auth failed — retry in 5 minutes, NOT next morning.
+            # The server might just need time for CAPTCHA/rate-limit to clear.
+            logger.error("Authentication failed. Retrying in 5 minutes...")
+            retry_wait = 300  # 5 minutes
+            while retry_wait > 0 and not _shutdown_requested:
+                time.sleep(min(60, retry_wait))
+                retry_wait -= 60
+            continue  # Skip the sleep-until-next-morning logic
+        except SystemExit:
+            # Unexpected sys.exit — let systemd restart us
+            raise
+        except Exception:
+            logger.exception("Unexpected error in bot session. Will retry next session.")
 
         if _shutdown_requested:
             break
