@@ -166,8 +166,8 @@ def _build_html():
                         continue
                 if not isinstance(p, dict):
                     continue
-                direction = p.get("direction", "")
-                pnl = p.get("pnl_dollars", 0)
+                direction = p.get("direction") or p.get("side") or ""
+                pnl = p.get("pnl_dollars") or p.get("unrealised_pnl") or 0
                 try:
                     pnl = float(pnl)
                 except (ValueError, TypeError):
@@ -175,11 +175,14 @@ def _build_html():
                 pnl_class = "green" if pnl >= 0 else "red"
                 pnl_sign = "+" if pnl >= 0 else ""
                 dir_class = "buy" if str(direction).lower() == "buy" else "sell"
+                qty = p.get("qty") or p.get("size") or 0
+                entry = p.get("entry_price")
+                entry_html = f'<td>${float(entry):,.2f}</td>' if entry is not None else ""
                 open_pos_html += (
                     f'<tr><td>{p.get("symbol", "")}</td>'
                     f'<td><span class="badge {dir_class}">{direction}</span></td>'
-                    f'<td>{p.get("qty", 0)}</td>'
-                    f'<td class="{pnl_class}">{pnl_sign}${pnl:,.2f}</td></tr>'
+                    f'<td>{qty}</td>'
+                    f'<td class="{pnl_class}">{pnl_sign}${pnl:,.2f}</td>{entry_html}</tr>'
                 )
             open_pos_html += '</table>'
         elif bot["available"]:
@@ -207,8 +210,8 @@ def _build_html():
                         continue
                 if not isinstance(ct, dict):
                     continue
-                direction = ct.get("direction", "")
-                pnl = ct.get("pnl_dollars", 0)
+                direction = ct.get("direction") or ct.get("side") or ""
+                pnl = ct.get("pnl_dollars") or ct.get("closed_pnl") or 0
                 try:
                     pnl = float(pnl)
                 except (ValueError, TypeError):
