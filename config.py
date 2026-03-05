@@ -82,7 +82,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 3_000,           # FundedNext Futures challenge target (actual)
-        "max_contracts": 10,
+        "max_contracts": 50,              # micros (50 micros ≈ 5 minis equivalent)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -108,6 +108,70 @@ MAX_DAILY_TRADES = 16
 # Contract Specifications
 # ─────────────────────────────────────────────
 CONTRACT_SPECS = {
+    # ─── Micro Contracts (active) ───────────────────────────
+    # 1/10 the point value of minis = 10x less risk per contract.
+    # Same price movement, same stop/TP in points, just smaller $ impact.
+    "MNQ": {
+        "name": "Micro E-mini Nasdaq-100",
+        "exchange": "CME",
+        "tick_size": 0.25,
+        "tick_value": 0.50,
+        "point_value": 2.00,
+        "strategy": "ORB",
+        "enabled": True,
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,
+        "orb_cooldown_minutes": 15,
+        "stop_loss_points": 25,
+        "take_profit_points": 50,
+        "risk_reward_ratio": 2.0,
+    },
+    "MES": {
+        "name": "Micro E-mini S&P 500",
+        "exchange": "CME",
+        "tick_size": 0.25,
+        "tick_value": 1.25,
+        "point_value": 5.00,
+        "strategy": "ORB",
+        "enabled": True,
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,
+        "orb_cooldown_minutes": 15,
+        "stop_loss_points": 6,
+        "take_profit_points": 12,
+        "risk_reward_ratio": 2.0,
+    },
+    "MGC": {
+        "name": "Micro Gold (COMEX)",
+        "exchange": "COMEX",
+        "tick_size": 0.10,
+        "tick_value": 1.00,
+        "point_value": 10.00,
+        "strategy": "VWAP",
+        "enabled": True,
+        "stop_loss_points": 5.0,
+        "take_profit_points": 10.0,
+        "risk_reward_ratio": 2.0,
+        "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
+    },
+    "MCL": {
+        "name": "Micro WTI Crude Oil",
+        "exchange": "NYMEX",
+        "tick_size": 0.01,
+        "tick_value": 1.00,
+        "point_value": 100.00,
+        "strategy": "VWAP",
+        "enabled": True,
+        "stop_loss_points": 0.20,
+        "take_profit_points": 0.40,
+        "risk_reward_ratio": 2.0,
+        "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
+    },
+    # ─── Mini Contracts (disabled — too much risk for challenge) ──
     "NQ": {
         "name": "E-mini Nasdaq-100",
         "exchange": "CME",
@@ -115,14 +179,13 @@ CONTRACT_SPECS = {
         "tick_value": 5.00,
         "point_value": 20.00,
         "strategy": "ORB",
-        "enabled": True,
-        # Triple ORB windows: 3-min (ultra-fast) + 5-min (aggressive) + 15-min (conservative)
+        "enabled": False,
         "orb_windows": [3, 5, 15],
-        "max_orb_trades": 3,            # max trades across all ORB windows
-        "orb_cooldown_minutes": 10,     # min time between ORB trades (was 15)
-        "stop_loss_points": 20,         # tighter stop (was 25)
-        "take_profit_points": 30,       # closer TP (was 50)
-        "risk_reward_ratio": 1.5,       # was 2.0
+        "max_orb_trades": 3,
+        "orb_cooldown_minutes": 10,
+        "stop_loss_points": 20,
+        "take_profit_points": 30,
+        "risk_reward_ratio": 1.5,
     },
     "ES": {
         "name": "E-mini S&P 500",
@@ -131,13 +194,13 @@ CONTRACT_SPECS = {
         "tick_value": 12.50,
         "point_value": 50.00,
         "strategy": "ORB",
-        "enabled": True,
+        "enabled": False,
         "orb_windows": [3, 5, 15],
         "max_orb_trades": 3,
-        "orb_cooldown_minutes": 10,     # was 15
-        "stop_loss_points": 5,          # tighter stop (was 6)
-        "take_profit_points": 7.5,      # closer TP (was 12)
-        "risk_reward_ratio": 1.5,       # was 2.0
+        "orb_cooldown_minutes": 10,
+        "stop_loss_points": 5,
+        "take_profit_points": 7.5,
+        "risk_reward_ratio": 1.5,
     },
     "GC": {
         "name": "Gold (COMEX)",
@@ -146,14 +209,13 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 100.00,
         "strategy": "VWAP",
-        "enabled": True,
-        # VWAP / momentum params — more aggressive
-        "stop_loss_points": 4.0,        # tighter stop (was 5.0)
-        "take_profit_points": 6.0,      # closer TP (was 10.0)
-        "risk_reward_ratio": 1.5,       # was 2.0
+        "enabled": False,
+        "stop_loss_points": 4.0,
+        "take_profit_points": 6.0,
+        "risk_reward_ratio": 1.5,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 3,  # was 2
-        "vwap_cooldown_minutes": 15,         # was 30
+        "max_vwap_trades_per_direction": 3,
+        "vwap_cooldown_minutes": 15,
     },
     "CL": {
         "name": "WTI Crude Oil",
@@ -162,10 +224,10 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 1_000.00,
         "strategy": "VWAP",
-        "enabled": True,
-        "stop_loss_points": 0.15,       # tighter stop (was 0.20)
-        "take_profit_points": 0.22,     # closer TP (was 0.40)
-        "risk_reward_ratio": 1.5,       # was 2.0
+        "enabled": False,
+        "stop_loss_points": 0.15,
+        "take_profit_points": 0.22,
+        "risk_reward_ratio": 1.5,
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 3,  # was 2
         "vwap_cooldown_minutes": 15,         # was 30
@@ -177,12 +239,12 @@ CONTRACT_SPECS = {
         "tick_value": 25.00,
         "point_value": 5_000.00,
         "strategy": "VWAP",
-        "enabled": False,  # Disabled by default — high tick value ($25)
+        "enabled": False,
         "stop_loss_points": 0.05,
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 1,  # conservative: 1 per direction
+        "max_vwap_trades_per_direction": 1,
         "vwap_cooldown_minutes": 60,
     },
     "NG": {
@@ -192,7 +254,7 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 10_000.00,
         "strategy": "VWAP",
-        "enabled": False,  # Disabled by default — extremely volatile
+        "enabled": False,
         "stop_loss_points": 0.030,
         "take_profit_points": 0.060,
         "risk_reward_ratio": 2.0,
