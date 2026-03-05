@@ -1159,6 +1159,9 @@ class MarketDataStream:
 
 # Yahoo Finance symbol mapping for futures front-month
 YAHOO_SYMBOLS = {
+    # Micro contracts use the same Yahoo symbol as their mini counterparts
+    # (Yahoo tracks the same underlying price, micros just have smaller multiplier)
+    "MNQ": "NQ=F", "MES": "ES=F", "MGC": "GC=F", "MCL": "CL=F",
     "NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F",
     "SI": "SI=F", "NG": "NG=F",
 }

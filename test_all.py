@@ -451,8 +451,8 @@ print("=" * 60)
 @test("ORB: range accumulates during window")
 def test_orb_range_accumulation():
     from strategies import ORBStrategy
-    strategy = ORBStrategy("NQ")
-    # Feed prices during first 2 minutes (09:30 - 09:32), within 3-min window
+    strategy = ORBStrategy("MNQ")
+    # Feed prices during first 2 minutes (09:30 - 09:32), within shortest window
     ET = ZoneInfo("America/New_York")
     t1 = datetime(2026, 2, 23, 9, 30, tzinfo=ET)
     t2 = datetime(2026, 2, 23, 9, 31, tzinfo=ET)
@@ -467,7 +467,7 @@ def test_orb_range_accumulation():
 @test("ORB: breakout above range triggers LONG signal")
 def test_orb_long_breakout():
     from strategies import ORBStrategy
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
     ET = ZoneInfo("America/New_York")
 
     # Accumulate range (09:30 - 09:35)
@@ -487,7 +487,7 @@ def test_orb_long_breakout():
 @test("ORB: breakout below range triggers SHORT signal")
 def test_orb_short_breakout():
     from strategies import ORBStrategy
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
     ET = ZoneInfo("America/New_York")
 
     for minute in range(5):
@@ -505,7 +505,7 @@ def test_orb_short_breakout():
 @test("ORB: no double-fire from same window")
 def test_orb_no_double_fire():
     from strategies import ORBStrategy
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
     ET = ZoneInfo("America/New_York")
 
     for minute in range(5):
@@ -527,7 +527,7 @@ def test_orb_no_double_fire():
 @test("ORB: cooldown prevents rapid trades")
 def test_orb_cooldown():
     from strategies import ORBStrategy
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
     ET = ZoneInfo("America/New_York")
 
     for minute in range(5):
@@ -548,14 +548,14 @@ def test_orb_cooldown():
 @test("ORB: max trades cap respected")
 def test_orb_max_trades():
     from strategies import ORBStrategy
-    strategy = ORBStrategy("NQ")
-    assert strategy.max_trades == 3  # Updated to 3 for aggressive settings
+    strategy = ORBStrategy("MNQ")
+    assert strategy.max_trades == 2  # Default from config
 
 
 @test("VWAP: running VWAP calculation")
 def test_vwap_calculation():
     from strategies import VWAPStrategy
-    strat = VWAPStrategy("GC")
+    strat = VWAPStrategy("MGC")
     # Bar 1: typical = (100+90+95)/3 = 95.0, vol=100
     strat.update_vwap(100.0, 90.0, 95.0, 100)
     assert strat.vwap is not None
@@ -570,7 +570,7 @@ def test_vwap_calculation():
 @test("VWAP: crossover above triggers LONG")
 def test_vwap_long_crossover():
     from strategies import VWAPStrategy
-    strat = VWAPStrategy("GC")
+    strat = VWAPStrategy("MGC")
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Build initial VWAP around 2000
@@ -589,7 +589,7 @@ def test_vwap_long_crossover():
 @test("VWAP: crossover below triggers SHORT")
 def test_vwap_short_crossover():
     from strategies import VWAPStrategy
-    strat = VWAPStrategy("GC")
+    strat = VWAPStrategy("MGC")
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     for i in range(10):
@@ -607,7 +607,7 @@ def test_vwap_short_crossover():
 @test("VWAP: cooldown between same-direction trades")
 def test_vwap_cooldown():
     from strategies import VWAPStrategy
-    strat = VWAPStrategy("GC")
+    strat = VWAPStrategy("MGC")
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     for i in range(10):
@@ -628,7 +628,7 @@ def test_vwap_cooldown():
 @test("VWAP: reset clears all state")
 def test_vwap_reset():
     from strategies import VWAPStrategy
-    strat = VWAPStrategy("GC")
+    strat = VWAPStrategy("MGC")
     strat.vwap = 2000.0
     strat.long_count = 2
     strat.short_count = 1
@@ -641,10 +641,10 @@ def test_vwap_reset():
 @test("Strategy factory creates correct types")
 def test_strategy_factory():
     from strategies import create_strategy, ORBStrategy, VWAPStrategy
-    nq = create_strategy("NQ")
-    assert isinstance(nq, ORBStrategy)
-    gc = create_strategy("GC")
-    assert isinstance(gc, VWAPStrategy)
+    mnq = create_strategy("MNQ")
+    assert isinstance(mnq, ORBStrategy)
+    mgc = create_strategy("MGC")
+    assert isinstance(mgc, VWAPStrategy)
 
 
 test_orb_range_accumulation()
@@ -739,7 +739,7 @@ def test_daily_trade_cap():
 def test_position_sizing():
     from risk_manager import RiskManager
     rm = RiskManager()
-    qty = rm.calculate_position_size("NQ")
+    qty = rm.calculate_position_size("MNQ")
     assert isinstance(qty, int)
     assert qty >= 0
     assert qty <= rm.max_contracts
@@ -751,7 +751,7 @@ def test_position_sizing_locked():
     rm = RiskManager()
     rm.trading_locked = True
     rm.lock_reason = "test lock"
-    qty = rm.calculate_position_size("NQ")
+    qty = rm.calculate_position_size("MNQ")
     assert qty == 0
 
 
@@ -956,13 +956,13 @@ print("8. END-TO-END TRADING SIMULATION")
 print("=" * 60)
 
 
-@test("Full trading day simulation with NQ ORB")
-def test_e2e_nq_orb():
-    """Simulate a complete trading day with NQ ORB breakout."""
+@test("Full trading day simulation with MNQ ORB")
+def test_e2e_mnq_orb():
+    """Simulate a complete trading day with MNQ micro ORB breakout."""
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -984,7 +984,7 @@ def test_e2e_nq_orb():
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("NQ")
+                qty = rm.calculate_position_size("MNQ")
                 if qty > 0:
                     signal.qty = qty
                     rm.register_open(qty)
@@ -999,13 +999,13 @@ def test_e2e_nq_orb():
                      s.direction.value, s.symbol, s.qty, s.stop_loss, s.take_profit, s.reason)
 
 
-@test("Full trading day simulation with GC VWAP")
-def test_e2e_gc_vwap():
-    """Simulate GC VWAP momentum trading."""
+@test("Full trading day simulation with MGC VWAP")
+def test_e2e_mgc_vwap():
+    """Simulate MGC micro VWAP momentum trading."""
     from strategies import VWAPStrategy
     from risk_manager import RiskManager
 
-    strategy = VWAPStrategy("GC")
+    strategy = VWAPStrategy("MGC")
     rm = RiskManager()
     signals = []
     import random
@@ -1027,7 +1027,7 @@ def test_e2e_gc_vwap():
         if signal:
             ok, _ = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("GC")
+                qty = rm.calculate_position_size("MGC")
                 if qty > 0:
                     signal.qty = qty
                     rm.register_open(qty)
@@ -1058,8 +1058,8 @@ def test_e2e_risk_cap():
     assert "Daily trade cap" in reason
 
 
-test_e2e_nq_orb()
-test_e2e_gc_vwap()
+test_e2e_mnq_orb()
+test_e2e_mgc_vwap()
 test_e2e_risk_cap()
 
 
