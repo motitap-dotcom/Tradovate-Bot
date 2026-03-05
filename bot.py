@@ -642,7 +642,10 @@ class TradovateBot:
                     )
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    trade_info["_closed_at"] = now_et().isoformat()
+                    # Try to estimate P&L from fills
+                    trade_info["_pnl"] = self._estimate_trade_pnl(trade_info)
+                    logger.info("Position closed for %s (flat) pnl=%.2f", sym, trade_info["_pnl"])
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
@@ -692,11 +695,160 @@ class TradovateBot:
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
             }
+
+            # Open positions with details
+            open_positions = self._get_open_positions_detail()
+            payload["open_positions"] = open_positions
+            payload["open_positions_count"] = len(open_positions)
+
+            # Last 5 closed trades
+            payload["recent_closed_trades"] = self._get_recent_closed_trades(limit=5)
+
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
             tmp.replace(self._STATUS_FILE)
         except Exception as e:
             logger.warning("Failed to write live_status.json: %s", e)
+
+    def _get_open_positions_detail(self) -> list[dict]:
+        """Get open positions with symbol, direction, and current P&L."""
+        if self.dry_run:
+            return []
+        try:
+            positions = self.api.get_positions()
+            result = []
+            for pos in positions:
+                net_pos = pos.get("netPos", 0)
+                if net_pos == 0:
+                    continue
+
+                contract_id = pos.get("contractId")
+                # Resolve symbol name from contractId
+                symbol = self._resolve_contract_symbol(contract_id)
+
+                direction = "Buy" if net_pos > 0 else "Sell"
+                qty = abs(net_pos)
+                net_price = pos.get("netPrice", 0)
+
+                # Calculate P&L from bought/sold values
+                # boughtValue and soldValue are in points; P&L = soldValue - boughtValue
+                bought_val = pos.get("boughtValue", 0)
+                sold_val = pos.get("soldValue", 0)
+                # Tradovate stores values as price * qty, so the raw P&L in points
+                # is (soldValue - boughtValue). Convert to dollars using point_value.
+                base_symbol = self._contract_id_to_base_symbol(contract_id)
+                point_value = config.CONTRACT_SPECS.get(base_symbol, {}).get("point_value", 1)
+                pnl_dollars = (sold_val - bought_val) * point_value
+
+                result.append({
+                    "symbol": symbol,
+                    "direction": direction,
+                    "qty": qty,
+                    "entry_price": net_price,
+                    "pnl_dollars": round(pnl_dollars, 2),
+                })
+            return result
+        except Exception as e:
+            logger.warning("Failed to get open positions detail: %s", e)
+            return []
+
+    def _get_recent_closed_trades(self, limit: int = 5) -> list[dict]:
+        """Get the most recent closed trades from today's trade list and fills."""
+        closed = []
+
+        # First: gather closed trades from bot's internal tracking
+        for t in self.trades_today:
+            if t.get("_closed"):
+                closed.append({
+                    "symbol": t.get("symbol", ""),
+                    "direction": t.get("direction", ""),
+                    "qty": t.get("qty", 0),
+                    "pnl_dollars": t.get("_pnl", 0),
+                    "closed_at": t.get("_closed_at", ""),
+                })
+
+        # Supplement with fills from API if we have fewer than needed
+        if not self.dry_run and len(closed) < limit:
+            try:
+                fills = self.api.get_fills()
+                # Group fills by orderId to reconstruct closed trades
+                # Only include fills that are finallyPaired (complete round-trips)
+                paired_fills = [f for f in fills if f.get("finallyPaired", 0) > 0]
+                # Sort by timestamp descending
+                paired_fills.sort(key=lambda f: f.get("timestamp", ""), reverse=True)
+
+                seen_orders = {t.get("order_id") for t in self.trades_today}
+                for fill in paired_fills:
+                    if len(closed) >= limit:
+                        break
+                    order_id = fill.get("orderId")
+                    if order_id in seen_orders:
+                        continue
+                    seen_orders.add(order_id)
+
+                    contract_id = fill.get("contractId")
+                    symbol = self._resolve_contract_symbol(contract_id)
+                    base_symbol = self._contract_id_to_base_symbol(contract_id)
+                    point_value = config.CONTRACT_SPECS.get(base_symbol, {}).get("point_value", 1)
+
+                    closed.append({
+                        "symbol": symbol,
+                        "direction": fill.get("action", ""),
+                        "qty": fill.get("qty", 0),
+                        "price": fill.get("price", 0),
+                        "pnl_dollars": 0,  # Cannot calculate without entry price
+                        "closed_at": fill.get("timestamp", ""),
+                    })
+            except Exception as e:
+                logger.warning("Failed to fetch fills for closed trades: %s", e)
+
+        # Return only the last N, sorted by close time descending
+        closed.sort(key=lambda x: x.get("closed_at", ""), reverse=True)
+        return closed[:limit]
+
+    def _resolve_contract_symbol(self, contract_id: int) -> str:
+        """Resolve a contractId to its symbol name, with caching."""
+        if not hasattr(self, "_contract_id_cache"):
+            self._contract_id_cache = {}
+        if contract_id in self._contract_id_cache:
+            return self._contract_id_cache[contract_id]
+        try:
+            contract = self.api._get(f"/contract/item?id={contract_id}")
+            name = contract.get("name", str(contract_id)) if contract else str(contract_id)
+            self._contract_id_cache[contract_id] = name
+            return name
+        except Exception:
+            return str(contract_id)
+
+    def _contract_id_to_base_symbol(self, contract_id: int) -> str:
+        """Map a contractId to its base symbol (NQ, ES, GC, CL) using cached mapping."""
+        if not hasattr(self, "_contract_id_to_symbol"):
+            self._contract_id_to_symbol = {}
+        return self._contract_id_to_symbol.get(contract_id, "")
+
+    def _estimate_trade_pnl(self, trade_info: dict) -> float:
+        """Estimate P&L for a closed trade using fills from API."""
+        try:
+            order_id = trade_info.get("order_id")
+            if not order_id:
+                return 0
+            fills = self.api.get_fills()
+            # Find fills matching this order and its bracket legs
+            trade_fills = [f for f in fills if f.get("orderId") == order_id]
+            if not trade_fills:
+                return 0
+
+            contract_id = trade_fills[0].get("contractId")
+            base_symbol = self._contract_id_to_base_symbol(contract_id)
+            point_value = config.CONTRACT_SPECS.get(base_symbol, {}).get("point_value", 1)
+
+            # Sum buy and sell amounts
+            buy_total = sum(f["price"] * f["qty"] for f in trade_fills if f.get("action") == "Buy")
+            sell_total = sum(f["price"] * f["qty"] for f in trade_fills if f.get("action") == "Sell")
+
+            return round((sell_total - buy_total) * point_value, 2)
+        except Exception:
+            return 0
 
     # ─────────────────────────────────────────
     # Reporting
