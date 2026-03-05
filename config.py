@@ -208,6 +208,9 @@ CONTRACT_SPECS = {
 # US equity open for ORB calculation
 MARKET_OPEN_ET = "09:30"
 
+# Earliest time to place new trades (no trading before this)
+TRADING_START_ET = "09:30"
+
 # Stop placing new trades after this time
 TRADING_CUTOFF_ET = "16:15"
 
