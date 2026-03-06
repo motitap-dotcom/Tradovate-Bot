@@ -329,7 +329,7 @@ class TradovateBot:
             # realizedPnL    = realized P&L for the day
             # True SOD = totalCashValue - realizedPnL
             #
-            # IMPORTANT: update_balance() computes equity = realized_balance + unrealized.
+            # CRITICAL: update_balance() computes equity = realized_balance + unrealized.
             # So we must pass totalCashValue (without unrealized) as realized_balance,
             # NOT netLiq (which already includes unrealized). Otherwise unrealized
             # gets double-counted, inflating day_pnl and triggering the profit cap.
@@ -348,8 +348,7 @@ class TradovateBot:
             )
 
             # Set the risk manager's baseline to the real balance
-            # Use true SOD balance as day_start so day_pnl reflects today's actual P&L
-            # Pass realized_balance (WITHOUT unrealized) — update_balance adds unrealized separately
+            # Pass realized_balance (WITHOUT unrealized) — update_balance adds it separately
             self.risk.current_balance = realized_balance
             self.risk.day_start_balance = sod_balance
             self.risk.starting_balance = sod_balance
@@ -1168,7 +1167,7 @@ class TradovateBot:
                 #   openPnL        = unrealized P&L (open positions only)
                 #   netLiq         = totalCashValue + openPnL
                 #
-                # IMPORTANT: update_balance(realized_balance, unrealized) computes
+                # CRITICAL: update_balance(realized_balance, unrealized) computes
                 # equity = realized_balance + unrealized. So we pass totalCashValue
                 # (without unrealized) as realized_balance, NOT netLiq or SOD+totalPnL.
                 # Otherwise unrealized is double-counted, inflating day_pnl and
