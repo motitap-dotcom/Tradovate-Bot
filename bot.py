@@ -324,46 +324,53 @@ class TradovateBot:
                 logger.warning("Initial balance snapshot has no value: %s", snapshot)
                 return
 
-            # totalCashValue includes realized P&L from today's fills.
+            # totalCashValue = SOD cash + realized P&L (does NOT include unrealized)
+            # openPnL        = unrealized P&L from open positions
+            # realizedPnL    = realized P&L for the day
             # True SOD = totalCashValue - realizedPnL
+            #
+            # IMPORTANT: update_balance() computes equity = realized_balance + unrealized.
+            # So we must pass totalCashValue (without unrealized) as realized_balance,
+            # NOT netLiq (which already includes unrealized). Otherwise unrealized
+            # gets double-counted, inflating day_pnl and triggering the profit cap.
             if total_cash is not None:
                 sod_balance = total_cash - realized_pnl
+                realized_balance = total_cash  # SOD + realized (no unrealized)
             else:
                 sod_balance = net_liq - total_pnl  # fallback
-
-            # Current equity = SOD + totalPnL (realized + unrealized)
-            balance = sod_balance + total_pnl
+                realized_balance = sod_balance + realized_pnl
 
             logger.info(
                 "Initial CashBalance: totalCash=%.2f realizedPnL=%.2f => SOD=%.2f | "
-                "totalPnL=%.2f => balance=%.2f | raw=%s",
+                "realized_balance=%.2f unrealized=%.2f | raw=%s",
                 total_cash or 0, realized_pnl, sod_balance,
-                total_pnl, balance, snapshot,
+                realized_balance, unrealized, snapshot,
             )
 
             # Set the risk manager's baseline to the real balance
             # Use true SOD balance as day_start so day_pnl reflects today's actual P&L
-            self.risk.current_balance = balance
+            # Pass realized_balance (WITHOUT unrealized) — update_balance adds unrealized separately
+            self.risk.current_balance = realized_balance
             self.risk.day_start_balance = sod_balance
             self.risk.starting_balance = sod_balance
 
-            # Update peak if actual balance exceeds nominal
-            equity = balance
+            # Update peak based on full equity (realized + unrealized)
+            equity = realized_balance + unrealized
             if equity > self.risk.peak_balance:
                 self.risk.peak_balance = equity
                 self.risk.drawdown_floor = equity - self.risk.max_trailing_drawdown
 
             self.risk.unrealized_pnl = unrealized
-            # Calculate actual day P&L (don't assume 0 on mid-day restart)
-            self.risk.day_pnl = balance - sod_balance
+            # day_pnl = realized_balance - sod + unrealized = realizedPnL + openPnL = totalPnL
+            self.risk.day_pnl = realized_balance - sod_balance + unrealized
 
             logger.info(
-                "Risk manager initialized from API | balance=%.2f | "
-                "peak=%.2f | floor=%.2f | unrealized=%.2f",
-                balance,
+                "Risk manager initialized from API | realized=%.2f | equity=%.2f | "
+                "day_pnl=%.2f | peak=%.2f | floor=%.2f",
+                realized_balance, equity,
+                self.risk.day_pnl,
                 self.risk.peak_balance,
                 self.risk.drawdown_floor,
-                unrealized,
             )
 
         except Exception as e:
@@ -596,9 +603,11 @@ class TradovateBot:
         with self._lock:
             ok, reason = self.risk.can_trade()
             if not ok:
+                logger.debug("Trade blocked for %s: %s", symbol, reason)
                 return
             # Skip if we already have an open position for this symbol
             if symbol in self._open_positions:
+                logger.debug("Skipping %s: open position exists (%s)", symbol, self._open_positions[symbol].get("direction"))
                 return
 
         # Check time constraints
@@ -1153,34 +1162,38 @@ class TradovateBot:
                     logger.warning("Cash balance error: %s", snapshot["errorText"])
                     return
                 # CashBalanceSnapshot fields:
-                #   totalCashValue = SOD cash + realized P&L (updates with each fill)
+                #   totalCashValue = SOD cash + realized P&L (does NOT include unrealized)
                 #   realizedPnL    = realized P&L for the day
                 #   totalPnL       = realized + unrealized P&L for today
                 #   openPnL        = unrealized P&L (open positions only)
-                #   netLiq         = net liquidation value
-                # True SOD = totalCashValue - realizedPnL
-                # Equity = SOD + totalPnL
+                #   netLiq         = totalCashValue + openPnL
+                #
+                # IMPORTANT: update_balance(realized_balance, unrealized) computes
+                # equity = realized_balance + unrealized. So we pass totalCashValue
+                # (without unrealized) as realized_balance, NOT netLiq or SOD+totalPnL.
+                # Otherwise unrealized is double-counted, inflating day_pnl and
+                # triggering the daily profit cap prematurely.
                 total_cash = snapshot.get("totalCashValue")
                 net_liq = snapshot.get("netLiq")
                 if total_cash is not None or net_liq is not None:
-                    total_pnl = snapshot.get("totalPnL", 0.0) or 0.0
                     realized_pnl = snapshot.get("realizedPnL", 0.0) or 0.0
                     unrealized = snapshot.get("openPnL", 0.0) or 0.0
 
+                    # realized_balance = cash + realized P&L (no unrealized)
                     if total_cash is not None:
-                        sod_balance = total_cash - realized_pnl
+                        realized_balance = total_cash
                     else:
-                        sod_balance = net_liq - total_pnl
+                        # netLiq = cash + realized + unrealized, so subtract unrealized
+                        realized_balance = net_liq - unrealized
 
-                    balance = sod_balance + total_pnl
                     logger.info(
-                        "CashBalance: SOD=%.2f totalPnL=%.2f => balance=%.2f | "
-                        "realizedPnL=%.2f openPnL=%.2f netLiq=%s",
-                        sod_balance, total_pnl, balance,
-                        realized_pnl, unrealized, net_liq,
+                        "CashBalance: realized=%.2f unrealized=%.2f => equity=%.2f | "
+                        "realizedPnL=%.2f totalCash=%s netLiq=%s",
+                        realized_balance, unrealized, realized_balance + unrealized,
+                        realized_pnl, total_cash, net_liq,
                     )
                     with self._lock:
-                        self.risk.update_balance(balance, unrealized)
+                        self.risk.update_balance(realized_balance, unrealized)
                 else:
                     logger.warning("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
             else:
