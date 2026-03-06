@@ -956,13 +956,13 @@ print("8. END-TO-END TRADING SIMULATION")
 print("=" * 60)
 
 
-@test("Full trading day simulation with MNQ ORB")
-def test_e2e_mnq_orb():
-    """Simulate a complete trading day with MNQ micro ORB breakout."""
+@test("Full trading day simulation with NQ ORB")
+def test_e2e_nq_orb():
+    """Simulate a complete trading day with NQ mini ORB breakout."""
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("MNQ")
+    strategy = ORBStrategy("NQ")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -984,7 +984,7 @@ def test_e2e_mnq_orb():
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("MNQ")
+                qty = rm.calculate_position_size("NQ")
                 if qty > 0:
                     signal.qty = qty
                     rm.register_open(qty)
@@ -999,13 +999,13 @@ def test_e2e_mnq_orb():
                      s.direction.value, s.symbol, s.qty, s.stop_loss, s.take_profit, s.reason)
 
 
-@test("Full trading day simulation with MGC VWAP")
-def test_e2e_mgc_vwap():
-    """Simulate MGC micro VWAP momentum trading."""
+@test("Full trading day simulation with GC VWAP")
+def test_e2e_gc_vwap():
+    """Simulate GC mini VWAP momentum trading."""
     from strategies import VWAPStrategy
     from risk_manager import RiskManager
 
-    strategy = VWAPStrategy("MGC")
+    strategy = VWAPStrategy("GC")
     rm = RiskManager()
     signals = []
     import random
@@ -1027,7 +1027,7 @@ def test_e2e_mgc_vwap():
         if signal:
             ok, _ = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("MGC")
+                qty = rm.calculate_position_size("GC")
                 if qty > 0:
                     signal.qty = qty
                     rm.register_open(qty)
@@ -1058,8 +1058,8 @@ def test_e2e_risk_cap():
     assert "Daily trade cap" in reason
 
 
-test_e2e_mnq_orb()
-test_e2e_mgc_vwap()
+test_e2e_nq_orb()
+test_e2e_gc_vwap()
 test_e2e_risk_cap()
 
 

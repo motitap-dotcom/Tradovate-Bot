@@ -728,8 +728,9 @@ class TradovateAPI:
             entry_payload["price"] = entry_price
 
         logger.info(
-            "Placing bracket %s %d %s @ %s | SL=%.2f TP=%.2f",
+            "Placing bracket %s %d %s @ %s | SL=%.2f TP=%.2f | payload=%s",
             action, qty, symbol, order_type, stop_price, take_profit_price,
+            entry_payload,
         )
 
         entry_result = self._post("/order/placeorder", entry_payload)
@@ -740,12 +741,8 @@ class TradovateAPI:
         entry_order_id = entry_result["orderId"]
         entry_status = entry_result.get("ordStatus", "Unknown")
         logger.info(
-            "Entry order placed: orderId=%s status=%s | full=%s",
-            entry_order_id, entry_status,
-            {k: v for k, v in entry_result.items() if k in (
-                "orderId", "ordStatus", "action", "orderQty", "avgPrice",
-                "filledQty", "rejectReason", "text",
-            )},
+            "Entry order placed: orderId=%s status=%s | full_response=%s",
+            entry_order_id, entry_status, entry_result,
         )
 
         # Check if order was rejected
@@ -763,14 +760,23 @@ class TradovateAPI:
                 filled_qty = order_detail.get("filledQty", 0)
                 avg_price = order_detail.get("avgPrice", 0)
                 logger.info(
-                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s",
-                    entry_order_id, detail_status, filled_qty, avg_price,
+                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s | detail=%s",
+                    entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
                 if detail_status == "Rejected":
                     logger.error(
-                        "Entry order REJECTED after submit: %s",
-                        order_detail.get("rejectReason", order_detail.get("text", "unknown")),
+                        "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
+                        order_detail.get("rejectReason"),
+                        order_detail.get("text"),
+                        order_detail,
                     )
+                    # Try commandReport for more details
+                    try:
+                        cmd_report = self._get(f"/commandReport/deps?masterid={entry_order_id}")
+                        if cmd_report:
+                            logger.error("CommandReport for rejected order: %s", cmd_report)
+                    except Exception:
+                        pass
                     return None
 
         # --- Step 2: OCO stop-loss + take-profit ---
