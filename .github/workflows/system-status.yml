@@ -1,3 +1,4 @@
+# Triggered health check
 name: System Status Check
 
 # Runs every 30 min, on push to key branches, or manually via workflow_dispatch
