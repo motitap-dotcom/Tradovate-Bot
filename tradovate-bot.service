@@ -2,18 +2,19 @@
 Description=Tradovate Trading Bot
 After=network-online.target
 Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=300
+StartLimitBurst=10
+StartLimitIntervalSec=600
 
 [Service]
 Type=simple
 WorkingDirectory=/root/tradovate-bot
-ExecStart=/root/tradovate-bot/venv/bin/python bot.py --live
 EnvironmentFile=/root/tradovate-bot/.env
+ExecStart=/root/tradovate-bot/venv/bin/python bot.py
 ExecStopPost=/bin/bash /root/tradovate-bot/alert.sh tradovate-bot
 
-# Auto-restart on crash (30s delay)
-Restart=on-failure
+# Always restart — the bot has its own daily sleep loop.
+# If it exits unexpectedly, systemd brings it back within 30s.
+Restart=always
 RestartSec=30
 
 # Logging
@@ -21,6 +22,10 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=tradovate-bot
 Environment=PYTHONUNBUFFERED=1
+
+# Memory limit — prevents OOM kill from Playwright/Chrome
+MemoryMax=2G
+MemoryHigh=1500M
 
 # Security
 NoNewPrivileges=true

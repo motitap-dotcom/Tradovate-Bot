@@ -127,23 +127,34 @@ class TradovateAPI:
 
         # 2. Try saved token from file
         if self._load_token():
+            # Always attempt renewal — even for expired tokens.
+            # Tradovate may accept renewal for recently-expired tokens.
+            # Only skip if there's literally no token string.
             logger.info("Loaded saved token, attempting renewal...")
             if self.renew_token():
                 logger.info("Saved token renewed successfully")
                 self._fetch_account_id()
                 self._save_token()
                 return True
-            logger.warning("Saved token expired, trying fresh auth...")
+            logger.warning("Saved token renewal failed, trying fresh auth...")
+            # Clear stale token and delete file before fresh auth
+            self.access_token = None
+            self.md_access_token = None
+            try:
+                _TOKEN_FILE.unlink(missing_ok=True)
+            except OSError:
+                pass
 
         url = f"{self.base_url}/auth/accesstokenrequest"
+        live_url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"
 
-        # 3. Web-style auth (no CID/Secret needed)
-        data = self._try_web_auth(url)
-        # 3b. If demo auth failed, try live endpoint (some prop firms require it)
+        # 3. Web-style auth — try live endpoint first (FundedNext works better on live)
+        logger.info("Trying web auth on live endpoint first...")
+        data = self._try_web_auth(live_url)
+        # 3b. If live failed, try demo endpoint
         if data is None and "demo" in self.base_url:
-            live_url = "https://live.tradovateapi.com/v1/auth/accesstokenrequest"
-            logger.info("Retrying auth via live endpoint...")
-            data = self._try_web_auth(live_url)
+            logger.info("Trying web auth on demo endpoint...")
+            data = self._try_web_auth(url)
         # 4. API-key auth
         if data is None:
             data = self._try_api_auth(url)
@@ -151,6 +162,7 @@ class TradovateAPI:
         if data is None:
             data = self._try_browser_auth()
         if data is None:
+            logger.error("All authentication methods exhausted")
             return False
 
         if "accessToken" not in data:
@@ -258,7 +270,15 @@ class TradovateAPI:
                 return self._handle_p_ticket(url, data, payload)
 
             error = data.get("errorText", "")
-            logger.info("Web auth response: %s", error)
+            # Tradovate returns "Incorrect password" when rate-limited
+            if "Incorrect" in error and "p-ticket" not in str(data):
+                logger.warning(
+                    "Web auth: '%s' — may be rate-limited. "
+                    "Waiting 20s before next attempt...", error,
+                )
+                time.sleep(20)
+            else:
+                logger.info("Web auth response: %s", error)
         except requests.RequestException as e:
             logger.warning("Web auth request failed: %s", e)
         return None
@@ -385,67 +405,109 @@ class TradovateAPI:
             except Exception:
                 pass
 
-        logger.info("Attempting browser-based login at %s ...", trader_url)
-        try:
-            with sync_playwright() as pw:
-                launch_args = {
-                    "headless": True,
-                    "args": [
-                        "--no-sandbox",
-                        "--disable-blink-features=AutomationControlled",
-                    ],
-                }
-                if proxy_cfg:
-                    launch_args["proxy"] = proxy_cfg
+        # Retry browser auth up to 2 times (page load can be flaky)
+        for attempt in range(1, 3):
+            logger.info("Attempting browser-based login at %s (attempt %d/2)...", trader_url, attempt)
+            browser = None
+            try:
+                with sync_playwright() as pw:
+                    launch_args = {
+                        "headless": True,
+                        "args": [
+                            "--no-sandbox",
+                            "--disable-blink-features=AutomationControlled",
+                            "--disable-dev-shm-usage",
+                            "--disable-gpu",
+                            "--disable-extensions",
+                            "--disable-software-rasterizer",
+                            "--disable-background-networking",
+                            "--js-flags=--max-old-space-size=256",
+                        ],
+                    }
+                    if proxy_cfg:
+                        launch_args["proxy"] = proxy_cfg
 
-                browser = pw.chromium.launch(**launch_args)
-                ctx = browser.new_context(
-                    viewport={"width": 1920, "height": 1080},
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/121.0.0.0 Safari/537.36"
-                    ),
-                    ignore_https_errors=True,
-                )
-                ctx.add_init_script(
-                    "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
-                )
-                page = ctx.new_page()
-                page.on("response", _on_response)
+                    logger.info("Launching Chromium (headless)...")
+                    browser = pw.chromium.launch(**launch_args)
+                    ctx = browser.new_context(
+                        viewport={"width": 1280, "height": 720},
+                        user_agent=(
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/121.0.0.0 Safari/537.36"
+                        ),
+                        ignore_https_errors=True,
+                    )
+                    ctx.add_init_script(
+                        "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
+                    )
+                    page = ctx.new_page()
+                    page.on("response", _on_response)
 
-                page.goto(trader_url, timeout=60000, wait_until="domcontentloaded")
-                page.wait_for_timeout(10000)
+                    logger.info("Loading %s ...", trader_url)
+                    page.goto(trader_url, timeout=60000, wait_until="domcontentloaded")
+                    logger.info("Page loaded. Title: %s. Waiting for login form...", page.title())
+                    page.wait_for_timeout(10000)
 
-                # Fill login form
-                text_input = page.query_selector('input[type="text"]')
-                pass_input = page.query_selector('input[type="password"]')
-                if text_input and pass_input:
-                    text_input.fill(config.TRADOVATE_USERNAME)
-                    pass_input.fill(config.TRADOVATE_PASSWORD)
-                    page.wait_for_timeout(500)
+                    # Fill login form
+                    text_input = page.query_selector('input[type="text"]')
+                    pass_input = page.query_selector('input[type="password"]')
+                    if text_input and pass_input:
+                        logger.info("Login form found. Filling credentials...")
+                        text_input.fill(config.TRADOVATE_USERNAME)
+                        pass_input.fill(config.TRADOVATE_PASSWORD)
+                        page.wait_for_timeout(500)
 
-                    # Click login button
-                    for btn in page.query_selector_all("button"):
-                        if "login" in (btn.inner_text() or "").lower():
-                            btn.click()
-                            break
+                        # Click login button
+                        clicked = False
+                        for btn in page.query_selector_all("button"):
+                            btn_text = (btn.inner_text() or "").strip().lower()
+                            if "login" in btn_text or "sign in" in btn_text or "log in" in btn_text:
+                                logger.info("Clicking login button: '%s'", btn_text)
+                                btn.click()
+                                clicked = True
+                                break
+                        if not clicked:
+                            logger.info("No login button found, pressing Enter")
+                            page.keyboard.press("Enter")
+
+                        # Wait for token capture (up to 60 seconds)
+                        logger.info("Waiting for auth response (up to 60s)...")
+                        for i in range(60):
+                            if captured:
+                                break
+                            page.wait_for_timeout(1000)
+                            if i == 15:
+                                # Log page state at 15s for debugging
+                                cur_url = page.url
+                                logger.info("Still waiting... current URL: %s", cur_url)
                     else:
-                        page.keyboard.press("Enter")
+                        logger.warning(
+                            "Browser auth: login form not found. URL: %s, Title: %s",
+                            page.url, page.title(),
+                        )
+                        # Try to find any input fields for debugging
+                        inputs = page.query_selector_all("input")
+                        logger.info("Found %d input elements on page", len(inputs))
 
-                    # Wait for token capture
-                    for _ in range(30):
-                        if captured:
-                            break
-                        page.wait_for_timeout(1000)
+                    browser.close()
+                    browser = None
 
-                browser.close()
+                if captured and "accessToken" in captured:
+                    logger.info("Browser auth succeeded! userId=%s", captured.get("userId"))
+                    return captured
+                logger.warning("Browser auth attempt %d: no token captured", attempt)
+            except Exception as e:
+                logger.warning("Browser auth attempt %d failed: %s", attempt, e)
+                if browser:
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
 
-            if captured and "accessToken" in captured:
-                logger.info("Browser auth succeeded! userId=%s", captured.get("userId"))
-                return captured
-        except Exception as e:
-            logger.warning("Browser auth failed: %s", e)
+            if attempt < 2:
+                import time as _t
+                _t.sleep(10)
 
         return None
 
@@ -482,23 +544,34 @@ class TradovateAPI:
         return None
 
     def renew_token(self) -> bool:
-        """Renew the access token before it expires."""
-        url = f"{self.base_url}/auth/renewaccesstoken"
-        try:
-            resp = requests.post(url, headers=self._headers(), timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            self.access_token = data.get("accessToken", self.access_token)
-            if data.get("expirationTime"):
-                self.token_expiry = datetime.fromisoformat(
-                    data["expirationTime"].replace("Z", "+00:00")
-                )
-            logger.info("Token renewed. Expires: %s", self.token_expiry)
-            self._save_token()
-            return True
-        except requests.RequestException as e:
-            logger.error("Token renewal failed: %s", e)
-            return False
+        """Renew the access token before it expires.
+
+        Tries the configured base_url first, then falls back to the other
+        environment (live↔demo) since the token may have been issued there.
+        """
+        urls = [f"{self.base_url}/auth/renewaccesstoken"]
+        # Add the other environment as fallback
+        if "demo" in self.base_url:
+            urls.append("https://live.tradovateapi.com/v1/auth/renewaccesstoken")
+        else:
+            urls.append("https://demo.tradovateapi.com/v1/auth/renewaccesstoken")
+
+        for url in urls:
+            try:
+                resp = requests.post(url, headers=self._headers(), timeout=30)
+                resp.raise_for_status()
+                data = resp.json()
+                self.access_token = data.get("accessToken", self.access_token)
+                if data.get("expirationTime"):
+                    self.token_expiry = datetime.fromisoformat(
+                        data["expirationTime"].replace("Z", "+00:00")
+                    )
+                logger.info("Token renewed via %s. Expires: %s", url.split("/")[2], self.token_expiry)
+                self._save_token()
+                return True
+            except requests.RequestException as e:
+                logger.warning("Token renewal failed on %s: %s", url.split("/")[2], e)
+        return False
 
     def ensure_token_valid(self):
         """Renew token if close to expiry. Falls back to full re-auth if renewal fails."""
@@ -531,12 +604,45 @@ class TradovateAPI:
         }
 
     def _fetch_account_id(self):
-        """Get the first account ID."""
+        """Get the first account ID. Tries alternate endpoint if none found."""
         accounts = self.get_accounts()
+        if not accounts:
+            # Challenge accounts (e.g. FundedNext) live on demo even if auth
+            # succeeded on live.  Try the other endpoint before giving up.
+            if "demo" in self.base_url:
+                alt = "https://live.tradovateapi.com/v1"
+            else:
+                alt = "https://demo.tradovateapi.com/v1"
+            logger.warning(
+                "No accounts on %s — trying %s...",
+                self.base_url.split("/")[2], alt.split("/")[2],
+            )
+            try:
+                resp = requests.get(
+                    f"{alt}/account/list", headers=self._headers(), timeout=30
+                )
+                if resp.status_code == 200:
+                    accounts = resp.json()
+                    if accounts:
+                        # Switch base_url to the endpoint that has the account
+                        old_url = self.base_url
+                        self.base_url = alt
+                        logger.info(
+                            "Found accounts on %s — switching base_url from %s",
+                            alt.split("/")[2], old_url.split("/")[2],
+                        )
+            except requests.RequestException as e:
+                logger.warning("Alternate endpoint account lookup failed: %s", e)
+
         if accounts:
             self.account_id = accounts[0]["id"]
             self.account_spec = accounts[0].get("name", self.account_spec)
             logger.info("Account ID: %s (%s)", self.account_id, self.account_spec)
+        else:
+            logger.error(
+                "No accounts found on any endpoint! account_id remains None. "
+                "Balance sync and order placement will not work."
+            )
 
     # ─────────────────────────────────────────
     # Account & Position queries
@@ -632,7 +738,40 @@ class TradovateAPI:
             return None
 
         entry_order_id = entry_result["orderId"]
-        logger.info("Entry order placed: orderId=%s", entry_order_id)
+        entry_status = entry_result.get("ordStatus", "Unknown")
+        logger.info(
+            "Entry order placed: orderId=%s status=%s | full=%s",
+            entry_order_id, entry_status,
+            {k: v for k, v in entry_result.items() if k in (
+                "orderId", "ordStatus", "action", "orderQty", "avgPrice",
+                "filledQty", "rejectReason", "text",
+            )},
+        )
+
+        # Check if order was rejected
+        if entry_status == "Rejected":
+            reject_reason = entry_result.get("rejectReason", entry_result.get("text", "unknown"))
+            logger.error("Entry order REJECTED: %s", reject_reason)
+            return None
+
+        # For market orders, verify fill after brief delay
+        if order_type == "Market":
+            time.sleep(1)
+            order_detail = self._get(f"/order/item?id={entry_order_id}")
+            if order_detail:
+                detail_status = order_detail.get("ordStatus", "Unknown")
+                filled_qty = order_detail.get("filledQty", 0)
+                avg_price = order_detail.get("avgPrice", 0)
+                logger.info(
+                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s",
+                    entry_order_id, detail_status, filled_qty, avg_price,
+                )
+                if detail_status == "Rejected":
+                    logger.error(
+                        "Entry order REJECTED after submit: %s",
+                        order_detail.get("rejectReason", order_detail.get("text", "unknown")),
+                    )
+                    return None
 
         # --- Step 2: OCO stop-loss + take-profit ---
         oco_payload: dict[str, Any] = {
@@ -794,6 +933,8 @@ class MarketDataStream:
     # Reconnect settings
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_BASE_DELAY = 2  # seconds
+    # After this many consecutive reconnect failures, signal caller to fall back
+    FALLBACK_THRESHOLD = 3
 
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
@@ -805,10 +946,14 @@ class MarketDataStream:
         self._thread: Optional[threading.Thread] = None
         self._should_run = False
         self._reconnect_count = 0
+        self._consecutive_failures = 0
+        self.fell_back = threading.Event()  # Signals that WS is unrecoverable
+        self._last_data_time: float = 0  # Track when we last received real data
 
     def start(self):
         """Connect and start listening in a background thread."""
         self._should_run = True
+        self._last_data_time = time.time()  # Grace period before staleness check
         self._connect()
         self._connected.wait(timeout=15)
 
@@ -843,11 +988,21 @@ class MarketDataStream:
             "proxy_type": "http",
         }
 
+    # No data for 2 minutes means the connection is stale
+    DATA_TIMEOUT = 120
+
     def stop(self):
         """Close the WebSocket."""
         self._should_run = False
         if self.ws:
             self.ws.close()
+
+    @property
+    def data_stale(self) -> bool:
+        """True if connected but no data received for DATA_TIMEOUT seconds."""
+        if not self._last_data_time:
+            return False  # Haven't started receiving yet
+        return (time.time() - self._last_data_time) > self.DATA_TIMEOUT
 
     def subscribe_quote(self, symbol: str, callback: Callable):
         """Subscribe to real-time quotes for a symbol."""
@@ -909,6 +1064,8 @@ class MarketDataStream:
 
             # Quote data — dispatched by symbol from the "d" field
             if "e" in item and item["e"] == "md" and "d" in item:
+                self._last_data_time = time.time()
+                self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
                 for quote in quotes:
@@ -924,15 +1081,27 @@ class MarketDataStream:
         error_str = str(error)
         if "403" in error_str:
             logger.error("Market data WebSocket 403 Forbidden (token expired). Will re-auth on reconnect.")
+            self._consecutive_failures += 1
         else:
             logger.error("Market data WebSocket error: %s", error)
+            self._consecutive_failures += 1
 
     def _on_close(self, ws, close_status_code, close_msg):
         logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
         self._connected.clear()
+        self._consecutive_failures += 1  # Every close counts as a failure
         # Auto-reconnect (unlimited attempts — bot should never stop trying)
         if self._should_run:
             self._reconnect_count += 1
+            # Signal fallback after too many consecutive failures
+            if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
+                logger.warning(
+                    "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
+                    self._consecutive_failures,
+                )
+                self._should_run = False
+                self.fell_back.set()
+                return
             # Cap delay at 60 seconds
             delay = min(60, self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1)))
             logger.info(
@@ -958,6 +1127,9 @@ class MarketDataStream:
 
         self._connect()
         if self._connected.wait(timeout=15):
+            # Don't reset _consecutive_failures here — only reset when
+            # real data flows (in _handle_payload). This prevents a cycle
+            # of connect→die→reconnect that never reaches fallback threshold.
             for symbol in list(self._callbacks.keys()):
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
@@ -987,10 +1159,109 @@ class MarketDataStream:
 
 # Yahoo Finance symbol mapping for futures front-month
 YAHOO_SYMBOLS = {
+    # Micro contracts use the same Yahoo symbol as their mini counterparts
+    # (Yahoo tracks the same underlying price, micros just have smaller multiplier)
+    "MNQ": "NQ=F", "MES": "ES=F", "MGC": "GC=F", "MCL": "CL=F",
     "NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F",
     "SI": "SI=F", "NG": "NG=F",
 }
 _YAHOO_SYMBOLS = YAHOO_SYMBOLS  # backward compat
+
+
+class YahooFinanceSession:
+    """
+    Handles Yahoo Finance API authentication (crumb + cookies).
+
+    Yahoo's v8 chart API requires a valid crumb and session cookies.
+    This class fetches them once and reuses them for subsequent requests.
+    Falls back to unauthenticated requests if crumb fetch fails.
+    """
+
+    _instance: Optional["YahooFinanceSession"] = None
+
+    def __init__(self):
+        self._session = requests.Session()
+        self._session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/121.0.0.0 Safari/537.36"
+            ),
+        })
+        self._crumb: Optional[str] = None
+        self._initialized = False
+
+    @classmethod
+    def get(cls) -> "YahooFinanceSession":
+        """Get or create the singleton session."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def _init_crumb(self):
+        """Fetch crumb and cookies from Yahoo Finance."""
+        if self._initialized:
+            return
+        self._initialized = True
+        try:
+            # Step 1: Get cookies by visiting Yahoo Finance consent page
+            self._session.get("https://fc.yahoo.com", timeout=10)
+            # Step 2: Fetch crumb using the cookies
+            resp = self._session.get(
+                "https://query2.finance.yahoo.com/v1/test/getcrumb",
+                timeout=10,
+            )
+            if resp.status_code == 200 and resp.text:
+                self._crumb = resp.text.strip()
+                logger.info("Yahoo Finance crumb acquired")
+            else:
+                logger.warning(
+                    "Yahoo Finance crumb fetch returned %d", resp.status_code
+                )
+        except Exception as e:
+            logger.warning("Yahoo Finance crumb init failed: %s", e)
+
+    def reset(self):
+        """Reset session state to force re-authentication on next use."""
+        self._crumb = None
+        self._initialized = False
+        self._session.cookies.clear()
+
+    def fetch_chart(self, yahoo_symbol: str, interval: str = "1m", range_: str = "1d") -> Optional[dict]:
+        """
+        Fetch chart data for a Yahoo Finance symbol.
+        Returns the parsed JSON response or None on failure.
+        """
+        self._init_crumb()
+
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}"
+        params = {"interval": interval, "range": range_}
+        if self._crumb:
+            params["crumb"] = self._crumb
+
+        try:
+            resp = self._session.get(url, params=params, timeout=10)
+
+            # If 401/403, reset crumb and retry once
+            if resp.status_code in (401, 403) and self._crumb:
+                logger.info("Yahoo returned %d, refreshing crumb...", resp.status_code)
+                self.reset()
+                self._init_crumb()
+                if self._crumb:
+                    params["crumb"] = self._crumb
+                resp = self._session.get(url, params=params, timeout=10)
+
+            if resp.status_code != 200:
+                logger.warning(
+                    "Yahoo chart request for %s returned %d",
+                    yahoo_symbol, resp.status_code,
+                )
+                return None
+
+            return resp.json()
+        except requests.RequestException as e:
+            logger.warning("Yahoo chart request failed for %s: %s", yahoo_symbol, e)
+            return None
 
 
 class RestMarketDataPoller:
@@ -1010,6 +1281,8 @@ class RestMarketDataPoller:
         self._thread: Optional[threading.Thread] = None
         self._should_run = False
         self._last_ts: dict[str, int] = {}  # last processed candle timestamp per symbol
+        self._total_candles_dispatched = 0
+        self._poll_count = 0
 
     def start(self):
         """Start polling in a background thread."""
@@ -1049,6 +1322,13 @@ class RestMarketDataPoller:
                 self._fetch_and_dispatch()
             except Exception as e:
                 logger.error("REST poller error: %s", e)
+            self._poll_count += 1
+            # Log data health every ~60 seconds (12 polls × 5s)
+            if self._poll_count % 12 == 0:
+                logger.info(
+                    "REST poller health: %d candles dispatched, %d symbols tracked, %d polls",
+                    self._total_candles_dispatched, len(self._symbols), self._poll_count,
+                )
             time.sleep(self.POLL_INTERVAL)
 
     def _fetch_and_dispatch(self):
@@ -1056,19 +1336,13 @@ class RestMarketDataPoller:
         if not self._symbols:
             return
 
-        headers = {"User-Agent": "Mozilla/5.0"}
+        yahoo = YahooFinanceSession.get()
 
         for contract_name, yahoo_sym in list(self._symbols.items()):
             try:
-                chart_url = (
-                    f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}"
-                    f"?interval=1m&range=1d"
-                )
-                resp = requests.get(chart_url, headers=headers, timeout=10)
-                if resp.status_code != 200:
+                data = yahoo.fetch_chart(yahoo_sym)
+                if data is None:
                     continue
-
-                data = resp.json()
                 result = data.get("chart", {}).get("result", [{}])[0]
                 timestamps = result.get("timestamp") or []
                 quotes = result.get("indicators", {}).get("quote", [{}])[0]
@@ -1094,7 +1368,7 @@ class RestMarketDataPoller:
                     c = closes[i] if i < len(closes) else None
                     h = highs[i] if i < len(highs) else None
                     l = lows[i] if i < len(lows) else None
-                    v = volumes[i] if i < len(volumes) else 0
+                    v = (volumes[i] or 0) if i < len(volumes) else 0
 
                     if c is None or h is None or l is None:
                         continue
@@ -1106,6 +1380,7 @@ class RestMarketDataPoller:
                         "low": {"price": l},
                     }
 
+                    self._total_candles_dispatched += 1
                     for cb in cbs:
                         try:
                             cb(contract_name, quote)
@@ -1114,7 +1389,5 @@ class RestMarketDataPoller:
 
                 self._last_ts[contract_name] = timestamps[-1]
 
-            except requests.RequestException as e:
-                logger.warning("Yahoo Finance request failed for %s: %s", yahoo_sym, e)
             except Exception as e:
                 logger.error("REST poller error for %s: %s", contract_name, e)
