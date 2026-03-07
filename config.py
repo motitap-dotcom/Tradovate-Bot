@@ -82,7 +82,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 3_000,           # FundedNext Futures challenge target (actual)
-        "max_contracts": 10,
+        "max_contracts": 10,              # minis (FundedNext limit)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -102,12 +102,76 @@ ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
 
 # Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 12
+MAX_DAILY_TRADES = 16
 
 # ─────────────────────────────────────────────
 # Contract Specifications
 # ─────────────────────────────────────────────
 CONTRACT_SPECS = {
+    # ─── Micro Contracts (disabled — FundedNext rejects micro orders) ──
+    "MNQ": {
+        "name": "Micro E-mini Nasdaq-100",
+        "exchange": "CME",
+        "tick_size": 0.25,
+        "tick_value": 0.50,
+        "point_value": 2.00,
+        "strategy": "ORB",
+        "enabled": False,
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,
+        "orb_cooldown_minutes": 15,
+        "stop_loss_points": 25,
+        "take_profit_points": 50,
+        "risk_reward_ratio": 2.0,
+    },
+    "MES": {
+        "name": "Micro E-mini S&P 500",
+        "exchange": "CME",
+        "tick_size": 0.25,
+        "tick_value": 1.25,
+        "point_value": 5.00,
+        "strategy": "ORB",
+        "enabled": False,
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,
+        "orb_cooldown_minutes": 15,
+        "stop_loss_points": 6,
+        "take_profit_points": 12,
+        "risk_reward_ratio": 2.0,
+    },
+    "MGC": {
+        "name": "Micro Gold (COMEX)",
+        "exchange": "COMEX",
+        "tick_size": 0.10,
+        "tick_value": 1.00,
+        "point_value": 10.00,
+        "strategy": "VWAP",
+        "enabled": False,
+        "stop_loss_points": 5.0,
+        "take_profit_points": 10.0,
+        "risk_reward_ratio": 2.0,
+        "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
+    },
+    "MCL": {
+        "name": "Micro WTI Crude Oil",
+        "exchange": "NYMEX",
+        "tick_size": 0.01,
+        "tick_value": 1.00,
+        "point_value": 100.00,
+        "strategy": "VWAP",
+        "enabled": False,
+        "stop_loss_points": 0.20,
+        "take_profit_points": 0.40,
+        "risk_reward_ratio": 2.0,
+        "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
+    },
+    # ─── Mini Contracts (active) ─────────────────────────────
+    # Risk manager auto-sizes to 1 contract per trade (point_value is 10x micros).
+    # Max 10 contracts per FundedNext rules.
     "NQ": {
         "name": "E-mini Nasdaq-100",
         "exchange": "CME",
@@ -116,10 +180,9 @@ CONTRACT_SPECS = {
         "point_value": 20.00,
         "strategy": "ORB",
         "enabled": True,
-        # Dual ORB windows: 5-min (aggressive) + 15-min (conservative, stronger signal)
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,            # max trades across all ORB windows
-        "orb_cooldown_minutes": 15,     # min time between ORB trades
+        "max_orb_trades": 2,
+        "orb_cooldown_minutes": 15,
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
@@ -147,13 +210,12 @@ CONTRACT_SPECS = {
         "point_value": 100.00,
         "strategy": "VWAP",
         "enabled": True,
-        # VWAP / momentum params
         "stop_loss_points": 5.0,
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,  # allow 2 longs + 2 shorts per day
-        "vwap_cooldown_minutes": 30,         # min 30 min between same-direction trades
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
     },
     "CL": {
         "name": "WTI Crude Oil",
@@ -177,12 +239,12 @@ CONTRACT_SPECS = {
         "tick_value": 25.00,
         "point_value": 5_000.00,
         "strategy": "VWAP",
-        "enabled": False,  # Disabled by default — high tick value ($25)
+        "enabled": False,
         "stop_loss_points": 0.05,
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 1,  # conservative: 1 per direction
+        "max_vwap_trades_per_direction": 1,
         "vwap_cooldown_minutes": 60,
     },
     "NG": {
@@ -192,7 +254,7 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 10_000.00,
         "strategy": "VWAP",
-        "enabled": False,  # Disabled by default — extremely volatile
+        "enabled": False,
         "stop_loss_points": 0.030,
         "take_profit_points": 0.060,
         "risk_reward_ratio": 2.0,
@@ -208,8 +270,11 @@ CONTRACT_SPECS = {
 # US equity open for ORB calculation
 MARKET_OPEN_ET = "09:30"
 
+# Earliest time to place new trades (no trading before this)
+TRADING_START_ET = "09:30"
+
 # Stop placing new trades after this time
-TRADING_CUTOFF_ET = "15:30"
+TRADING_CUTOFF_ET = "16:15"
 
 # Force-close everything before this time
 FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
@@ -218,8 +283,8 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # Position Sizing
 # ─────────────────────────────────────────────
 # Max risk per trade as % of daily loss budget
-# Lowered from 2% to 1.5% to compensate for increased trade frequency
-RISK_PER_TRADE_PCT = 0.015  # 1.5% of account per trade
+# Lowered to 1.0% — tighter risk per trade, more trades allowed
+RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
 
 # ─────────────────────────────────────────────
 # Logging

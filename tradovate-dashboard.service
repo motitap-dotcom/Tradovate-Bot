@@ -6,12 +6,13 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/Tradovate-Bot
-ExecStart=/usr/bin/python3 /root/Tradovate-Bot/dashboard.py
+WorkingDirectory=/root/tradovate-bot
+ExecStart=/root/tradovate-bot/venv/bin/python /root/tradovate-bot/dashboard.py
 Restart=always
 RestartSec=10
-StandardOutput=append:/root/Tradovate-Bot/dashboard.log
-StandardError=append:/root/Tradovate-Bot/dashboard.log
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tradovate-dashboard
 Environment=PYTHONUNBUFFERED=1
 
 [Install]
