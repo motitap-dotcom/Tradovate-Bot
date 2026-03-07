@@ -61,6 +61,7 @@ class _ORBWindow:
         self.range_set: bool = False
         self.breakout_fired: bool = False
         self.prices: list[float] = []
+        self._last_price: Optional[float] = None
 
     def reset(self):
         self.range_high = None
@@ -68,11 +69,16 @@ class _ORBWindow:
         self.range_set = False
         self.breakout_fired = False
         self.prices = []
+        self._last_price = None
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
         Feed a price. Returns 'long', 'short', or None.
         Only fires once per window.
+
+        Requires a fresh cross: the previous price must have been inside the
+        range for a breakout to fire.  This prevents stale breakouts after a
+        bot restart (warmup sets _last_price to the last historical close).
         """
         if self.breakout_fired:
             return None
@@ -90,6 +96,7 @@ class _ORBWindow:
             if 0 <= elapsed < self.window_minutes:
                 self.prices.append(high)
                 self.prices.append(low)
+                self._last_price = price
                 return None
 
             if elapsed >= self.window_minutes and self.prices:
@@ -108,7 +115,14 @@ class _ORBWindow:
         if not self.range_set:
             return None
 
-        # Phase 2: Breakout detection
+        # Phase 2: Breakout detection — require fresh cross from inside range
+        prev = self._last_price
+        self._last_price = price
+
+        if prev is not None and not (self.range_low <= prev <= self.range_high):
+            # Previous price was outside the range — not a fresh cross
+            return None
+
         if price > self.range_high:
             self.breakout_fired = True
             return "long"
