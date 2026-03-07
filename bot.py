@@ -502,20 +502,17 @@ class TradovateBot:
                         strategy.update_vwap(h, l, c, v or 0)
                         strategy._prev_price = c
                     else:
-                        # ORB: feed candles to build the opening range
+                        # ORB: feed candles to build the opening range.
+                        # Don't consume breakouts — the fresh-cross check in
+                        # _ORBWindow.feed() prevents stale signals on live data.
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
-                                window.feed(c, h, l, candle_time.time())
-                            elif not window.breakout_fired:
-                                # Range is set — check if price already broke out
-                                # during warmup. Mark as fired so we don't trigger
-                                # a stale breakout on the first live tick.
-                                if c > window.range_high or c < window.range_low:
-                                    window.breakout_fired = True
-                                    logger.debug(
-                                        "Warmup: consumed stale %s ORB %dm breakout at %.2f",
-                                        symbol, window.window_minutes, c,
-                                    )
+                                result = window.feed(c, h, l, candle_time.time())
+                                if result is not None:
+                                    # Undo breakout fired during warmup
+                                    window.breakout_fired = False
+                            # Track last price so live data can detect fresh crosses
+                            window._last_price = c
 
                     fed += 1
 

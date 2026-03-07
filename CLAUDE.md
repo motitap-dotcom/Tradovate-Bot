@@ -117,11 +117,11 @@ python get_token.py         # One-time token capture (needs display)
 - Drawdown trails unrealized intraday peaks
 - Current balance: ~$52,426 (as of 2026-02-24)
 
-## Enabled Contracts (Micros — 1/10 risk of minis)
-- **MNQ** (Micro Nasdaq): ORB strategy, 25pt stop / 50pt TP, $2/pt
-- **MES** (Micro S&P): ORB strategy, 6pt stop / 12pt TP, $5/pt
-- **MGC** (Micro Gold): VWAP strategy, 5pt stop / 10pt TP, $10/pt
-- **MCL** (Micro Crude): VWAP strategy, 0.20pt stop / 0.40pt TP, $100/pt
+## Enabled Contracts (Minis — FundedNext rejects micro orders)
+- **NQ** (E-mini Nasdaq): ORB strategy, 25pt stop / 50pt TP, $20/pt → 1 contract/trade
+- **ES** (E-mini S&P): ORB strategy, 6pt stop / 12pt TP, $50/pt → 1 contract/trade
+- **GC** (Gold): VWAP strategy, 5pt stop / 10pt TP, $100/pt → 1 contract/trade
+- **CL** (Crude Oil): VWAP strategy, 0.20pt stop / 0.40pt TP, $1000/pt → 2 contracts/trade
 
 ## API Notes
 - FundedNext accounts use `organization: ""` (empty string, NOT "funded-next")
