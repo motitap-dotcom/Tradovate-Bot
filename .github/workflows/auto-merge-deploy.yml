@@ -71,13 +71,27 @@ jobs:
             if git fetch origin ${{ env.DEPLOY_BRANCH }} 2>/dev/null; then
               git checkout ${{ env.DEPLOY_BRANCH }}
               git reset --hard origin/${{ env.DEPLOY_BRANCH }}
-              # Use -X theirs to auto-resolve conflicts in auto-generated files (system_status.json)
-              git merge ${{ github.sha }} --no-edit -X theirs \
-                -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}" || {
-                echo "Merge failed — aborting"
-                git merge --abort 2>/dev/null || true
-                exit 1
-              }
+              # Merge, auto-resolving conflicts in auto-generated files
+              if ! git merge ${{ github.sha }} --no-edit \
+                -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}" 2>/dev/null; then
+                echo "Merge had conflicts, resolving..."
+                # For auto-generated files, keep main's version (ours)
+                for f in system_status.json server_status.json; do
+                  if git diff --name-only --diff-filter=U | grep -q "^${f}$"; then
+                    echo "  Resolving $f: keeping main's version"
+                    git checkout --ours "$f"
+                    git add "$f"
+                  fi
+                done
+                # For remaining conflicts, prefer the feature branch (theirs)
+                REMAINING=$(git diff --name-only --diff-filter=U 2>/dev/null)
+                if [ -n "$REMAINING" ]; then
+                  echo "  Remaining conflicts: $REMAINING"
+                  git checkout --theirs $REMAINING
+                  git add $REMAINING
+                fi
+                git commit --no-edit || { echo "Merge failed"; exit 1; }
+              fi
             else
               echo "Branch ${{ env.DEPLOY_BRANCH }} does not exist — creating from ${{ github.sha }}"
               git checkout -b ${{ env.DEPLOY_BRANCH }} ${{ github.sha }}
