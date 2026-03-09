@@ -65,10 +65,25 @@ jobs:
 
       - name: Merge to deploy branch
         run: |
-          git fetch origin ${{ env.DEPLOY_BRANCH }}
-          git checkout ${{ env.DEPLOY_BRANCH }}
-          git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
-          git push origin ${{ env.DEPLOY_BRANCH }}
+          # Retry merge+push up to 3 times (main may move due to status commits)
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt/3..."
+            git fetch origin ${{ env.DEPLOY_BRANCH }}
+            git checkout ${{ env.DEPLOY_BRANCH }}
+            git reset --hard origin/${{ env.DEPLOY_BRANCH }}
+            git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}" || {
+              echo "Merge conflict — aborting"
+              exit 1
+            }
+            if git push origin ${{ env.DEPLOY_BRANCH }}; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push failed (main moved), retrying in 5s..."
+            sleep 5
+          done
+          echo "All 3 attempts failed"
+          exit 1
 
       # SSH deploy (only if SERVER_HOST is configured as a repo variable)
       - name: Deploy to server via SSH
