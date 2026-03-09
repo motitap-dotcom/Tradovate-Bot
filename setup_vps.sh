@@ -128,18 +128,18 @@ cat > "/etc/systemd/system/${SERVICE_NAME}.service" << EOF
 Description=Tradovate Trading Bot
 After=network-online.target
 Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=300
+StartLimitBurst=50
+StartLimitIntervalSec=600
 
 [Service]
 Type=simple
 WorkingDirectory=$BOT_DIR
-ExecStart=$BOT_DIR/venv/bin/python bot.py --live
+ExecStart=$BOT_DIR/venv/bin/python -u bot.py
 EnvironmentFile=$BOT_DIR/.env
 
-# Auto-restart on crash (30s delay)
-Restart=on-failure
-RestartSec=30
+# Auto-restart ALWAYS — bot must never stay down
+Restart=always
+RestartSec=10
 
 # Logging to journald
 StandardOutput=journal

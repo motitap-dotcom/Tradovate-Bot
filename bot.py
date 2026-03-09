@@ -852,27 +852,50 @@ def main():
     signal.signal(signal.SIGTERM, handle_signal)
 
     # ── Daily loop: run bot, sleep until next trading morning, repeat ──
+    # The bot NEVER exits on its own — it always restarts for the next session.
+    # Only SIGINT/SIGTERM (from systemd stop) will break this loop.
     bot = None
+    consecutive_crashes = 0
     while not _shutdown_requested:
-        bot = TradovateBot(dry_run=args.dry_run)
-        bot.start()
+        try:
+            bot = TradovateBot(dry_run=args.dry_run)
+            bot.start()
+            consecutive_crashes = 0  # Successful session resets crash counter
 
-        if _shutdown_requested:
-            break
+            if _shutdown_requested:
+                break
 
-        # Bot finished today's session — sleep until next trading morning
-        wake_up = _next_trading_morning()
-        sleep_seconds = (wake_up - now_et()).total_seconds()
-        logger.info(
-            "Session ended. Next trading session: %s ET (sleeping %.0f minutes)",
-            wake_up.strftime("%Y-%m-%d %H:%M"),
-            sleep_seconds / 60,
-        )
+            # Bot finished today's session — sleep until next trading morning
+            wake_up = _next_trading_morning()
+            sleep_seconds = (wake_up - now_et()).total_seconds()
+            logger.info(
+                "Session ended. Next trading session: %s ET (sleeping %.0f minutes)",
+                wake_up.strftime("%Y-%m-%d %H:%M"),
+                sleep_seconds / 60,
+            )
 
-        # Sleep in 60s chunks so we can respond to signals promptly
-        while sleep_seconds > 0 and not _shutdown_requested:
-            time.sleep(min(60, sleep_seconds))
-            sleep_seconds -= 60
+            # Sleep in 60s chunks so we can respond to signals promptly
+            while sleep_seconds > 0 and not _shutdown_requested:
+                time.sleep(min(60, sleep_seconds))
+                sleep_seconds -= 60
+
+        except Exception as exc:
+            consecutive_crashes += 1
+            restart_delay = min(30 * consecutive_crashes, 300)  # 30s, 60s, ... up to 5min
+            logger.critical(
+                "!!! BOT CRASHED (attempt %d): %s. Restarting in %ds...",
+                consecutive_crashes, exc, restart_delay,
+                exc_info=True,
+            )
+            try:
+                # Try to clean up before restart
+                if bot is not None:
+                    bot.running = False
+                    bot.stop()
+            except Exception:
+                pass
+            bot = None
+            time.sleep(restart_delay)
 
     logger.info("Bot process exiting.")
 
