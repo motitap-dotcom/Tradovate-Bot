@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot
+Tradovate Trading Bot — v2.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
