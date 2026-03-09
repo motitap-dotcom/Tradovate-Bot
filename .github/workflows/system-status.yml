@@ -66,11 +66,27 @@ jobs:
           username: ${{ secrets.SERVER_USER || vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY || secrets.VPS_SSH_KEY }}
           script: |
-            BOT_DIR="${{ env.BOT_DIR }}"
-            cd "$BOT_DIR" 2>/dev/null || exit 1
+            # Find bot directory - try multiple paths
+            BOT_DIR=""
+            for d in /root/tradovate-bot /root/Tradovate-Bot \
+                     /home/*/tradovate-bot /home/*/Tradovate-Bot \
+                     /opt/tradovate-bot; do
+              [ -d "$d" ] && BOT_DIR="$d" && break
+            done
+            # Also try systemd service
+            if [ -z "$BOT_DIR" ]; then
+              SVC_DIR=$(systemctl show tradovate-bot --property=WorkingDirectory --value 2>/dev/null)
+              [ -n "$SVC_DIR" ] && [ -d "$SVC_DIR" ] && BOT_DIR="$SVC_DIR"
+            fi
+
+            echo "==BOT_DIR==$BOT_DIR=="
 
             echo "==TOKEN_START=="
-            cat .tradovate_token.json 2>/dev/null || echo "{}"
+            if [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/.tradovate_token.json" ]; then
+              cat "$BOT_DIR/.tradovate_token.json"
+            else
+              echo "{}"
+            fi
             echo "==TOKEN_END=="
 
             echo "==SERVER_START=="
@@ -85,21 +101,38 @@ jobs:
             UPTIME=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
             DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
             MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
-            LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 3 2>/dev/null | tail -3 || echo "no logs")
+            LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 5 -o cat 2>/dev/null | tail -5 || echo "no logs")
 
-            # Output as JSON
+            # Live status from bot
+            LIVE_STATUS="{}"
+            [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
+
+            # Bot log tail
+            BOT_LOG=""
+            [ -n "$BOT_DIR" ] && [ -f "$BOT_DIR/bot.log" ] && BOT_LOG=$(tail -20 "$BOT_DIR/bot.log" 2>/dev/null || echo "")
+
+            # Output as JSON using python3
+            export LAST_LOG BOT_LOG
             python3 -c "
-            import json, sys
+            import json, os
+            live = {}
+            try:
+                live = json.loads('''$LIVE_STATUS''')
+            except: pass
             print(json.dumps({
-                'bot_active': $BOT_ACTIVE,
+                'bot_dir': '$BOT_DIR' or 'NOT_FOUND',
+                'bot_active': '$BOT_ACTIVE' == 'true',
                 'bot_pid': '$BOT_PID',
                 'uptime_since': '$UPTIME',
                 'disk': '$DISK',
                 'memory': '$MEM',
-                'last_log': '''$LAST_LOG'''.strip(),
-                'git_commit': '$(git log -1 --format=\"%h %s\" 2>/dev/null || echo \"?\")',
+                'last_log': os.environ.get('LAST_LOG', '').strip(),
+                'bot_log_tail': os.environ.get('BOT_LOG', '').strip()[-1000:],
+                'git_commit': '$(cd \"$BOT_DIR\" 2>/dev/null && git log -1 --format=\"%h %s\" 2>/dev/null || echo \"?\")',
+                'live_status': live,
+                'hostname': '$(hostname 2>/dev/null || echo ?)',
             }))
-            " 2>/dev/null || echo '{}'
+            " 2>/dev/null || echo '{"error":"python3 failed"}'
             echo "==SERVER_END=="
 
       # ── Step C: Check system status (API + optional SSH token) ──
