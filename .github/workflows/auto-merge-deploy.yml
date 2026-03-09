@@ -35,13 +35,13 @@ jobs:
       - name: Create dummy .env for tests
         run: cp .env.example .env
 
-      - name: Syntax check
+      - name: Syntax check all Python modules
         run: |
-          python -m py_compile bot.py
-          python -m py_compile tradovate_api.py
-          python -m py_compile strategies.py
-          python -m py_compile risk_manager.py
-          python -m py_compile config.py
+          for f in bot.py tradovate_api.py strategies.py risk_manager.py config.py \
+                   trade_journal.py auto_tuner.py dashboard.py status.py \
+                   connection_check.py verify_bot.py bot_health_check.py check_server.py; do
+            [ -f "$f" ] && python -m py_compile "$f" && echo "  OK: $f" || echo "  SKIP: $f"
+          done
 
       - name: Run tests
         continue-on-error: true
@@ -63,18 +63,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge to deploy branch
+      - name: Merge to main
         run: |
           # Retry merge+push up to 3 times (main may move due to status commits)
           for attempt in 1 2 3; do
             echo "Attempt $attempt/3..."
-            git fetch origin ${{ env.DEPLOY_BRANCH }}
-            git checkout ${{ env.DEPLOY_BRANCH }}
-            git reset --hard origin/${{ env.DEPLOY_BRANCH }}
-            git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}" || {
-              echo "Merge conflict — aborting"
-              exit 1
-            }
+            if git fetch origin ${{ env.DEPLOY_BRANCH }} 2>/dev/null; then
+              git checkout ${{ env.DEPLOY_BRANCH }}
+              git reset --hard origin/${{ env.DEPLOY_BRANCH }}
+              # Use -X theirs to auto-resolve conflicts in auto-generated files (system_status.json)
+              git merge ${{ github.sha }} --no-edit -X theirs \
+                -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}" || {
+                echo "Merge failed — aborting"
+                git merge --abort 2>/dev/null || true
+                exit 1
+              }
+            else
+              echo "Branch ${{ env.DEPLOY_BRANCH }} does not exist — creating from ${{ github.sha }}"
+              git checkout -b ${{ env.DEPLOY_BRANCH }} ${{ github.sha }}
+            fi
             if git push origin ${{ env.DEPLOY_BRANCH }}; then
               echo "Push succeeded on attempt $attempt"
               exit 0
@@ -85,17 +92,44 @@ jobs:
           echo "All 3 attempts failed"
           exit 1
 
-      # SSH deploy (only if SERVER_HOST is configured as a repo variable)
+      # Resolve server host from vars or secrets (try multiple naming patterns)
+      - name: Check server host
+        id: server_check
+        env:
+          HOST_VAR: ${{ vars.SERVER_HOST }}
+          HOST_SECRET: ${{ secrets.SERVER_HOST }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          USER_VAR: ${{ vars.SERVER_USER }}
+          USER_SECRET: ${{ secrets.SERVER_USER }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          HOST="${HOST_VAR:-${HOST_SECRET:-${VPS_HOST:-${SERVER_IP:-}}}}"
+          USER="${VPS_USER:-${USER_VAR:-${USER_SECRET:-root}}}"
+          if [ -n "$HOST" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+            echo "host=$HOST" >> $GITHUB_OUTPUT
+            echo "user=$USER" >> $GITHUB_OUTPUT
+            echo "SSH deploy target: $USER@$HOST"
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "No SERVER_HOST configured — skipping SSH deploy"
+          fi
+
+      # SSH deploy (if SERVER_HOST is configured as variable OR secret)
+      # continue-on-error: SSH is best-effort — server cron pulls main every 5 min
       - name: Deploy to server via SSH
-        if: vars.SERVER_HOST != ''
+        if: steps.server_check.outputs.available == 'true'
+        continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ vars.SERVER_HOST }}
-          username: ${{ vars.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ steps.server_check.outputs.host }}
+          username: ${{ steps.server_check.outputs.user }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           envs: SERVER_GH_PAT
-          script_stop: true
           script: |
+            set -e
             echo "=== Auto-merge deploy: ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }} ==="
             BOT_DIR="${{ env.BOT_DIR }}"
             cd "$BOT_DIR" || exit 1
@@ -104,17 +138,35 @@ jobs:
             echo "Now at: $(git log -1 --oneline)"
 
             # Update deps if needed
-            [ -f venv/bin/pip ] && venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+            if [ -f venv/bin/pip ]; then
+              venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+              # Ensure Playwright is installed for CAPTCHA bypass
+              if ! venv/bin/python -c "import playwright" 2>/dev/null; then
+                echo "Installing Playwright for CAPTCHA bypass..."
+                venv/bin/pip install playwright -q 2>&1 | tail -3
+                venv/bin/python -m playwright install chromium 2>&1 | tail -5
+              fi
+            fi
+
+            # Update systemd service file (memory limits etc.)
+            if [ -f tradovate-bot.service ]; then
+              cp tradovate-bot.service /etc/systemd/system/tradovate-bot.service
+              systemctl daemon-reload
+            fi
 
             # Restart bot
             systemctl restart ${{ env.SERVICE_NAME }}
-            sleep 3
+            sleep 5
 
             if systemctl is-active --quiet ${{ env.SERVICE_NAME }}; then
-              echo "BOT: RUNNING"
+              echo "BOT: RUNNING (PID $(systemctl show ${{ env.SERVICE_NAME }} --property=MainPID --value))"
+              # Show first few log lines to verify auth
+              sleep 10
+              echo "--- Recent bot logs ---"
+              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 20 | tail -20
             else
               echo "BOT: FAILED"
-              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 15
+              journalctl -u ${{ env.SERVICE_NAME }} --no-pager -n 20
               exit 1
             fi
 
@@ -136,7 +188,7 @@ jobs:
 
       # Fallback: webhook if no SSH host configured
       - name: Trigger server webhook (fallback)
-        if: vars.SERVER_HOST == '' && vars.DEPLOY_WEBHOOK_URL != ''
+        if: steps.server_check.outputs.available != 'true' && vars.DEPLOY_WEBHOOK_URL != ''
         run: |
           curl -s -X POST \
             -H "Content-Type: application/json" \
@@ -153,8 +205,8 @@ jobs:
           echo "**Target:** \`${{ env.DEPLOY_BRANCH }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ vars.SERVER_HOST }}" != "" ]; then
-            echo "Merged and deployed via SSH." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.server_check.outputs.available }}" == "true" ]; then
+            echo "Merged and deployed via SSH to \`${{ steps.server_check.outputs.host }}\`." >> $GITHUB_STEP_SUMMARY
           else
             echo "Merged. No server configured for deploy." >> $GITHUB_STEP_SUMMARY
           fi
