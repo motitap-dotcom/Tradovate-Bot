@@ -134,8 +134,9 @@ StartLimitIntervalSec=600
 [Service]
 Type=simple
 WorkingDirectory=$BOT_DIR
-ExecStart=$BOT_DIR/venv/bin/python -u bot.py
 EnvironmentFile=$BOT_DIR/.env
+ExecStart=$BOT_DIR/venv/bin/python -u bot.py
+ExecStopPost=/bin/bash $BOT_DIR/alert.sh tradovate-bot
 
 # Auto-restart ALWAYS — bot must never stay down
 Restart=always

@@ -82,26 +82,18 @@ fi
 # ── 1c. Auto-heal: restart bot if it's not running ──
 if ! systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
     echo "[$(date)] Bot is DOWN — attempting auto-restart..."
-    systemctl restart "$SERVICE"
+    systemctl restart "$SERVICE" 2>/dev/null
     sleep 5
-    if systemctl is-active --quiet "$SERVICE"; then
+    if systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
         echo "[$(date)] Auto-restart SUCCEEDED."
     else
-        echo "[$(date)] Auto-restart FAILED. Check: journalctl -u $SERVICE -n 50"
-    fi
-fi
-
-# ── 1b. Ensure bot is running (auto-heal) ──
-if ! systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
-    echo "[$(date)] WARNING: Bot is NOT running! Attempting restart..."
-    systemctl start "$SERVICE" 2>/dev/null || {
-        echo "[$(date)] systemctl start failed. Falling back to keep_alive.sh..."
+        echo "[$(date)] systemctl restart FAILED. Falling back to keep_alive.sh..."
         if [ -f "$BOT_DIR/keep_alive.sh" ] && ! pgrep -f "keep_alive.sh" > /dev/null 2>&1; then
             cd "$BOT_DIR"
             nohup bash keep_alive.sh >> /var/log/tradovate-keepalive.log 2>&1 &
             echo "[$(date)] keep_alive.sh launched as fallback (PID=$!)"
         fi
-    }
+    fi
 fi
 
 # ── 2. Collect status ──
