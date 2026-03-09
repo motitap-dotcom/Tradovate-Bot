@@ -96,6 +96,10 @@ class TradovateBot:
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
+        # Contract rollover: check every 10 minutes (not every 30s loop)
+        self._last_rollover_check: float = 0
+        self._rollover_check_interval: int = 600  # seconds
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -193,6 +197,66 @@ class TradovateBot:
                 logger.warning(
                     "Could not resolve front-month for %s. Skipping.", symbol
                 )
+
+    # ─────────────────────────────────────────
+    # Contract rollover
+    # ─────────────────────────────────────────
+
+    def _check_contract_rollover(self):
+        """
+        Check if any active contracts need to roll to the next front-month.
+        Called periodically (e.g. once per main-loop cycle).
+        Detects when Tradovate's suggest_contract returns a different symbol
+        than what we're currently trading, and switches over.
+        """
+        if self.dry_run:
+            return
+
+        for symbol in list(self.contract_map.keys()):
+            old_contract = self.contract_map[symbol]
+
+            new = self.api.suggest_contract(symbol)
+            if not new:
+                continue
+
+            new_contract = new.get("name", "")
+            if new_contract == old_contract:
+                continue
+
+            # Front-month changed — rollover needed
+            logger.warning(
+                "CONTRACT ROLLOVER: %s changed from %s -> %s",
+                symbol, old_contract, new_contract,
+            )
+
+            # Unsubscribe old contract from market data
+            if self.md_stream:
+                try:
+                    self.md_stream.unsubscribe_quote(old_contract)
+                except Exception as e:
+                    logger.warning("Error unsubscribing %s: %s", old_contract, e)
+
+            # Update mapping
+            self.contract_map[symbol] = new_contract
+
+            # Clear cached contract ID mapping so _sync_fills rebuilds it
+            if hasattr(self, "_contract_id_to_symbol"):
+                self._contract_id_to_symbol = {
+                    k: v for k, v in self._contract_id_to_symbol.items()
+                    if v != symbol
+                }
+
+            # Subscribe to new contract
+            if self.md_stream:
+                self.md_stream.subscribe_quote(
+                    new_contract,
+                    lambda sym, data, s=symbol: self._on_quote(s, data),
+                )
+
+            logger.info(
+                "Rollover complete: %s now trading %s (id=%s)",
+                symbol, new_contract, new.get("id"),
+            )
 
     # ─────────────────────────────────────────
     # Strategy initialization
@@ -566,6 +630,14 @@ class TradovateBot:
                             self._subscribe_market_data()
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
+
+                # Periodic contract rollover check (every 10 min)
+                if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
+                    try:
+                        self._check_contract_rollover()
+                    except Exception as e:
+                        logger.warning("Rollover check error: %s", e)
+                    self._last_rollover_check = time.time()
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()

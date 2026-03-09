@@ -585,6 +585,16 @@ class TradovateAPI:
             return result[0]
         return None
 
+    def get_contract_maturity(self, contract_name: str) -> Optional[str]:
+        """
+        Get the expiration/maturity date for a contract.
+        Returns ISO date string (e.g. '2026-03-21') or None.
+        """
+        contract = self.find_contract(contract_name)
+        if contract:
+            return contract.get("expirationDate") or contract.get("contractMaturityDate")
+        return None
+
     # ─────────────────────────────────────────
     # Order placement
     # ─────────────────────────────────────────
