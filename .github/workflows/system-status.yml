@@ -65,6 +65,8 @@ jobs:
           host: ${{ steps.ssh_check.outputs.ssh_host }}
           username: ${{ secrets.SERVER_USER || vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY || secrets.VPS_SSH_KEY }}
+          command_timeout: 30s
+          capture_command_output: true
           script: |
             # Find bot directory - try multiple paths
             BOT_DIR=""
