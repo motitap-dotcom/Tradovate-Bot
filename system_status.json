@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-09T15:58:37Z",
+  "timestamp": "2026-03-09T16:02:36Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -10,5 +10,17 @@
   "server": null,
   "errors": [
     "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
-  ]
+  ],
+  "debug": {
+    "ssh_available": "true",
+    "ssh_ok": "true",
+    "ssh_output_len": 0,
+    "has_server_host": "true",
+    "has_ssh_key": "true",
+    "has_username": true,
+    "username_len": 16,
+    "has_password": true,
+    "password_len": 9,
+    "has_access_token": false
+  }
 }
