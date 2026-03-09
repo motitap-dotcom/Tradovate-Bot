@@ -65,15 +65,32 @@ jobs:
 
       - name: Merge to main
         run: |
-          # Create main from source if it doesn't exist yet
-          if git fetch origin ${{ env.DEPLOY_BRANCH }} 2>/dev/null; then
-            git checkout ${{ env.DEPLOY_BRANCH }}
-            git merge ${{ github.sha }} --no-edit -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}"
-          else
-            echo "Branch ${{ env.DEPLOY_BRANCH }} does not exist — creating from ${{ github.sha }}"
-            git checkout -b ${{ env.DEPLOY_BRANCH }} ${{ github.sha }}
-          fi
-          git push origin ${{ env.DEPLOY_BRANCH }}
+          # Retry merge+push up to 3 times (main may move due to status commits)
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt/3..."
+            if git fetch origin ${{ env.DEPLOY_BRANCH }} 2>/dev/null; then
+              git checkout ${{ env.DEPLOY_BRANCH }}
+              git reset --hard origin/${{ env.DEPLOY_BRANCH }}
+              # Use -X theirs to auto-resolve conflicts in auto-generated files (system_status.json)
+              git merge ${{ github.sha }} --no-edit -X theirs \
+                -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}" || {
+                echo "Merge failed — aborting"
+                git merge --abort 2>/dev/null || true
+                exit 1
+              }
+            else
+              echo "Branch ${{ env.DEPLOY_BRANCH }} does not exist — creating from ${{ github.sha }}"
+              git checkout -b ${{ env.DEPLOY_BRANCH }} ${{ github.sha }}
+            fi
+            if git push origin ${{ env.DEPLOY_BRANCH }}; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push failed (main moved), retrying in 5s..."
+            sleep 5
+          done
+          echo "All 3 attempts failed"
+          exit 1
 
       # Resolve server host from vars or secrets (try multiple naming patterns)
       - name: Check server host
