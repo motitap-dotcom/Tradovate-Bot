@@ -173,6 +173,15 @@ $BOT_DIR/*.log {
 EOF
 log "Log rotation configured."
 
+# ── 6b. Server cron (auto-heal + code pull every 5 min) ────
+CRON_CMD="*/5 * * * * cd $BOT_DIR && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
+if crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
+    log "Server cron already installed."
+else
+    (crontab -l 2>/dev/null; echo "$CRON_CMD") | crontab -
+    log "Server cron installed (every 5 min)."
+fi
+
 # ── 7. Helper script ───────────────────────────────────────
 cat > "$BOT_DIR/bot-ctl.sh" << 'CTLEOF'
 #!/bin/bash
