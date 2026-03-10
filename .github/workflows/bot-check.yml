@@ -1,0 +1,87 @@
+name: Quick Bot Check
+
+# Manual trigger only — fast check if bot is alive and trading
+on:
+  workflow_dispatch:
+
+env:
+  BOT_DIR: /root/tradovate-bot
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check bot via SSH
+        id: ssh
+        if: vars.SERVER_HOST != ''
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd ${{ env.BOT_DIR }} 2>/dev/null || exit 1
+
+            echo "=== Bot Process ==="
+            if systemctl is-active --quiet tradovate-bot 2>/dev/null; then
+              echo "STATUS: RUNNING"
+              PID=$(systemctl show tradovate-bot --property=MainPID --value)
+              echo "PID: $PID"
+              SINCE=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value)
+              echo "SINCE: $SINCE"
+            else
+              echo "STATUS: DOWN"
+              echo "Last logs:"
+              journalctl -u tradovate-bot --no-pager -n 10 2>/dev/null || echo "no logs"
+            fi
+
+            echo ""
+            echo "=== Last Bot Status ==="
+            grep -o 'Status |.*' bot.log 2>/dev/null | tail -3 || echo "no status in log"
+
+            echo ""
+            echo "=== Recent Activity ==="
+            grep -E 'SIGNAL|ENTRY|EXIT|FILL|LOCK|ERROR' bot.log 2>/dev/null | tail -10 || echo "no activity"
+
+            echo ""
+            echo "=== Token ==="
+            if [ -f .tradovate_token.json ]; then
+              python3 -c "
+            import json
+            d = json.load(open('.tradovate_token.json'))
+            exp = d.get('expirationTime','?')
+            print(f'Token: valid (expires {exp[:19]})')
+            print(f'User ID: {d.get(\"userId\",\"?\")}')
+            " 2>/dev/null || echo "token file exists but unreadable"
+            else
+              echo "No token file!"
+            fi
+
+            echo ""
+            echo "=== Resources ==="
+            echo "Disk: $(df -h / | tail -1 | awk '{print $5}')"
+            free -m | awk '/^Mem:/{printf "Memory: %dMB/%dMB (%.0f%%)\n", $3, $2, $3/$2*100}'
+
+            echo ""
+            echo "=== Git ==="
+            echo "Commit: $(git log -1 --oneline)"
+
+      - name: No SSH configured
+        if: vars.SERVER_HOST == ''
+        run: |
+          echo "## SSH Not Configured" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Add these repo settings to enable bot checking:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Variable** \`SERVER_HOST\`: your server IP" >> $GITHUB_STEP_SUMMARY
+          echo "- **Variable** \`SERVER_USER\`: \`root\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Secret** \`SERVER_SSH_KEY\`: SSH private key" >> $GITHUB_STEP_SUMMARY
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Quick Bot Check" >> $GITHUB_STEP_SUMMARY
+          echo "**$(date -u '+%Y-%m-%d %H:%M UTC')**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ vars.SERVER_HOST }}" != "" ]; then
+            echo "SSH check completed. See step output above for details." >> $GITHUB_STEP_SUMMARY
+          fi
