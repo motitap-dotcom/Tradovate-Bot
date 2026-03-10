@@ -36,10 +36,11 @@ jobs:
         run: pip install requests
 
       # ── Step A: Check if SSH is configured ──
+      # Uses vars (not secrets) for SERVER_HOST — consistent with deploy.yml
       - name: Check SSH availability
         id: ssh_check
         env:
-          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_HOST: ${{ vars.SERVER_HOST }}
         run: |
           if [ -n "$SSH_HOST" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
@@ -55,8 +56,8 @@ jobs:
         continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER || 'root' }}
+          host: ${{ vars.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             BOT_DIR="${{ env.BOT_DIR }}"
@@ -78,7 +79,14 @@ jobs:
             UPTIME=$(systemctl show tradovate-bot --property=ActiveEnterTimestamp --value 2>/dev/null || echo "")
             DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' || echo "?")
             MEM=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2, $3/$2*100}' || echo "?")
-            LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 3 2>/dev/null | tail -3 || echo "no logs")
+            LAST_LOG=$(journalctl -u tradovate-bot --no-pager -n 5 2>/dev/null | tail -5 || echo "no logs")
+
+            # Get last status from bot.log (balance, pnl, trades)
+            LAST_STATUS=$(grep -o 'Status |.*' "$BOT_DIR/bot.log" 2>/dev/null | tail -1 || echo "")
+
+            # Get live_status.json if it exists
+            LIVE_STATUS="{}"
+            [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
             # Output as JSON
             python3 -c "
@@ -90,7 +98,9 @@ jobs:
                 'disk': '$DISK',
                 'memory': '$MEM',
                 'last_log': '''$LAST_LOG'''.strip(),
+                'last_status': '''$LAST_STATUS'''.strip(),
                 'git_commit': '$(git log -1 --format=\"%h %s\" 2>/dev/null || echo \"?\")',
+                'live_status': $LIVE_STATUS,
             }))
             " 2>/dev/null || echo '{}'
             echo "==SERVER_END=="
@@ -158,7 +168,6 @@ jobs:
                       print("  Could not parse token from server")
 
               # Extract server status
-              server_match = re.search(r"==SERVER_END==\s*$", ssh_output)
               server_match = re.search(r"==SERVER_START==\s*([\s\S]*?)\s*==SERVER_END==", ssh_output)
               if server_match:
                   server_lines = server_match.group(1).strip().split("\n")
@@ -374,10 +383,38 @@ jobs:
           import json
           d = json.load(open("system_status.json"))
 
+          # ── Server status (from SSH) ──
+          srv = d.get("server")
+          if srv:
+              bot_icon = "✅" if srv.get("bot_active") else "❌"
+              print(f"### {bot_icon} Bot: {'RUNNING' if srv.get('bot_active') else 'DOWN'}")
+              print("")
+              print("| Server | Value |")
+              print("|--------|-------|")
+              print(f"| PID | {srv.get('bot_pid', '?')} |")
+              print(f"| Uptime | {srv.get('uptime_since', '?')} |")
+              print(f"| Memory | {srv.get('memory', '?')} |")
+              print(f"| Disk | {srv.get('disk', '?')} |")
+              print(f"| Commit | `{srv.get('git_commit', '?')}` |")
+              if srv.get("last_status"):
+                  print(f"| Bot Status | `{srv['last_status'][:120]}` |")
+              # Show live_status from server if available
+              live = srv.get("live_status", {})
+              if live and isinstance(live, dict):
+                  print("")
+                  print("### Trading Status (from server)")
+                  print("| Metric | Value |")
+                  print("|--------|-------|")
+                  for k, v in live.items():
+                      print(f"| {k} | {v} |")
+              print("")
+
+          # ── API status ──
+          print("### API Check")
           print("| Check | Status |")
           print("|-------|--------|")
-          print(f"| API | {'OK' if d['api_reachable'] else 'DOWN'} |")
-          print(f"| Auth | {d.get('auth_method') or 'none'} |")
+          print(f"| API Reachable | {'✅' if d['api_reachable'] else '❌'} |")
+          print(f"| Auth Method | {d.get('auth_method') or 'none'} |")
 
           bal = d.get("balance", {})
           if bal:
@@ -385,14 +422,8 @@ jobs:
               print(f"| Realized P&L | ${bal.get('realizedPnl', 'N/A')} |")
               print(f"| Unrealized P&L | ${bal.get('unrealizedPnl', 'N/A')} |")
 
-          print(f"| Positions | {len(d.get('positions', []))} |")
-          print(f"| Orders | {len(d.get('orders', []))} |")
-
-          srv = d.get("server")
-          if srv:
-              print(f"| Bot Active | {srv.get('bot_active', '?')} |")
-              print(f"| Memory | {srv.get('memory', '?')} |")
-              print(f"| Disk | {srv.get('disk', '?')} |")
+          print(f"| Open Positions | {len(d.get('positions', []))} |")
+          print(f"| Active Orders | {len(d.get('orders', []))} |")
 
           errs = d.get("errors", [])
           if errs:
@@ -409,4 +440,12 @@ jobs:
               print("|----------|-----|-------|")
               for p in pos:
                   print(f"| {p['contractId']} | {p['netPos']} | {p.get('netPrice','?')} |")
+
+          if not srv and not bal:
+              print("")
+              print("### Setup Required")
+              print("SSH not configured. Add these repo settings:")
+              print("- **Variable** `SERVER_HOST`: your server IP")
+              print("- **Variable** `SERVER_USER`: `root` (or your user)")
+              print("- **Secret** `SERVER_SSH_KEY`: SSH private key")
           PYEOF
