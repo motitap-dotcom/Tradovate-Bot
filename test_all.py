@@ -1064,6 +1064,120 @@ test_e2e_risk_cap()
 
 
 # ─────────────────────────────────────────────
+# Contract Rollover Tests
+# ─────────────────────────────────────────────
+
+print("\n--- Contract Rollover ---")
+
+
+@test("_next_liquid_contract: NQ H6 -> M6 (quarterly)")
+def test_rollover_nq_h_to_m():
+    from bot import TradovateBot
+    result = TradovateBot._next_liquid_contract("NQ", "NQH6")
+    assert result == "NQM6", f"Expected NQM6, got {result}"
+
+
+@test("_next_liquid_contract: NQ Z5 -> H6 (year wrap)")
+def test_rollover_nq_year_wrap():
+    from bot import TradovateBot
+    result = TradovateBot._next_liquid_contract("NQ", "NQZ5")
+    assert result == "NQH6", f"Expected NQH6, got {result}"
+
+
+@test("_next_liquid_contract: GC H6 -> J6 (gold skips odd months)")
+def test_rollover_gc_h_to_j():
+    from bot import TradovateBot
+    result = TradovateBot._next_liquid_contract("GC", "GCH6")
+    assert result == "GCJ6", f"Expected GCJ6, got {result}"
+
+
+@test("_next_liquid_contract: GC Z5 -> G6 (gold year wrap to Feb)")
+def test_rollover_gc_year_wrap():
+    from bot import TradovateBot
+    result = TradovateBot._next_liquid_contract("GC", "GCZ5")
+    assert result == "GCG6", f"Expected GCG6, got {result}"
+
+
+@test("_next_liquid_contract: CL F6 -> G6 (crude every month)")
+def test_rollover_cl_monthly():
+    from bot import TradovateBot
+    result = TradovateBot._next_liquid_contract("CL", "CLF6")
+    assert result == "CLG6", f"Expected CLG6, got {result}"
+
+
+@test("_next_liquid_contract: ES U6 -> Z6 (ES quarterly)")
+def test_rollover_es_u_to_z():
+    from bot import TradovateBot
+    result = TradovateBot._next_liquid_contract("ES", "ESU6")
+    assert result == "ESZ6", f"Expected ESZ6, got {result}"
+
+
+@test("_next_liquid_contract: unknown symbol returns None")
+def test_rollover_unknown():
+    from bot import TradovateBot
+    result = TradovateBot._next_liquid_contract("FAKE", "FAKEH6")
+    assert result is None
+
+
+@test("Date-based rollover triggers when contract expires within threshold")
+def test_date_based_rollover():
+    from bot import TradovateBot
+    from unittest.mock import MagicMock, patch
+    from datetime import date, timedelta
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.md_stream = None
+    bot.contract_map = {"NQ": "NQH6"}
+
+    # Contract expires in 5 days (within 8-day threshold)
+    expiry = (date.today() + timedelta(days=5)).isoformat()
+    bot.api.get_contract_maturity.return_value = expiry
+    bot.api.find_contract.return_value = {"id": 999, "name": "NQM6"}
+    bot.api.suggest_contract.return_value = None
+
+    with patch("bot.now_et") as mock_now:
+        mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
+        bot._check_contract_rollover()
+
+    assert bot.contract_map["NQ"] == "NQM6", f"Expected NQM6, got {bot.contract_map['NQ']}"
+
+
+@test("No rollover when expiry is far away")
+def test_no_rollover_far_expiry():
+    from bot import TradovateBot
+    from unittest.mock import MagicMock, patch
+    from datetime import date, timedelta
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.md_stream = None
+    bot.contract_map = {"NQ": "NQH6"}
+
+    # Contract expires in 20 days (outside 8-day threshold)
+    expiry = (date.today() + timedelta(days=20)).isoformat()
+    bot.api.get_contract_maturity.return_value = expiry
+    bot.api.suggest_contract.return_value = None
+
+    with patch("bot.now_et") as mock_now:
+        mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
+        bot._check_contract_rollover()
+
+    assert bot.contract_map["NQ"] == "NQH6", "Should NOT have rolled over"
+
+
+test_rollover_nq_h_to_m()
+test_rollover_nq_year_wrap()
+test_rollover_gc_h_to_j()
+test_rollover_gc_year_wrap()
+test_rollover_cl_monthly()
+test_rollover_es_u_to_z()
+test_rollover_unknown()
+test_date_based_rollover()
+test_no_rollover_far_expiry()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 
