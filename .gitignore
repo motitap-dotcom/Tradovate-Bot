@@ -24,6 +24,7 @@ env/
 credentials.json
 api_keys.json
 .tradovate_token.json
+.day_start_balance.json
 .gh_pat
 
 # Logs
