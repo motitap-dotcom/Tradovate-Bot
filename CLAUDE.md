@@ -39,12 +39,27 @@ This is the **#1 rule** for this project. Claude Code does NOT have SSH access, 
 | `system-status.yml` | Every 30 min | Full system check via SSH |
 | `connectivity-test.yml` | Every 6 hours | Test Tradovate API endpoints |
 
-### Task Completion Protocol
+### Task Completion Protocol (חובה בכל חלון חדש!)
 בכל פעם שסיימת לכתוב קוד, לתקן באג או לבצע שינוי:
 1. **Commit** the changes with a clear message
-2. **Push to `main`** (or merge from feature branch)
-3. **Report**: "הקוד מוכן, ביצעתי Push ל-main כדי שהשרת יתעדכן."
-4. **Check status**: Read `server_status.json` after ~5 minutes to confirm deployment
+2. **Push to `claude/*` branch** — auto-merge workflow merges to main and deploys
+3. **Report**: "הקוד מוכן, ביצעתי Push ל-claude/* כדי שהשרת יתעדכן."
+4. **Check status**: Use WebFetch to read `system_status.json` from GitHub API after ~5 minutes
+
+### How to Check Bot Status (First Step in Every Session)
+```
+WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/contents/system_status.json?ref=main
+```
+Look at: `timestamp`, `bot_active`, `balance`, `day_pnl`, `locked`, `lock_reason`, `journal_tail`.
+
+### How to Deploy Code Changes
+```
+1. Edit files locally
+2. git add <files> && git commit -m "description"
+3. git push -u origin claude/<branch-name>
+4. auto-merge-deploy.yml merges to main → deploy.yml deploys to server
+5. Verify via system_status.json after ~5 minutes
+```
 
 **זה חל על כל חלון חדש, כל שיחה חדשה, וכל בקשה. אין חריגים.**
 
@@ -58,7 +73,7 @@ This is the **#1 rule** for this project. Claude Code does NOT have SSH access, 
 - **Organization**: FundedNext (id=44)
 - **Environment**: demo (challenge phase uses demo API)
 - **Starting Balance**: $50,000
-- **SOD Balance**: ~$48,094 (as of 2026-02-23)
+- **Current Balance**: ~$58,875 (as of 2026-03-10)
 
 ## Authentication
 Token is stored in `.tradovate_token.json` and auto-renewed.
@@ -115,7 +130,7 @@ python get_token.py         # One-time token capture (needs display)
 - Max contracts: 50 (micros, ≈5 minis equivalent)
 - Close by: 4:59 PM ET
 - Drawdown trails unrealized intraday peaks
-- Current balance: ~$52,426 (as of 2026-02-24)
+- Current balance: ~$58,875 (as of 2026-03-10)
 
 ## Enabled Contracts (Minis — FundedNext rejects micro orders)
 - **NQ** (E-mini Nasdaq): ORB strategy, 25pt stop / 50pt TP, $20/pt → 1 contract/trade
@@ -176,3 +191,4 @@ All deployment and server management is done exclusively through GitHub workflow
 2. **CAPTCHA required**: Bot auto-handles via Playwright browser login
 3. **Empty account list**: FundedNext challenge accounts are on demo API
 4. **Rate limiting (p-ticket)**: Wait 15+ seconds before retrying auth
+5. **False daily profit cap lock**: If `_init_balance_from_api()` fails at startup (expired token), `day_start_balance` defaults to config $50k instead of real balance, causing inflated `day_pnl`. Fixed: `_sync_balance()` retries `set_initial_balance()` on first successful API call (see `_balance_initialized` flag in `risk_manager.py`).
