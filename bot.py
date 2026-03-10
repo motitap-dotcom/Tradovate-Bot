@@ -753,6 +753,14 @@ class TradovateBot:
                 # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
                 balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
                 if balance is not None:
+                    # If set_initial_balance never succeeded at startup, do it now
+                    # so day_start_balance reflects the real balance, not config default
+                    if not self.risk._balance_initialized:
+                        logger.warning(
+                            "Initial balance was never set — setting now from API: $%.2f",
+                            balance,
+                        )
+                        self.risk.set_initial_balance(balance)
                     unrealized = snapshot.get("openPnL", 0.0)
                     self.risk.update_balance(balance, unrealized)
                 else:
