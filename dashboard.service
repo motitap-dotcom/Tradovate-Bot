@@ -1,0 +1,9 @@
+[program:dashboard]
+command=python3 /home/user/Tradovate-Bot/dashboard.py
+directory=/home/user/Tradovate-Bot
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/dashboard.err.log
+stdout_logfile=/var/log/dashboard.out.log
+user=root
+environment=PYTHONUNBUFFERED="1"

@@ -1,0 +1,7 @@
+{
+  "timestamp": "2026-03-03T18:52:36Z",
+  "ssh_available": false,
+  "ssh_connected": false,
+  "error": "SSH not configured. Add SERVER_HOST variable and SERVER_SSH_KEY secret in GitHub Settings.",
+  "setup_url": "https://github.com/motitap-dotcom/Tradovate-Bot/settings/secrets/actions"
+}

@@ -128,18 +128,19 @@ cat > "/etc/systemd/system/${SERVICE_NAME}.service" << EOF
 Description=Tradovate Trading Bot
 After=network-online.target
 Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=300
+StartLimitBurst=50
+StartLimitIntervalSec=600
 
 [Service]
 Type=simple
 WorkingDirectory=$BOT_DIR
-ExecStart=$BOT_DIR/venv/bin/python bot.py --live
 EnvironmentFile=$BOT_DIR/.env
+ExecStart=$BOT_DIR/venv/bin/python -u bot.py
+ExecStopPost=/bin/bash $BOT_DIR/alert.sh tradovate-bot
 
-# Auto-restart on crash (30s delay)
-Restart=on-failure
-RestartSec=30
+# Auto-restart ALWAYS — bot must never stay down
+Restart=always
+RestartSec=10
 
 # Logging to journald
 StandardOutput=journal
@@ -171,6 +172,15 @@ $BOT_DIR/*.log {
 }
 EOF
 log "Log rotation configured."
+
+# ── 6b. Server cron (auto-heal + code pull every 5 min) ────
+CRON_CMD="*/5 * * * * cd $BOT_DIR && bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1"
+if crontab -l 2>/dev/null | grep -q "server_cron.sh"; then
+    log "Server cron already installed."
+else
+    (crontab -l 2>/dev/null; echo "$CRON_CMD") | crontab -
+    log "Server cron installed (every 5 min)."
+fi
 
 # ── 7. Helper script ───────────────────────────────────────
 cat > "$BOT_DIR/bot-ctl.sh" << 'CTLEOF'

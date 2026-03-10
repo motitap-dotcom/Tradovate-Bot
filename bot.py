@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot
+Tradovate Trading Bot — v2.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -95,6 +95,10 @@ class TradovateBot:
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
+
+        # Contract rollover: check every 10 minutes (not every 30s loop)
+        self._last_rollover_check: float = 0
+        self._rollover_check_interval: int = 600  # seconds
 
     # ─────────────────────────────────────────
     # Lifecycle
@@ -193,6 +197,66 @@ class TradovateBot:
                 logger.warning(
                     "Could not resolve front-month for %s. Skipping.", symbol
                 )
+
+    # ─────────────────────────────────────────
+    # Contract rollover
+    # ─────────────────────────────────────────
+
+    def _check_contract_rollover(self):
+        """
+        Check if any active contracts need to roll to the next front-month.
+        Called periodically (e.g. once per main-loop cycle).
+        Detects when Tradovate's suggest_contract returns a different symbol
+        than what we're currently trading, and switches over.
+        """
+        if self.dry_run:
+            return
+
+        for symbol in list(self.contract_map.keys()):
+            old_contract = self.contract_map[symbol]
+
+            new = self.api.suggest_contract(symbol)
+            if not new:
+                continue
+
+            new_contract = new.get("name", "")
+            if new_contract == old_contract:
+                continue
+
+            # Front-month changed — rollover needed
+            logger.warning(
+                "CONTRACT ROLLOVER: %s changed from %s -> %s",
+                symbol, old_contract, new_contract,
+            )
+
+            # Unsubscribe old contract from market data
+            if self.md_stream:
+                try:
+                    self.md_stream.unsubscribe_quote(old_contract)
+                except Exception as e:
+                    logger.warning("Error unsubscribing %s: %s", old_contract, e)
+
+            # Update mapping
+            self.contract_map[symbol] = new_contract
+
+            # Clear cached contract ID mapping so _sync_fills rebuilds it
+            if hasattr(self, "_contract_id_to_symbol"):
+                self._contract_id_to_symbol = {
+                    k: v for k, v in self._contract_id_to_symbol.items()
+                    if v != symbol
+                }
+
+            # Subscribe to new contract
+            if self.md_stream:
+                self.md_stream.subscribe_quote(
+                    new_contract,
+                    lambda sym, data, s=symbol: self._on_quote(s, data),
+                )
+
+            logger.info(
+                "Rollover complete: %s now trading %s (id=%s)",
+                symbol, new_contract, new.get("id"),
+            )
 
     # ─────────────────────────────────────────
     # Strategy initialization
@@ -567,6 +631,14 @@ class TradovateBot:
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
 
+                # Periodic contract rollover check (every 10 min)
+                if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
+                    try:
+                        self._check_contract_rollover()
+                    except Exception as e:
+                        logger.warning("Rollover check error: %s", e)
+                    self._last_rollover_check = time.time()
+
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
                 logger.info(
@@ -780,27 +852,50 @@ def main():
     signal.signal(signal.SIGTERM, handle_signal)
 
     # ── Daily loop: run bot, sleep until next trading morning, repeat ──
+    # The bot NEVER exits on its own — it always restarts for the next session.
+    # Only SIGINT/SIGTERM (from systemd stop) will break this loop.
     bot = None
+    consecutive_crashes = 0
     while not _shutdown_requested:
-        bot = TradovateBot(dry_run=args.dry_run)
-        bot.start()
+        try:
+            bot = TradovateBot(dry_run=args.dry_run)
+            bot.start()
+            consecutive_crashes = 0  # Successful session resets crash counter
 
-        if _shutdown_requested:
-            break
+            if _shutdown_requested:
+                break
 
-        # Bot finished today's session — sleep until next trading morning
-        wake_up = _next_trading_morning()
-        sleep_seconds = (wake_up - now_et()).total_seconds()
-        logger.info(
-            "Session ended. Next trading session: %s ET (sleeping %.0f minutes)",
-            wake_up.strftime("%Y-%m-%d %H:%M"),
-            sleep_seconds / 60,
-        )
+            # Bot finished today's session — sleep until next trading morning
+            wake_up = _next_trading_morning()
+            sleep_seconds = (wake_up - now_et()).total_seconds()
+            logger.info(
+                "Session ended. Next trading session: %s ET (sleeping %.0f minutes)",
+                wake_up.strftime("%Y-%m-%d %H:%M"),
+                sleep_seconds / 60,
+            )
 
-        # Sleep in 60s chunks so we can respond to signals promptly
-        while sleep_seconds > 0 and not _shutdown_requested:
-            time.sleep(min(60, sleep_seconds))
-            sleep_seconds -= 60
+            # Sleep in 60s chunks so we can respond to signals promptly
+            while sleep_seconds > 0 and not _shutdown_requested:
+                time.sleep(min(60, sleep_seconds))
+                sleep_seconds -= 60
+
+        except Exception as exc:
+            consecutive_crashes += 1
+            restart_delay = min(30 * consecutive_crashes, 300)  # 30s, 60s, ... up to 5min
+            logger.critical(
+                "!!! BOT CRASHED (attempt %d): %s. Restarting in %ds...",
+                consecutive_crashes, exc, restart_delay,
+                exc_info=True,
+            )
+            try:
+                # Try to clean up before restart
+                if bot is not None:
+                    bot.running = False
+                    bot.stop()
+            except Exception:
+                pass
+            bot = None
+            time.sleep(restart_delay)
 
     logger.info("Bot process exiting.")
 

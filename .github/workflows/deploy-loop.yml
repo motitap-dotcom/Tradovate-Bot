@@ -1,0 +1,242 @@
+name: "Deploy → Listen"
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  THE LOOP:                                                  ║
+# ║  ① PUSH  — code pushed → deploy to server via SSH           ║
+# ║  ② LISTEN — collect server feedback (bot status, logs, etc) ║
+# ║  ③ REPORT — commit server_report.json back to this branch   ║
+# ║                                                             ║
+# ║  User pulls → reads server_report.json → sees results       ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+on:
+  push:
+    branches: ['main', 'claude/**']
+    paths-ignore:
+      - 'server_report.json'
+      - 'server_status.json'
+      - 'system_status.json'
+      - 'live_status.json'
+      - '*.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      skip_deploy:
+        description: 'Only collect status (skip deploy)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-loop-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  BOT_DIR: /root/tradovate-bot
+  SERVICE: tradovate-bot
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # ①  D E P L O Y
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: "① Deploy to server"
+        if: ${{ (vars.SERVER_HOST != '' || secrets.VPS_HOST != '') && github.event.inputs.skip_deploy != 'true' }}
+        id: deploy
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST || secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          envs: BRANCH,BOT_DIR,SERVICE
+          command_timeout: 2m
+          script: |
+            set -e
+            cd "$BOT_DIR" || exit 1
+
+            echo "→ Deploying branch: $BRANCH"
+            git fetch origin "$BRANCH"
+            git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            echo "  commit: $(git log -1 --oneline)"
+
+            echo "→ Installing dependencies..."
+            [ -f venv/bin/pip ] && venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+
+            echo "→ Restarting bot..."
+            systemctl restart "$SERVICE"
+            sleep 5
+
+            if systemctl is-active --quiet "$SERVICE"; then
+              echo "✓ Bot is running"
+            else
+              echo "✗ Bot failed to start"
+              journalctl -u "$SERVICE" -n 15 --no-pager
+              exit 1
+            fi
+        env:
+          BRANCH: ${{ github.ref_name }}
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # ②  L I S T E N
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: "② Setup SSH for feedback"
+        if: ${{ vars.SERVER_HOST != '' || secrets.VPS_HOST != '' }}
+        run: |
+          mkdir -p ~/.ssh /tmp/fb
+          echo "${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY }}" > ~/.ssh/key
+          chmod 600 ~/.ssh/key
+          VPS_H="${{ vars.SERVER_HOST || secrets.VPS_HOST }}"
+          VPS_U="${{ secrets.VPS_USER || vars.SERVER_USER || 'root' }}"
+          ssh-keyscan -H "$VPS_H" >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "SSH=ssh -i ~/.ssh/key -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new ${VPS_U}@${VPS_H}" >> "$GITHUB_ENV"
+
+      - name: "② Wait for bot to initialize"
+        if: ${{ (vars.SERVER_HOST != '' || secrets.VPS_HOST != '') && github.event.inputs.skip_deploy != 'true' }}
+        run: sleep 15
+
+      - name: "② Collect server feedback"
+        if: ${{ vars.SERVER_HOST != '' || secrets.VPS_HOST != '' }}
+        continue-on-error: true
+        run: |
+          echo "Collecting data from server..."
+          $SSH 'systemctl is-active '"$SERVICE"' 2>/dev/null || echo unknown'      > /tmp/fb/bot_status   2>/dev/null || echo "ssh_error" > /tmp/fb/bot_status
+          $SSH 'systemctl show '"$SERVICE"' -p MainPID --value 2>/dev/null || echo 0' > /tmp/fb/pid   2>/dev/null || echo "0" > /tmp/fb/pid
+          $SSH "df -h / | awk 'NR==2{print \$5}'"                                    > /tmp/fb/disk  2>/dev/null || echo "?" > /tmp/fb/disk
+          $SSH "free -m | awk '/Mem/{printf \"%dMB/%dMB\", \$3, \$2}'"               > /tmp/fb/mem   2>/dev/null || echo "?" > /tmp/fb/mem
+          $SSH 'cd '"$BOT_DIR"' && git log -1 --format="%h %s"'                      > /tmp/fb/git   2>/dev/null || echo "?" > /tmp/fb/git
+          $SSH 'cd '"$BOT_DIR"' && git branch --show-current'                         > /tmp/fb/branch 2>/dev/null || echo "?" > /tmp/fb/branch
+          $SSH 'journalctl -u '"$SERVICE"' -n 30 --no-pager 2>/dev/null'              > /tmp/fb/logs  2>/dev/null || echo "no logs" > /tmp/fb/logs
+          $SSH 'cat '"$BOT_DIR"'/live_status.json 2>/dev/null || echo "{}"'           > /tmp/fb/live  2>/dev/null || echo '{}' > /tmp/fb/live
+          echo "✓ Done"
+        env:
+          BOT_DIR: ${{ env.BOT_DIR }}
+          SERVICE: ${{ env.SERVICE }}
+
+      - name: "② Check Tradovate API"
+        run: |
+          python3 -c "
+          import json, urllib.request, urllib.error
+          r = {}
+          for e in ['demo', 'live']:
+              try:
+                  req = urllib.request.Request(
+                      f'https://{e}.tradovateapi.com/v1/auth/accesstokenrequest',
+                      data=b'{}', headers={'Content-Type': 'application/json'})
+                  urllib.request.urlopen(req, timeout=10)
+                  r[e] = 'ok'
+              except urllib.error.HTTPError:
+                  r[e] = 'ok'
+              except Exception as x:
+                  r[e] = str(x)[:80]
+          open('/tmp/fb/api.json','w').write(json.dumps(r))
+          print(f'API: demo={r.get(\"demo\",\"?\")} live={r.get(\"live\",\"?\")}')
+          "
+
+      - name: "② Build report"
+        run: |
+          python3 << 'PYEOF'
+          import json, pathlib, datetime, os
+
+          def read(name, default=""):
+              p = pathlib.Path(f"/tmp/fb/{name}")
+              return p.read_text().strip() if p.exists() else default
+
+          def read_json(name):
+              try: return json.loads(read(name, "{}") or "{}")
+              except: return {}
+
+          bot_status = read("bot_status", "no-ssh")
+
+          report = {
+              "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "trigger": os.environ.get("TRIGGER", "?"),
+              "branch": os.environ.get("REF", "?"),
+              "commit": os.environ.get("SHA", "?")[:8],
+              "deploy": os.environ.get("DEPLOY_RESULT", "skipped"),
+              "api": read_json("api.json"),
+              "server": {
+                  "bot_active": bot_status == "active",
+                  "bot_status": bot_status,
+                  "bot_pid": read("pid", "0"),
+                  "disk": read("disk", "?"),
+                  "memory": read("mem", "?"),
+                  "git_commit": read("git", "?"),
+                  "git_branch": read("branch", "?"),
+              },
+              "logs": read("logs", "no logs").split("\n")[-20:],
+              "live_status": read_json("live"),
+          }
+
+          with open("server_report.json", "w") as f:
+              json.dump(report, f, indent=2)
+
+          # ── GitHub Step Summary ──
+          s = report["server"]
+          ls = report.get("live_status", {})
+          ok = "✅" if s["bot_active"] else "❌"
+
+          lines = [
+              f"## {ok} Server Report — {report['timestamp']}",
+              "",
+              "| Key | Value |",
+              "|-----|-------|",
+              f"| Bot | **{s['bot_status']}** (PID {s['bot_pid']}) |",
+              f"| Deploy | {report['deploy']} |",
+              f"| Server Branch | `{s['git_branch']}` |",
+              f"| Server Commit | `{s['git_commit']}` |",
+              f"| Disk | {s['disk']} |",
+              f"| Memory | {s['memory']} |",
+              f"| Demo API | {report['api'].get('demo', '?')} |",
+              f"| Live API | {report['api'].get('live', '?')} |",
+          ]
+
+          if ls.get("balance"):
+              lines.append(f"| Balance | **${ls['balance']:,.2f}** |")
+              lines.append(f"| Day P&L | ${ls.get('day_pnl', 0):,.2f} |")
+              lines.append(f"| Trades | {ls.get('trades_today', 0)} |")
+              lines.append(f"| Open Positions | {ls.get('open_contracts', 0)} |")
+
+          lines += ["", "### Last Logs", "```"]
+          lines += report["logs"][-15:]
+          lines += ["```"]
+
+          summary = "\n".join(lines)
+
+          summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_file:
+              with open(summary_file, "a") as f:
+                  f.write(summary)
+
+          print(summary)
+          PYEOF
+        env:
+          TRIGGER: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          DEPLOY_RESULT: ${{ steps.deploy.outcome || 'skipped' }}
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # ③  R E P O R T   B A C K
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: "③ Commit report → repo"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add server_report.json
+          if git diff --cached --quiet; then
+            echo "No changes to report"
+            exit 0
+          fi
+          BOT=$(python3 -c "import json; print(json.load(open('server_report.json'))['server']['bot_status'])" 2>/dev/null || echo "?")
+          git commit -m "report: $(date -u '+%Y-%m-%d %H:%M') UTC | bot=$BOT [skip ci]"
+          git pull --rebase origin "${{ github.ref_name }}" || true
+          git push origin "${{ github.ref_name }}"
