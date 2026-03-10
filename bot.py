@@ -130,6 +130,10 @@ class TradovateBot:
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
+        # Fetch real balance from API to seed risk manager correctly
+        if not self.dry_run:
+            self._init_balance_from_api()
+
         # Resolve front-month contracts
         self._resolve_contracts()
 
@@ -165,6 +169,25 @@ class TradovateBot:
 
         self._print_summary()
         logger.info("Bot stopped.")
+
+    def _init_balance_from_api(self):
+        """Fetch actual account balance from API and seed risk manager.
+
+        Without this, day_start_balance defaults to config account_size ($50k)
+        which causes day_pnl to include ALL accumulated profit, not just today's.
+        """
+        try:
+            snapshot = self.api.get_cash_balance()
+            if snapshot and not snapshot.get("errorText"):
+                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+                if balance is not None:
+                    self.risk.set_initial_balance(balance)
+                    logger.info("Initial balance from API: $%.2f", balance)
+                    return
+            logger.warning("Could not fetch initial balance — using config default $%.2f",
+                          config.ACTIVE_CHALLENGE["account_size"])
+        except Exception as e:
+            logger.error("Failed to fetch initial balance: %s", e)
 
     # ─────────────────────────────────────────
     # Contract resolution

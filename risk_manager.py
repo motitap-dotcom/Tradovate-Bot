@@ -67,6 +67,33 @@ class RiskManager:
             f"${self.daily_profit_cap}" if self.daily_profit_cap else "None",
         )
 
+    def set_initial_balance(self, balance: float):
+        """Set the actual account balance from the API on startup.
+
+        This corrects day_start_balance so that day_pnl is calculated
+        relative to today's opening balance, not the original account_size.
+        Must be called before the first update_balance().
+        """
+        logger.info(
+            "Setting initial balance from API: $%.2f (was $%.2f from config)",
+            balance, self.day_start_balance,
+        )
+        self.current_balance = balance
+        self.day_start_balance = balance
+        # Peak/floor must also reflect reality
+        if balance > self.peak_balance:
+            self.peak_balance = balance
+            self.drawdown_floor = self.peak_balance - self.max_trailing_drawdown
+        elif balance < self.drawdown_floor + self.max_trailing_drawdown:
+            # Balance is below where peak should be — set peak = balance
+            # so drawdown floor is correct
+            self.peak_balance = balance
+            self.drawdown_floor = balance - self.max_trailing_drawdown
+        logger.info(
+            "Initial state: balance=$%.2f | peak=$%.2f | floor=$%.2f | day_start=$%.2f",
+            self.current_balance, self.peak_balance, self.drawdown_floor, self.day_start_balance,
+        )
+
     # ─────────────────────────────────────────
     # Balance updates
     # ─────────────────────────────────────────
