@@ -206,7 +206,25 @@ jobs:
               try:
                   with open(tj_path) as f: tj = json.load(f)
                   result["journal_summary"] = tj.get("summary",{})
+                  # Include today's trades
+                  from datetime import date
+                  today = date.today().isoformat()
+                  result["today_trades"] = [t for t in tj.get("trades", []) if t.get("date") == today]
+                  result["journal_summary"]["trades_today"] = len(result["today_trades"])
               except: pass
+          # Fetch today's fills from Tradovate API
+          tk_path2 = os.path.join(bot_dir, ".tradovate_token.json")
+          try:
+              import urllib.request
+              with open(tk_path2) as f: tkn = json.load(f).get("accessToken", "")
+              if tkn:
+                  req = urllib.request.Request("https://demo.tradovateapi.com/v1/fill/list", headers={"Authorization": f"Bearer {tkn}"})
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      fills = json.loads(resp.read().decode())
+                  from datetime import date as dt_date
+                  today2 = dt_date.today().isoformat()
+                  result["today_fills"] = [{"id":fl.get("id"),"action":fl.get("action"),"contractId":fl.get("contractId"),"qty":fl.get("qty"),"price":fl.get("price"),"timestamp":fl.get("timestamp")} for fl in fills if fl.get("timestamp","")[:10]==today2]
+          except: pass
           print(json.dumps(result))
           PYEOF
           else
@@ -781,6 +799,30 @@ jobs:
                   print("### Bot Log Errors")
                   for e in errors[-5:]:
                       print(f"- `{e[-120:]}`")
+
+              # Today's journal trades
+              today_trades = ta.get("today_trades", [])
+              if today_trades:
+                  print("")
+                  print("### Today's Trades (Journal)")
+                  print("| Symbol | Direction | Strategy | Entry | Exit | P&L | Status |")
+                  print("|--------|-----------|----------|-------|------|-----|--------|")
+                  for t in today_trades:
+                      entry = f"${t.get('entry_price', 0):,.2f}" if t.get("entry_price") else "?"
+                      exit_p = f"${t.get('exit_price', 0):,.2f}" if t.get("exit_price") else "open"
+                      pnl = f"${t.get('pnl', 0):+,.2f}" if t.get("pnl") is not None else "—"
+                      print(f"| {t.get('symbol', '?')} | {t.get('direction', '?')} | {t.get('strategy', '?')} | {entry} | {exit_p} | {pnl} | {t.get('status', '?')} |")
+
+              # Today's API fills
+              today_fills = ta.get("today_fills", [])
+              if today_fills:
+                  print("")
+                  print("### Today's Fills (API)")
+                  print("| Time | Action | Contract | Qty | Price |")
+                  print("|------|--------|----------|-----|-------|")
+                  for f in today_fills:
+                      ts = f.get("timestamp", "")[:19].replace("T", " ")
+                      print(f"| {ts} | {f.get('action', '?')} | {f.get('contractId', '?')} | {f.get('qty', '?')} | {f.get('price', '?')} |")
 
               log_tail = ta.get("bot_log_tail", [])
               if log_tail:
