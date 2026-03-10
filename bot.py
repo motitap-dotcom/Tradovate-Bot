@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot
+Tradovate Trading Bot — v2.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -96,6 +96,10 @@ class TradovateBot:
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
+        # Contract rollover: check every 10 minutes (not every 30s loop)
+        self._last_rollover_check: float = 0
+        self._rollover_check_interval: int = 600  # seconds
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -125,6 +129,10 @@ class TradovateBot:
             logger.info("Authenticated successfully")
         else:
             logger.info("DRY RUN mode — no orders will be sent")
+
+        # Fetch real balance from API to seed risk manager correctly
+        if not self.dry_run:
+            self._init_balance_from_api()
 
         # Resolve front-month contracts
         self._resolve_contracts()
@@ -162,6 +170,25 @@ class TradovateBot:
         self._print_summary()
         logger.info("Bot stopped.")
 
+    def _init_balance_from_api(self):
+        """Fetch actual account balance from API and seed risk manager.
+
+        Without this, day_start_balance defaults to config account_size ($50k)
+        which causes day_pnl to include ALL accumulated profit, not just today's.
+        """
+        try:
+            snapshot = self.api.get_cash_balance()
+            if snapshot and not snapshot.get("errorText"):
+                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+                if balance is not None:
+                    self.risk.set_initial_balance(balance)
+                    logger.info("Initial balance from API: $%.2f", balance)
+                    return
+            logger.warning("Could not fetch initial balance — using config default $%.2f",
+                          config.ACTIVE_CHALLENGE["account_size"])
+        except Exception as e:
+            logger.error("Failed to fetch initial balance: %s", e)
+
     # ─────────────────────────────────────────
     # Contract resolution
     # ─────────────────────────────────────────
@@ -193,6 +220,66 @@ class TradovateBot:
                 logger.warning(
                     "Could not resolve front-month for %s. Skipping.", symbol
                 )
+
+    # ─────────────────────────────────────────
+    # Contract rollover
+    # ─────────────────────────────────────────
+
+    def _check_contract_rollover(self):
+        """
+        Check if any active contracts need to roll to the next front-month.
+        Called periodically (e.g. once per main-loop cycle).
+        Detects when Tradovate's suggest_contract returns a different symbol
+        than what we're currently trading, and switches over.
+        """
+        if self.dry_run:
+            return
+
+        for symbol in list(self.contract_map.keys()):
+            old_contract = self.contract_map[symbol]
+
+            new = self.api.suggest_contract(symbol)
+            if not new:
+                continue
+
+            new_contract = new.get("name", "")
+            if new_contract == old_contract:
+                continue
+
+            # Front-month changed — rollover needed
+            logger.warning(
+                "CONTRACT ROLLOVER: %s changed from %s -> %s",
+                symbol, old_contract, new_contract,
+            )
+
+            # Unsubscribe old contract from market data
+            if self.md_stream:
+                try:
+                    self.md_stream.unsubscribe_quote(old_contract)
+                except Exception as e:
+                    logger.warning("Error unsubscribing %s: %s", old_contract, e)
+
+            # Update mapping
+            self.contract_map[symbol] = new_contract
+
+            # Clear cached contract ID mapping so _sync_fills rebuilds it
+            if hasattr(self, "_contract_id_to_symbol"):
+                self._contract_id_to_symbol = {
+                    k: v for k, v in self._contract_id_to_symbol.items()
+                    if v != symbol
+                }
+
+            # Subscribe to new contract
+            if self.md_stream:
+                self.md_stream.subscribe_quote(
+                    new_contract,
+                    lambda sym, data, s=symbol: self._on_quote(s, data),
+                )
+
+            logger.info(
+                "Rollover complete: %s now trading %s (id=%s)",
+                symbol, new_contract, new.get("id"),
+            )
 
     # ─────────────────────────────────────────
     # Strategy initialization
@@ -270,16 +357,13 @@ class TradovateBot:
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
-                            elif not window.breakout_fired:
-                                # Range is set — check if price already broke out
-                                # during warmup. Mark as fired so we don't trigger
-                                # a stale breakout on the first live tick.
-                                if c > window.range_high or c < window.range_low:
-                                    window.breakout_fired = True
-                                    logger.debug(
-                                        "Warmup: consumed stale %s ORB %dm breakout at %.2f",
-                                        symbol, window.window_minutes, c,
-                                    )
+                            else:
+                                # Range is set — just track _last_price so
+                                # feed() can detect fresh crosses on live ticks.
+                                # Do NOT mark breakout_fired here: the fresh-cross
+                                # guard in feed() already prevents stale breakouts
+                                # (it requires _last_price inside the range).
+                                window._last_price = c
 
                     fed += 1
 
@@ -567,6 +651,14 @@ class TradovateBot:
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
 
+                # Periodic contract rollover check (every 10 min)
+                if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
+                    try:
+                        self._check_contract_rollover()
+                    except Exception as e:
+                        logger.warning("Rollover check error: %s", e)
+                    self._last_rollover_check = time.time()
+
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
                 logger.info(
@@ -658,6 +750,14 @@ class TradovateBot:
                 # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
                 balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
                 if balance is not None:
+                    # If set_initial_balance never succeeded at startup, do it now
+                    # so day_start_balance reflects the real balance, not config default
+                    if not self.risk._balance_initialized:
+                        logger.warning(
+                            "Initial balance was never set — setting now from API: $%.2f",
+                            balance,
+                        )
+                        self.risk.set_initial_balance(balance)
                     unrealized = snapshot.get("openPnL", 0.0)
                     self.risk.update_balance(balance, unrealized)
                 else:
@@ -780,27 +880,50 @@ def main():
     signal.signal(signal.SIGTERM, handle_signal)
 
     # ── Daily loop: run bot, sleep until next trading morning, repeat ──
+    # The bot NEVER exits on its own — it always restarts for the next session.
+    # Only SIGINT/SIGTERM (from systemd stop) will break this loop.
     bot = None
+    consecutive_crashes = 0
     while not _shutdown_requested:
-        bot = TradovateBot(dry_run=args.dry_run)
-        bot.start()
+        try:
+            bot = TradovateBot(dry_run=args.dry_run)
+            bot.start()
+            consecutive_crashes = 0  # Successful session resets crash counter
 
-        if _shutdown_requested:
-            break
+            if _shutdown_requested:
+                break
 
-        # Bot finished today's session — sleep until next trading morning
-        wake_up = _next_trading_morning()
-        sleep_seconds = (wake_up - now_et()).total_seconds()
-        logger.info(
-            "Session ended. Next trading session: %s ET (sleeping %.0f minutes)",
-            wake_up.strftime("%Y-%m-%d %H:%M"),
-            sleep_seconds / 60,
-        )
+            # Bot finished today's session — sleep until next trading morning
+            wake_up = _next_trading_morning()
+            sleep_seconds = (wake_up - now_et()).total_seconds()
+            logger.info(
+                "Session ended. Next trading session: %s ET (sleeping %.0f minutes)",
+                wake_up.strftime("%Y-%m-%d %H:%M"),
+                sleep_seconds / 60,
+            )
 
-        # Sleep in 60s chunks so we can respond to signals promptly
-        while sleep_seconds > 0 and not _shutdown_requested:
-            time.sleep(min(60, sleep_seconds))
-            sleep_seconds -= 60
+            # Sleep in 60s chunks so we can respond to signals promptly
+            while sleep_seconds > 0 and not _shutdown_requested:
+                time.sleep(min(60, sleep_seconds))
+                sleep_seconds -= 60
+
+        except Exception as exc:
+            consecutive_crashes += 1
+            restart_delay = min(30 * consecutive_crashes, 300)  # 30s, 60s, ... up to 5min
+            logger.critical(
+                "!!! BOT CRASHED (attempt %d): %s. Restarting in %ds...",
+                consecutive_crashes, exc, restart_delay,
+                exc_info=True,
+            )
+            try:
+                # Try to clean up before restart
+                if bot is not None:
+                    bot.running = False
+                    bot.stop()
+            except Exception:
+                pass
+            bot = None
+            time.sleep(restart_delay)
 
     logger.info("Bot process exiting.")
 

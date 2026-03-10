@@ -45,6 +45,7 @@ class RiskManager:
         self.day_start_balance: float = self.account_size
         self.day_pnl: float = 0.0
         self.unrealized_pnl: float = 0.0
+        self._balance_initialized: bool = False  # True once set_initial_balance succeeds
 
         # Lock flag
         self.trading_locked: bool = False
@@ -65,6 +66,34 @@ class RiskManager:
             self.brake_pct * 100,
             self.max_daily_trades,
             f"${self.daily_profit_cap}" if self.daily_profit_cap else "None",
+        )
+
+    def set_initial_balance(self, balance: float):
+        """Set the actual account balance from the API on startup.
+
+        This corrects day_start_balance so that day_pnl is calculated
+        relative to today's opening balance, not the original account_size.
+        Can be called at startup or later (via _sync_balance fallback).
+        """
+        logger.info(
+            "Setting initial balance from API: $%.2f (was $%.2f from config)",
+            balance, self.day_start_balance,
+        )
+        self.current_balance = balance
+        self.day_start_balance = balance
+        self._balance_initialized = True
+        # Peak/floor must also reflect reality
+        if balance > self.peak_balance:
+            self.peak_balance = balance
+            self.drawdown_floor = self.peak_balance - self.max_trailing_drawdown
+        elif balance < self.drawdown_floor + self.max_trailing_drawdown:
+            # Balance is below where peak should be — set peak = balance
+            # so drawdown floor is correct
+            self.peak_balance = balance
+            self.drawdown_floor = balance - self.max_trailing_drawdown
+        logger.info(
+            "Initial state: balance=$%.2f | peak=$%.2f | floor=$%.2f | day_start=$%.2f",
+            self.current_balance, self.peak_balance, self.drawdown_floor, self.day_start_balance,
         )
 
     # ─────────────────────────────────────────
@@ -163,6 +192,8 @@ class RiskManager:
             self.trades_today = 0
             self.trading_locked = False
             self.lock_reason = ""
+            # Keep _balance_initialized — current_balance is already real
+            # (it was set by API in the previous day's loop)
 
     def _lock(self, reason: str):
         """Lock all trading for the rest of the session."""

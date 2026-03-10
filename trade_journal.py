@@ -199,7 +199,7 @@ class TradeJournal:
             "expectancy": statistics.mean(pnls) if pnls else 0,
             "best_trade": max(pnls) if pnls else 0,
             "worst_trade": min(pnls) if pnls else 0,
-            "avg_r_multiple": statistics.mean([t.get("r_multiple", 0) for t in closed if t.get("r_multiple")]) or 0,
+            "avg_r_multiple": statistics.mean([t.get("r_multiple", 0) for t in closed if t.get("r_multiple")]) if [t for t in closed if t.get("r_multiple")] else 0,
         }
 
     def analyze_by_symbol(self) -> dict:

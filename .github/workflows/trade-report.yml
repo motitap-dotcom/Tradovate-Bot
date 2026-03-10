@@ -1,0 +1,417 @@
+# Daily trade report — fetches trades from server and posts to GitHub issue
+name: Daily Trade Report
+
+on:
+  schedule:
+    # Run at 10 PM UTC (5 PM ET) — end of trading day
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  BOT_DIR: /root/tradovate-bot
+  REPORT_ISSUE_TITLE: "Daily Trade Report"
+
+jobs:
+  trade-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install requests
+
+      # ── Step 1: SSH to server and fetch trade data ──
+      - name: Fetch trade data from server
+        id: fetch_trades
+        env:
+          SSH_HOST: ${{ vars.SERVER_HOST || secrets.SERVER_HOST || secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER || secrets.SERVER_USER || 'root' }}
+          SSH_KEY_CONTENT: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_KEY_CONTENT" ]; then
+            echo "ssh_ok=false" >> $GITHUB_OUTPUT
+            echo "SSH not configured — skipping server fetch"
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY_CONTENT" > ~/.ssh/vps_key
+          chmod 600 ~/.ssh/vps_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          SSH_OK=false
+          for attempt in 1 2 3; do
+            echo "SSH attempt $attempt/3..."
+            if ssh -i ~/.ssh/vps_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
+              "${SSH_USER}@${SSH_HOST}" 'bash -s' > /tmp/trade_data.json 2>/dev/null <<'REMOTE_EOF'
+          BOT_DIR=""
+          for d in /root/tradovate-bot /root/Tradovate-Bot /home/*/tradovate-bot /opt/tradovate-bot; do
+            [ -d "$d" ] && BOT_DIR="$d" && break
+          done
+          if [ -z "$BOT_DIR" ]; then
+            SVC_DIR=$(systemctl show tradovate-bot --property=WorkingDirectory --value 2>/dev/null)
+            [ -n "$SVC_DIR" ] && [ -d "$SVC_DIR" ] && BOT_DIR="$SVC_DIR"
+          fi
+
+          python3 - "$BOT_DIR" <<'PYEOF'
+          import json, sys, os
+          from datetime import datetime, date, timezone
+
+          bot_dir = sys.argv[1] if len(sys.argv) > 1 else ""
+          result = {"ok": False, "trades": [], "summary": {}, "live_status": {}, "fills": []}
+
+          if not bot_dir:
+              print(json.dumps(result))
+              sys.exit(0)
+
+          # Read trade journal
+          tj_path = os.path.join(bot_dir, "trade_journal.json")
+          if os.path.exists(tj_path):
+              try:
+                  with open(tj_path) as f:
+                      tj = json.load(f)
+                  result["trades"] = tj.get("trades", [])
+                  result["summary"] = tj.get("summary", {})
+              except Exception:
+                  pass
+
+          # Read live status
+          ls_path = os.path.join(bot_dir, "live_status.json")
+          if os.path.exists(ls_path):
+              try:
+                  with open(ls_path) as f:
+                      result["live_status"] = json.load(f)
+              except Exception:
+                  pass
+
+          # Read token for API fill fetch
+          token = ""
+          tk_path = os.path.join(bot_dir, ".tradovate_token.json")
+          if os.path.exists(tk_path):
+              try:
+                  with open(tk_path) as f:
+                      td = json.load(f)
+                  token = td.get("accessToken", "")
+              except Exception:
+                  pass
+
+          # Fetch fills from Tradovate API
+          if token:
+              try:
+                  import urllib.request
+                  req = urllib.request.Request(
+                      "https://demo.tradovateapi.com/v1/fill/list",
+                      headers={"Authorization": f"Bearer {token}"}
+                  )
+                  with urllib.request.urlopen(req, timeout=15) as resp:
+                      fills = json.loads(resp.read().decode())
+                  # Filter today's fills
+                  today = date.today().isoformat()
+                  today_fills = []
+                  for f in fills:
+                      ts = f.get("timestamp", "")[:10]
+                      if ts == today:
+                          today_fills.append({
+                              "id": f.get("id"),
+                              "orderId": f.get("orderId"),
+                              "contractId": f.get("contractId"),
+                              "timestamp": f.get("timestamp"),
+                              "action": f.get("action"),
+                              "qty": f.get("qty"),
+                              "price": f.get("price"),
+                              "active": f.get("active"),
+                          })
+                  result["fills"] = today_fills
+              except Exception as e:
+                  result["fill_error"] = str(e)
+
+          result["ok"] = True
+          result["server_time"] = datetime.now(timezone.utc).isoformat()
+          print(json.dumps(result))
+          PYEOF
+          REMOTE_EOF
+            then
+              SSH_OK=true
+              echo "SSH attempt $attempt succeeded"
+              break
+            else
+              echo "SSH attempt $attempt failed"
+              [ "$attempt" -lt 3 ] && sleep $((attempt * 3))
+            fi
+          done
+
+          rm -f ~/.ssh/vps_key
+
+          if [ "$SSH_OK" = "true" ] && [ -f /tmp/trade_data.json ] && [ -s /tmp/trade_data.json ]; then
+            echo "ssh_ok=true" >> $GITHUB_OUTPUT
+            echo "Trade data: $(wc -c < /tmp/trade_data.json) bytes"
+          else
+            echo "ssh_ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ── Step 2: Also try API directly (fallback if no SSH) ──
+      - name: Fetch fills from API (fallback)
+        id: api_fills
+        if: steps.fetch_trades.outputs.ssh_ok != 'true'
+        env:
+          TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
+          TRADOVATE_USERNAME: ${{ secrets.TRADOVATE_USERNAME }}
+          TRADOVATE_PASSWORD: ${{ secrets.TRADOVATE_PASSWORD }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, sys, base64, hashlib, hmac
+          import requests
+          from datetime import date
+
+          DEMO_URL = "https://demo.tradovateapi.com/v1"
+          ACCOUNT_ID = 39996695
+          token = os.environ.get("TRADOVATE_ACCESS_TOKEN", "").strip()
+
+          # Try web auth if no token
+          if not token:
+              username = os.environ.get("TRADOVATE_USERNAME", "").strip()
+              password = os.environ.get("TRADOVATE_PASSWORD", "").strip()
+              if username and password:
+                  offset = len(username) % len(password)
+                  rearranged = password[offset:] + password[:offset]
+                  encrypted = base64.b64encode(rearranged[::-1].encode()).decode()
+                  device_id = "gh-trade-report-monitor"
+                  hmac_key = "1259-11e7-485a-aeae-9b6016579351"
+                  payload = {
+                      "name": username, "password": encrypted,
+                      "appId": "tradovate_trader(web)", "appVersion": "3.260220.0",
+                      "deviceId": device_id, "cid": 8, "sec": "", "organization": "",
+                  }
+                  fields = ["chl", "deviceId", "name", "password", "appId"]
+                  message = "".join(str(payload.get(f, "")) for f in fields)
+                  payload["sec"] = hmac.new(hmac_key.encode(), message.encode(), hashlib.sha256).hexdigest()
+                  for url in ["https://live.tradovateapi.com/v1", DEMO_URL]:
+                      try:
+                          r = requests.post(f"{url}/auth/accesstokenrequest", json=payload, timeout=30)
+                          d = r.json()
+                          if "accessToken" in d:
+                              token = d["accessToken"]
+                              break
+                      except Exception:
+                          pass
+
+          result = {"ok": False, "fills": [], "orders": [], "positions": []}
+
+          if token:
+              headers = {"Authorization": f"Bearer {token}"}
+              try:
+                  r = requests.get(f"{DEMO_URL}/fill/list", headers=headers, timeout=15)
+                  if r.status_code == 200:
+                      today = date.today().isoformat()
+                      for f in r.json():
+                          ts = f.get("timestamp", "")[:10]
+                          if ts == today:
+                              result["fills"].append({
+                                  "id": f.get("id"), "orderId": f.get("orderId"),
+                                  "contractId": f.get("contractId"), "timestamp": f.get("timestamp"),
+                                  "action": f.get("action"), "qty": f.get("qty"),
+                                  "price": f.get("price"),
+                              })
+              except Exception:
+                  pass
+
+              try:
+                  r = requests.get(f"{DEMO_URL}/order/list", headers=headers, timeout=15)
+                  if r.status_code == 200:
+                      today = date.today().isoformat()
+                      for o in r.json():
+                          ts = o.get("timestamp", "")[:10]
+                          if ts == today:
+                              result["orders"].append({
+                                  "id": o.get("id"), "action": o.get("action"),
+                                  "qty": o.get("orderQty"), "status": o.get("ordStatus"),
+                                  "contractId": o.get("contractId"),
+                                  "avgFillPrice": o.get("avgFillPrice"),
+                              })
+              except Exception:
+                  pass
+
+              result["ok"] = True
+
+          with open("/tmp/trade_data.json", "w") as f:
+              json.dump(result, f)
+          print(f"API fallback: {len(result['fills'])} fills, {len(result['orders'])} orders")
+          PYEOF
+
+      # ── Step 3: Build report and post to GitHub issue ──
+      - name: Build and post trade report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, subprocess
+          from datetime import datetime, date, timezone
+
+          today = date.today().isoformat()
+          now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+          # Load trade data
+          data = {}
+          try:
+              with open("/tmp/trade_data.json") as f:
+                  data = json.load(f)
+          except Exception:
+              data = {"ok": False}
+
+          # Build markdown report
+          lines = []
+          lines.append(f"## Trade Report — {today}")
+          lines.append(f"*Generated at {now_utc}*\n")
+
+          # Live status section
+          live = data.get("live_status", {})
+          if live:
+              balance = live.get("balance", "N/A")
+              day_pnl = live.get("day_pnl", 0)
+              pnl_emoji = "+" if day_pnl >= 0 else ""
+              lines.append("### Account Status")
+              lines.append(f"| Metric | Value |")
+              lines.append(f"|--------|-------|")
+              lines.append(f"| Balance | ${balance:,.2f} |" if isinstance(balance, (int, float)) else f"| Balance | {balance} |")
+              lines.append(f"| Day P&L | {pnl_emoji}${day_pnl:,.2f} |" if isinstance(day_pnl, (int, float)) else f"| Day P&L | {day_pnl} |")
+              lines.append(f"| Peak Balance | ${live.get('peak_balance', 'N/A'):,.2f} |" if isinstance(live.get('peak_balance'), (int, float)) else f"| Peak Balance | {live.get('peak_balance', 'N/A')} |")
+              lines.append(f"| Distance to Floor | ${live.get('distance_to_floor', 'N/A'):,.2f} |" if isinstance(live.get('distance_to_floor'), (int, float)) else f"| Distance to Floor | {live.get('distance_to_floor', 'N/A')} |")
+              lines.append(f"| Open Contracts | {live.get('open_contracts', 0)} |")
+              lines.append(f"| Trades Today | {live.get('trades_today', 0)} |")
+              locked = live.get("locked", False)
+              lock_reason = live.get("lock_reason", "")
+              lines.append(f"| Locked | {'Yes' if locked else 'No'} |")
+              if locked and lock_reason:
+                  lines.append(f"| Lock Reason | {lock_reason} |")
+              lines.append("")
+
+          # Fills section
+          fills = data.get("fills", [])
+          if fills:
+              lines.append("### Today's Fills")
+              lines.append("| Time (UTC) | Action | Contract | Qty | Price |")
+              lines.append("|------------|--------|----------|-----|-------|")
+              for f in fills:
+                  ts = f.get("timestamp", "")
+                  # Format timestamp
+                  try:
+                      dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                      ts_fmt = dt.strftime("%H:%M:%S")
+                  except Exception:
+                      ts_fmt = ts[:19] if ts else "?"
+                  lines.append(f"| {ts_fmt} | {f.get('action', '?')} | {f.get('contractId', '?')} | {f.get('qty', '?')} | {f.get('price', '?')} |")
+              lines.append("")
+          else:
+              lines.append("### Today's Fills")
+              lines.append("No fills recorded today.\n")
+
+          # Journal trades section
+          trades = data.get("trades", [])
+          today_trades = [t for t in trades if t.get("date") == today]
+          all_closed = [t for t in trades if t.get("status") == "closed"]
+
+          if today_trades:
+              lines.append("### Today's Journal Trades")
+              lines.append("| Symbol | Direction | Strategy | Entry | Exit | P&L | R | Reason |")
+              lines.append("|--------|-----------|----------|-------|------|-----|---|--------|")
+              for t in today_trades:
+                  entry = f"${t.get('entry_price', 0):,.2f}" if t.get("entry_price") else "?"
+                  exit_p = f"${t.get('exit_price', 0):,.2f}" if t.get("exit_price") else "open"
+                  pnl = f"${t.get('pnl', 0):+,.2f}" if t.get("pnl") is not None else "—"
+                  r_mult = f"{t.get('r_multiple', 0):+.1f}R" if t.get("r_multiple") else "—"
+                  lines.append(f"| {t.get('symbol', '?')} | {t.get('direction', '?')} | {t.get('strategy', '?')} | {entry} | {exit_p} | {pnl} | {r_mult} | {t.get('exit_reason', t.get('reason', ''))[:30]} |")
+              lines.append("")
+
+          # Summary section
+          summary = data.get("summary", {})
+          if summary and summary.get("total_trades", 0) > 0:
+              lines.append("### Overall Performance (All Time)")
+              lines.append("| Metric | Value |")
+              lines.append("|--------|-------|")
+              lines.append(f"| Total Trades | {summary.get('total_trades', 0)} |")
+              lines.append(f"| Win Rate | {summary.get('win_rate', 0):.0%} ({summary.get('wins', 0)}W / {summary.get('losses', 0)}L) |")
+              total_pnl = summary.get("total_pnl", 0)
+              lines.append(f"| Total P&L | ${total_pnl:+,.2f} |")
+              lines.append(f"| Avg Win | ${summary.get('avg_win', 0):+,.2f} |")
+              lines.append(f"| Avg Loss | ${summary.get('avg_loss', 0):,.2f} |")
+              lines.append(f"| Profit Factor | {summary.get('profit_factor', 0):.2f} |")
+              lines.append(f"| Expectancy | ${summary.get('expectancy', 0):+,.2f}/trade |")
+              lines.append("")
+
+          # No data fallback
+          if not fills and not today_trades and not live:
+              lines.append("*Could not fetch trade data. Check SSH and API configuration.*\n")
+
+          report_body = "\n".join(lines)
+
+          # Find or create the trade report issue
+          # Search for existing issue with our title
+          result = subprocess.run(
+              ["gh", "issue", "list", "--label", "trade-report", "--state", "open",
+               "--json", "number,title", "--limit", "1"],
+              capture_output=True, text=True
+          )
+
+          issue_number = None
+          if result.returncode == 0:
+              try:
+                  issues = json.loads(result.stdout)
+                  if issues:
+                      issue_number = issues[0]["number"]
+              except Exception:
+                  pass
+
+          if issue_number:
+              # Add comment to existing issue
+              subprocess.run(
+                  ["gh", "issue", "comment", str(issue_number), "--body", report_body],
+                  check=True
+              )
+              print(f"Added trade report as comment to issue #{issue_number}")
+          else:
+              # Create new issue
+              result = subprocess.run(
+                  ["gh", "issue", "create",
+                   "--title", "Daily Trade Report",
+                   "--label", "trade-report",
+                   "--body", report_body],
+                  capture_output=True, text=True
+              )
+              if result.returncode == 0:
+                  print(f"Created new trade report issue: {result.stdout.strip()}")
+              else:
+                  # Label might not exist — create without label
+                  result = subprocess.run(
+                      ["gh", "issue", "create",
+                       "--title", "Daily Trade Report",
+                       "--body", report_body],
+                      capture_output=True, text=True
+                  )
+                  print(f"Created trade report issue (no label): {result.stdout.strip()}")
+
+          # Also write to file for summary
+          with open("/tmp/report.md", "w") as f:
+              f.write(report_body)
+          PYEOF
+
+      - name: Generate summary
+        if: always()
+        run: |
+          if [ -f /tmp/report.md ]; then
+            cat /tmp/report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Trade report generation failed." >> $GITHUB_STEP_SUMMARY
+          fi

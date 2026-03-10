@@ -1,5 +1,70 @@
 # Tradovate Bot — Claude Code Guide
 
+## ⚠️ Server Management — Workflow Only (MANDATORY)
+
+**אין גישה ישירה לשרת. כל פעולה על השרת מתבצעת אך ורק דרך זרימת עבודה (GitHub Actions + Push).**
+
+This is the **#1 rule** for this project. Claude Code does NOT have SSH access, cannot ping the server, cannot run curl to the server, and cannot execute any remote commands directly. The ONLY way to manage the bot on its production server is through the repository workflow:
+
+### How It Works (Push → Deploy → Listen)
+
+```
+1. PUSH   — Make code changes and push to `main` branch
+2. DEPLOY — GitHub Actions (deploy.yml) SSHs to server, pulls code, restarts service
+3. LISTEN — Server cron (server_cron.sh) pushes status back to GitHub every 5 min
+```
+
+### What You CAN Do
+- **Deploy changes**: Edit code → commit → push to `main` → server auto-updates
+- **Check server status**: Read `server_status.json` (updated every 5 min by server cron)
+- **Check system status**: Read `system_status.json` (updated every 30 min by GitHub Actions)
+- **Trigger manual checks**: Push to main triggers `system-status.yml` and `server-health-check.yml`
+- **Modify bot behavior**: Change code files → push → server restarts with new code
+- **Start/stop bot**: Modify the service configuration in deploy workflow → push
+
+### What You MUST NOT Do
+- ❌ Do NOT try to SSH to the server
+- ❌ Do NOT run ping, curl, or any network diagnostic to the server
+- ❌ Do NOT attempt direct API calls to the server
+- ❌ Do NOT try to read server logs directly — they come through `server_status.json`
+- ❌ Do NOT suggest the user needs to manually do anything on the server
+
+### Workflow Files Reference
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `deploy.yml` | Push to main | Deploy code to server via SSH |
+| `auto-merge-deploy.yml` | Push to claude/** | Auto-merge to main + deploy |
+| `ci.yml` | Push/PR | Run tests and syntax checks |
+| `server-health-check.yml` | Every 15 min | Read server_status.json |
+| `system-status.yml` | Every 30 min | Full system check via SSH |
+| `connectivity-test.yml` | Every 6 hours | Test Tradovate API endpoints |
+
+### Task Completion Protocol (חובה בכל חלון חדש!)
+בכל פעם שסיימת לכתוב קוד, לתקן באג או לבצע שינוי:
+1. **Commit** the changes with a clear message
+2. **Push to `claude/*` branch** — auto-merge workflow merges to main and deploys
+3. **Report**: "הקוד מוכן, ביצעתי Push ל-claude/* כדי שהשרת יתעדכן."
+4. **Check status**: Use WebFetch to read `system_status.json` from GitHub API after ~5 minutes
+
+### How to Check Bot Status (First Step in Every Session)
+```
+WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/contents/system_status.json?ref=main
+```
+Look at: `timestamp`, `bot_active`, `balance`, `day_pnl`, `locked`, `lock_reason`, `journal_tail`.
+
+### How to Deploy Code Changes
+```
+1. Edit files locally
+2. git add <files> && git commit -m "description"
+3. git push -u origin claude/<branch-name>
+4. auto-merge-deploy.yml merges to main → deploy.yml deploys to server
+5. Verify via system_status.json after ~5 minutes
+```
+
+**זה חל על כל חלון חדש, כל שיחה חדשה, וכל בקשה. אין חריגים.**
+
+---
+
 ## Account Info
 - **Prop Firm**: FundedNext (Futures Challenge)
 - **Username**: FNFTMOTITAPWnBks
@@ -8,7 +73,7 @@
 - **Organization**: FundedNext (id=44)
 - **Environment**: demo (challenge phase uses demo API)
 - **Starting Balance**: $50,000
-- **SOD Balance**: ~$48,094 (as of 2026-02-23)
+- **Current Balance**: ~$58,875 (as of 2026-03-10)
 
 ## Authentication
 Token is stored in `.tradovate_token.json` and auto-renewed.
@@ -62,16 +127,16 @@ python get_token.py         # One-time token capture (needs display)
 - Max trailing drawdown: $2,500
 - Daily loss limit: $1,000
 - Profit target: $3,000
-- Max contracts: 10 (minis)
+- Max contracts: 50 (micros, ≈5 minis equivalent)
 - Close by: 4:59 PM ET
 - Drawdown trails unrealized intraday peaks
-- Current balance: ~$52,426 (as of 2026-02-24)
+- Current balance: ~$58,875 (as of 2026-03-10)
 
-## Enabled Contracts
-- **NQ** (E-mini Nasdaq): ORB strategy, 25pt stop / 50pt TP
-- **ES** (E-mini S&P): ORB strategy, 6pt stop / 12pt TP
-- **GC** (Gold): VWAP strategy, 5pt stop / 10pt TP
-- **CL** (Crude Oil): VWAP strategy, 0.20pt stop / 0.40pt TP
+## Enabled Contracts (Minis — FundedNext rejects micro orders)
+- **NQ** (E-mini Nasdaq): ORB strategy, 25pt stop / 50pt TP, $20/pt → 1 contract/trade
+- **ES** (E-mini S&P): ORB strategy, 6pt stop / 12pt TP, $50/pt → 1 contract/trade
+- **GC** (Gold): VWAP strategy, 5pt stop / 10pt TP, $100/pt → 1 contract/trade
+- **CL** (Crude Oil): VWAP strategy, 0.20pt stop / 0.40pt TP, $1000/pt → 2 contracts/trade
 
 ## API Notes
 - FundedNext accounts use `organization: ""` (empty string, NOT "funded-next")
@@ -87,13 +152,43 @@ python -m pytest test_all.py -v
 ```
 
 ## Development Workflow
-Push to `main` is the only way to deploy. The server webhook automatically pulls changes.
+See **"Server Management — Workflow Only"** section at the top of this file.
+All deployment and server management is done exclusively through GitHub workflows (push → deploy → listen).
 
-### נוהל סיום משימה
-בכל פעם שסיימת לכתוב קוד, לתקן באג או לבצע שינוי לבקשת המשתמש, בצע Push ל-main ודווח: **"הקוד מוכן, ביצעתי Push ל-main כדי שהשרת יתעדכן."** אל תריץ בדיקות אבחון (ping/curl/ssh) – הן לא רלוונטיות מהסביבה הזו.
+### עקרון עבודה חובה — Workflow-Based Operations
+
+**אין גישה ישירה לשרת, ל-API או לסביבת הריצה מהסביבה הזו.**
+**אין `gh` CLI.** הדרך היחידה לנהל את הבוט ולקבל מידע עדכני היא דרך
+**GitHub Actions Workflows** + **GitHub REST API via WebFetch**.
+
+### איך לקבל מידע עדכני:
+1. **קרא `system_status.json` מ-main** דרך GitHub API:
+   ```
+   WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/contents/system_status.json?ref=main
+   ```
+2. **אם המידע ישן** — עשה push כלשהו ל-`claude/*` branch (מפעיל system-status.yml אוטומטית)
+3. **בדוק תוצאות workflow**:
+   ```
+   WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/actions/workflows/240102669/runs?per_page=3
+   ```
+
+### Workflow IDs (לשימוש עם GitHub API):
+| ID | Workflow | תדירות |
+|----|----------|--------|
+| 240102669 | System Status Check | כל 30 דקות + push |
+| 239951353 | Bot Health Check | כל 15 דקות |
+| 239953288 | Connectivity Test | כל 6 שעות |
+| 239950089 | Auto-merge & Deploy | push ל-claude/* |
+
+### חוקים:
+- **אל תנסה** SSH, curl ישיר ל-Tradovate API, או `gh` CLI — לא עובד מכאן
+- **אל תגיד** "אין לי גישה" — תשתמש ב-WebFetch לקרוא GitHub API
+- **תמיד** תקרא קודם את `system_status.json` מ-main דרך GitHub API
+- **Push ל-claude/* branch** = מפעיל auto-merge + deploy + system-status אוטומטית
 
 ## Common Issues
 1. **"Incorrect password"**: Credentials are correct; try `live` API (not `demo` for auth)
 2. **CAPTCHA required**: Bot auto-handles via Playwright browser login
 3. **Empty account list**: FundedNext challenge accounts are on demo API
 4. **Rate limiting (p-ticket)**: Wait 15+ seconds before retrying auth
+5. **False daily profit cap lock**: If `_init_balance_from_api()` fails at startup (expired token), `day_start_balance` defaults to config $50k instead of real balance, causing inflated `day_pnl`. Fixed: `_sync_balance()` retries `set_initial_balance()` on first successful API call (see `_balance_initialized` flag in `risk_manager.py`).

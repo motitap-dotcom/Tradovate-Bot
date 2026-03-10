@@ -7,44 +7,93 @@
 # Auto-installed by deploy workflow. Manual setup:
 #   */5 * * * * cd /root/tradovate-bot && . .gh_pat 2>/dev/null; bash server_cron.sh >> /var/log/tradovate-cron.log 2>&1
 #
-set -euo pipefail
+# Use set -u (catch unset vars) but NOT set -e (don't exit on failure).
+# This cron must ALWAYS reach the auto-heal and status sections, even if
+# git fetch or pip fails due to transient network issues.
+set -u
 
 BOT_DIR="${BOT_DIR:-/root/tradovate-bot}"
 SERVICE="tradovate-bot"
-BRANCH="${DEPLOY_BRANCH:-main}"
 STATUS_FILE="server_status.json"
 
-cd "$BOT_DIR"
+cd "$BOT_DIR" || { echo "[$(date)] FATAL: $BOT_DIR not found"; exit 1; }
+
+# ── 0. Auto-detect deploy branch: prefer main, fall back to old branch ──
+if [ -n "${DEPLOY_BRANCH:-}" ]; then
+    BRANCH="$DEPLOY_BRANCH"
+elif git ls-remote --heads origin main 2>/dev/null | grep -q main; then
+    BRANCH="main"
+    CURRENT=$(git branch --show-current 2>/dev/null || echo "")
+    if [ -n "$CURRENT" ] && [ "$CURRENT" != "main" ]; then
+        echo "[$(date)] Switching from $CURRENT to main..."
+        git fetch origin main 2>/dev/null && git checkout -B main origin/main || echo "[$(date)] Warning: failed to switch to main"
+    fi
+else
+    BRANCH="main"
+fi
 
 # Auto-detect repo from git remote
 GITHUB_REPO="${GITHUB_REPO:-$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')}"
 
 # ── 1. Pull latest code ──
 echo "[$(date)] Checking for updates on $BRANCH..."
-git fetch origin "$BRANCH" 2>/dev/null || echo "[$(date)] Fetch failed"
+if git fetch origin "$BRANCH" 2>/dev/null; then
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
+    CODE_UPDATED="false"
 
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse "origin/$BRANCH" 2>/dev/null || echo "$LOCAL")
-CODE_UPDATED="false"
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "[$(date)] New code found. Updating..."
+        git reset --hard "origin/$BRANCH"
+        echo "[$(date)] Now at: $(git log -1 --oneline)"
+        CODE_UPDATED="true"
 
-if [ "$LOCAL" != "$REMOTE" ]; then
-    echo "[$(date)] New code found. Updating..."
-    git stash --include-untracked 2>/dev/null || true
-    git reset --hard "origin/$BRANCH"
-    echo "[$(date)] Now at: $(git log -1 --oneline)"
-    CODE_UPDATED="true"
+        # Update dependencies if needed
+        if [ -f venv/bin/pip ]; then
+            venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3 || true
+        fi
 
-    # Update dependencies
-    if [ -f venv/bin/pip ]; then
-        venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3
+        # Restart bot
+        echo "[$(date)] Restarting bot..."
+        systemctl restart "$SERVICE"
+        sleep 5
+    else
+        echo "[$(date)] No changes."
     fi
-
-    # Restart bot
-    echo "[$(date)] Restarting bot..."
-    systemctl restart "$SERVICE" 2>/dev/null || echo "[$(date)] systemctl restart failed"
-    sleep 5
 else
-    echo "[$(date)] No changes."
+    echo "[$(date)] Warning: git fetch failed (network issue?). Skipping code update."
+    LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    REMOTE="$LOCAL"
+    CODE_UPDATED="false"
+fi
+
+# ── 1b. Ensure Playwright is installed (needed for CAPTCHA bypass) ──
+PYTHON="${BOT_DIR}/venv/bin/python3"
+if [ -f "$PYTHON" ] && ! "$PYTHON" -c "import playwright" 2>/dev/null; then
+    echo "[$(date)] Playwright not installed — installing for CAPTCHA bypass..."
+    "${BOT_DIR}/venv/bin/pip" install playwright -q 2>&1 | tail -3 || true
+    "$PYTHON" -m playwright install chromium 2>&1 | tail -5 || true
+    echo "[$(date)] Playwright installation done."
+    # Restart bot to pick up new auth method
+    systemctl restart "$SERVICE" 2>/dev/null || true
+    sleep 5
+fi
+
+# ── 1c. Auto-heal: restart bot if it's not running ──
+if ! systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
+    echo "[$(date)] Bot is DOWN — attempting auto-restart..."
+    systemctl restart "$SERVICE" 2>/dev/null
+    sleep 5
+    if systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
+        echo "[$(date)] Auto-restart SUCCEEDED."
+    else
+        echo "[$(date)] systemctl restart FAILED. Falling back to keep_alive.sh..."
+        if [ -f "$BOT_DIR/keep_alive.sh" ] && ! pgrep -f "keep_alive.sh" > /dev/null 2>&1; then
+            cd "$BOT_DIR"
+            nohup bash keep_alive.sh >> /var/log/tradovate-keepalive.log 2>&1 &
+            echo "[$(date)] keep_alive.sh launched as fallback (PID=$!)"
+        fi
+    fi
 fi
 
 # ── 2. Collect status ──
@@ -66,6 +115,43 @@ MEMORY=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%dMB/%dMB (%.0f%%)", $3, $2,
 LIVE_STATUS="{}"
 [ -f "$BOT_DIR/live_status.json" ] && LIVE_STATUS=$(cat "$BOT_DIR/live_status.json" 2>/dev/null || echo "{}")
 
+# ── 2b. Run health checks (connection_check > bot_health_check > verify_bot) ──
+HEALTH_DATA="{}"
+PYTHON="${BOT_DIR}/venv/bin/python3"
+[ ! -f "$PYTHON" ] && PYTHON="python3"
+
+if [ -f "$BOT_DIR/connection_check.py" ]; then
+    echo "[$(date)] Running connection check..."
+    $PYTHON "$BOT_DIR/connection_check.py" >> /var/log/tradovate-cron.log 2>&1 || true
+    [ -f "$BOT_DIR/connection_status.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/connection_status.json" 2>/dev/null || echo "{}")
+elif [ -f "$BOT_DIR/bot_health_check.py" ]; then
+    echo "[$(date)] Running health check..."
+    $PYTHON "$BOT_DIR/bot_health_check.py" --quick >> /var/log/tradovate-cron.log 2>&1 || true
+    [ -f "$BOT_DIR/bot_health.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/bot_health.json" 2>/dev/null || echo "{}")
+elif [ -f "$BOT_DIR/verify_bot.py" ]; then
+    $PYTHON "$BOT_DIR/verify_bot.py" --server > /dev/null 2>&1 || true
+    [ -f "$BOT_DIR/verify_report.json" ] && HEALTH_DATA=$(cat "$BOT_DIR/verify_report.json" 2>/dev/null || echo "{}")
+fi
+
+# ── 2c. Check for ping request and respond ──
+PING_RESPONSE="{}"
+if [ -f "$BOT_DIR/ping_request.json" ]; then
+    PING_ID=$(python3 -c "import json; print(json.load(open('$BOT_DIR/ping_request.json')).get('ping_id',''))" 2>/dev/null || echo "")
+    if [ -n "$PING_ID" ]; then
+        PING_RESPONSE=$(python3 -c "
+import json
+from datetime import datetime, timezone
+print(json.dumps({
+    'ping_id': '$PING_ID',
+    'pong_at': datetime.now(timezone.utc).isoformat(),
+    'bot_active': $BOT_ACTIVE,
+    'server': '$(hostname 2>/dev/null || echo unknown)',
+}))
+" 2>/dev/null || echo '{}')
+        echo "[$(date)] Ping $PING_ID received — responding."
+    fi
+fi
+
 # ── 3. Write server_status.json ──
 cat > "$STATUS_FILE" <<STATUSEOF
 {
@@ -76,11 +162,13 @@ cat > "$STATUS_FILE" <<STATUSEOF
   "bot_uptime_since": "$BOT_UPTIME",
   "git_commit": "$(git log -1 --format='%h %s')",
   "git_branch": "$(git branch --show-current 2>/dev/null || echo 'detached')",
-  "code_updated": $CODE_UPDATED,
+  "code_updated": ${CODE_UPDATED:-false},
   "disk_usage": "$DISK_USAGE",
   "memory": "$MEMORY",
   "last_log": $(echo "$LAST_LOG" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo '""'),
-  "live_status": $LIVE_STATUS
+  "live_status": $LIVE_STATUS,
+  "health_check": $HEALTH_DATA,
+  "ping_response": $PING_RESPONSE
 }
 STATUSEOF
 
@@ -92,18 +180,19 @@ if [ -z "${GH_PAT:-}" ]; then
     exit 0
 fi
 
-COMMIT_MSG="bot-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE"
+# Include health verdict in commit message
+HEALTH_VERDICT=$(python3 -c "import json; print(json.load(open('connection_status.json')).get('verdict',{}).get('overall','?'))" 2>/dev/null || \
+                 python3 -c "import json; print(json.load(open('bot_health.json')).get('verdict',{}).get('overall','?'))" 2>/dev/null || echo "?")
+COMMIT_MSG="bot-status: $(date -u '+%Y-%m-%d %H:%M UTC') | active=$BOT_ACTIVE | health=$HEALTH_VERDICT"
 API_URL="https://api.github.com/repos/$GITHUB_REPO/contents/$STATUS_FILE"
 
 # Push function: fetches current SHA, builds payload, pushes
 push_status() {
-    # Get current file SHA on main (required for updates, empty for first create)
     local file_sha
     file_sha=$(curl -sf -H "Authorization: token $GH_PAT" \
       "${API_URL}?ref=main" 2>/dev/null | \
       python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
 
-    # Build JSON payload via python3 (safe escaping)
     local payload
     payload=$(STATUS_FILE="$STATUS_FILE" COMMIT_MSG="$COMMIT_MSG" FILE_SHA="$file_sha" python3 << 'PYEOF'
 import json, base64, os
@@ -117,7 +206,6 @@ print(json.dumps(payload))
 PYEOF
     )
 
-    # PUT to GitHub Contents API
     curl -sf -X PUT \
       -H "Authorization: token $GH_PAT" \
       -H "Accept: application/vnd.github.v3+json" \
@@ -126,7 +214,7 @@ PYEOF
       -d "$payload" > /dev/null 2>&1
 }
 
-# Retry up to 3 times (handles SHA conflicts automatically)
+# Retry up to 3 times
 PUSH_OK="false"
 for i in 1 2 3; do
     if push_status; then
