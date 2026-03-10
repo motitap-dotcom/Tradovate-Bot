@@ -45,6 +45,7 @@ class RiskManager:
         self.day_start_balance: float = self.account_size
         self.day_pnl: float = 0.0
         self.unrealized_pnl: float = 0.0
+        self._balance_initialized: bool = False  # True once set_initial_balance succeeds
 
         # Lock flag
         self.trading_locked: bool = False
@@ -72,7 +73,7 @@ class RiskManager:
 
         This corrects day_start_balance so that day_pnl is calculated
         relative to today's opening balance, not the original account_size.
-        Must be called before the first update_balance().
+        Can be called at startup or later (via _sync_balance fallback).
         """
         logger.info(
             "Setting initial balance from API: $%.2f (was $%.2f from config)",
@@ -80,6 +81,7 @@ class RiskManager:
         )
         self.current_balance = balance
         self.day_start_balance = balance
+        self._balance_initialized = True
         # Peak/floor must also reflect reality
         if balance > self.peak_balance:
             self.peak_balance = balance
@@ -190,6 +192,8 @@ class RiskManager:
             self.trades_today = 0
             self.trading_locked = False
             self.lock_reason = ""
+            # Keep _balance_initialized — current_balance is already real
+            # (it was set by API in the previous day's loop)
 
     def _lock(self, reason: str):
         """Lock all trading for the rest of the session."""
