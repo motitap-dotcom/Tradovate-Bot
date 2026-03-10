@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-10T19:54:18Z",
+  "timestamp": "2026-03-10T20:38:14Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,58 +11,34 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 62884.88,
+    "totalCashValue": 60668.14,
     "initialMargin": 0.0,
-    "netLiq": 61014.88
+    "netLiq": 60668.14
   },
-  "positions": [
-    {
-      "contractId": 4086428,
-      "netPos": 1,
-      "netPrice": 25039.0
-    },
-    {
-      "contractId": 4291092,
-      "netPos": 1,
-      "netPrice": 5190.9
-    }
-  ],
-  "orders": [
-    {
-      "id": 409583842094,
-      "action": "Sell",
-      "qty": null,
-      "status": "Working"
-    },
-    {
-      "id": 409583842079,
-      "action": "Sell",
-      "qty": null,
-      "status": "Working"
-    }
-  ],
+  "positions": [],
+  "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "4048412",
-    "uptime_since": "Tue 2026-03-10 18:34:20 UTC",
+    "bot_pid": "4066256",
+    "uptime_since": "Tue 2026-03-10 19:55:06 UTC",
     "disk": "17%",
-    "memory": "2505MB/7941MB (32%)",
+    "memory": "2497MB/7941MB (31%)",
     "hostname": "vmi3096165",
-    "git_commit": "198c23c Auto-merge claude/tradovate-api-research-DPnl9 \u2192 main",
+    "git_commit": "dd7adba status: 2026-03-10 19:54 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-03-10T19:54:03.901643+00:00",
-      "timestamp_et": "2026-03-10T15:54:03.901672-04:00",
-      "balance": 62884.88,
-      "equity": 61004.88,
-      "day_pnl": 2055.8199999999997,
-      "peak_balance": 64159.88,
-      "drawdown_floor": 61659.88,
-      "distance_to_floor": -655.0,
-      "open_contracts": 2,
-      "trades_today": 4,
+      "timestamp": "2026-03-10T20:37:43.306733+00:00",
+      "timestamp_et": "2026-03-10T16:37:43.306756-04:00",
+      "balance": 60668.14,
+      "equity": 60668.14,
+      "day_pnl": -1205.760000000002,
+      "peak_balance": 61896.02,
+      "drawdown_floor": 59396.02,
+      "distance_to_floor": 1272.1200000000026,
+      "open_contracts": 0,
+      "trades_today": 1,
       "locked": true,
-      "lock_reason": "DAILY PROFIT CAP: day P&L $2481.82 hit $2400.00 cap (consistency rule)",
+      "lock_reason": "DAILY LOSS BRAKE: day P&L -677.88 hit 60% of limit (-1000.00)",
       "environment": "demo",
       "dry_run": false,
       "active_symbols": [
@@ -72,24 +48,24 @@
         "CL"
       ]
     },
-    "journal_tail": "2026-03-10 19:37:40,288 [INFO] bot: Status | balance=62884.88 | day_pnl=2410.82 | to_floor=-300.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:38:10,681 [INFO] bot: Status | balance=62884.88 | day_pnl=2230.82 | to_floor=-480.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:38:41,087 [INFO] bot: Status | balance=62884.88 | day_pnl=2440.82 | to_floor=-270.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:38:42,401 [INFO] tradovate_api: REST poller health: 1466 candles dispatched, 4 symbols tracked, 732 polls\n2026-03-10 19:39:11,494 [INFO] bot: Status | balance=62884.88 | day_pnl=2735.82 | to_floor=25.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:39:41,911 [INFO] bot: Status | balance=62884.88 | day_pnl=2740.82 | to_floor=30.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:39:44,609 [INFO] tradovate_api: REST poller health: 1489 candles dispatched, 4 symbols tracked, 744 polls\n2026-03-10 19:40:12,350 [INFO] bot: Status | balance=62884.88 | day_pnl=2950.82 | to_floor=240.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:40:42,932 [INFO] bot: Status | balance=62884.88 | day_pnl=2555.82 | to_floor=-155.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:40:47,683 [INFO] tradovate_api: REST poller health: 1516 candles dispatched, 4 symbols tracked, 756 polls\n2026-03-10 19:41:13,331 [INFO] bot: Status | balance=62884.88 | day_pnl=2920.82 | to_floor=210.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:41:43,765 [INFO] bot: Status | balance=62884.88 | day_pnl=2785.82 | to_floor=75.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:41:49,820 [INFO] tradovate_api: REST poller health: 1537 candles dispatched, 4 symbols tracked, 768 polls\n2026-03-10 19:42:14,134 [INFO] bot: Status | balance=62884.88 | day_pnl=1970.82 | to_floor=-740.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:42:44,626 [INFO] bot: Status | balance=62884.88 | day_pnl=2055.82 | to_flo",
-    "bot_log_tail": "2026-03-10 19:47:22,569 [INFO] bot: Status | balance=62884.88 | day_pnl=2215.82 | to_floor=-495.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:47:53,407 [INFO] bot: Status | balance=62884.88 | day_pnl=2070.82 | to_floor=-640.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:48:06,577 [INFO] tradovate_api: REST poller health: 1683 candles dispatched, 4 symbols tracked, 840 polls\n2026-03-10 19:48:23,944 [INFO] bot: Status | balance=62884.88 | day_pnl=1820.82 | to_floor=-890.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:48:54,284 [INFO] bot: Status | balance=62884.88 | day_pnl=1625.82 | to_floor=-1085.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:49:09,480 [INFO] tradovate_api: REST poller health: 1710 candles dispatched, 4 symbols tracked, 852 polls\n2026-03-10 19:49:24,751 [INFO] bot: Status | balance=62884.88 | day_pnl=1595.82 | to_floor=-1115.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:49:55,152 [INFO] bot: Status | balance=62884.88 | day_pnl=1770.82 | to_floor=-940.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:50:11,706 [INFO] tradovate_api: REST poller health: 1733 candles dispatched, 4 symbols tracked, 864 polls\n2026-03-10 19:50:25,705 [INFO] bot: Status | balance=62884.88 | day_pnl=1300.82 | to_floor=-1410.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:50:56,097 [INFO] bot: Status | balance=62884.88 | day_pnl=1705.82 | to_floor=-1005.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:51:13,672 [INFO] tradovate_api: REST poller health: 1756 candles dispatched, 4 symbols tracked, 876 polls\n2026-03-10 19:51:26,489 [INFO] bot: Status | balance=62884.88 | day_pnl=1550.82 | to_floor=-1160.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:52:01,963 [INFO] bot: Status | balance=62884.88 | day_pnl=1460.82 | to_floor=-1250.00 | contracts=2/10 | trades=4/16 | locked=True\n2026-03-10 19:52:15,777 [INFO] tradovate_api: REST poller health: 1777 can",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 8s)\n  Balance: $62884.88\n  Day P&L: $1770.8199999999997\n  Trades today: 4\n  Locked: True\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 31.9%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Mar 10 19:50:03 UTC 2026] Status: bot_active=true, pid=4048412\n[Tue Mar 10 19:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only."
+    "journal_tail": "2026-03-10 20:20:53,249 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:21:23,602 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:21:43,647 [INFO] tradovate_api: REST poller health: 586 candles dispatched, 4 symbols tracked, 300 polls\n2026-03-10 20:21:53,955 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:22:24,927 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:22:45,796 [INFO] tradovate_api: REST poller health: 608 candles dispatched, 4 symbols tracked, 312 polls\n2026-03-10 20:22:55,744 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:23:26,126 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:23:49,480 [INFO] tradovate_api: REST poller health: 633 candles dispatched, 4 symbols tracked, 324 polls\n2026-03-10 20:23:56,492 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:24:26,858 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:24:52,660 [INFO] tradovate_api: REST poller health: 658 candles dispatched, 4 symbols tracked, 336 polls\n2026-03-10 20:24:57,229 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:25:27,621 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:25:55,671 [INFO] tradovate_api: REST poller health: 680 cand",
+    "bot_log_tail": "2026-03-10 20:31:09,622 [INFO] tradovate_api: REST poller health: 798 candles dispatched, 4 symbols tracked, 408 polls\n2026-03-10 20:31:35,556 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:32:05,907 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:32:12,626 [INFO] tradovate_api: REST poller health: 823 candles dispatched, 4 symbols tracked, 420 polls\n2026-03-10 20:32:36,245 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:33:06,695 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:33:15,731 [INFO] tradovate_api: REST poller health: 842 candles dispatched, 4 symbols tracked, 432 polls\n2026-03-10 20:33:37,145 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:34:07,576 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:34:18,752 [INFO] tradovate_api: REST poller health: 868 candles dispatched, 4 symbols tracked, 444 polls\n2026-03-10 20:34:38,031 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:35:08,604 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:35:21,853 [INFO] tradovate_api: REST poller health: 892 candles dispatched, 4 symbols tracked, 456 polls\n2026-03-10 20:35:39,230 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True\n2026-03-10 20:36:09,829 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 ",
+    "cron_log_tail": "  Errors (1h): 5 | Warnings: 4\n  Signals today: 1\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 26s)\n  Balance: $60668.14\n  Day P&L: $-1205.760000000002\n  Trades today: 1\n  Locked: True\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 31.8%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Mar 10 20:35:04 UTC 2026] Status: bot_active=true, pid=4066256\n[Tue Mar 10 20:35:04 UTC 2026] No GH_PAT set \u2014 status written locally only."
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-10T19:54:03.901643+00:00",
-      "timestamp_et": "2026-03-10T15:54:03.901672-04:00",
-      "balance": 62884.88,
-      "equity": 61004.88,
-      "day_pnl": 2055.8199999999997,
-      "peak_balance": 64159.88,
-      "drawdown_floor": 61659.88,
-      "distance_to_floor": -655.0,
-      "open_contracts": 2,
-      "trades_today": 4,
+      "timestamp": "2026-03-10T20:37:43.306733+00:00",
+      "timestamp_et": "2026-03-10T16:37:43.306756-04:00",
+      "balance": 60668.14,
+      "equity": 60668.14,
+      "day_pnl": -1205.760000000002,
+      "peak_balance": 61896.02,
+      "drawdown_floor": 59396.02,
+      "distance_to_floor": 1272.1200000000026,
+      "open_contracts": 0,
+      "trades_today": 1,
       "locked": true,
-      "lock_reason": "DAILY PROFIT CAP: day P&L $2481.82 hit $2400.00 cap (consistency rule)",
+      "lock_reason": "DAILY LOSS BRAKE: day P&L -677.88 hit 60% of limit (-1000.00)",
       "environment": "demo",
       "dry_run": false,
       "active_symbols": [
@@ -100,40 +76,42 @@
       ]
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-10T21:04:47.376000+00:00",
-    "recent_signals": [],
+    "token_expiry": "2026-03-10T21:15:17.047000+00:00",
+    "recent_signals": [
+      "2026-03-10 19:56:11,156 [INFO] bot: SIGNAL: Sell NQ 1 @ market | SL=25012.2500 TP=24937.2500 | ORB-5m short breakout below 24990.50"
+    ],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-10 19:44:47,245 [INFO] tradovate_api: Token expiring in 574s. Renewing...",
-      "2026-03-10 19:44:47,436 [INFO] tradovate_api: Token renewed via demo.tradovateapi.com. Expires: 2026-03-10 21:04:47.376000+00:00",
-      "2026-03-10 19:44:48,581 [INFO] bot: Status | balance=62884.88 | day_pnl=2190.82 | to_floor=-520.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:44:57,846 [INFO] tradovate_api: REST poller health: 1609 candles dispatched, 4 symbols tracked, 804 polls",
-      "2026-03-10 19:45:18,953 [INFO] bot: Status | balance=62884.88 | day_pnl=2455.82 | to_floor=-255.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:45:49,360 [INFO] bot: Status | balance=62884.88 | day_pnl=2500.82 | to_floor=-210.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:46:01,183 [INFO] tradovate_api: REST poller health: 1635 candles dispatched, 4 symbols tracked, 816 polls",
-      "2026-03-10 19:46:19,762 [INFO] bot: Status | balance=62884.88 | day_pnl=2220.82 | to_floor=-490.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:46:51,265 [INFO] bot: Status | balance=62884.88 | day_pnl=2315.82 | to_floor=-395.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:47:04,247 [INFO] tradovate_api: REST poller health: 1661 candles dispatched, 4 symbols tracked, 828 polls",
-      "2026-03-10 19:47:22,569 [INFO] bot: Status | balance=62884.88 | day_pnl=2215.82 | to_floor=-495.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:47:53,407 [INFO] bot: Status | balance=62884.88 | day_pnl=2070.82 | to_floor=-640.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:48:06,577 [INFO] tradovate_api: REST poller health: 1683 candles dispatched, 4 symbols tracked, 840 polls",
-      "2026-03-10 19:48:23,944 [INFO] bot: Status | balance=62884.88 | day_pnl=1820.82 | to_floor=-890.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:48:54,284 [INFO] bot: Status | balance=62884.88 | day_pnl=1625.82 | to_floor=-1085.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:49:09,480 [INFO] tradovate_api: REST poller health: 1710 candles dispatched, 4 symbols tracked, 852 polls",
-      "2026-03-10 19:49:24,751 [INFO] bot: Status | balance=62884.88 | day_pnl=1595.82 | to_floor=-1115.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:49:55,152 [INFO] bot: Status | balance=62884.88 | day_pnl=1770.82 | to_floor=-940.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:50:11,706 [INFO] tradovate_api: REST poller health: 1733 candles dispatched, 4 symbols tracked, 864 polls",
-      "2026-03-10 19:50:25,705 [INFO] bot: Status | balance=62884.88 | day_pnl=1300.82 | to_floor=-1410.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:50:56,097 [INFO] bot: Status | balance=62884.88 | day_pnl=1705.82 | to_floor=-1005.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:51:13,672 [INFO] tradovate_api: REST poller health: 1756 candles dispatched, 4 symbols tracked, 876 polls",
-      "2026-03-10 19:51:26,489 [INFO] bot: Status | balance=62884.88 | day_pnl=1550.82 | to_floor=-1160.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:52:01,963 [INFO] bot: Status | balance=62884.88 | day_pnl=1460.82 | to_floor=-1250.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:52:15,777 [INFO] tradovate_api: REST poller health: 1777 candles dispatched, 4 symbols tracked, 888 polls",
-      "2026-03-10 19:52:32,344 [INFO] bot: Status | balance=62884.88 | day_pnl=1775.82 | to_floor=-935.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:53:02,924 [INFO] bot: Status | balance=62884.88 | day_pnl=1705.82 | to_floor=-1005.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:53:18,158 [INFO] tradovate_api: REST poller health: 1802 candles dispatched, 4 symbols tracked, 900 polls",
-      "2026-03-10 19:53:33,476 [INFO] bot: Status | balance=62884.88 | day_pnl=2095.82 | to_floor=-615.00 | contracts=2/10 | trades=4/16 | locked=True",
-      "2026-03-10 19:54:03,900 [INFO] bot: Status | balance=62884.88 | day_pnl=2055.82 | to_floor=-655.00 | contracts=2/10 | trades=4/16 | locked=True"
+      "2026-03-10 20:28:00,729 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:28:01,013 [INFO] tradovate_api: REST poller health: 724 candles dispatched, 4 symbols tracked, 372 polls",
+      "2026-03-10 20:28:31,071 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:29:01,474 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:29:03,895 [INFO] tradovate_api: REST poller health: 749 candles dispatched, 4 symbols tracked, 384 polls",
+      "2026-03-10 20:29:31,846 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:30:02,518 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:30:06,393 [INFO] tradovate_api: REST poller health: 773 candles dispatched, 4 symbols tracked, 396 polls",
+      "2026-03-10 20:30:32,880 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:31:05,037 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:31:09,622 [INFO] tradovate_api: REST poller health: 798 candles dispatched, 4 symbols tracked, 408 polls",
+      "2026-03-10 20:31:35,556 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:32:05,907 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:32:12,626 [INFO] tradovate_api: REST poller health: 823 candles dispatched, 4 symbols tracked, 420 polls",
+      "2026-03-10 20:32:36,245 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:33:06,695 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:33:15,731 [INFO] tradovate_api: REST poller health: 842 candles dispatched, 4 symbols tracked, 432 polls",
+      "2026-03-10 20:33:37,145 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:34:07,576 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:34:18,752 [INFO] tradovate_api: REST poller health: 868 candles dispatched, 4 symbols tracked, 444 polls",
+      "2026-03-10 20:34:38,031 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:35:08,604 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:35:21,853 [INFO] tradovate_api: REST poller health: 892 candles dispatched, 4 symbols tracked, 456 polls",
+      "2026-03-10 20:35:39,230 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:36:09,829 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:36:25,636 [INFO] tradovate_api: REST poller health: 919 candles dispatched, 4 symbols tracked, 468 polls",
+      "2026-03-10 20:36:41,750 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:37:12,313 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True",
+      "2026-03-10 20:37:28,899 [INFO] tradovate_api: REST poller health: 939 candles dispatched, 4 symbols tracked, 480 polls",
+      "2026-03-10 20:37:43,306 [INFO] bot: Status | balance=60668.14 | day_pnl=-1205.76 | to_floor=1272.12 | contracts=0/10 | trades=1/16 | locked=True"
     ],
     "journal_summary": {
       "total_trades": 1,
@@ -148,89 +126,38 @@
       "best_trade": 0,
       "worst_trade": 0,
       "avg_r_multiple": 0,
-      "trades_today": 4
+      "trades_today": 1
     },
     "trading_active": true,
     "websocket_connected": false,
-    "errors_in_log": [],
+    "errors_in_log": [
+      "2026-03-10 19:55:19,805 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
+      "2026-03-10 19:55:19,806 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+      "2026-03-10 19:55:19,806 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+      "2026-03-10 19:55:22,137 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-10 19:55:22,137 [ERROR] websocket: Connection to remote host was lost. - goodbye"
+    ],
     "today_trades": [
       {
-        "id": "CL_20260310_183505",
-        "symbol": "CL",
-        "direction": "Buy",
+        "id": "NQ_20260310_195612",
+        "symbol": "NQ",
+        "direction": "Sell",
         "entry_price": 0,
-        "qty": 2,
-        "strategy": "VWAPStrategy",
-        "reason": "VWAP long #1 at 85.1700 (VWAP=84.9673)",
-        "stop_loss": 84.76731519852412,
-        "take_profit": 85.56999816894532,
-        "entry_time": "2026-03-10T18:35:05.839119+00:00",
-        "entry_hour_et": 14,
+        "qty": 1,
+        "strategy": "ORBStrategy",
+        "reason": "ORB-5m short breakout below 24990.50",
+        "stop_loss": 25012.25,
+        "take_profit": 24937.25,
+        "entry_time": "2026-03-10T19:56:12.852388+00:00",
+        "entry_hour_et": 15,
         "date": "2026-03-10",
         "exit_price": 0,
         "pnl": 0,
         "exit_reason": "bracket_fill",
-        "exit_time": "2026-03-10T19:21:08.407732+00:00",
+        "exit_time": "2026-03-10T20:07:38.276432+00:00",
         "status": "closed",
         "r_multiple": 0,
-        "duration_minutes": 46.042810216666666
-      },
-      {
-        "id": "NQ_20260310_183605",
-        "symbol": "NQ",
-        "direction": "Buy",
-        "entry_price": 0,
-        "qty": 1,
-        "strategy": "ORBStrategy",
-        "reason": "ORB-5m long breakout above 25081.75",
-        "stop_loss": 25059.75,
-        "take_profit": 25134.75,
-        "entry_time": "2026-03-10T18:36:05.067682+00:00",
-        "entry_hour_et": 14,
-        "date": "2026-03-10",
-        "exit_price": null,
-        "pnl": null,
-        "exit_reason": null,
-        "exit_time": null,
-        "status": "open"
-      },
-      {
-        "id": "GC_20260310_183939",
-        "symbol": "GC",
-        "direction": "Buy",
-        "entry_price": 0,
-        "qty": 1,
-        "strategy": "VWAPStrategy",
-        "reason": "VWAP long #1 at 5214.0000 (VWAP=5212.4376)",
-        "stop_loss": 5207.437613240785,
-        "take_profit": 5224.0,
-        "entry_time": "2026-03-10T18:39:39.999066+00:00",
-        "entry_hour_et": 14,
-        "date": "2026-03-10",
-        "exit_price": null,
-        "pnl": null,
-        "exit_reason": null,
-        "exit_time": null,
-        "status": "open"
-      },
-      {
-        "id": "GC_20260310_184306",
-        "symbol": "GC",
-        "direction": "Sell",
-        "entry_price": 0,
-        "qty": 1,
-        "strategy": "VWAPStrategy",
-        "reason": "VWAP short #1 at 5206.6001 (VWAP=5212.4376)",
-        "stop_loss": 5217.437613240785,
-        "take_profit": 5196.60009765625,
-        "entry_time": "2026-03-10T18:43:06.480857+00:00",
-        "entry_hour_et": 14,
-        "date": "2026-03-10",
-        "exit_price": null,
-        "pnl": null,
-        "exit_reason": null,
-        "exit_time": null,
-        "status": "open"
+        "duration_minutes": 11.423734066666666
       }
     ],
     "today_fills": [
@@ -291,6 +218,14 @@
         "timestamp": "2026-03-10T18:39:38.555Z"
       },
       {
+        "id": 409583842142,
+        "action": "Sell",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24982.75,
+        "timestamp": "2026-03-10T19:55:05.500Z"
+      },
+      {
         "id": 409583842035,
         "action": "Buy",
         "contractId": 4291092,
@@ -305,6 +240,14 @@
         "qty": 2,
         "price": 83.37,
         "timestamp": "2026-03-10T18:34:59.058Z"
+      },
+      {
+        "id": 409583842164,
+        "action": "Sell",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24952.25,
+        "timestamp": "2026-03-10T19:56:11.279Z"
       },
       {
         "id": 409583842125,
@@ -329,6 +272,22 @@
         "qty": 1,
         "price": 6812.5,
         "timestamp": "2026-03-10T18:34:20.216Z"
+      },
+      {
+        "id": 409583842176,
+        "action": "Buy",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 25012.25,
+        "timestamp": "2026-03-10T20:07:16.702Z"
+      },
+      {
+        "id": 409583842153,
+        "action": "Sell",
+        "contractId": 4291092,
+        "qty": 1,
+        "price": 5192.1,
+        "timestamp": "2026-03-10T19:55:05.920Z"
       }
     ]
   },
@@ -336,7 +295,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 15030,
+    "ssh_output_len": 15051,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
