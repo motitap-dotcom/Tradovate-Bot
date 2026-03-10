@@ -9,14 +9,21 @@ Enforces prop firm challenge rules:
   - Maximum contract limits
 """
 
+import json
 import logging
 import math
 from datetime import datetime, date
+from pathlib import Path
 from typing import Optional
 
 import config
 
 logger = logging.getLogger(__name__)
+
+# File to persist day_start_balance across mid-day restarts (deploys).
+# Without this, every restart resets day_start_balance to the current balance,
+# causing false daily P&L calculations.
+_DAY_BALANCE_FILE = Path(__file__).parent / ".day_start_balance.json"
 
 
 class RiskManager:
@@ -74,13 +81,28 @@ class RiskManager:
         This corrects day_start_balance so that day_pnl is calculated
         relative to today's opening balance, not the original account_size.
         Can be called at startup or later (via _sync_balance fallback).
+
+        On mid-day restarts (deploys), the persisted day_start_balance from
+        earlier today is used instead, so we don't lose track of real daily P&L.
         """
         logger.info(
             "Setting initial balance from API: $%.2f (was $%.2f from config)",
             balance, self.day_start_balance,
         )
         self.current_balance = balance
-        self.day_start_balance = balance
+
+        # Check if we have a persisted day_start_balance from earlier today
+        persisted = self._load_day_start_balance()
+        if persisted is not None:
+            self.day_start_balance = persisted
+            logger.info(
+                "Restored day_start_balance from file: $%.2f (mid-day restart detected)",
+                persisted,
+            )
+        else:
+            self.day_start_balance = balance
+            self._save_day_start_balance(balance)
+
         self._balance_initialized = True
         # Peak/floor must also reflect reality
         if balance > self.peak_balance:
@@ -95,6 +117,32 @@ class RiskManager:
             "Initial state: balance=$%.2f | peak=$%.2f | floor=$%.2f | day_start=$%.2f",
             self.current_balance, self.peak_balance, self.drawdown_floor, self.day_start_balance,
         )
+
+    def _load_day_start_balance(self) -> Optional[float]:
+        """Load persisted day_start_balance if it's from today."""
+        try:
+            if not _DAY_BALANCE_FILE.exists():
+                return None
+            data = json.loads(_DAY_BALANCE_FILE.read_text())
+            if data.get("date") == str(date.today()):
+                return data["balance"]
+            # Different day — stale file, ignore it
+            logger.info("Day start balance file is from %s, not today — ignoring", data.get("date"))
+            return None
+        except Exception as e:
+            logger.warning("Could not load day start balance: %s", e)
+            return None
+
+    def _save_day_start_balance(self, balance: float):
+        """Persist day_start_balance so mid-day restarts don't lose it."""
+        try:
+            data = {"date": str(date.today()), "balance": balance}
+            tmp = _DAY_BALANCE_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data))
+            tmp.replace(_DAY_BALANCE_FILE)
+            logger.info("Saved day_start_balance: $%.2f for %s", balance, date.today())
+        except Exception as e:
+            logger.warning("Could not save day start balance: %s", e)
 
     # ─────────────────────────────────────────
     # Balance updates
@@ -192,6 +240,8 @@ class RiskManager:
             self.trades_today = 0
             self.trading_locked = False
             self.lock_reason = ""
+            # Persist the new day's starting balance
+            self._save_day_start_balance(self.current_balance)
             # Keep _balance_initialized — current_balance is already real
             # (it was set by API in the previous day's loop)
 
