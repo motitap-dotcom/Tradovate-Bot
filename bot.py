@@ -225,31 +225,123 @@ class TradovateBot:
     # Contract rollover
     # ─────────────────────────────────────────
 
+    @staticmethod
+    def _next_liquid_contract(base_symbol: str, current_contract: str) -> str | None:
+        """
+        Compute the next liquid contract name based on the rollover schedule.
+        E.g. for GC with current GCH6 (Mar 2026, non-liquid for gold),
+        returns GCJ6 (Apr 2026, the next liquid month).
+
+        Contract name format: <BASE><MONTH_CODE><YEAR_DIGIT>
+        e.g. NQH6 = NQ + H(Mar) + 6(2026), GCJ6 = GC + J(Apr) + 6(2026)
+        """
+        liquid_months = config.CONTRACT_LIQUID_MONTHS.get(base_symbol)
+        if not liquid_months:
+            return None
+
+        # Parse current contract: last char = year digit, second-to-last = month code
+        if len(current_contract) < len(base_symbol) + 2:
+            return None
+
+        suffix = current_contract[len(base_symbol):]  # e.g. "H6"
+        month_code = suffix[0]
+        year_digit = int(suffix[1])
+
+        current_month_num = config.MONTH_CODES.get(month_code)
+        if current_month_num is None:
+            return None
+
+        # Current year (2-digit sense: 6 = 2026)
+        current_year = year_digit
+
+        # Find the next liquid month AFTER the current one
+        # First, try remaining months in the same year
+        for mc in liquid_months:
+            mn = config.MONTH_CODES[mc]
+            if mn > current_month_num:
+                return f"{base_symbol}{mc}{current_year}"
+
+        # Wrap to next year, take first liquid month
+        next_year = (current_year + 1) % 10
+        return f"{base_symbol}{liquid_months[0]}{next_year}"
+
     def _check_contract_rollover(self):
         """
         Check if any active contracts need to roll to the next front-month.
-        Called periodically (e.g. once per main-loop cycle).
-        Detects when Tradovate's suggest_contract returns a different symbol
-        than what we're currently trading, and switches over.
+
+        Two-phase approach:
+        1. DATE-BASED (proactive): If the current contract expires within
+           ROLLOVER_DAYS_BEFORE_EXPIRY days, compute the next liquid contract
+           from the schedule and switch immediately.
+        2. SUGGEST-BASED (fallback): If Tradovate's suggest API returns a
+           different contract, follow it.
+
+        This ensures we roll early enough to avoid low-liquidity contracts
+        near expiration, even when the suggest API hasn't updated yet.
         """
         if self.dry_run:
             return
 
+        today = now_et().date()
+
         for symbol in list(self.contract_map.keys()):
             old_contract = self.contract_map[symbol]
+            new_contract = None
+            new_contract_data = None
+            rollover_reason = ""
 
-            new = self.api.suggest_contract(symbol)
-            if not new:
+            # ── Phase 1: Date-based early rollover ──
+            try:
+                maturity = self.api.get_contract_maturity(old_contract)
+                if maturity:
+                    from datetime import date as date_type
+                    if isinstance(maturity, str):
+                        expiry_date = date_type.fromisoformat(maturity)
+                    else:
+                        expiry_date = maturity
+
+                    days_to_expiry = (expiry_date - today).days
+
+                    if days_to_expiry <= config.ROLLOVER_DAYS_BEFORE_EXPIRY:
+                        next_name = self._next_liquid_contract(symbol, old_contract)
+                        if next_name and next_name != old_contract:
+                            # Verify the next contract exists on Tradovate
+                            verified = self.api.find_contract(next_name)
+                            if verified:
+                                new_contract = next_name
+                                new_contract_data = verified
+                                rollover_reason = (
+                                    f"expiry-based: {old_contract} expires {maturity} "
+                                    f"({days_to_expiry}d away, threshold={config.ROLLOVER_DAYS_BEFORE_EXPIRY}d)"
+                                )
+                            else:
+                                logger.warning(
+                                    "Early rollover: computed %s but contract not found on Tradovate",
+                                    next_name,
+                                )
+            except Exception as e:
+                logger.warning("Date-based rollover check failed for %s: %s", symbol, e)
+
+            # ── Phase 2: Suggest API fallback ──
+            if not new_contract:
+                try:
+                    suggested = self.api.suggest_contract(symbol)
+                    if suggested:
+                        suggested_name = suggested.get("name", "")
+                        if suggested_name and suggested_name != old_contract:
+                            new_contract = suggested_name
+                            new_contract_data = suggested
+                            rollover_reason = f"suggest-api: Tradovate returned {suggested_name}"
+                except Exception as e:
+                    logger.warning("Suggest-based rollover check failed for %s: %s", symbol, e)
+
+            if not new_contract:
                 continue
 
-            new_contract = new.get("name", "")
-            if new_contract == old_contract:
-                continue
-
-            # Front-month changed — rollover needed
+            # ── Execute rollover ──
             logger.warning(
-                "CONTRACT ROLLOVER: %s changed from %s -> %s",
-                symbol, old_contract, new_contract,
+                "CONTRACT ROLLOVER: %s from %s -> %s (%s)",
+                symbol, old_contract, new_contract, rollover_reason,
             )
 
             # Unsubscribe old contract from market data
@@ -278,7 +370,7 @@ class TradovateBot:
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new.get("id"),
+                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
             )
 
     # ─────────────────────────────────────────

@@ -265,6 +265,42 @@ CONTRACT_SPECS = {
 }
 
 # ─────────────────────────────────────────────
+# Contract Rollover Schedule
+# ─────────────────────────────────────────────
+# How many calendar days before expiration to roll to the next contract.
+# Tradovate's suggest API often lags, so we roll proactively.
+ROLLOVER_DAYS_BEFORE_EXPIRY = 8
+
+# Liquid contract months per product family.
+# CME futures use month codes: F=Jan, G=Feb, H=Mar, J=Apr, K=May, M=Jun,
+#                               N=Jul, Q=Aug, U=Sep, V=Oct, X=Nov, Z=Dec
+# Only months listed here are considered for rollover.
+CONTRACT_LIQUID_MONTHS = {
+    # Equity indices: quarterly (H=Mar, M=Jun, U=Sep, Z=Dec)
+    "NQ": ["H", "M", "U", "Z"],
+    "ES": ["H", "M", "U", "Z"],
+    "MNQ": ["H", "M", "U", "Z"],
+    "MES": ["H", "M", "U", "Z"],
+    # Gold: even months (G=Feb, J=Apr, M=Jun, Q=Aug, V=Oct, Z=Dec)
+    "GC": ["G", "J", "M", "Q", "V", "Z"],
+    "MGC": ["G", "J", "M", "Q", "V", "Z"],
+    # Crude Oil: every month
+    "CL": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
+    "MCL": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
+    # Silver: quarterly-ish (H=Mar, K=May, N=Jul, U=Sep, Z=Dec)
+    "SI": ["H", "K", "N", "U", "Z"],
+    # Natural Gas: every month
+    "NG": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
+}
+
+# Month code → month number mapping
+MONTH_CODES = {
+    "F": 1, "G": 2, "H": 3, "J": 4, "K": 5, "M": 6,
+    "N": 7, "Q": 8, "U": 9, "V": 10, "X": 11, "Z": 12,
+}
+MONTH_CODE_REVERSE = {v: k for k, v in MONTH_CODES.items()}
+
+# ─────────────────────────────────────────────
 # Trading Session Times (Eastern Time)
 # ─────────────────────────────────────────────
 # US equity open for ORB calculation
