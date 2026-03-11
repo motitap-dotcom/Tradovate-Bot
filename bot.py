@@ -553,8 +553,9 @@ class TradovateBot:
 
         # Check time constraints
         current = now_et()
+        start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
-        if current >= cutoff:
+        if current < start or current >= cutoff:
             return
 
         # Feed price to strategy
