@@ -174,6 +174,54 @@ class TradeJournal:
             trades = [t for t in trades if t["date"] >= since]
         return trades
 
+    def daily_pnl_breakdown(self) -> dict[str, float]:
+        """Return P&L summed per day (date string -> total P&L)."""
+        by_day: dict[str, float] = defaultdict(float)
+        for t in self._closed_trades():
+            if t.get("pnl") is not None and t.get("date"):
+                by_day[t["date"]] += t["pnl"]
+        return dict(by_day)
+
+    def highest_day_profit(self) -> float:
+        """Return the highest single-day profit from trade history."""
+        by_day = self.daily_pnl_breakdown()
+        if not by_day:
+            return 0.0
+        return max(by_day.values())
+
+    def compute_effective_target(self) -> dict:
+        """Compute the effective profit target considering consistency rule.
+
+        FundedNext requires that no single day exceeds consistency_rule %
+        of total profit. If the highest day is large, the effective target
+        is raised so that day stays within the allowed percentage.
+
+        Returns dict with: base_target, effective_target, consistency_adjusted,
+        highest_day_profit, remaining.
+        """
+        settings = config.ACTIVE_CHALLENGE
+        base_target = settings.get("profit_target", 3_000)
+        consistency_pct = settings.get("consistency_rule", settings.get("consistency_rule_pct", 1.0))
+        highest_day = self.highest_day_profit()
+
+        if highest_day > 0 and consistency_pct < 1.0:
+            consistency_target = highest_day / consistency_pct
+            effective_target = max(base_target, consistency_target)
+        else:
+            effective_target = base_target
+
+        total_pnl = sum(t["pnl"] for t in self._closed_trades() if t.get("pnl") is not None)
+        remaining = max(0, effective_target - total_pnl)
+
+        return {
+            "base_target": base_target,
+            "effective_target": round(effective_target, 2),
+            "consistency_adjusted": effective_target > base_target,
+            "highest_day_profit": round(highest_day, 2),
+            "total_pnl": round(total_pnl, 2),
+            "remaining": round(remaining, 2),
+        }
+
     def _compute_summary(self) -> dict:
         """Compute overall performance summary."""
         closed = self._closed_trades()
@@ -186,6 +234,10 @@ class TradeJournal:
 
         avg_win = statistics.mean([t["pnl"] for t in wins]) if wins else 0
         avg_loss = statistics.mean([abs(t["pnl"]) for t in losses]) if losses else 0
+
+        # Challenge target with consistency rule
+        highest_day = self.highest_day_profit()
+        target_info = self.compute_effective_target()
 
         return {
             "total_trades": len(closed),
@@ -200,6 +252,10 @@ class TradeJournal:
             "best_trade": max(pnls) if pnls else 0,
             "worst_trade": min(pnls) if pnls else 0,
             "avg_r_multiple": statistics.mean([t.get("r_multiple", 0) for t in closed if t.get("r_multiple")]) if [t for t in closed if t.get("r_multiple")] else 0,
+            "highest_day_profit": highest_day,
+            "effective_target": target_info["effective_target"],
+            "base_target": target_info["base_target"],
+            "consistency_adjusted": target_info["consistency_adjusted"],
         }
 
     def analyze_by_symbol(self) -> dict:
@@ -400,6 +456,25 @@ class TradeJournal:
         print(f"  Profit Factor:{summary['profit_factor']:.2f}")
         print(f"  Expectancy:   ${summary['expectancy']:+,.2f}/trade")
         print(f"  Avg R:        {summary['avg_r_multiple']:+.2f}R")
+
+        # Challenge target progress
+        target_info = self.compute_effective_target()
+        y = "\033[33m"
+        g = "\033[32m"
+        if target_info["consistency_adjusted"]:
+            print(f"\n  {y}Challenge Target: ${target_info['effective_target']:,.0f} (raised from ${target_info['base_target']:,.0f} — consistency rule){r}")
+            print(f"  Highest day:   ${target_info['highest_day_profit']:,.2f} (max 40% of total profit)")
+            if pnl >= target_info["base_target"] and pnl < target_info["effective_target"]:
+                print(f"  {y}Profit target reached, but consistency not met — ${target_info['remaining']:,.0f} more needed{r}")
+            elif pnl >= target_info["effective_target"]:
+                print(f"  {g}Target reached (including consistency)!{r}")
+            else:
+                print(f"  Remaining:     ${target_info['remaining']:,.2f}")
+        else:
+            if pnl >= target_info["base_target"]:
+                print(f"\n  {g}Target reached!{r}")
+            else:
+                print(f"\n  Target: ${target_info['base_target']:,.0f} | Remaining: ${target_info['remaining']:,.2f}")
 
         # Per symbol
         by_sym = self.analyze_by_symbol()
