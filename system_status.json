@@ -1,24 +1,34 @@
 {
-  "timestamp": "2026-03-11T05:03:35Z",
+  "timestamp": "2026-03-11T06:56:42Z",
   "api_reachable": true,
-  "authenticated": false,
-  "auth_method": null,
-  "account": {},
-  "balance": {},
+  "authenticated": true,
+  "auth_method": "server_token",
+  "account": {
+    "name": "FNFTCHMOTITAPIRO67510",
+    "id": 39996695,
+    "active": true
+  },
+  "balance": {
+    "realizedPnl": null,
+    "unrealizedPnl": null,
+    "totalCashValue": 60668.14,
+    "initialMargin": 0.0,
+    "netLiq": 60668.14
+  },
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "4124057",
-    "uptime_since": "Tue 2026-03-10 23:55:05 UTC",
+    "bot_pid": "4191682",
+    "uptime_since": "Wed 2026-03-11 05:05:36 UTC",
     "disk": "17%",
-    "memory": "2621MB/7941MB (33%)",
+    "memory": "2638MB/7941MB (33%)",
     "hostname": "vmi3096165",
-    "git_commit": "5ee927f status: 2026-03-10 23:54 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "260bdbe status: 2026-03-11 05:03 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-03-10T20:58:45.047613+00:00",
-      "timestamp_et": "2026-03-10T16:58:45.047637-04:00",
+      "timestamp": "2026-03-11T06:56:18.814234+00:00",
+      "timestamp_et": "2026-03-11T02:56:18.814260-04:00",
       "balance": 60668.14,
       "equity": 60668.14,
       "day_pnl": 0.0,
@@ -38,14 +48,14 @@
         "CL"
       ]
     },
-    "journal_tail": "2026-03-10 23:55:08,355 [INFO] bot:   VWAP: 5211.5434\n2026-03-10 23:55:08,556 [INFO] bot: Warmed up CL with 1126 candles | strategy=VWAPStrategy\n2026-03-10 23:55:08,558 [INFO] bot:   VWAP: 85.0409\n2026-03-10 23:55:08,789 [INFO] websocket: Websocket connected\n2026-03-10 23:55:08,789 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-10 23:55:08,908 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-10 23:55:08,911 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-10 23:55:08,911 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-10 23:55:08,911 [INFO] tradovate_api: Reconnecting in 2s (attempt 1)...\n2026-03-10 23:55:10,913 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-10 23:55:11,215 [INFO] websocket: Websocket connected\n2026-03-10 23:55:11,215 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-10 23:55:11,336 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}\n2026-03-10 23:55:11,337 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-10 23:55:11,337 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-10 23:55:11,337 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-10 23:55:11,338 [WARNING] tradovate_api: WebSocket failed 4 consecutive times. Signaling fallback to REST polling.\n2026-03-10 23:55:33,565 [WARNING] bot: WebSocket connection failed, falling back to REST polling\n2026-03-10 23:55:33,565 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-03-10 23:55:33,566 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-03-10 23:55:33,566 [INFO] tradovate_api: Subscribed to REST quotes: NQH6 -> NQ=F\n2026-03-10 23:55:33,566 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F\n2026-03-10 23:55:33,566 [INFO] tradovate_api: Subscribed to REST quotes: GCH6 -> GC=F",
-    "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 28883s)\n  Balance: $60668.14\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 32.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 11 05:00:10 UTC 2026] Status: bot_active=true, pid=4124057\n[Wed Mar 11 05:00:10 UTC 2026] No GH_PAT set \u2014 status written locally only."
+    "journal_tail": "2026-03-11 06:31:00,882 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:31:31,298 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:32:01,709 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:32:32,163 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:33:12,541 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:33:48,539 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:34:18,949 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:34:49,327 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:35:19,742 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:35:50,157 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:36:20,513 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:36:50,940 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:37:21,385 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:37:51,759 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 0",
+    "bot_log_tail": "2026-03-11 06:46:31,491 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:47:02,454 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:47:33,081 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:48:04,274 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:48:34,899 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:49:05,607 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:49:36,195 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:50:08,709 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:50:39,334 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:51:10,080 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:51:40,758 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:52:11,356 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:52:42,515 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 06:53:12,927 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-11 0",
+    "cron_log_tail": "  Errors (1h): 25 | Warnings: 13\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 21s)\n  Balance: $60668.14\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 33.0%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 11 06:55:07 UTC 2026] Status: bot_active=true, pid=4191682\n[Wed Mar 11 06:55:07 UTC 2026] No GH_PAT set \u2014 status written locally only."
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-10T20:58:45.047613+00:00",
-      "timestamp_et": "2026-03-10T16:58:45.047637-04:00",
+      "timestamp": "2026-03-11T06:56:18.814234+00:00",
+      "timestamp_et": "2026-03-11T02:56:18.814260-04:00",
       "balance": 60668.14,
       "equity": 60668.14,
       "day_pnl": 0.0,
@@ -65,12 +75,41 @@
         "CL"
       ]
     },
-    "token_status": "expired",
-    "token_expiry": "2026-03-11T01:15:06.674000+00:00",
+    "token_status": "valid",
+    "token_expiry": "2026-03-11T07:36:44.523000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      ""
+      "2026-03-11 06:41:25,799 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:41:56,133 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:42:26,504 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:42:57,401 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:43:27,913 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:43:58,501 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:44:28,966 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:44:59,499 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:45:29,981 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:46:00,519 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:46:31,491 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:47:02,454 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:47:33,081 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:48:04,274 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:48:34,899 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:49:05,607 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:49:36,195 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:50:08,709 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:50:39,334 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:51:10,080 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:51:40,758 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:52:11,356 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:52:42,515 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:53:12,927 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:53:43,570 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:54:14,521 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:54:45,137 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:55:17,437 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:55:48,301 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-11 06:56:18,804 [INFO] bot: Status | balance=60668.14 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -80,18 +119,28 @@
       "total_pnl": 0,
       "trades_today": 0
     },
-    "trading_active": false,
+    "trading_active": true,
     "websocket_connected": false,
-    "errors_in_log": [],
-    "today_trades": []
+    "errors_in_log": [
+      "2026-03-11 06:26:32,443 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-11 06:27:04,885 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+      "2026-03-11 06:27:04,886 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+      "2026-03-11 06:27:37,838 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-11 06:27:37,838 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-11 06:28:10,258 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-11 06:28:10,258 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-11 06:28:12,557 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Access is denied\"'}",
+      "2026-03-11 06:28:12,558 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-11 06:28:12,558 [ERROR] websocket: Connection to remote host was lost. - goodbye"
+    ],
+    "today_trades": [],
+    "today_fills": []
   },
-  "errors": [
-    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
-  ],
+  "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 5298,
+    "ssh_output_len": 12686,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -100,23 +149,5 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
-  },
-  "last_known": {
-    "timestamp": "2026-03-10T23:54:15Z",
-    "auth_method": "server_token",
-    "account": {
-      "name": "FNFTCHMOTITAPIRO67510",
-      "id": 39996695,
-      "active": true
-    },
-    "balance": {
-      "realizedPnl": null,
-      "unrealizedPnl": null,
-      "totalCashValue": 60668.14,
-      "initialMargin": 0.0,
-      "netLiq": 60668.14
-    },
-    "positions": [],
-    "orders": []
   }
 }
