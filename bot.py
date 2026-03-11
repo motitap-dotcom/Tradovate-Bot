@@ -179,10 +179,18 @@ class TradovateBot:
         try:
             snapshot = self.api.get_cash_balance()
             if snapshot and not snapshot.get("errorText"):
-                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
+                # Use netLiq (net liquidation) as primary balance —
+                # this matches what FundedNext displays on their dashboard
+                # and includes unrealized P&L in the balance figure.
+                net_liq = snapshot.get("netLiq")
+                total_cash = snapshot.get("totalCashValue")
+                balance = net_liq or total_cash
                 if balance is not None:
                     self.risk.set_initial_balance(balance)
-                    logger.info("Initial balance from API: $%.2f", balance)
+                    logger.info(
+                        "Initial balance from API: $%.2f (netLiq=$%s, totalCash=$%s)",
+                        balance, net_liq, total_cash,
+                    )
                     return
             logger.warning("Could not fetch initial balance — using config default $%.2f",
                           config.ACTIVE_CHALLENGE["account_size"])
@@ -839,21 +847,34 @@ class TradovateBot:
                 if snapshot.get("errorText"):
                     logger.warning("Cash balance error: %s", snapshot["errorText"])
                     return
-                # CashBalanceSnapshot fields: totalCashValue, netLiq, openPnL, realizedPnL
-                balance = snapshot.get("totalCashValue") or snapshot.get("netLiq")
-                if balance is not None:
-                    # If set_initial_balance never succeeded at startup, do it now
-                    # so day_start_balance reflects the real balance, not config default
-                    if not self.risk._balance_initialized:
-                        logger.warning(
-                            "Initial balance was never set — setting now from API: $%.2f",
-                            balance,
-                        )
-                        self.risk.set_initial_balance(balance)
-                    unrealized = snapshot.get("openPnL", 0.0)
-                    self.risk.update_balance(balance, unrealized)
+                # Use netLiq as primary balance (matches FundedNext dashboard).
+                # When using netLiq, openPnL is already baked in, so pass 0
+                # for unrealized to avoid double-counting.
+                net_liq = snapshot.get("netLiq")
+                total_cash = snapshot.get("totalCashValue")
+                open_pnl = snapshot.get("openPnL", 0.0)
+
+                if net_liq is not None:
+                    balance = net_liq
+                    unrealized = 0.0  # already included in netLiq
+                elif total_cash is not None:
+                    balance = total_cash
+                    unrealized = open_pnl  # add separately
                 else:
-                    logger.debug("Cash balance snapshot has no totalCashValue/netLiq: %s", snapshot)
+                    logger.debug("Cash balance snapshot has no netLiq/totalCashValue: %s", snapshot)
+                    return
+
+                if not self.risk._balance_initialized:
+                    logger.warning(
+                        "Initial balance was never set — setting now from API: $%.2f",
+                        balance,
+                    )
+                    self.risk.set_initial_balance(balance)
+                self.risk.update_balance(balance, unrealized)
+                logger.debug(
+                    "Balance sync: netLiq=$%s totalCash=$%s openPnL=$%s",
+                    net_liq, total_cash, open_pnl,
+                )
         except Exception as e:
             logger.error("Balance sync error: %s", e)
 
