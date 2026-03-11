@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-11T22:02:18Z",
+  "timestamp": "2026-03-11T23:00:12Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -20,12 +20,12 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "220505",
-    "uptime_since": "Wed 2026-03-11 21:05:32 UTC",
+    "bot_pid": "234286",
+    "uptime_since": "Wed 2026-03-11 22:05:19 UTC",
     "disk": "17%",
-    "memory": "2726MB/7941MB (34%)",
+    "memory": "2778MB/7941MB (35%)",
     "hostname": "vmi3096165",
-    "git_commit": "6c85779 status: 2026-03-11 21:03 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "8d55090 status: 2026-03-11 22:02 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
       "timestamp": "2026-03-11T20:59:00.314089+00:00",
       "timestamp_et": "2026-03-11T16:59:00.314114-04:00",
@@ -48,9 +48,9 @@
         "CL"
       ]
     },
-    "journal_tail": "2026-03-11 21:05:47,579 [INFO] bot: Warmed up CL with 1016 candles | strategy=VWAPStrategy\n2026-03-11 21:05:47,579 [INFO] bot:   VWAP: 86.4663\n2026-03-11 21:05:47,790 [INFO] websocket: Websocket connected\n2026-03-11 21:05:47,790 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-11 21:05:47,913 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}\n2026-03-11 21:05:47,913 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-11 21:05:47,913 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-11 21:05:47,913 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-11 21:05:47,914 [INFO] tradovate_api: Reconnecting in 2s (attempt 1)...\n2026-03-11 21:05:49,914 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-11 21:05:50,164 [INFO] websocket: Websocket connected\n2026-03-11 21:05:50,168 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-11 21:05:50,287 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-11 21:05:50,287 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-11 21:05:50,287 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-11 21:05:50,287 [WARNING] tradovate_api: WebSocket failed 4 consecutive times. Signaling fallback to REST polling.\n2026-03-11 21:06:12,592 [WARNING] bot: WebSocket connection failed, falling back to REST polling\n2026-03-11 21:06:12,602 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-03-11 21:06:12,611 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-03-11 21:06:12,611 [INFO] tradovate_api: Subscribed to REST quotes: NQH6 -> NQ=F\n2026-03-11 21:06:12,611 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F\n2026-03-11 21:06:12,611 [INFO] tradovate_api: Subscribed to REST quotes: GCH6 -> GC=F\n2026-03-11 21:06:12,611 [INFO] tradovate_api: Subscri",
-    "bot_log_tail": "2026-03-11 21:06:19,166 [INFO] bot: ============================================================\n2026-03-11 21:06:19,205 [INFO] bot: END OF DAY SUMMARY\n2026-03-11 21:06:19,206 [INFO] bot: ============================================================\n2026-03-11 21:06:19,206 [INFO] bot: Total trades: 0\n2026-03-11 21:06:19,206 [INFO] bot:   balance: 59609.94\n2026-03-11 21:06:19,206 [INFO] bot:   equity: 59609.94\n2026-03-11 21:06:19,206 [INFO] bot:   day_pnl: 0.0\n2026-03-11 21:06:19,206 [INFO] bot:   peak_balance: 59609.94\n2026-03-11 21:06:19,206 [INFO] bot:   drawdown_floor: 57109.94\n2026-03-11 21:06:19,206 [INFO] bot:   distance_to_floor: 2500.0\n2026-03-11 21:06:19,206 [INFO] bot:   daily_loss_limit: 1000\n2026-03-11 21:06:19,206 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-03-11 21:06:19,206 [INFO] bot:   open_contracts: 0\n2026-03-11 21:06:19,206 [INFO] bot:   max_contracts: 10\n2026-03-11 21:06:19,206 [INFO] bot:   trades_today: 0\n2026-03-11 21:06:19,206 [INFO] bot:   max_daily_trades: 16\n2026-03-11 21:06:19,206 [INFO] bot:   locked: False\n2026-03-11 21:06:19,206 [INFO] bot:   lock_reason: \n2026-03-11 21:06:19,206 [INFO] bot: Bot stopped.\n2026-03-11 21:06:19,206 [INFO] bot: Session ended. Next trading session: 2026-03-12 09:25 ET (sleeping 979 minutes)",
-    "cron_log_tail": "  Errors (1h): 5 | Warnings: 5\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 3665s)\n  Balance: $59609.94\n  Day P&L: $-1058.199999999997\n  Trades today: 0\n  Locked: True\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 34.6%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 11 22:00:06 UTC 2026] Status: bot_active=true, pid=220505\n[Wed Mar 11 22:00:06 UTC 2026] No GH_PAT set \u2014 status written locally only."
+    "journal_tail": "2026-03-11 22:05:26,114 [INFO] bot: Warmed up CL with 1019 candles | strategy=VWAPStrategy\n2026-03-11 22:05:26,115 [INFO] bot:   VWAP: 86.4707\n2026-03-11 22:05:26,468 [INFO] websocket: Websocket connected\n2026-03-11 22:05:26,468 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-11 22:05:26,586 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}\n2026-03-11 22:05:26,586 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-03-11 22:05:26,586 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye\n2026-03-11 22:05:26,586 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-11 22:05:26,586 [INFO] tradovate_api: Reconnecting in 2s (attempt 1)...\n2026-03-11 22:05:28,633 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-11 22:05:29,161 [INFO] websocket: Websocket connected\n2026-03-11 22:05:29,162 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-11 22:05:29,291 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}\n2026-03-11 22:05:29,292 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-11 22:05:29,292 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-11 22:05:29,292 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-11 22:05:29,292 [WARNING] tradovate_api: WebSocket failed 4 consecutive times. Signaling fallback to REST polling.\n2026-03-11 22:05:51,126 [WARNING] bot: WebSocket connection failed, falling back to REST polling\n2026-03-11 22:05:51,127 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-03-11 22:05:51,127 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-03-11 22:05:51,127 [INFO] tradovate_api: Subscribed to REST quotes: NQH6 -> NQ=F\n2026-03-11 22:05:51,127 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F\n2026-03-11 22:05:51",
+    "bot_log_tail": "2026-03-11 22:05:52,281 [INFO] bot: ============================================================\n2026-03-11 22:05:52,281 [INFO] bot: END OF DAY SUMMARY\n2026-03-11 22:05:52,281 [INFO] bot: ============================================================\n2026-03-11 22:05:52,281 [INFO] bot: Total trades: 0\n2026-03-11 22:05:52,281 [INFO] bot:   balance: 59609.94\n2026-03-11 22:05:52,281 [INFO] bot:   equity: 59609.94\n2026-03-11 22:05:52,293 [INFO] bot:   day_pnl: 0.0\n2026-03-11 22:05:52,293 [INFO] bot:   peak_balance: 59609.94\n2026-03-11 22:05:52,293 [INFO] bot:   drawdown_floor: 57109.94\n2026-03-11 22:05:52,293 [INFO] bot:   distance_to_floor: 2500.0\n2026-03-11 22:05:52,293 [INFO] bot:   daily_loss_limit: 1000\n2026-03-11 22:05:52,293 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-03-11 22:05:52,293 [INFO] bot:   open_contracts: 0\n2026-03-11 22:05:52,293 [INFO] bot:   max_contracts: 10\n2026-03-11 22:05:52,293 [INFO] bot:   trades_today: 0\n2026-03-11 22:05:52,293 [INFO] bot:   max_daily_trades: 16\n2026-03-11 22:05:52,293 [INFO] bot:   locked: False\n2026-03-11 22:05:52,293 [INFO] bot:   lock_reason: \n2026-03-11 22:05:52,294 [INFO] bot: Bot stopped.\n2026-03-11 22:05:52,294 [INFO] bot: Session ended. Next trading session: 2026-03-12 09:25 ET (sleeping 919 minutes)",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 7264s)\n  Balance: $59609.94\n  Day P&L: $-1058.199999999997\n  Trades today: 0\n  Locked: True\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 34.9%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 11 23:00:05 UTC 2026] Status: bot_active=true, pid=234286\n[Wed Mar 11 23:00:05 UTC 2026] No GH_PAT set \u2014 status written locally only."
   },
   "trading_activity": {
     "live_status": {
@@ -76,40 +76,40 @@
       ]
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-11T22:25:34.230000+00:00",
+    "token_expiry": "2026-03-11T23:25:21.050000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-11 21:06:12,611 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F",
-      "2026-03-11 21:06:12,611 [INFO] tradovate_api: Subscribed to REST quotes: GCH6 -> GC=F",
-      "2026-03-11 21:06:12,611 [INFO] tradovate_api: Subscribed to REST quotes: CLJ6 -> CL=F",
-      "2026-03-11 21:06:12,611 [INFO] bot: Entering main loop...",
-      "2026-03-11 21:06:12,611 [WARNING] bot: Force close time reached. Closing all positions.",
-      "2026-03-11 21:06:12,996 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-03-11 21:06:13,595 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
-      "2026-03-11 21:06:13,608 [INFO] bot: Shutting down bot...",
-      "2026-03-11 21:06:18,060 [INFO] tradovate_api: Yahoo Finance crumb acquired",
-      "2026-03-11 21:06:18,837 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-03-11 21:06:19,166 [INFO] bot: ============================================================",
-      "2026-03-11 21:06:19,205 [INFO] bot: END OF DAY SUMMARY",
-      "2026-03-11 21:06:19,206 [INFO] bot: ============================================================",
-      "2026-03-11 21:06:19,206 [INFO] bot: Total trades: 0",
-      "2026-03-11 21:06:19,206 [INFO] bot:   balance: 59609.94",
-      "2026-03-11 21:06:19,206 [INFO] bot:   equity: 59609.94",
-      "2026-03-11 21:06:19,206 [INFO] bot:   day_pnl: 0.0",
-      "2026-03-11 21:06:19,206 [INFO] bot:   peak_balance: 59609.94",
-      "2026-03-11 21:06:19,206 [INFO] bot:   drawdown_floor: 57109.94",
-      "2026-03-11 21:06:19,206 [INFO] bot:   distance_to_floor: 2500.0",
-      "2026-03-11 21:06:19,206 [INFO] bot:   daily_loss_limit: 1000",
-      "2026-03-11 21:06:19,206 [INFO] bot:   daily_loss_remaining: 1000.0",
-      "2026-03-11 21:06:19,206 [INFO] bot:   open_contracts: 0",
-      "2026-03-11 21:06:19,206 [INFO] bot:   max_contracts: 10",
-      "2026-03-11 21:06:19,206 [INFO] bot:   trades_today: 0",
-      "2026-03-11 21:06:19,206 [INFO] bot:   max_daily_trades: 16",
-      "2026-03-11 21:06:19,206 [INFO] bot:   locked: False",
-      "2026-03-11 21:06:19,206 [INFO] bot:   lock_reason: ",
-      "2026-03-11 21:06:19,206 [INFO] bot: Bot stopped.",
-      "2026-03-11 21:06:19,206 [INFO] bot: Session ended. Next trading session: 2026-03-12 09:25 ET (sleeping 979 minutes)"
+      "2026-03-11 22:05:51,127 [INFO] tradovate_api: Subscribed to REST quotes: NQH6 -> NQ=F",
+      "2026-03-11 22:05:51,127 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F",
+      "2026-03-11 22:05:51,127 [INFO] tradovate_api: Subscribed to REST quotes: GCH6 -> GC=F",
+      "2026-03-11 22:05:51,128 [INFO] tradovate_api: Subscribed to REST quotes: CLJ6 -> CL=F",
+      "2026-03-11 22:05:51,128 [INFO] bot: Entering main loop...",
+      "2026-03-11 22:05:51,128 [WARNING] bot: Force close time reached. Closing all positions.",
+      "2026-03-11 22:05:51,367 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-03-11 22:05:51,591 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
+      "2026-03-11 22:05:51,591 [INFO] bot: Shutting down bot...",
+      "2026-03-11 22:05:51,972 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-03-11 22:05:52,281 [INFO] bot: ============================================================",
+      "2026-03-11 22:05:52,281 [INFO] bot: END OF DAY SUMMARY",
+      "2026-03-11 22:05:52,281 [INFO] bot: ============================================================",
+      "2026-03-11 22:05:52,281 [INFO] bot: Total trades: 0",
+      "2026-03-11 22:05:52,281 [INFO] bot:   balance: 59609.94",
+      "2026-03-11 22:05:52,281 [INFO] bot:   equity: 59609.94",
+      "2026-03-11 22:05:52,293 [INFO] bot:   day_pnl: 0.0",
+      "2026-03-11 22:05:52,293 [INFO] bot:   peak_balance: 59609.94",
+      "2026-03-11 22:05:52,293 [INFO] bot:   drawdown_floor: 57109.94",
+      "2026-03-11 22:05:52,293 [INFO] bot:   distance_to_floor: 2500.0",
+      "2026-03-11 22:05:52,293 [INFO] bot:   daily_loss_limit: 1000",
+      "2026-03-11 22:05:52,293 [INFO] bot:   daily_loss_remaining: 1000.0",
+      "2026-03-11 22:05:52,293 [INFO] bot:   open_contracts: 0",
+      "2026-03-11 22:05:52,293 [INFO] bot:   max_contracts: 10",
+      "2026-03-11 22:05:52,293 [INFO] bot:   trades_today: 0",
+      "2026-03-11 22:05:52,293 [INFO] bot:   max_daily_trades: 16",
+      "2026-03-11 22:05:52,293 [INFO] bot:   locked: False",
+      "2026-03-11 22:05:52,293 [INFO] bot:   lock_reason: ",
+      "2026-03-11 22:05:52,294 [INFO] bot: Bot stopped.",
+      "2026-03-11 22:05:52,294 [INFO] bot: Session ended. Next trading session: 2026-03-12 09:25 ET (sleeping 919 minutes)"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -119,56 +119,28 @@
       "total_pnl": 0,
       "trades_today": 0
     },
-    "trading_active": true,
+    "trading_active": false,
     "websocket_connected": false,
     "errors_in_log": [
-      "2026-03-11 21:05:47,913 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
       "2026-03-11 21:05:47,913 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
       "2026-03-11 21:05:47,913 [ERROR] websocket: Connection to remote host was lost. - goodbye",
       "2026-03-11 21:05:50,287 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-11 21:05:50,287 [ERROR] websocket: Connection to remote host was lost. - goodbye"
+      "2026-03-11 21:05:50,287 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-11 22:05:26,586 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
+      "2026-03-11 22:05:26,586 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+      "2026-03-11 22:05:26,586 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+      "2026-03-11 22:05:29,291 [ERROR] tradovate_api: Market data auth failed: {'s': 401, 'i': 1, 'd': '\"Expired Access Token\"'}",
+      "2026-03-11 22:05:29,292 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-11 22:05:29,292 [ERROR] websocket: Connection to remote host was lost. - goodbye"
     ],
     "today_trades": [],
-    "today_fills": [
-      {
-        "id": 409583842201,
-        "action": "Sell",
-        "contractId": 3273620,
-        "qty": 2,
-        "price": 83.87,
-        "timestamp": "2026-03-11T07:10:04.847Z"
-      },
-      {
-        "id": 409583842241,
-        "action": "Buy",
-        "contractId": 3273620,
-        "qty": 2,
-        "price": 84.41,
-        "timestamp": "2026-03-11T07:25:28.805Z"
-      },
-      {
-        "id": 409583842216,
-        "action": "Buy",
-        "contractId": 4291092,
-        "qty": 1,
-        "price": 5192.7,
-        "timestamp": "2026-03-11T07:17:39.031Z"
-      },
-      {
-        "id": 409583842250,
-        "action": "Sell",
-        "contractId": 4291092,
-        "qty": 1,
-        "price": 5193.1,
-        "timestamp": "2026-03-11T07:25:28.807Z"
-      }
-    ]
+    "today_fills": []
   },
   "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 9946,
+    "ssh_output_len": 9990,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
