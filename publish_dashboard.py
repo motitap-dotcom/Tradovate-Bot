@@ -388,19 +388,39 @@ function render() {{
       <span class="value gray">${{t.timestamp || 'N/A'}}</span></div>
   `;
 
-  // Challenge progress
+  // Challenge progress (with consistency rule)
   const profit = bal - 50000;
-  const target = 5000;
-  const pct = Math.max(0, Math.min(100, (profit / target) * 100));
+  const sum = j.summary || {{}};
+  const baseTarget = sum.base_target || 3000;
+  const effectiveTarget = sum.effective_target || baseTarget;
+  const consistencyAdj = sum.consistency_adjusted || false;
+  const highestDay = sum.highest_day_profit || 0;
+  const pct = Math.max(0, Math.min(100, (profit / effectiveTarget) * 100));
+  const remaining = Math.max(0, effectiveTarget - profit);
   const barColor = profit >= 0 ? '#3fb950' : '#f85149';
+
+  let targetNote = '';
+  if (consistencyAdj) {{
+    targetNote = `<div class="row" style="margin-top:6px">
+      <span class="label yellow">Target raised from $${{fmt(baseTarget,0)}} due to consistency rule</span></div>
+      <div class="row"><span class="label">Highest Day Profit</span>
+        <span class="value">$${{fmt(highestDay)}}</span></div>`;
+    if (profit >= baseTarget && profit < effectiveTarget) {{
+      targetNote += `<div class="row"><span class="label yellow">Profit target reached, consistency not met ($${{fmt(remaining,0)}} more)</span></div>`;
+    }}
+  }} else if (profit >= baseTarget) {{
+    targetNote = `<div class="row"><span class="label green">Target reached!</span></div>`;
+  }}
+
   document.getElementById('challenge-card').innerHTML = `
     <h2>FundedNext Challenge</h2>
     <div class="row"><span class="label">Starting Balance</span><span class="value">$50,000</span></div>
-    <div class="row"><span class="label">Profit Target</span><span class="value">$5,000</span></div>
+    <div class="row"><span class="label">Profit Target</span><span class="value">$${{fmt(effectiveTarget,0)}}${{consistencyAdj ? ' (consistency)' : ''}}</span></div>
     <div class="row"><span class="label">Current Profit</span>
       <span class="value ${{pnlC(profit)}}">${{pnlS(profit)}}$${{fmt(profit)}}</span></div>
     <div class="progress-bar"><div class="progress-fill" style="width:${{Math.max(0,pct)}}%;background:${{barColor}}"></div></div>
-    <div class="progress-label"><span>${{fmt(pct,1)}}% complete</span><span>$${{fmt(Math.max(0,5000-profit),0)}} remaining</span></div>
+    <div class="progress-label"><span>${{fmt(pct,1)}}% complete</span><span>$${{fmt(remaining,0)}} remaining</span></div>
+    ${{targetNote}}
     <div style="margin-top:10px">
       <div class="row"><span class="label">Max Trailing DD</span><span class="value">$2,500</span></div>
       <div class="row"><span class="label">Daily Loss Limit</span><span class="value">$2,500</span></div>

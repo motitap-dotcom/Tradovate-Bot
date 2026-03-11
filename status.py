@@ -226,11 +226,26 @@ def display(full=False):
     floor_color = R if to_floor < 500 else Y if to_floor < 1000 else G
     print(f"  To Floor: {floor_color}${to_floor:>12,.2f}{X}")
 
-    # Challenge progress
+    # Challenge progress (with consistency rule)
     profit = balance - 50000
-    target = 5000
-    pct = max(0, (profit / target) * 100) if target else 0
+    base_target = journal.get("base_target", 3000)
+    effective_target = journal.get("effective_target", base_target)
+    consistency_adjusted = journal.get("consistency_adjusted", False)
+    highest_day = journal.get("highest_day_profit", 0)
+
+    pct = max(0, (profit / effective_target) * 100) if effective_target else 0
+    remaining = max(0, effective_target - profit)
     print(f"  Progress: {_bar(min(100, pct))}")
+    if consistency_adjusted:
+        print(f"  {Y}Target: ${effective_target:,.0f} (raised from ${base_target:,.0f} — consistency rule){X}")
+        print(f"  {DIM}Highest day: ${highest_day:,.2f} / max 40% of total{X}")
+        print(f"  {DIM}Remaining:   ${remaining:,.2f}{X}")
+        if profit >= base_target and profit < effective_target:
+            print(f"  {Y}Profit target reached, but consistency not met yet (${remaining:,.0f} more needed){X}")
+    elif profit >= base_target:
+        print(f"  {G}Target reached!{X}")
+    else:
+        print(f"  {DIM}Target: ${base_target:,.0f} | Remaining: ${max(0, base_target - profit):,.2f}{X}")
 
     # Trading stats
     print(f"{'-' * W}")
