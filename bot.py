@@ -551,10 +551,11 @@ class TradovateBot:
         if not ok:
             return
 
-        # Check time constraints
+        # Check time constraints — only trade within the configured window
         current = now_et()
+        start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
-        if current >= cutoff:
+        if current < start or current >= cutoff:
             return
 
         # Feed price to strategy
@@ -667,7 +668,10 @@ class TradovateBot:
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
         else:
-            logger.error("Order placement failed for %s", signal.symbol)
+            logger.error(
+                "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
+                signal.direction.value, signal.symbol, signal.qty,
+            )
 
     # ─────────────────────────────────────────
     # Main loop
@@ -750,6 +754,23 @@ class TradovateBot:
                             self._subscribe_market_data()
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
+
+                # Market data staleness check — restart stream if no data for 2+ minutes
+                if not self.dry_run and self.md_stream:
+                    is_stale = getattr(self.md_stream, "data_stale", False)
+                    fell_back = getattr(self.md_stream, "fell_back", None)
+                    if is_stale or (fell_back and fell_back.is_set()):
+                        reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
+                        logger.warning(
+                            "Market data stream unhealthy (%s). Restarting...", reason
+                        )
+                        try:
+                            self.md_stream.stop()
+                        except Exception:
+                            pass
+                        self.md_stream = self._start_market_data()
+                        if self.md_stream:
+                            self._subscribe_market_data()
 
                 # Periodic contract rollover check (every 10 min)
                 if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
@@ -984,10 +1005,16 @@ def main():
     # Graceful shutdown on SIGINT / SIGTERM exits the daily loop
     def handle_signal(signum, frame):
         global _shutdown_requested
-        logger.info("Signal %s received. Stopping...", signum)
+        try:
+            logger.info("Signal %s received. Stopping...", signum)
+        except Exception:
+            pass
         _shutdown_requested = True
-        if bot is not None:
-            bot.running = False
+        try:
+            if bot is not None:
+                bot.running = False
+        except Exception:
+            pass
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)

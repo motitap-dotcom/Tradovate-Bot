@@ -102,6 +102,14 @@ class RiskManager:
 
     def update_balance(self, realized_balance: float, unrealized_pnl: float = 0.0):
         """Call this after every fill or on each tick to update risk state."""
+        # Guard against corrupted data (NaN/Inf) — keep previous values
+        if not math.isfinite(realized_balance) or not math.isfinite(unrealized_pnl):
+            logger.error(
+                "Invalid balance data (NaN/Inf): realized=%s unrealized=%s — skipping update",
+                realized_balance, unrealized_pnl,
+            )
+            return
+
         self._check_new_day()
 
         self.current_balance = realized_balance
@@ -144,7 +152,17 @@ class RiskManager:
 
     def record_fill(self, pnl_change: float):
         """Record a realized P&L change from a filled order."""
-        self.current_balance += pnl_change
+        if not math.isfinite(pnl_change):
+            logger.error("Invalid pnl_change (NaN/Inf): %s — skipping", pnl_change)
+            return
+        new_balance = self.current_balance + pnl_change
+        if new_balance < 0:
+            logger.error(
+                "Balance would go negative: %.2f + %.2f = %.2f — clamping to 0",
+                self.current_balance, pnl_change, new_balance,
+            )
+            new_balance = 0
+        self.current_balance = new_balance
         self.update_balance(self.current_balance, self.unrealized_pnl)
 
     # ─────────────────────────────────────────
@@ -236,7 +254,7 @@ class RiskManager:
             return 0
 
         spec = config.CONTRACT_SPECS.get(symbol)
-        if spec is None or not spec["enabled"]:
+        if spec is None or not spec.get("enabled", False):
             return 0
 
         # Determine daily loss budget
@@ -289,6 +307,11 @@ class RiskManager:
 
     def register_close(self, qty: int):
         """Track that we closed positions."""
+        if qty > self.open_contracts:
+            logger.warning(
+                "register_close(%d) exceeds open_contracts(%d) — clamping to 0",
+                qty, self.open_contracts,
+            )
         self.open_contracts = max(0, self.open_contracts - qty)
 
     # ─────────────────────────────────────────

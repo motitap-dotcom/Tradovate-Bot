@@ -70,8 +70,14 @@ class TradeJournal:
             "summary": self._compute_summary(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        with open(self.filepath, "w") as f:
-            json.dump(data, f, indent=2, default=str)
+        try:
+            # Write to temp file then rename for atomicity
+            tmp_path = self.filepath + ".tmp"
+            with open(tmp_path, "w") as f:
+                json.dump(data, f, indent=2, default=str)
+            os.replace(tmp_path, self.filepath)
+        except Exception as e:
+            logger.error("Failed to save trade journal: %s", e)
 
     # ─────────────────────────────────────────
     # Recording
@@ -141,9 +147,12 @@ class TradeJournal:
                     trade["r_multiple"] = 0
 
                 # Duration
-                entry_dt = datetime.fromisoformat(trade["entry_time"])
-                exit_dt = datetime.fromisoformat(trade["exit_time"])
-                trade["duration_minutes"] = (exit_dt - entry_dt).total_seconds() / 60
+                try:
+                    entry_dt = datetime.fromisoformat(trade["entry_time"])
+                    exit_dt = datetime.fromisoformat(trade["exit_time"])
+                    trade["duration_minutes"] = (exit_dt - entry_dt).total_seconds() / 60
+                except (ValueError, TypeError):
+                    trade["duration_minutes"] = 0
 
                 self._save()
                 result = "WIN" if pnl > 0 else "LOSS" if pnl < 0 else "FLAT"

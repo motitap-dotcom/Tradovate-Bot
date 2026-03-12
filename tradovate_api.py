@@ -958,6 +958,7 @@ class MarketDataStream:
         self.ws: Optional[websocket.WebSocketApp] = None
         self._request_id = 0
         self._callbacks: dict[str, list[Callable]] = {}
+        self._callbacks_lock = threading.Lock()
         self._connected = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._should_run = False
@@ -965,6 +966,7 @@ class MarketDataStream:
         self._consecutive_failures = 0
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
+        self._reconnect_timer: Optional[threading.Timer] = None
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1008,10 +1010,20 @@ class MarketDataStream:
     DATA_TIMEOUT = 120
 
     def stop(self):
-        """Close the WebSocket."""
+        """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
+        # Cancel pending reconnect timer
+        if self._reconnect_timer:
+            self._reconnect_timer.cancel()
+            self._reconnect_timer = None
         if self.ws:
-            self.ws.close()
+            try:
+                self.ws.close()
+            except Exception:
+                pass
+        # Wait briefly for the thread to finish
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=5)
 
     @property
     def data_stale(self) -> bool:
@@ -1022,18 +1034,21 @@ class MarketDataStream:
 
     def subscribe_quote(self, symbol: str, callback: Callable):
         """Subscribe to real-time quotes for a symbol."""
-        self._callbacks.setdefault(symbol, []).append(callback)
+        with self._callbacks_lock:
+            self._callbacks.setdefault(symbol, []).append(callback)
         self._send("md/subscribeQuote", {"symbol": symbol})
         logger.info("Subscribed to quotes: %s", symbol)
 
     def unsubscribe_quote(self, symbol: str):
         """Unsubscribe from quotes."""
         self._send("md/unsubscribeQuote", {"symbol": symbol})
-        self._callbacks.pop(symbol, None)
+        with self._callbacks_lock:
+            self._callbacks.pop(symbol, None)
 
     def on_quote(self, symbol: str, callback: Callable):
         """Register a callback for quote updates on a symbol."""
-        self._callbacks.setdefault(symbol, []).append(callback)
+        with self._callbacks_lock:
+            self._callbacks.setdefault(symbol, []).append(callback)
 
     # ─────── WebSocket handlers ───────
 
@@ -1084,14 +1099,17 @@ class MarketDataStream:
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
+                # Snapshot callbacks under lock to avoid race with subscribe/unsubscribe
+                with self._callbacks_lock:
+                    cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
                     contract_id = quote.get("contractId")
-                    for sym, cbs in self._callbacks.items():
+                    for sym, cbs in cb_snapshot.items():
                         for cb in cbs:
                             try:
                                 cb(sym, quote)
                             except Exception as e:
-                                logger.error("Quote callback error: %s", e)
+                                logger.error("Quote callback error for %s: %s", sym, e)
 
     def _on_error(self, ws, error):
         error_str = str(error)
@@ -1124,12 +1142,19 @@ class MarketDataStream:
                 "Reconnecting in %ds (attempt %d)...",
                 delay, self._reconnect_count,
             )
-            reconnect_timer = threading.Timer(delay, self._reconnect)
-            reconnect_timer.daemon = True
-            reconnect_timer.start()
+            self._reconnect_timer = threading.Timer(delay, self._reconnect)
+            self._reconnect_timer.daemon = True
+            self._reconnect_timer.start()
 
     def _reconnect(self):
         """Reconnect and re-subscribe to all symbols. Refreshes token on 403."""
+        # Close old WebSocket connection to prevent leaking
+        if self.ws:
+            try:
+                self.ws.close()
+            except Exception:
+                pass
+
         # If we have an API reference, refresh the token before reconnecting
         # This fixes the 403 Forbidden issue when the md token expires
         if self._api:
@@ -1146,7 +1171,9 @@ class MarketDataStream:
             # Don't reset _consecutive_failures here — only reset when
             # real data flows (in _handle_payload). This prevents a cycle
             # of connect→die→reconnect that never reaches fallback threshold.
-            for symbol in list(self._callbacks.keys()):
+            with self._callbacks_lock:
+                symbols = list(self._callbacks.keys())
+            for symbol in symbols:
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
         elif self._should_run and self._api:
@@ -1157,7 +1184,9 @@ class MarketDataStream:
                 logger.info("Full re-auth succeeded, retrying WebSocket connection...")
                 self._connect()
                 if self._connected.wait(timeout=15):
-                    for symbol in list(self._callbacks.keys()):
+                    with self._callbacks_lock:
+                        symbols = list(self._callbacks.keys())
+                    for symbol in symbols:
                         self._send("md/subscribeQuote", {"symbol": symbol})
                         logger.info("Re-subscribed to: %s", symbol)
 
@@ -1166,7 +1195,10 @@ class MarketDataStream:
         self._request_id += 1
         msg = f"{endpoint}\n{self._request_id}\n\n{json.dumps(body)}"
         if self.ws:
-            self.ws.send(msg)
+            try:
+                self.ws.send(msg)
+            except Exception as e:
+                logger.warning("WebSocket send failed for %s: %s", endpoint, e)
 
 
 # ─────────────────────────────────────────────
