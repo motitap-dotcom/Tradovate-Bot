@@ -551,11 +551,19 @@ class TradovateBot:
         if not ok:
             return
 
-        # Check time constraints
+        # Check time constraints — only trade within the defined window
         current = now_et()
-        start = parse_time_et(config.TRADING_START_ET)
+
+        # No trading on weekends (Saturday=5, Sunday=6)
+        if current.weekday() >= 5:
+            return
+
+        trading_start = parse_time_et(config.TRADING_START_ET)
+        if current < trading_start:
+            return
+
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
-        if current < start or current >= cutoff:
+        if current >= cutoff:
             return
 
         # Feed price to strategy
