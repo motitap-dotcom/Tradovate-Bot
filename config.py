@@ -16,7 +16,10 @@ load_dotenv()
 TRADOVATE_USERNAME = os.getenv("TRADOVATE_USERNAME", "")
 TRADOVATE_PASSWORD = os.getenv("TRADOVATE_PASSWORD", "")
 TRADOVATE_APP_ID = os.getenv("TRADOVATE_APP_ID", "")
-TRADOVATE_CID = int(os.getenv("TRADOVATE_CID", "0"))
+try:
+    TRADOVATE_CID = int(os.getenv("TRADOVATE_CID", "0"))
+except (ValueError, TypeError):
+    TRADOVATE_CID = 0
 TRADOVATE_SECRET = os.getenv("TRADOVATE_SECRET", "")
 TRADOVATE_DEVICE_ID = os.getenv("TRADOVATE_DEVICE_ID", "tradovate-bot-001")
 
@@ -42,6 +45,11 @@ _URLS = {
         "ws_market": "wss://md.tradovateapi.com/v1/websocket",
     },
 }
+
+if ENVIRONMENT not in _URLS:
+    import logging as _log
+    _log.getLogger(__name__).warning("Unknown ENVIRONMENT '%s', defaulting to 'demo'", ENVIRONMENT)
+    ENVIRONMENT = "demo"
 
 REST_URL = _URLS[ENVIRONMENT]["rest"]
 WS_TRADING_URL = _URLS[ENVIRONMENT]["ws_trading"]
@@ -95,6 +103,11 @@ CHALLENGE_SETTINGS = {
 # Override organization from env if set, otherwise use the prop firm default
 if not TRADOVATE_ORGANIZATION:
     TRADOVATE_ORGANIZATION = CHALLENGE_SETTINGS.get(PROP_FIRM, {}).get("organization", "")
+
+if PROP_FIRM not in CHALLENGE_SETTINGS:
+    import logging as _log
+    _log.getLogger(__name__).warning("Unknown PROP_FIRM '%s', defaulting to 'fundednext'", PROP_FIRM)
+    PROP_FIRM = "fundednext"
 
 ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 

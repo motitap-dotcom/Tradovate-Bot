@@ -151,7 +151,9 @@ class ORBStrategy:
 
     def __init__(self, symbol: str):
         self.symbol = symbol
-        spec = config.CONTRACT_SPECS[symbol]
+        spec = config.CONTRACT_SPECS.get(symbol)
+        if spec is None:
+            raise ValueError(f"No contract spec found for symbol: {symbol}")
 
         self.stop_points: float = spec["stop_loss_points"]
         self.tp_points: float = spec["take_profit_points"]
@@ -209,6 +211,13 @@ class ORBStrategy:
             if direction == "long":
                 stop = window.range_low
                 stop_distance = price - stop
+                if stop_distance <= 0:
+                    # Price is at or below range low — invalid long breakout
+                    logger.warning(
+                        "ORB %dm long: stop_distance <= 0 (price=%.2f, range_low=%.2f). Skipping.",
+                        window.window_minutes, price, window.range_low,
+                    )
+                    continue
                 if stop_distance > self.stop_points:
                     stop = price - self.stop_points
                     stop_distance = self.stop_points
@@ -221,6 +230,13 @@ class ORBStrategy:
             else:  # short
                 stop = window.range_high
                 stop_distance = stop - price
+                if stop_distance <= 0:
+                    # Price is at or above range high — invalid short breakout
+                    logger.warning(
+                        "ORB %dm short: stop_distance <= 0 (price=%.2f, range_high=%.2f). Skipping.",
+                        window.window_minutes, price, window.range_high,
+                    )
+                    continue
                 if stop_distance > self.stop_points:
                     stop = price + self.stop_points
                     stop_distance = self.stop_points
@@ -274,7 +290,9 @@ class VWAPStrategy:
 
     def __init__(self, symbol: str):
         self.symbol = symbol
-        spec = config.CONTRACT_SPECS[symbol]
+        spec = config.CONTRACT_SPECS.get(symbol)
+        if spec is None:
+            raise ValueError(f"No contract spec found for symbol: {symbol}")
         self.stop_points: float = spec["stop_loss_points"]
         self.tp_points: float = spec["take_profit_points"]
         self.rr_ratio: float = spec["risk_reward_ratio"]
@@ -323,6 +341,9 @@ class VWAPStrategy:
         """Update the running VWAP with a new bar."""
         if volume <= 0:
             return
+        # Sanity-check OHLC: swap if reversed (data corruption guard)
+        if high < low:
+            high, low = low, high
         typical_price = (high + low + close) / 3.0
         self._cum_vol += volume
         self._cum_tp_vol += typical_price * volume
