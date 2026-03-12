@@ -70,8 +70,14 @@ class TradeJournal:
             "summary": self._compute_summary(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        with open(self.filepath, "w") as f:
-            json.dump(data, f, indent=2, default=str)
+        # Atomic write: write to tmp file then rename to prevent corruption
+        tmp_path = self.filepath + ".tmp"
+        try:
+            with open(tmp_path, "w") as f:
+                json.dump(data, f, indent=2, default=str)
+            os.replace(tmp_path, self.filepath)
+        except OSError as e:
+            logger.error("Failed to save trade journal: %s", e)
 
     # ─────────────────────────────────────────
     # Recording

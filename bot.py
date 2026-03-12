@@ -760,6 +760,22 @@ class TradovateBot:
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
 
+                # Check WebSocket health: stale data or fallback signal
+                if not self.dry_run and self.md_stream:
+                    needs_restart = False
+                    if hasattr(self.md_stream, 'fell_back') and self.md_stream.fell_back.is_set():
+                        logger.warning("WebSocket signaled fallback — switching to REST poller")
+                        needs_restart = True
+                    elif hasattr(self.md_stream, 'data_stale') and self.md_stream.data_stale:
+                        logger.warning("WebSocket data stale (no data for %ds) — restarting market data",
+                                       getattr(self.md_stream, 'DATA_TIMEOUT', 120))
+                        needs_restart = True
+                    if needs_restart:
+                        self.md_stream.stop()
+                        self.md_stream = self._start_market_data()
+                        if self.md_stream:
+                            self._subscribe_market_data()
+
                 # Periodic contract rollover check (every 10 min)
                 if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
                     try:

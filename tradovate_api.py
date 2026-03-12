@@ -811,7 +811,14 @@ class TradovateAPI:
 
         oco_result = self._post("/order/placeOCO", oco_payload)
         if not oco_result or "orderId" not in oco_result:
-            logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
+            logger.error(
+                "OCO (SL/TP) order failed: %s | entry was %s. "
+                "DANGER: position has no stop-loss! Closing position immediately.",
+                oco_result, entry_order_id,
+            )
+            # Close the unprotected position to prevent unlimited loss
+            self.place_market_order(symbol, opposite_action, qty)
+            return None
         else:
             logger.info(
                 "OCO placed: SL orderId=%s TP orderId=%s",

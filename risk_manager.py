@@ -13,10 +13,13 @@ import logging
 import math
 from datetime import datetime, date
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import config
 
 logger = logging.getLogger(__name__)
+
+_ET = ZoneInfo("America/New_York")
 
 
 class RiskManager:
@@ -40,8 +43,8 @@ class RiskManager:
         self.peak_balance: float = self.account_size  # highest equity seen
         self.drawdown_floor: float = self.account_size - self.max_trailing_drawdown
 
-        # Daily tracking
-        self.today: date = date.today()
+        # Daily tracking (use ET timezone for day boundary)
+        self.today: date = datetime.now(_ET).date()
         self.day_start_balance: float = self.account_size
         self.day_pnl: float = 0.0
         self.unrealized_pnl: float = 0.0
@@ -182,8 +185,8 @@ class RiskManager:
             )
 
     def _check_new_day(self):
-        """Reset daily counters if the date has changed."""
-        today = date.today()
+        """Reset daily counters if the date has changed (ET timezone)."""
+        today = datetime.now(_ET).date()
         if today != self.today:
             logger.info("New trading day detected. Resetting daily state.")
             self.today = today

@@ -206,12 +206,19 @@ class ORBStrategy:
                 continue
 
             # Build signal
+            spec = config.CONTRACT_SPECS[self.symbol]
+            min_stop = spec["tick_size"] * 2  # minimum 2 ticks stop distance
+
             if direction == "long":
                 stop = window.range_low
                 stop_distance = price - stop
                 if stop_distance > self.stop_points:
                     stop = price - self.stop_points
                     stop_distance = self.stop_points
+                if stop_distance < min_stop:
+                    logger.info("ORB %s long skipped: stop distance %.4f < min %.4f",
+                                self.symbol, stop_distance, min_stop)
+                    continue
                 tp = price + (stop_distance * self.rr_ratio)
                 sig_dir = Direction.LONG
                 reason = (
@@ -224,6 +231,10 @@ class ORBStrategy:
                 if stop_distance > self.stop_points:
                     stop = price + self.stop_points
                     stop_distance = self.stop_points
+                if stop_distance < min_stop:
+                    logger.info("ORB %s short skipped: stop distance %.4f < min %.4f",
+                                self.symbol, stop_distance, min_stop)
+                    continue
                 tp = price - (stop_distance * self.rr_ratio)
                 sig_dir = Direction.SHORT
                 reason = (
