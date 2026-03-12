@@ -551,17 +551,8 @@ class TradovateBot:
         if not ok:
             return
 
-        # Check time constraints — only trade within the defined window
+        # Check time constraints
         current = now_et()
-
-        # No trading on weekends (Saturday=5, Sunday=6)
-        if current.weekday() >= 5:
-            return
-
-        trading_start = parse_time_et(config.TRADING_START_ET)
-        if current < trading_start:
-            return
-
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current >= cutoff:
             return
@@ -676,7 +667,10 @@ class TradovateBot:
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
         else:
-            logger.error("Order placement failed for %s", signal.symbol)
+            logger.error(
+                "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
+                signal.direction.value, signal.symbol, signal.qty,
+            )
 
     # ─────────────────────────────────────────
     # Main loop
@@ -760,18 +754,19 @@ class TradovateBot:
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
 
-                # Check WebSocket health: stale data or fallback signal
+                # Market data staleness check — restart stream if no data for 2+ minutes
                 if not self.dry_run and self.md_stream:
-                    needs_restart = False
-                    if hasattr(self.md_stream, 'fell_back') and self.md_stream.fell_back.is_set():
-                        logger.warning("WebSocket signaled fallback — switching to REST poller")
-                        needs_restart = True
-                    elif hasattr(self.md_stream, 'data_stale') and self.md_stream.data_stale:
-                        logger.warning("WebSocket data stale (no data for %ds) — restarting market data",
-                                       getattr(self.md_stream, 'DATA_TIMEOUT', 120))
-                        needs_restart = True
-                    if needs_restart:
-                        self.md_stream.stop()
+                    is_stale = getattr(self.md_stream, "data_stale", False)
+                    fell_back = getattr(self.md_stream, "fell_back", None)
+                    if is_stale or (fell_back and fell_back.is_set()):
+                        reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
+                        logger.warning(
+                            "Market data stream unhealthy (%s). Restarting...", reason
+                        )
+                        try:
+                            self.md_stream.stop()
+                        except Exception:
+                            pass
                         self.md_stream = self._start_market_data()
                         if self.md_stream:
                             self._subscribe_market_data()
@@ -1009,10 +1004,16 @@ def main():
     # Graceful shutdown on SIGINT / SIGTERM exits the daily loop
     def handle_signal(signum, frame):
         global _shutdown_requested
-        logger.info("Signal %s received. Stopping...", signum)
+        try:
+            logger.info("Signal %s received. Stopping...", signum)
+        except Exception:
+            pass
         _shutdown_requested = True
-        if bot is not None:
-            bot.running = False
+        try:
+            if bot is not None:
+                bot.running = False
+        except Exception:
+            pass
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)

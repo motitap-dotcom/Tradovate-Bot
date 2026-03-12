@@ -19,7 +19,7 @@ LOCKFILE="$BOT_DIR/.keepalive.lock"
 MAX_RESTART_DELAY=120   # Max seconds between restarts (caps exponential backoff)
 RESTART_DELAY=10        # Initial restart delay
 
-cd "$BOT_DIR"
+cd "$BOT_DIR" || { echo "[$(date)] FATAL: Cannot cd to $BOT_DIR. Exiting."; exit 1; }
 
 # Prevent multiple keep_alive instances
 exec 200>"$LOCKFILE"
