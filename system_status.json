@@ -1,31 +1,21 @@
 {
-  "timestamp": "2026-03-12T23:54:38Z",
+  "timestamp": "2026-03-13T05:05:57Z",
   "api_reachable": true,
-  "authenticated": true,
-  "auth_method": "server_token",
-  "account": {
-    "name": "FNFTCHMOTITAPIRO67510",
-    "id": 39996695,
-    "active": true
-  },
-  "balance": {
-    "realizedPnl": null,
-    "unrealizedPnl": null,
-    "totalCashValue": 58577.72,
-    "initialMargin": 0.0,
-    "netLiq": 58577.72
-  },
+  "authenticated": false,
+  "auth_method": null,
+  "account": {},
+  "balance": {},
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "574602",
-    "uptime_since": "Thu 2026-03-12 23:00:26 UTC",
+    "bot_pid": "586765",
+    "uptime_since": "Thu 2026-03-12 23:55:31 UTC",
     "disk": "17%",
-    "memory": "2732MB/7941MB (34%)",
+    "memory": "2739MB/7941MB (34%)",
     "hostname": "vmi3096165",
-    "git_commit": "e9b2f06 status: 2026-03-12 22:58 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "18cba5d status: 2026-03-12 23:54 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-03-12T20:58:37.341456+00:00",
       "timestamp_et": "2026-03-12T16:58:37.341481-04:00",
@@ -48,9 +38,9 @@
         "CL"
       ]
     },
-    "journal_tail": "2026-03-12 23:00:28,930 [INFO] strategies: ORB 5-min range: high=24830.00 low=24742.25 size=87.75\n2026-03-12 23:00:28,931 [INFO] strategies: ORB 15-min range: high=24834.50 low=24742.25 size=92.25\n2026-03-12 23:00:28,931 [INFO] bot: Warmed up NQ with 1063 candles | strategy=ORBStrategy\n2026-03-12 23:00:28,932 [INFO] bot:   ORB 5-min range: 24742.25 - 24830.00 (size=87.75)\n2026-03-12 23:00:28,932 [INFO] bot:   ORB 15-min range: 24742.25 - 24834.50 (size=92.25)\n2026-03-12 23:00:29,167 [INFO] strategies: ORB 5-min range: high=6729.25 low=6714.25 size=15.00\n2026-03-12 23:00:29,167 [INFO] strategies: ORB 15-min range: high=6732.00 low=6714.25 size=17.75\n2026-03-12 23:00:29,168 [INFO] bot: Warmed up ES with 1063 candles | strategy=ORBStrategy\n2026-03-12 23:00:29,168 [INFO] bot:   ORB 5-min range: 6714.25 - 6729.25 (size=15.00)\n2026-03-12 23:00:29,171 [INFO] bot:   ORB 15-min range: 6714.25 - 6732.00 (size=17.75)\n2026-03-12 23:00:29,399 [INFO] bot: Warmed up GC with 1071 candles | strategy=VWAPStrategy\n2026-03-12 23:00:29,401 [INFO] bot:   VWAP: 5143.6101\n2026-03-12 23:00:29,669 [INFO] bot: Warmed up CL with 1072 candles | strategy=VWAPStrategy\n2026-03-12 23:00:29,669 [INFO] bot:   VWAP: 94.3260\n2026-03-12 23:00:29,966 [INFO] websocket: Websocket connected\n2026-03-12 23:00:29,966 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-12 23:00:30,095 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-12 23:00:30,098 [INFO] bot: Market data via WebSocket\n2026-03-12 23:00:30,099 [INFO] tradovate_api: Subscribed to quotes: NQH6\n2026-03-12 23:00:30,099 [INFO] tradovate_api: Subscribed to quotes: ESH6\n2026-03-12 23:00:30,099 [INFO] tradovate_api: Subscribed to quotes: GCH6\n2026-03-12 23:00:30,099 [INFO] tradovate_api: Subscribed to quotes: CLJ6\n2026-03-12 23:00:30,099 [INFO] bot: Entering main loop...\n2026-03-12 23:00:30,099 [WARNING] bot: Force close time reached. Closing all positions.\n2026-03-12 23:00:30,222 [INFO] tradovate_api: Market data WebSocket au",
-    "bot_log_tail": "2026-03-12 23:00:31,273 [INFO] bot: ============================================================\n2026-03-12 23:00:31,288 [INFO] bot: END OF DAY SUMMARY\n2026-03-12 23:00:31,288 [INFO] bot: ============================================================\n2026-03-12 23:00:31,288 [INFO] bot: Total trades: 0\n2026-03-12 23:00:31,295 [INFO] bot:   balance: 58577.72\n2026-03-12 23:00:31,308 [INFO] bot:   equity: 58577.72\n2026-03-12 23:00:31,316 [INFO] bot:   day_pnl: 0.0\n2026-03-12 23:00:31,316 [INFO] bot:   peak_balance: 58577.72\n2026-03-12 23:00:31,316 [INFO] bot:   drawdown_floor: 56077.72\n2026-03-12 23:00:31,316 [INFO] bot:   distance_to_floor: 2500.0\n2026-03-12 23:00:31,316 [INFO] bot:   daily_loss_limit: 1000\n2026-03-12 23:00:31,316 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-03-12 23:00:31,316 [INFO] bot:   open_contracts: 0\n2026-03-12 23:00:31,316 [INFO] bot:   max_contracts: 10\n2026-03-12 23:00:31,316 [INFO] bot:   trades_today: 0\n2026-03-12 23:00:31,316 [INFO] bot:   max_daily_trades: 16\n2026-03-12 23:00:31,316 [INFO] bot:   locked: False\n2026-03-12 23:00:31,316 [INFO] bot:   lock_reason: \n2026-03-12 23:00:31,316 [INFO] bot: Bot stopped.\n2026-03-12 23:00:31,316 [INFO] bot: Session ended. Next trading session: 2026-03-13 09:25 ET (sleeping 864 minutes)",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 10287s)\n  Balance: $58577.72\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 34.5%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Mar 12 23:50:04 UTC 2026] Status: bot_active=true, pid=574602\n[Thu Mar 12 23:50:04 UTC 2026] No GH_PAT set \u2014 status written locally only."
+    "journal_tail": "2026-03-12 23:55:35,191 [INFO] bot: Warmed up GC with 1126 candles | strategy=VWAPStrategy\n2026-03-12 23:55:35,192 [INFO] bot:   VWAP: 5142.6969\n2026-03-12 23:55:35,342 [INFO] bot: Warmed up CL with 1127 candles | strategy=VWAPStrategy\n2026-03-12 23:55:35,342 [INFO] bot:   VWAP: 94.3516\n2026-03-12 23:55:35,577 [INFO] websocket: Websocket connected\n2026-03-12 23:55:35,577 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-12 23:55:35,700 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-12 23:55:35,700 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-12 23:55:35,700 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-12 23:55:35,700 [INFO] tradovate_api: Reconnecting in 2s (attempt 1)...\n2026-03-12 23:55:37,701 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-12 23:55:37,900 [INFO] websocket: Websocket connected\n2026-03-12 23:55:37,900 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-12 23:55:38,037 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-12 23:55:38,038 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-12 23:55:38,038 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-12 23:55:38,038 [WARNING] tradovate_api: WebSocket failed 4 consecutive times. Signaling fallback to REST polling.\n2026-03-12 23:56:00,348 [WARNING] bot: WebSocket connection failed, falling back to REST polling\n2026-03-12 23:56:00,349 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-03-12 23:56:00,349 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-03-12 23:56:00,349 [INFO] tradovate_api: Subscribed to REST quotes: NQH6 -> NQ=F\n2026-03-12 23:56:00,349 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F\n2026-03-12 23:56:00,349 [INFO] tradovate_api: Subscribed to REST quotes: GCH6 -> GC=F\n2026-03-12 23:56:00,349 [INFO]",
+    "bot_log_tail": "",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 29185s)\n  Balance: $58577.72\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 34.4%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 13 05:05:03 UTC 2026] Status: bot_active=true, pid=586765\n[Fri Mar 13 05:05:03 UTC 2026] No GH_PAT set \u2014 status written locally only."
   },
   "trading_activity": {
     "live_status": {
@@ -75,41 +65,12 @@
         "CL"
       ]
     },
-    "token_status": "valid",
-    "token_expiry": "2026-03-13T00:20:27.270000+00:00",
+    "token_status": "expired",
+    "token_expiry": "2026-03-13T01:15:32.532000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-12 23:00:30,099 [INFO] tradovate_api: Subscribed to quotes: GCH6",
-      "2026-03-12 23:00:30,099 [INFO] tradovate_api: Subscribed to quotes: CLJ6",
-      "2026-03-12 23:00:30,099 [INFO] bot: Entering main loop...",
-      "2026-03-12 23:00:30,099 [WARNING] bot: Force close time reached. Closing all positions.",
-      "2026-03-12 23:00:30,222 [INFO] tradovate_api: Market data WebSocket authenticated",
-      "2026-03-12 23:00:30,444 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-03-12 23:00:30,647 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
-      "2026-03-12 23:00:30,647 [INFO] bot: Shutting down bot...",
-      "2026-03-12 23:00:30,902 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-03-12 23:00:31,142 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-      "2026-03-12 23:00:31,273 [INFO] bot: ============================================================",
-      "2026-03-12 23:00:31,288 [INFO] bot: END OF DAY SUMMARY",
-      "2026-03-12 23:00:31,288 [INFO] bot: ============================================================",
-      "2026-03-12 23:00:31,288 [INFO] bot: Total trades: 0",
-      "2026-03-12 23:00:31,295 [INFO] bot:   balance: 58577.72",
-      "2026-03-12 23:00:31,308 [INFO] bot:   equity: 58577.72",
-      "2026-03-12 23:00:31,316 [INFO] bot:   day_pnl: 0.0",
-      "2026-03-12 23:00:31,316 [INFO] bot:   peak_balance: 58577.72",
-      "2026-03-12 23:00:31,316 [INFO] bot:   drawdown_floor: 56077.72",
-      "2026-03-12 23:00:31,316 [INFO] bot:   distance_to_floor: 2500.0",
-      "2026-03-12 23:00:31,316 [INFO] bot:   daily_loss_limit: 1000",
-      "2026-03-12 23:00:31,316 [INFO] bot:   daily_loss_remaining: 1000.0",
-      "2026-03-12 23:00:31,316 [INFO] bot:   open_contracts: 0",
-      "2026-03-12 23:00:31,316 [INFO] bot:   max_contracts: 10",
-      "2026-03-12 23:00:31,316 [INFO] bot:   trades_today: 0",
-      "2026-03-12 23:00:31,316 [INFO] bot:   max_daily_trades: 16",
-      "2026-03-12 23:00:31,316 [INFO] bot:   locked: False",
-      "2026-03-12 23:00:31,316 [INFO] bot:   lock_reason: ",
-      "2026-03-12 23:00:31,316 [INFO] bot: Bot stopped.",
-      "2026-03-12 23:00:31,316 [INFO] bot: Session ended. Next trading session: 2026-03-13 09:25 ET (sleeping 864 minutes)"
+      ""
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -122,14 +83,15 @@
     "trading_active": false,
     "websocket_connected": false,
     "errors_in_log": [],
-    "today_trades": [],
-    "today_fills": []
+    "today_trades": []
   },
-  "errors": [],
+  "errors": [
+    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+  ],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 8711,
+    "ssh_output_len": 5297,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -138,5 +100,23 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
+  },
+  "last_known": {
+    "timestamp": "2026-03-12T23:54:38Z",
+    "auth_method": "server_token",
+    "account": {
+      "name": "FNFTCHMOTITAPIRO67510",
+      "id": 39996695,
+      "active": true
+    },
+    "balance": {
+      "realizedPnl": null,
+      "unrealizedPnl": null,
+      "totalCashValue": 58577.72,
+      "initialMargin": 0.0,
+      "netLiq": 58577.72
+    },
+    "positions": [],
+    "orders": []
   }
 }
