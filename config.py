@@ -89,14 +89,14 @@ CHALLENGE_SETTINGS = {
         "account_size": 50_000,
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
-        "profit_target": 3_000,           # FundedNext Futures challenge target (actual)
+        "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
         "max_contracts": 10,              # minis (FundedNext limit)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
         "consistency_rule_pct": 0.40,     # Max single-day profit = 40% of total profit
         "consistency_rule": 0.40,         # Alias — used by target calculation
-        "daily_profit_cap": 2_400,        # Just under current highest day ($2,426)
+        "daily_profit_cap": 2_400,        # Keep below highest day ($4,943) to improve consistency ratio
     },
 }
 
