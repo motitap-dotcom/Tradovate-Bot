@@ -1,24 +1,34 @@
 {
-  "timestamp": "2026-03-13T05:05:57Z",
+  "timestamp": "2026-03-13T07:56:31Z",
   "api_reachable": true,
-  "authenticated": false,
-  "auth_method": null,
-  "account": {},
-  "balance": {},
+  "authenticated": true,
+  "auth_method": "server_token",
+  "account": {
+    "name": "FNFTCHMOTITAPIRO67510",
+    "id": 39996695,
+    "active": true
+  },
+  "balance": {
+    "realizedPnl": null,
+    "unrealizedPnl": null,
+    "totalCashValue": 58577.72,
+    "initialMargin": 0.0,
+    "netLiq": 58577.72
+  },
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "586765",
-    "uptime_since": "Thu 2026-03-12 23:55:31 UTC",
+    "bot_pid": "655347",
+    "uptime_since": "Fri 2026-03-13 05:11:03 UTC",
     "disk": "17%",
-    "memory": "2739MB/7941MB (34%)",
+    "memory": "2751MB/7941MB (35%)",
     "hostname": "vmi3096165",
-    "git_commit": "18cba5d status: 2026-03-12 23:54 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "06990b4 status: 2026-03-13 05:05 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-03-12T20:58:37.341456+00:00",
-      "timestamp_et": "2026-03-12T16:58:37.341481-04:00",
+      "timestamp": "2026-03-13T07:56:26.233091+00:00",
+      "timestamp_et": "2026-03-13T03:56:26.233114-04:00",
       "balance": 58577.72,
       "equity": 58577.72,
       "day_pnl": 0.0,
@@ -38,14 +48,14 @@
         "CL"
       ]
     },
-    "journal_tail": "2026-03-12 23:55:35,191 [INFO] bot: Warmed up GC with 1126 candles | strategy=VWAPStrategy\n2026-03-12 23:55:35,192 [INFO] bot:   VWAP: 5142.6969\n2026-03-12 23:55:35,342 [INFO] bot: Warmed up CL with 1127 candles | strategy=VWAPStrategy\n2026-03-12 23:55:35,342 [INFO] bot:   VWAP: 94.3516\n2026-03-12 23:55:35,577 [INFO] websocket: Websocket connected\n2026-03-12 23:55:35,577 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-12 23:55:35,700 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-12 23:55:35,700 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-12 23:55:35,700 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-12 23:55:35,700 [INFO] tradovate_api: Reconnecting in 2s (attempt 1)...\n2026-03-12 23:55:37,701 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-12 23:55:37,900 [INFO] websocket: Websocket connected\n2026-03-12 23:55:37,900 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-12 23:55:38,037 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-12 23:55:38,038 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-12 23:55:38,038 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-12 23:55:38,038 [WARNING] tradovate_api: WebSocket failed 4 consecutive times. Signaling fallback to REST polling.\n2026-03-12 23:56:00,348 [WARNING] bot: WebSocket connection failed, falling back to REST polling\n2026-03-12 23:56:00,349 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-03-12 23:56:00,349 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-03-12 23:56:00,349 [INFO] tradovate_api: Subscribed to REST quotes: NQH6 -> NQ=F\n2026-03-12 23:56:00,349 [INFO] tradovate_api: Subscribed to REST quotes: ESH6 -> ES=F\n2026-03-12 23:56:00,349 [INFO] tradovate_api: Subscribed to REST quotes: GCH6 -> GC=F\n2026-03-12 23:56:00,349 [INFO]",
-    "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 29185s)\n  Balance: $58577.72\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 34.4%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 13 05:05:03 UTC 2026] Status: bot_active=true, pid=586765\n[Fri Mar 13 05:05:03 UTC 2026] No GH_PAT set \u2014 status written locally only."
+    "journal_tail": "2026-03-13 07:40:00,950 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:40:23,147 [INFO] tradovate_api: REST poller health: 1828 candles dispatched, 4 symbols tracked, 768 polls\n2026-03-13 07:40:31,422 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:41:01,943 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:41:25,319 [INFO] tradovate_api: REST poller health: 1852 candles dispatched, 4 symbols tracked, 780 polls\n2026-03-13 07:41:32,476 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:42:03,957 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:42:27,534 [INFO] tradovate_api: REST poller health: 1877 candles dispatched, 4 symbols tracked, 792 polls\n2026-03-13 07:42:34,436 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:43:04,869 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:43:29,435 [INFO] tradovate_api: REST poller health: 1901 candles dispatched, 4 symbols tracked, 804 polls\n2026-03-13 07:43:35,321 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:44:05,808 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:44:31,496 [INFO] tradovate_api: REST poller health: 1924 candles dispatched, 4 symbols tracked, 816 polls\n2026-03-13 07:44:36,336 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=",
+    "bot_log_tail": "2026-03-13 07:50:18,464 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:50:44,612 [INFO] tradovate_api: REST poller health: 2065 candles dispatched, 4 symbols tracked, 888 polls\n2026-03-13 07:50:49,036 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:51:19,538 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:51:20,052 [WARNING] tradovate_api: Yahoo chart request failed for NQ=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)\n2026-03-13 07:51:49,995 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:51:56,708 [INFO] tradovate_api: REST poller health: 2086 candles dispatched, 4 symbols tracked, 900 polls\n2026-03-13 07:52:20,551 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:52:51,187 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:52:58,601 [INFO] tradovate_api: REST poller health: 2109 candles dispatched, 4 symbols tracked, 912 polls\n2026-03-13 07:53:21,699 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:53:52,181 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:54:00,735 [INFO] tradovate_api: REST poller health: 2133 candles dispatched, 4 symbols tracked, 924 polls\n2026-03-13 07:54:22,628 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-13 07:54:53,025 [INFO] bot: Status | balance=58577",
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 1\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 11s)\n  Balance: $58577.72\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 34.7%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 13 07:55:04 UTC 2026] Status: bot_active=true, pid=655347\n[Fri Mar 13 07:55:04 UTC 2026] No GH_PAT set \u2014 status written locally only."
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-12T20:58:37.341456+00:00",
-      "timestamp_et": "2026-03-12T16:58:37.341481-04:00",
+      "timestamp": "2026-03-13T07:56:26.233091+00:00",
+      "timestamp_et": "2026-03-13T03:56:26.233114-04:00",
       "balance": 58577.72,
       "equity": 58577.72,
       "day_pnl": 0.0,
@@ -65,12 +75,41 @@
         "CL"
       ]
     },
-    "token_status": "expired",
-    "token_expiry": "2026-03-13T01:15:32.532000+00:00",
+    "token_status": "valid",
+    "token_expiry": "2026-03-13T08:52:22.738000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      ""
+      "2026-03-13 07:46:40,438 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:47:10,848 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:47:37,540 [INFO] tradovate_api: REST poller health: 1994 candles dispatched, 4 symbols tracked, 852 polls",
+      "2026-03-13 07:47:46,257 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:48:16,729 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:48:39,684 [INFO] tradovate_api: REST poller health: 2018 candles dispatched, 4 symbols tracked, 864 polls",
+      "2026-03-13 07:48:47,152 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:49:17,546 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:49:41,663 [INFO] tradovate_api: REST poller health: 2042 candles dispatched, 4 symbols tracked, 876 polls",
+      "2026-03-13 07:49:47,990 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:50:18,464 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:50:44,612 [INFO] tradovate_api: REST poller health: 2065 candles dispatched, 4 symbols tracked, 888 polls",
+      "2026-03-13 07:50:49,036 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:51:19,538 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:51:20,052 [WARNING] tradovate_api: Yahoo chart request failed for NQ=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
+      "2026-03-13 07:51:49,995 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:51:56,708 [INFO] tradovate_api: REST poller health: 2086 candles dispatched, 4 symbols tracked, 900 polls",
+      "2026-03-13 07:52:20,551 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:52:51,187 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:52:58,601 [INFO] tradovate_api: REST poller health: 2109 candles dispatched, 4 symbols tracked, 912 polls",
+      "2026-03-13 07:53:21,699 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:53:52,181 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:54:00,735 [INFO] tradovate_api: REST poller health: 2133 candles dispatched, 4 symbols tracked, 924 polls",
+      "2026-03-13 07:54:22,628 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:54:53,025 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:55:02,794 [INFO] tradovate_api: REST poller health: 2157 candles dispatched, 4 symbols tracked, 936 polls",
+      "2026-03-13 07:55:23,660 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:55:55,849 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-13 07:56:04,625 [INFO] tradovate_api: REST poller health: 2180 candles dispatched, 4 symbols tracked, 948 polls",
+      "2026-03-13 07:56:26,232 [INFO] bot: Status | balance=58577.72 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -80,18 +119,17 @@
       "total_pnl": 0,
       "trades_today": 0
     },
-    "trading_active": false,
+    "trading_active": true,
     "websocket_connected": false,
     "errors_in_log": [],
-    "today_trades": []
+    "today_trades": [],
+    "today_fills": []
   },
-  "errors": [
-    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
-  ],
+  "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 5297,
+    "ssh_output_len": 11488,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -100,23 +138,5 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
-  },
-  "last_known": {
-    "timestamp": "2026-03-12T23:54:38Z",
-    "auth_method": "server_token",
-    "account": {
-      "name": "FNFTCHMOTITAPIRO67510",
-      "id": 39996695,
-      "active": true
-    },
-    "balance": {
-      "realizedPnl": null,
-      "unrealizedPnl": null,
-      "totalCashValue": 58577.72,
-      "initialMargin": 0.0,
-      "netLiq": 58577.72
-    },
-    "positions": [],
-    "orders": []
   }
 }
