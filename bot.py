@@ -27,6 +27,7 @@ from pathlib import Path
 import requests
 
 import config
+from bot_state import save_state, load_state, build_state, restore_strategies
 from risk_manager import RiskManager
 from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
@@ -142,6 +143,9 @@ class TradovateBot:
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
+
+        # Restore persisted state (breakout flags, trade counts) from earlier today
+        self._restore_state()
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -490,6 +494,24 @@ class TradovateBot:
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
 
+    def _restore_state(self):
+        """Restore persisted state from earlier today (breakout flags, trade counts).
+
+        This runs AFTER warmup so that warmup builds ranges from candles,
+        then we overlay the flags (like breakout_fired) that warmup can't know.
+        """
+        state = load_state()
+        if state is None:
+            logger.info("No saved state for today — starting fresh")
+            return
+        restore_strategies(state, self.strategies)
+        logger.info("Bot state restored from earlier today")
+
+    def _save_state(self):
+        """Persist current strategy state to disk."""
+        state = build_state(self.strategies, len(self.trades_today), self.trades_today)
+        save_state(state)
+
     # ─────────────────────────────────────────
     # Market data
     # ─────────────────────────────────────────
@@ -667,6 +689,7 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+            self._save_state()
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
