@@ -950,7 +950,7 @@ class MarketDataStream:
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_BASE_DELAY = 2  # seconds
     # After this many consecutive reconnect failures, signal caller to fall back
-    FALLBACK_THRESHOLD = 3
+    FALLBACK_THRESHOLD = 10
 
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
@@ -967,6 +967,7 @@ class MarketDataStream:
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
         self._reconnect_timer: Optional[threading.Timer] = None
+        self._got_403: bool = False  # Set by _on_error when token expired
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1115,10 +1116,12 @@ class MarketDataStream:
         error_str = str(error)
         if "403" in error_str:
             logger.error("Market data WebSocket 403 Forbidden (token expired). Will re-auth on reconnect.")
-            self._consecutive_failures += 1
+            self._got_403 = True
         else:
             logger.error("Market data WebSocket error: %s", error)
-            self._consecutive_failures += 1
+        # NOTE: Don't increment _consecutive_failures here — _on_close always
+        # fires after _on_error and handles the counter.  Double-counting caused
+        # premature fallback to REST polling.
 
     def _on_close(self, ws, close_status_code, close_msg):
         logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
@@ -1155,22 +1158,32 @@ class MarketDataStream:
             except Exception:
                 pass
 
-        # If we have an API reference, refresh the token before reconnecting
-        # This fixes the 403 Forbidden issue when the md token expires
+        # If we have an API reference, refresh the token before reconnecting.
+        # On 403 (expired token), do a full re-auth instead of just renewal
+        # to guarantee we get a fresh md_access_token.
         if self._api:
             try:
-                self._api.ensure_token_valid()
-                if self._api.md_access_token:
-                    self.md_token = self._api.md_access_token
-                    logger.info("Refreshed market data token for reconnection")
+                if self._got_403:
+                    logger.info("Token was expired (403). Performing full re-authentication...")
+                    self._got_403 = False
+                    if self._api._re_authenticate() and self._api.md_access_token:
+                        self.md_token = self._api.md_access_token
+                        logger.info("Full re-auth succeeded, got fresh md token for reconnection")
+                    else:
+                        logger.warning("Full re-auth failed after 403")
+                else:
+                    self._api.ensure_token_valid()
+                    if self._api.md_access_token:
+                        self.md_token = self._api.md_access_token
+                        logger.info("Refreshed market data token for reconnection")
             except Exception as e:
                 logger.warning("Token refresh failed during reconnect: %s", e)
 
         self._connect()
         if self._connected.wait(timeout=15):
-            # Don't reset _consecutive_failures here — only reset when
-            # real data flows (in _handle_payload). This prevents a cycle
-            # of connect→die→reconnect that never reaches fallback threshold.
+            # Connection succeeded — reset consecutive failures counter so we
+            # don't accumulate stale failure counts from previous disconnect cycles.
+            self._consecutive_failures = 0
             with self._callbacks_lock:
                 symbols = list(self._callbacks.keys())
             for symbol in symbols:
@@ -1184,6 +1197,7 @@ class MarketDataStream:
                 logger.info("Full re-auth succeeded, retrying WebSocket connection...")
                 self._connect()
                 if self._connected.wait(timeout=15):
+                    self._consecutive_failures = 0
                     with self._callbacks_lock:
                         symbols = list(self._callbacks.keys())
                     for symbol in symbols:

@@ -772,6 +772,29 @@ class TradovateBot:
                         if self.md_stream:
                             self._subscribe_market_data()
 
+                # Periodic WebSocket recovery: if currently on REST polling,
+                # try to upgrade back to WebSocket every 5 minutes
+                if not self.dry_run and self.md_stream and isinstance(self.md_stream, RestMarketDataPoller):
+                    if not hasattr(self, "_last_ws_retry"):
+                        self._last_ws_retry = time.time()
+                    if time.time() - self._last_ws_retry >= 300:  # 5 minutes
+                        self._last_ws_retry = time.time()
+                        if self.api.md_access_token or self.api._re_authenticate():
+                            logger.info("Attempting to upgrade from REST polling back to WebSocket...")
+                            try:
+                                ws = MarketDataStream(self.api.md_access_token, api=self.api)
+                                ws.start()
+                                if ws._connected.wait(timeout=10):
+                                    logger.info("WebSocket recovery succeeded! Switching from REST to WebSocket.")
+                                    self.md_stream.stop()
+                                    self.md_stream = ws
+                                    self._subscribe_market_data()
+                                else:
+                                    logger.info("WebSocket still unavailable, staying on REST polling.")
+                                    ws.stop()
+                            except Exception as e:
+                                logger.warning("WebSocket recovery attempt failed: %s", e)
+
                 # Periodic contract rollover check (every 10 min)
                 if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
                     try:
