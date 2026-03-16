@@ -32,6 +32,7 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+from bot_commands import read_pending_command, execute_command
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -820,6 +821,11 @@ class TradovateBot:
 
                 # Write live status file for external monitoring
                 self._write_live_status()
+
+                # Check for external commands (from dashboard / other windows)
+                cmd = read_pending_command()
+                if cmd:
+                    execute_command(cmd, self)
 
                 time.sleep(30)  # Status update every 30 seconds
 
