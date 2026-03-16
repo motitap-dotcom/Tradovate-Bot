@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-16T19:55:38Z",
+  "timestamp": "2026-03-16T19:55:53Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,7 +23,7 @@
     "bot_pid": "1862765",
     "uptime_since": "Mon 2026-03-16 19:55:29 UTC",
     "disk": "17%",
-    "memory": "2787MB/7941MB (35%)",
+    "memory": "2753MB/7941MB (35%)",
     "hostname": "vmi3096165",
     "git_commit": "653f381 status: 2026-03-16 19:54 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
