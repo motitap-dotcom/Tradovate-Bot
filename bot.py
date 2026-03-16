@@ -376,16 +376,22 @@ class TradovateBot:
                     if v != symbol
                 }
 
+            # Update contract ID mapping
+            new_id = new_contract_data.get("id") if new_contract_data else None
+            if new_id is not None:
+                self.contract_ids[new_contract] = new_id
+
             # Subscribe to new contract
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
+                    contract_id=new_id,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
+                symbol, new_contract, new_id,
             )
 
     # ─────────────────────────────────────────
