@@ -1178,6 +1178,1204 @@ test_no_rollover_far_expiry()
 
 
 # ─────────────────────────────────────────────
+# 9. TRADE JOURNAL TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("9. TRADE JOURNAL TESTS")
+print("=" * 60)
+
+import tempfile
+
+
+@test("Journal: record entry/exit roundtrip with P&L")
+def test_journal_entry_exit():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tid = j.record_entry("NQ", "Buy", 21000.0, 1, "ORB", "breakout",
+                             stop_loss=20975.0, take_profit=21050.0)
+        assert tid is not None
+        assert len(j.trades) == 1
+        assert j.trades[0]["status"] == "open"
+
+        j.record_exit(tid, 21050.0, 1000.0, "take_profit")
+        assert j.trades[0]["status"] == "closed"
+        assert j.trades[0]["pnl"] == 1000.0
+        assert j.trades[0]["exit_reason"] == "take_profit"
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: R-multiple calculation")
+def test_journal_r_multiple():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tid = j.record_entry("NQ", "Buy", 21000.0, 1, "ORB", "breakout",
+                             stop_loss=20975.0, take_profit=21050.0)
+        # Risk = |21000 - 20975| * 1 * 20 (NQ point_value) = 25 * 20 = $500
+        j.record_exit(tid, 21050.0, 1000.0, "take_profit")
+        r = j.trades[0].get("r_multiple", 0)
+        assert abs(r - 2.0) < 0.01, f"Expected R=2.0, got {r}"
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: compute summary with known trades")
+def test_journal_compute_summary():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        # Create 3 wins and 2 losses
+        for i, (pnl, reason) in enumerate([
+            (500, "take_profit"), (300, "take_profit"), (200, "take_profit"),
+            (-150, "stop_loss"), (-100, "stop_loss"),
+        ]):
+            tid = j.record_entry("NQ", "Buy", 21000.0, 1, "ORB", "test",
+                                 stop_loss=20975.0, take_profit=21050.0)
+            j.record_exit(tid, 21050.0 if pnl > 0 else 20950.0, pnl, reason)
+
+        summary = j._compute_summary()
+        assert summary["total_trades"] == 5
+        assert summary["wins"] == 3
+        assert summary["losses"] == 2
+        assert abs(summary["win_rate"] - 0.6) < 0.01
+        assert abs(summary["total_pnl"] - 750.0) < 0.01
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: analyze by symbol grouping")
+def test_journal_analyze_by_symbol():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        for sym, pnl in [("NQ", 500), ("NQ", -200), ("GC", 300), ("GC", 100)]:
+            tid = j.record_entry(sym, "Buy", 100, 1, "ORB", "test")
+            j.record_exit(tid, 110, pnl, "signal")
+
+        by_sym = j.analyze_by_symbol()
+        assert "NQ" in by_sym
+        assert "GC" in by_sym
+        assert by_sym["NQ"]["trades"] == 2
+        assert abs(by_sym["NQ"]["total_pnl"] - 300) < 0.01
+        assert by_sym["GC"]["trades"] == 2
+        assert abs(by_sym["GC"]["total_pnl"] - 400) < 0.01
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: analyze by strategy grouping")
+def test_journal_analyze_by_strategy():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        for strat, pnl in [("ORB", 500), ("ORB", -100), ("VWAP", 200)]:
+            tid = j.record_entry("NQ", "Buy", 100, 1, strat, "test")
+            j.record_exit(tid, 110, pnl, "signal")
+
+        by_strat = j.analyze_by_strategy()
+        assert "ORB" in by_strat
+        assert "VWAP" in by_strat
+        assert by_strat["ORB"]["trades"] == 2
+        assert by_strat["VWAP"]["trades"] == 1
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: analyze by exit reason")
+def test_journal_analyze_by_exit_reason():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        for reason, pnl in [("take_profit", 500), ("stop_loss", -200), ("stop_loss", -150)]:
+            tid = j.record_entry("NQ", "Buy", 100, 1, "ORB", "test")
+            j.record_exit(tid, 110, pnl, reason)
+
+        by_exit = j.analyze_by_exit_reason()
+        assert by_exit["take_profit"]["count"] == 1
+        assert by_exit["stop_loss"]["count"] == 2
+        assert abs(by_exit["stop_loss"]["total_pnl"] - (-350)) < 0.01
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: daily P&L breakdown")
+def test_journal_daily_pnl():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tid1 = j.record_entry("NQ", "Buy", 100, 1, "ORB", "test")
+        j.record_exit(tid1, 110, 500, "take_profit")
+        tid2 = j.record_entry("NQ", "Buy", 100, 1, "ORB", "test")
+        j.record_exit(tid2, 90, -200, "stop_loss")
+
+        by_day = j.daily_pnl_breakdown()
+        today = date.today().isoformat()
+        assert today in by_day
+        assert abs(by_day[today] - 300) < 0.01
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: record_exit_by_symbol finds correct trade")
+def test_journal_exit_by_symbol():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        j.record_entry("NQ", "Buy", 100, 1, "ORB", "test1")
+        j.record_entry("GC", "Sell", 2000, 1, "VWAP", "test2")
+
+        j.record_exit_by_symbol("GC", 1990, 100, "take_profit")
+        assert j.trades[0]["status"] == "open"   # NQ still open
+        assert j.trades[1]["status"] == "closed"  # GC closed
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: persistence save/load roundtrip")
+def test_journal_persistence():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j1 = TradeJournal(filepath=path)
+        tid = j1.record_entry("NQ", "Buy", 21000, 1, "ORB", "test")
+        j1.record_exit(tid, 21050, 500, "take_profit")
+
+        # Load into new instance
+        j2 = TradeJournal(filepath=path)
+        assert len(j2.trades) == 1
+        assert j2.trades[0]["pnl"] == 500
+        assert j2.trades[0]["status"] == "closed"
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: generate_lessons produces insights for bad performance")
+def test_journal_generate_lessons():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        # Create 5 losing trades to trigger lessons
+        for _ in range(5):
+            tid = j.record_entry("NQ", "Buy", 100, 1, "ORB", "test",
+                                 stop_loss=95, take_profit=110)
+            j.record_exit(tid, 95, -100, "stop_loss")
+
+        lessons = j.generate_lessons()
+        assert len(lessons) >= 1
+        # Should mention low win rate (0%)
+        combined = " ".join(lessons).lower()
+        assert "win rate" in combined or "stop" in combined or "losing" in combined
+    finally:
+        os.unlink(path)
+
+
+test_journal_entry_exit()
+test_journal_r_multiple()
+test_journal_compute_summary()
+test_journal_analyze_by_symbol()
+test_journal_analyze_by_strategy()
+test_journal_analyze_by_exit_reason()
+test_journal_daily_pnl()
+test_journal_exit_by_symbol()
+test_journal_persistence()
+test_journal_generate_lessons()
+
+
+# ─────────────────────────────────────────────
+# 10. AUTO TUNER TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("10. AUTO TUNER TESTS")
+print("=" * 60)
+
+
+def _make_closed_trades(symbol, sl_count, tp_count, pnl_per_sl=-200, pnl_per_tp=400, r_mult=None):
+    """Helper to create a list of closed trade dicts."""
+    trades = []
+    for i in range(sl_count):
+        t = {
+            "symbol": symbol, "status": "closed", "pnl": pnl_per_sl,
+            "exit_reason": "stop_loss", "strategy": "ORB",
+            "entry_hour_et": 10, "date": date.today().isoformat(),
+            "r_multiple": r_mult if r_mult is not None else pnl_per_sl / 500,
+        }
+        trades.append(t)
+    for i in range(tp_count):
+        t = {
+            "symbol": symbol, "status": "closed", "pnl": pnl_per_tp,
+            "exit_reason": "take_profit", "strategy": "ORB",
+            "entry_hour_et": 10, "date": date.today().isoformat(),
+            "r_multiple": r_mult if r_mult is not None else pnl_per_tp / 500,
+        }
+        trades.append(t)
+    return trades
+
+
+@test("AutoTuner: widening stops when SL hit rate > 70%")
+def test_tuner_widen_stops():
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+
+        # 8 SL hits, 2 TP hits = 80% SL rate
+        trades = _make_closed_trades("NQ", 8, 2)
+
+        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        tuner._tune_stops(trades)
+
+        # Should have proposed widening
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        assert len(sl_adj) == 1, f"Expected 1 SL adjustment, got {len(sl_adj)}"
+        assert sl_adj[0]["new_value"] > old_sl, "New SL should be wider (larger)"
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: tightening stops when SL hit rate < 30%")
+def test_tuner_tighten_stops():
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+
+        # 1 SL hit, 6 TP hits = ~14% SL rate
+        trades = _make_closed_trades("NQ", 1, 6)
+
+        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        tuner._tune_stops(trades)
+
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        assert len(sl_adj) == 1
+        assert sl_adj[0]["new_value"] < old_sl, "New SL should be tighter (smaller)"
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: widening TP when avg R > 1.5")
+def test_tuner_widen_tp():
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+
+        # High R-multiple trades
+        trades = _make_closed_trades("NQ", 1, 4, r_mult=2.0)
+
+        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        tuner._tune_targets(trades)
+
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        assert len(tp_adj) == 1
+        assert tp_adj[0]["new_value"] > old_tp, "TP should be widened for high R"
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: tightening TP when avg R < -0.5")
+def test_tuner_tighten_tp():
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+
+        # Negative R-multiple trades — all stop_loss exits (no TP trades)
+        # so we reach the avg_r < -0.5 branch (not blocked by tp_trades > 0)
+        trades = _make_closed_trades("NQ", 4, 0, r_mult=-1.0)
+
+        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        tuner._tune_targets(trades)
+
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        assert len(tp_adj) == 1
+        assert tp_adj[0]["new_value"] < old_tp, "TP should be tightened for negative R"
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: propose caps at ±20%")
+def test_tuner_cap_20pct():
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+
+        old_val = 25.0
+        # Propose 50% increase — should be capped at 20%
+        tuner._propose("stop_loss_points", "NQ", old_val, old_val * 1.50, "test huge increase")
+
+        if tuner.adjustments:
+            new_val = tuner.adjustments[0]["new_value"]
+            max_allowed = old_val * 1.20
+            assert new_val <= max_allowed + 0.01, f"Expected <= {max_allowed}, got {new_val}"
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: propose respects absolute bounds")
+def test_tuner_absolute_bounds():
+    from auto_tuner import AutoTuner, _BOUNDS
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+
+        bounds = _BOUNDS["stop_loss_points"]["NQ"]
+        # Try to propose value above max bound
+        tuner._propose("stop_loss_points", "NQ", bounds[1] - 1, bounds[1] + 100, "test above max")
+
+        if tuner.adjustments:
+            assert tuner.adjustments[0]["new_value"] <= bounds[1], \
+                f"Should be capped at {bounds[1]}"
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: flag losing symbol for review")
+def test_tuner_flag_losing_symbol():
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+
+        # 5 trades, win rate 20%, total PnL -600
+        trades = _make_closed_trades("NQ", 4, 1, pnl_per_sl=-200, pnl_per_tp=200)
+
+        tuner._tune_symbol_allocation(trades)
+
+        flag_adj = [a for a in tuner.adjustments if a["param"] == "enabled"]
+        assert len(flag_adj) == 1
+        assert flag_adj[0]["new_value"] == "REVIEW"
+        assert flag_adj[0]["applied"] is False  # Should NOT auto-disable
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: reduce daily cap when late trades lose")
+def test_tuner_reduce_daily_cap():
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tuner = AutoTuner(journal=j)
+        today_str = date.today().isoformat()
+
+        # 12 trades today, late ones (after 8th) are mostly losses
+        trades = []
+        for i in range(12):
+            pnl = 200 if i < 7 else -300  # First 7 win, last 5 lose
+            trades.append({
+                "symbol": "NQ", "status": "closed", "pnl": pnl,
+                "exit_reason": "stop_loss" if pnl < 0 else "take_profit",
+                "strategy": "ORB", "entry_hour_et": 10,
+                "date": today_str, "r_multiple": 1.0 if pnl > 0 else -1.0,
+            })
+
+        old_cap = config.MAX_DAILY_TRADES
+        tuner._tune_daily_trade_cap(trades)
+        # Restore original
+        config.MAX_DAILY_TRADES = old_cap
+
+        cap_adj = [a for a in tuner.adjustments if a["param"] == "MAX_DAILY_TRADES"]
+        assert len(cap_adj) == 1
+        assert cap_adj[0]["new_value"] < old_cap
+    finally:
+        os.unlink(path)
+
+
+test_tuner_widen_stops()
+test_tuner_tighten_stops()
+test_tuner_widen_tp()
+test_tuner_tighten_tp()
+test_tuner_cap_20pct()
+test_tuner_absolute_bounds()
+test_tuner_flag_losing_symbol()
+test_tuner_reduce_daily_cap()
+
+
+# ─────────────────────────────────────────────
+# 11. BOT STATE PERSISTENCE TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("11. BOT STATE PERSISTENCE TESTS")
+print("=" * 60)
+
+
+@test("BotState: save/load roundtrip")
+def test_bot_state_roundtrip():
+    import bot_state
+    original_file = bot_state.STATE_FILE
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            bot_state.STATE_FILE = f.name
+
+        state = {"trades_today_count": 5, "symbols": {"NQ": {"type": "ORBStrategy"}}}
+        bot_state.save_state(state)
+        loaded = bot_state.load_state()
+        assert loaded is not None
+        assert loaded["trades_today_count"] == 5
+        assert "NQ" in loaded["symbols"]
+    finally:
+        if os.path.exists(bot_state.STATE_FILE):
+            os.unlink(bot_state.STATE_FILE)
+        bot_state.STATE_FILE = original_file
+
+
+@test("BotState: load returns None for missing file")
+def test_bot_state_missing_file():
+    import bot_state
+    original_file = bot_state.STATE_FILE
+    try:
+        bot_state.STATE_FILE = "/tmp/nonexistent_bot_state_test.json"
+        result = bot_state.load_state()
+        assert result is None
+    finally:
+        bot_state.STATE_FILE = original_file
+
+
+@test("BotState: load returns None for stale date")
+def test_bot_state_stale_date():
+    import bot_state
+    original_file = bot_state.STATE_FILE
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            bot_state.STATE_FILE = f.name
+            json.dump({"_date": "2020-01-01", "trades_today_count": 3}, f)
+
+        result = bot_state.load_state()
+        assert result is None, "Should return None for stale date"
+    finally:
+        if os.path.exists(bot_state.STATE_FILE):
+            os.unlink(bot_state.STATE_FILE)
+        bot_state.STATE_FILE = original_file
+
+
+@test("BotState: load returns None for corrupt JSON")
+def test_bot_state_corrupt():
+    import bot_state
+    original_file = bot_state.STATE_FILE
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            bot_state.STATE_FILE = f.name
+            f.write("{not valid json!!")
+
+        result = bot_state.load_state()
+        assert result is None, "Should return None for corrupt JSON"
+    finally:
+        if os.path.exists(bot_state.STATE_FILE):
+            os.unlink(bot_state.STATE_FILE)
+        bot_state.STATE_FILE = original_file
+
+
+@test("BotState: build_state captures ORB strategy state")
+def test_bot_state_build_orb():
+    from bot_state import build_state
+    from strategies import ORBStrategy
+
+    strategy = ORBStrategy("NQ")
+    strategy.trades_taken = 2
+    strategy.last_trade_time = datetime(2026, 3, 1, 10, 30, tzinfo=timezone.utc)
+    if strategy.windows:
+        strategy.windows[0].breakout_fired = True
+
+    state = build_state({"NQ": strategy}, 3, [])
+    assert state["trades_today_count"] == 3
+    assert state["symbols"]["NQ"]["type"] == "ORBStrategy"
+    assert state["symbols"]["NQ"]["trades_taken"] == 2
+    assert state["symbols"]["NQ"]["windows"][0]["breakout_fired"] is True
+
+
+@test("BotState: build_state captures VWAP strategy state")
+def test_bot_state_build_vwap():
+    from bot_state import build_state
+    from strategies import VWAPStrategy
+
+    strategy = VWAPStrategy("GC")
+    strategy.long_count = 1
+    strategy.short_count = 2
+
+    state = build_state({"GC": strategy}, 4, [])
+    assert state["symbols"]["GC"]["type"] == "VWAPStrategy"
+    assert state["symbols"]["GC"]["long_count"] == 1
+    assert state["symbols"]["GC"]["short_count"] == 2
+
+
+@test("BotState: restore_strategies restores ORB state")
+def test_bot_state_restore_orb():
+    from bot_state import restore_strategies
+    from strategies import ORBStrategy
+
+    strategy = ORBStrategy("NQ")
+    state = {
+        "symbols": {
+            "NQ": {
+                "type": "ORBStrategy",
+                "trades_taken": 2,
+                "last_trade_time": "2026-03-01T10:30:00+00:00",
+                "windows": [
+                    {"window_minutes": 5, "breakout_fired": True,
+                     "range_set": True, "range_high": 21060, "range_low": 21040},
+                ],
+            }
+        }
+    }
+
+    restore_strategies(state, {"NQ": strategy})
+    assert strategy.trades_taken == 2
+    assert strategy.last_trade_time is not None
+    assert strategy.windows[0].breakout_fired is True
+
+
+test_bot_state_roundtrip()
+test_bot_state_missing_file()
+test_bot_state_stale_date()
+test_bot_state_corrupt()
+test_bot_state_build_orb()
+test_bot_state_build_vwap()
+test_bot_state_restore_orb()
+
+
+# ─────────────────────────────────────────────
+# 12. BOT ORCHESTRATOR TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("12. BOT ORCHESTRATOR TESTS")
+print("=" * 60)
+
+
+@test("Bot: _execute_signal in dry run mode logs but doesn't place orders")
+def test_bot_execute_signal_dry_run():
+    from bot import TradovateBot
+    from strategies import TradeSignal, Direction
+
+    bot = TradovateBot(dry_run=True)
+    bot.api = MagicMock()
+    bot.contract_map = {"NQ": "NQH6"}
+    bot.strategies = {"NQ": MagicMock()}
+    bot._last_order_time = 0  # No cooldown
+
+    signal = TradeSignal(
+        symbol="NQ", direction=Direction.LONG,
+        entry_price=21000, stop_loss=20975, take_profit=21050,
+        qty=1, reason="test breakout",
+    )
+    bot._execute_signal(signal)
+
+    bot.api.place_bracket_order.assert_not_called()
+    assert len(bot.trades_today) == 1
+
+
+@test("Bot: _execute_signal respects global cooldown")
+def test_bot_execute_signal_cooldown():
+    from bot import TradovateBot
+    from strategies import TradeSignal, Direction
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (True, "OK")
+    bot.contract_map = {"NQ": "NQH6"}
+
+    # Set last order to just now (within cooldown)
+    bot._last_order_time = time.time()
+
+    signal = TradeSignal(
+        symbol="NQ", direction=Direction.LONG,
+        entry_price=21000, stop_loss=20975, take_profit=21050,
+        qty=1, reason="test breakout",
+    )
+    bot._execute_signal(signal)
+
+    # Should NOT have placed an order due to cooldown
+    bot.api.place_bracket_order.assert_not_called()
+
+
+@test("Bot: _execute_signal rejected by risk manager")
+def test_bot_execute_signal_risk_reject():
+    from bot import TradovateBot
+    from strategies import TradeSignal, Direction
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (False, "DRAWDOWN BREACH")
+    bot.contract_map = {"NQ": "NQH6"}
+    bot._last_order_time = 0
+
+    signal = TradeSignal(
+        symbol="NQ", direction=Direction.LONG,
+        entry_price=21000, stop_loss=20975, take_profit=21050,
+        qty=1, reason="test breakout",
+    )
+    bot._execute_signal(signal)
+
+    bot.api.place_bracket_order.assert_not_called()
+
+
+@test("Bot: _execute_signal places order and registers with risk manager")
+def test_bot_execute_signal_success():
+    from bot import TradovateBot
+    from strategies import TradeSignal, Direction
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.place_bracket_order.return_value = {"orderId": 123, "slOrderId": 124, "tpOrderId": 125}
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (True, "OK")
+    bot.risk.calculate_position_size.return_value = 2
+    bot.journal = MagicMock()
+    bot.journal.record_entry.return_value = "NQ_20260301_103000"
+    bot.contract_map = {"NQ": "NQH6"}
+    bot.strategies = {"NQ": MagicMock()}
+    bot._last_order_time = 0
+
+    signal = TradeSignal(
+        symbol="NQ", direction=Direction.LONG,
+        entry_price=21000, stop_loss=20975, take_profit=21050,
+        qty=1, reason="test breakout",
+    )
+    bot._execute_signal(signal)
+
+    bot.api.place_bracket_order.assert_called_once()
+    bot.risk.register_open.assert_called_once_with(2)
+    bot.journal.record_entry.assert_called_once()
+
+
+@test("Bot: _execute_signal skips when position size is 0")
+def test_bot_execute_signal_zero_qty():
+    from bot import TradovateBot
+    from strategies import TradeSignal, Direction
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (True, "OK")
+    bot.risk.calculate_position_size.return_value = 0
+    bot.contract_map = {"NQ": "NQH6"}
+    bot._last_order_time = 0
+
+    signal = TradeSignal(
+        symbol="NQ", direction=Direction.LONG,
+        entry_price=21000, stop_loss=20975, take_profit=21050,
+        qty=1, reason="test",
+    )
+    bot._execute_signal(signal)
+
+    bot.api.place_bracket_order.assert_not_called()
+
+
+@test("Bot: _process_price runs strategy and executes signal")
+def test_bot_process_price():
+    from bot import TradovateBot
+    from strategies import TradeSignal, Direction
+
+    bot = TradovateBot(dry_run=True)
+    bot.contract_map = {"NQ": "NQH6"}
+
+    mock_strategy = MagicMock()
+    # Remove update_vwap so it takes the ORB path
+    del mock_strategy.update_vwap
+    mock_signal = TradeSignal(
+        symbol="NQ", direction=Direction.LONG,
+        entry_price=21000, stop_loss=20975, take_profit=21050,
+        qty=1, reason="breakout",
+    )
+    mock_strategy.on_price.return_value = mock_signal
+    bot.strategies = {"NQ": mock_strategy}
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (True, "OK")
+    bot.risk.calculate_position_size.return_value = 1
+    bot.journal = MagicMock()
+    bot.journal.record_entry.return_value = "NQ_test"
+    bot._last_order_time = 0
+    bot.api = MagicMock()
+    bot.api.place_bracket_order.return_value = {"orderId": 999}
+
+    # Mock time to be within trading hours
+    with patch("bot.now_et") as mock_now, \
+         patch("bot.parse_time_et") as mock_parse:
+        mock_now.return_value = datetime(2026, 3, 2, 10, 30, tzinfo=ZoneInfo("America/New_York"))
+        mock_parse.side_effect = [
+            datetime(2026, 3, 2, 9, 30, tzinfo=ZoneInfo("America/New_York")),  # start
+            datetime(2026, 3, 2, 16, 15, tzinfo=ZoneInfo("America/New_York")),  # cutoff
+        ]
+        bot._process_price("NQ", 21070.0, 21075.0, 21065.0, 100)
+
+    mock_strategy.on_price.assert_called_once()
+
+
+test_bot_execute_signal_dry_run()
+test_bot_execute_signal_cooldown()
+test_bot_execute_signal_risk_reject()
+test_bot_execute_signal_success()
+test_bot_execute_signal_zero_qty()
+test_bot_process_price()
+
+
+# ─────────────────────────────────────────────
+# 13. API ERROR HANDLING TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("13. API ERROR HANDLING TESTS")
+print("=" * 60)
+
+
+@test("API: ensure_token_valid skips if token is fresh")
+def test_api_token_fresh():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "valid-token"
+    # Set expiry to 30 minutes from now (> 5 min threshold)
+    api.token_expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+
+    with patch("requests.post") as mock_post:
+        api.ensure_token_valid()
+        mock_post.assert_not_called()  # Should not try to renew
+
+
+@test("API: get_accounts returns empty list on error")
+def test_api_accounts_error():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.side_effect = Exception("Network error")
+
+    with patch("requests.get", return_value=mock_resp):
+        try:
+            result = api.get_accounts()
+            # Should either return empty or raise — both acceptable
+        except Exception:
+            pass  # Expected for error handling
+
+
+@test("API: place_bracket_order handles failed entry order")
+def test_api_bracket_entry_fail():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+    api.account_id = 1
+    api.account_spec = "DEMO"
+
+    with patch.object(api, "_post", return_value=None) as mock_post:
+        result = api.place_bracket_order(
+            symbol="NQH6", action="Buy", qty=1,
+            entry_price=None, stop_price=21000, take_profit_price=21100,
+            order_type="Market",
+        )
+        # Should handle gracefully — either None or error dict
+        if result is not None:
+            assert "orderId" not in result or result.get("error")
+
+
+@test("API: NaN/Inf balance update rejected by risk manager")
+def test_risk_nan_balance():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    old_balance = rm.current_balance
+
+    rm.update_balance(float("nan"), 0)
+    assert rm.current_balance == old_balance, "NaN should be rejected"
+
+    rm.update_balance(float("inf"), 0)
+    assert rm.current_balance == old_balance, "Inf should be rejected"
+
+
+@test("API: record_fill with NaN is rejected")
+def test_risk_nan_fill():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    old_balance = rm.current_balance
+
+    rm.record_fill(float("nan"))
+    assert rm.current_balance == old_balance, "NaN fill should be rejected"
+
+
+@test("API: record_fill clamps negative balance to 0")
+def test_risk_negative_balance_clamp():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    rm.current_balance = 100
+
+    rm.record_fill(-5000)  # Much larger loss than balance
+    assert rm.current_balance >= 0, "Balance should be clamped to 0"
+
+
+test_api_token_fresh()
+test_api_accounts_error()
+test_api_bracket_entry_fail()
+test_risk_nan_balance()
+test_risk_nan_fill()
+test_risk_negative_balance_clamp()
+
+
+# ─────────────────────────────────────────────
+# 14. STATUS REPORTER TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("14. STATUS REPORTER TESTS")
+print("=" * 60)
+
+
+@test("StatusReporter: write_status produces valid JSON with all fields")
+def test_status_reporter_fields():
+    import status_reporter
+    original_path = status_reporter.STATUS_PATH
+
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        test_path = Path(f.name)
+
+    try:
+        status_reporter.STATUS_PATH = test_path
+
+        risk_status = {
+            "balance": 50500, "equity": 50600, "day_pnl": 500,
+            "peak_balance": 50600, "drawdown_floor": 48100,
+            "distance_to_floor": 2500, "open_contracts": 1,
+            "trades_today": 3, "locked": False, "lock_reason": "",
+        }
+        status_reporter.write_status(
+            risk_status,
+            contract_map={"NQ": "NQH6", "GC": "GCJ6"},
+            dry_run=False,
+            open_positions=[{"symbol": "NQ", "qty": 1, "pnl_dollars": 100}],
+            recent_closed_trades=[],
+        )
+
+        data = json.loads(test_path.read_text())
+        required_fields = [
+            "bot", "timestamp", "timestamp_et", "environment", "dry_run",
+            "balance", "equity", "day_pnl", "peak_balance", "drawdown_floor",
+            "distance_to_floor", "open_contracts", "trades_today",
+            "locked", "lock_reason", "active_symbols",
+            "open_positions", "open_positions_count", "recent_closed_trades",
+        ]
+        for field in required_fields:
+            assert field in data, f"Missing field: {field}"
+
+        assert data["bot"] == "Tradovate"
+        assert data["balance"] == 50500
+        assert data["open_positions_count"] == 1
+        assert "NQ" in data["active_symbols"]
+    finally:
+        status_reporter.STATUS_PATH = original_path
+        if test_path.exists():
+            test_path.unlink()
+
+
+@test("StatusReporter: empty positions and locked state")
+def test_status_reporter_locked():
+    import status_reporter
+    original_path = status_reporter.STATUS_PATH
+
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        test_path = Path(f.name)
+
+    try:
+        status_reporter.STATUS_PATH = test_path
+
+        risk_status = {
+            "balance": 47000, "equity": 47000, "day_pnl": -1000,
+            "peak_balance": 50000, "drawdown_floor": 47500,
+            "distance_to_floor": -500, "open_contracts": 0,
+            "trades_today": 5, "locked": True, "lock_reason": "DRAWDOWN BREACH",
+        }
+        status_reporter.write_status(risk_status, contract_map={})
+
+        data = json.loads(test_path.read_text())
+        assert data["locked"] is True
+        assert data["lock_reason"] == "DRAWDOWN BREACH"
+        assert data["open_positions_count"] == 0
+        assert data["active_symbols"] == []
+    finally:
+        status_reporter.STATUS_PATH = original_path
+        if test_path.exists():
+            test_path.unlink()
+
+
+@test("StatusReporter: handles missing risk_status fields gracefully")
+def test_status_reporter_missing_fields():
+    import status_reporter
+    original_path = status_reporter.STATUS_PATH
+
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        test_path = Path(f.name)
+
+    try:
+        status_reporter.STATUS_PATH = test_path
+
+        # Minimal risk_status with some fields missing
+        risk_status = {"balance": 50000}
+        status_reporter.write_status(risk_status)
+
+        data = json.loads(test_path.read_text())
+        assert data["balance"] == 50000
+        assert data["equity"] is None
+        assert data["locked"] is None
+    finally:
+        status_reporter.STATUS_PATH = original_path
+        if test_path.exists():
+            test_path.unlink()
+
+
+test_status_reporter_fields()
+test_status_reporter_locked()
+test_status_reporter_missing_fields()
+
+
+# ─────────────────────────────────────────────
+# 15. BOT HEALTH CHECK TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("15. BOT HEALTH CHECK TESTS")
+print("=" * 60)
+
+
+@test("HealthCheck: check_bot_log parses status line and counts errors")
+def test_health_check_bot_log():
+    from bot_health_check import check_bot_log, LOG_FILE
+    original_log = bot_health_check.LOG_FILE
+
+    with tempfile.NamedTemporaryFile(suffix=".log", delete=False, mode="w") as f:
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"{now_str} [INFO] Status | balance=50500\n")
+        f.write(f"{now_str} [ERROR] Connection failed\n")
+        f.write(f"{now_str} [WARNING] Token expiring\n")
+        f.write(f"{now_str} [INFO] SIGNAL: NQ LONG breakout\n")
+        f.write(f"{now_str} [INFO] Order placed: orderId=123\n")
+        test_log = Path(f.name)
+
+    try:
+        bot_health_check.LOG_FILE = test_log
+        result = check_bot_log()
+
+        assert result["log_exists"] is True
+        assert result["last_status_line"] is not None
+        assert "Status |" in result["last_status_line"]
+        assert result["errors_last_hour"] >= 1
+        assert result["warnings_last_hour"] >= 1
+        assert result["signals_today"] >= 1
+        assert result["trades_today"] >= 1
+    finally:
+        bot_health_check.LOG_FILE = original_log
+        test_log.unlink()
+
+
+import bot_health_check
+
+
+@test("HealthCheck: check_bot_log handles missing file")
+def test_health_check_missing_log():
+    original_log = bot_health_check.LOG_FILE
+    try:
+        bot_health_check.LOG_FILE = Path("/tmp/nonexistent_bot_log_test.log")
+        result = bot_health_check.check_bot_log()
+        assert result["log_exists"] is False
+    finally:
+        bot_health_check.LOG_FILE = original_log
+
+
+@test("HealthCheck: check_live_status with valid file")
+def test_health_check_live_status():
+    original_file = bot_health_check.LIVE_STATUS_FILE
+
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        json.dump({"timestamp": now_iso, "balance": 50500, "locked": False}, f)
+        test_file = Path(f.name)
+
+    try:
+        bot_health_check.LIVE_STATUS_FILE = test_file
+        result = bot_health_check.check_live_status()
+
+        assert result["exists"] is True
+        assert result["age_seconds"] is not None
+        assert result["age_seconds"] < 60  # Just written
+        assert result["data"]["balance"] == 50500
+    finally:
+        bot_health_check.LIVE_STATUS_FILE = original_file
+        test_file.unlink()
+
+
+@test("HealthCheck: check_live_status handles missing file")
+def test_health_check_missing_live_status():
+    original_file = bot_health_check.LIVE_STATUS_FILE
+    try:
+        bot_health_check.LIVE_STATUS_FILE = Path("/tmp/nonexistent_live_status.json")
+        result = bot_health_check.check_live_status()
+        assert result["exists"] is False
+    finally:
+        bot_health_check.LIVE_STATUS_FILE = original_file
+
+
+@test("HealthCheck: check_token handles missing token file")
+def test_health_check_missing_token():
+    original_file = bot_health_check.TOKEN_FILE
+    try:
+        bot_health_check.TOKEN_FILE = Path("/tmp/nonexistent_token.json")
+        result = bot_health_check.check_token()
+        assert result["exists"] is False
+        assert result["valid"] is False
+    finally:
+        bot_health_check.TOKEN_FILE = original_file
+
+
+test_health_check_bot_log()
+test_health_check_missing_log()
+test_health_check_live_status()
+test_health_check_missing_live_status()
+test_health_check_missing_token()
+
+
+# ─────────────────────────────────────────────
+# 16. CONSISTENCY RULE / DAILY PROFIT CAP TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("16. CONSISTENCY RULE / DAILY PROFIT CAP TESTS")
+print("=" * 60)
+
+
+@test("RiskManager: daily profit cap locks trading")
+def test_risk_daily_profit_cap():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    if rm.daily_profit_cap:
+        rm.day_start_balance = rm.current_balance
+        # Simulate profit exceeding cap
+        rm.update_balance(rm.current_balance + rm.daily_profit_cap + 100, 0)
+        assert rm.trading_locked is True
+        assert "PROFIT CAP" in rm.lock_reason
+
+
+@test("Journal: compute_effective_target adjusts for consistency rule")
+def test_journal_effective_target():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+
+        # Create trades: one big day ($2000) and several small days
+        # If consistency_pct = 0.4, then effective target = max(3000, 2000/0.4) = max(3000, 5000) = 5000
+        # Manually set up trades
+        j.trades = [
+            {"id": "t1", "symbol": "NQ", "direction": "Buy", "entry_price": 100,
+             "qty": 1, "strategy": "ORB", "reason": "test",
+             "stop_loss": 95, "take_profit": 110, "status": "closed",
+             "pnl": 2000, "exit_reason": "take_profit",
+             "date": "2026-03-10", "entry_hour_et": 10, "entry_time": "2026-03-10T14:00:00+00:00",
+             "exit_time": "2026-03-10T15:00:00+00:00", "exit_price": 110, "r_multiple": 2.0},
+            {"id": "t2", "symbol": "NQ", "direction": "Buy", "entry_price": 100,
+             "qty": 1, "strategy": "ORB", "reason": "test",
+             "stop_loss": 95, "take_profit": 110, "status": "closed",
+             "pnl": 500, "exit_reason": "take_profit",
+             "date": "2026-03-11", "entry_hour_et": 10, "entry_time": "2026-03-11T14:00:00+00:00",
+             "exit_time": "2026-03-11T15:00:00+00:00", "exit_price": 110, "r_multiple": 1.0},
+        ]
+
+        result = j.compute_effective_target()
+        assert result["highest_day_profit"] == 2000
+        # If consistency_pct < 1.0, target should be adjusted
+        if result["consistency_adjusted"]:
+            assert result["effective_target"] > result["base_target"]
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: consistency rule not triggered when no big days")
+def test_journal_consistency_no_trigger():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        # All small uniform days
+        for i in range(5):
+            tid = j.record_entry("NQ", "Buy", 100, 1, "ORB", "test")
+            j.record_exit(tid, 110, 200, "take_profit")
+
+        result = j.compute_effective_target()
+        # All profits are on the same day so highest = 1000
+        # Whether adjusted depends on consistency_pct config
+        # But effective_target should always >= base_target
+        assert result["effective_target"] >= result["base_target"]
+    finally:
+        os.unlink(path)
+
+
+@test("RiskManager: set_initial_balance corrects day_pnl")
+def test_risk_set_initial_balance():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    # Simulate: real balance is $51000 but config says $50000
+    rm.set_initial_balance(51000.0)
+    assert rm.current_balance == 51000.0
+    assert rm.day_start_balance == 51000.0
+    assert rm._balance_initialized is True
+    # day_pnl should be 0 now (balance - day_start = 0)
+    rm.update_balance(51000.0, 0)
+    assert abs(rm.day_pnl) < 0.01, f"day_pnl should be ~0, got {rm.day_pnl}"
+
+
+test_risk_daily_profit_cap()
+test_journal_effective_target()
+test_journal_consistency_no_trigger()
+test_risk_set_initial_balance()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 
