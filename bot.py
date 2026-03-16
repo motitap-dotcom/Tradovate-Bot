@@ -557,10 +557,20 @@ class TradovateBot:
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
+            # Look up cached contract ID so MarketDataStream can route quotes
+            # to the correct strategy (without this, ALL quotes go to ALL symbols)
+            contract_id = None
+            for cid, sym in self._contract_id_to_symbol.items():
+                if sym == symbol:
+                    contract_id = cid
+                    break
             self.md_stream.subscribe_quote(
                 contract_name,
                 lambda sym, data, s=symbol: self._on_quote(s, data),
+                contract_id=contract_id,
             )
+            if contract_id is None:
+                logger.warning("No contract ID cached for %s — quotes may route incorrectly", symbol)
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
