@@ -954,6 +954,15 @@ class TradovateBot:
                 "environment": config.ENVIRONMENT,
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
+                "websocket_connected": (
+                    self.md_stream._connected.is_set()
+                    if self.md_stream and hasattr(self.md_stream, "_connected")
+                    else False
+                ),
+                "market_data_source": (
+                    "websocket" if isinstance(self.md_stream, MarketDataStream)
+                    else "rest" if self.md_stream else "none"
+                ),
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
