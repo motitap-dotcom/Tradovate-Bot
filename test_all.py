@@ -800,6 +800,27 @@ def test_new_day_reset():
     assert rm.trading_locked is False
 
 
+@test("Status includes profit cap, unrealized PnL, and balance_initialized fields")
+def test_status_fields():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    status = rm.status()
+    # New fields must be present
+    assert "daily_profit_cap" in status
+    assert "daily_profit_remaining" in status
+    assert "unrealized_pnl" in status
+    assert "balance_initialized" in status
+    # balance_initialized should be False before set_initial_balance
+    assert status["balance_initialized"] is False
+    # After set_initial_balance it should be True
+    rm.set_initial_balance(50000)
+    status = rm.status()
+    assert status["balance_initialized"] is True
+    # With a profit cap, daily_profit_remaining should reflect headroom
+    if rm.daily_profit_cap:
+        assert status["daily_profit_remaining"] == rm.daily_profit_cap - rm.day_pnl
+
+
 test_risk_init()
 test_can_trade_ok()
 test_drawdown_lock()
@@ -811,6 +832,7 @@ test_position_sizing_locked()
 test_peak_trailing()
 test_register_open_close()
 test_new_day_reset()
+test_status_fields()
 
 
 # ─────────────────────────────────────────────
