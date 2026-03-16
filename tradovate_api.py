@@ -752,7 +752,7 @@ class TradovateAPI:
             entry_payload,
         )
 
-        entry_result = self._post("/order/placeorder", entry_payload)
+        entry_result = self._post("/order/placeorder", entry_payload, timeout=30)
         if not entry_result or "orderId" not in entry_result:
             logger.error("Entry order failed: %s", entry_result)
             return None
@@ -818,7 +818,7 @@ class TradovateAPI:
             },
         }
 
-        oco_result = self._post("/order/placeOCO", oco_payload)
+        oco_result = self._post("/order/placeOCO", oco_payload, timeout=30)
         if not oco_result or "orderId" not in oco_result:
             logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
             # CRITICAL: Entry exists WITHOUT stop-loss protection.
@@ -857,7 +857,7 @@ class TradovateAPI:
             "timeInForce": "Day",
             "isAutomated": True,
         }
-        return self._post("/order/placeorder", payload)
+        return self._post("/order/placeorder", payload, timeout=30)
 
     def cancel_all_orders(self) -> bool:
         """Cancel all working orders for the account."""
@@ -895,17 +895,17 @@ class TradovateAPI:
     # HTTP helpers
     # ─────────────────────────────────────────
 
-    def _get(self, endpoint: str, _retried: bool = False) -> Any:
+    def _get(self, endpoint: str, _retried: bool = False, timeout: int = 15) -> Any:
         self.ensure_token_valid()
         try:
             resp = requests.get(
-                f"{self.base_url}{endpoint}", headers=self._headers(), timeout=30
+                f"{self.base_url}{endpoint}", headers=self._headers(), timeout=timeout
             )
             # Auto re-auth on 401/403 (expired token) — retry once
             if resp.status_code in (401, 403) and not _retried:
                 logger.warning("GET %s returned %d. Re-authenticating...", endpoint, resp.status_code)
                 if self._re_authenticate():
-                    return self._get(endpoint, _retried=True)
+                    return self._get(endpoint, _retried=True, timeout=timeout)
             resp.raise_for_status()
             try:
                 return resp.json()
@@ -916,20 +916,20 @@ class TradovateAPI:
             logger.error("GET %s failed: %s", endpoint, e)
             return None
 
-    def _post(self, endpoint: str, payload: dict, _retried: bool = False) -> Any:
+    def _post(self, endpoint: str, payload: dict, _retried: bool = False, timeout: int = 15) -> Any:
         self.ensure_token_valid()
         try:
             resp = requests.post(
                 f"{self.base_url}{endpoint}",
                 headers=self._headers(),
                 json=payload,
-                timeout=30,
+                timeout=timeout,
             )
             # Auto re-auth on 401/403 (expired token) — retry once
             if resp.status_code in (401, 403) and not _retried:
                 logger.warning("POST %s returned %d. Re-authenticating...", endpoint, resp.status_code)
                 if self._re_authenticate():
-                    return self._post(endpoint, payload, _retried=True)
+                    return self._post(endpoint, payload, _retried=True, timeout=timeout)
             if resp.status_code != 200:
                 logger.error(
                     "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
@@ -1007,7 +1007,7 @@ class MarketDataStream:
         self._start_time = time.time()
         self._quotes_received = 0
         self._connect()
-        self._connected.wait(timeout=15)
+        self._connected.wait(timeout=5)
 
     def _connect(self):
         """Create WebSocket and connect."""

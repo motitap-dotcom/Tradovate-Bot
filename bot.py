@@ -14,6 +14,7 @@ Usage:
 """
 
 import argparse
+import concurrent.futures
 import json
 import logging
 import os
@@ -138,6 +139,11 @@ class TradovateBot:
         # Resolve front-month contracts
         self._resolve_contracts()
 
+        # Build contract ID cache (so _sync_fills doesn't block the main loop)
+        self._contract_id_to_symbol = {}
+        if not self.dry_run:
+            self._build_contract_id_cache()
+
         # Initialize strategies
         self._init_strategies()
 
@@ -199,6 +205,26 @@ class TradovateBot:
             logger.error("Failed to fetch initial balance: %s", e)
 
     # ─────────────────────────────────────────
+    # Timeout helper — protects main loop from blocking API calls
+    # ─────────────────────────────────────────
+
+    _timeout_pool = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="bot-timeout")
+
+    def _call_with_timeout(self, func, timeout_sec: float = 10, label: str = ""):
+        """Run *func* (no args) in a thread pool with a timeout.
+
+        Returns the result or raises TimeoutError / the original exception.
+        This prevents a single slow API call from freezing the main loop.
+        """
+        future = self._timeout_pool.submit(func)
+        try:
+            return future.result(timeout=timeout_sec)
+        except concurrent.futures.TimeoutError:
+            logger.warning("Timeout (%ds) on %s — skipping this cycle", timeout_sec, label or func.__name__)
+            future.cancel()
+            raise TimeoutError(f"{label or func.__name__} timed out after {timeout_sec}s")
+
+    # ─────────────────────────────────────────
     # Contract resolution
     # ─────────────────────────────────────────
 
@@ -229,6 +255,17 @@ class TradovateBot:
                 logger.warning(
                     "Could not resolve front-month for %s. Skipping.", symbol
                 )
+
+    def _build_contract_id_cache(self):
+        """Resolve contract IDs once at startup so _sync_fills doesn't need to."""
+        for symbol, contract_name in self.contract_map.items():
+            try:
+                contract = self.api.find_contract(contract_name)
+                if contract and contract.get("id"):
+                    self._contract_id_to_symbol[contract["id"]] = symbol
+                    logger.info("Cached contract ID %s -> %s", contract["id"], symbol)
+            except Exception as e:
+                logger.warning("Failed to cache contract ID for %s: %s", symbol, e)
 
     # ─────────────────────────────────────────
     # Contract rollover
@@ -722,12 +759,21 @@ class TradovateBot:
                     break
 
                 # Update balance from API FIRST (before logging status)
+                # Wrapped with timeout (10s) to prevent freezing if API is slow
                 api_ok = True
                 if not self.dry_run:
                     try:
-                        self._sync_balance()
-                        self._sync_fills()
+                        self._call_with_timeout(self._sync_balance, timeout_sec=10, label="sync_balance")
+                        self._call_with_timeout(self._sync_fills, timeout_sec=10, label="sync_fills")
                         self._consecutive_api_failures = 0  # Reset on success
+                    except TimeoutError:
+                        self._consecutive_api_failures += 1
+                        api_ok = False
+                        logger.warning(
+                            "API sync timed out (%d/%d)",
+                            self._consecutive_api_failures,
+                            _MAX_API_FAILURES_BEFORE_REAUTH,
+                        )
                     except Exception as e:
                         self._consecutive_api_failures += 1
                         api_ok = False
@@ -785,7 +831,7 @@ class TradovateBot:
                             try:
                                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
                                 ws.start()
-                                if ws._connected.wait(timeout=10):
+                                if ws._connected.wait(timeout=3):
                                     logger.info("WebSocket recovery succeeded! Switching from REST to WebSocket.")
                                     self.md_stream.stop()
                                     self.md_stream = ws
@@ -842,18 +888,17 @@ class TradovateBot:
         try:
             positions = self.api.get_positions()
 
-            # Build contractId -> base symbol mapping from our contract_map
-            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
-            # We need to match position contractId (int) to our symbols.
-            # Resolve this once and cache it.
+            # Use contract ID cache built at startup (no blocking API calls here).
+            # If a symbol is missing from cache (e.g. after rollover), rebuild lazily
+            # but only for the missing ones and with a cooldown.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
-            # Lazily build the mapping from API contract lookups
-            for symbol, contract_name in self.contract_map.items():
-                if symbol not in [v for v in self._contract_id_to_symbol.values()]:
-                    contract = self.api.find_contract(contract_name)
-                    if contract:
-                        self._contract_id_to_symbol[contract["id"]] = symbol
+            cached_symbols = set(self._contract_id_to_symbol.values())
+            missing = [s for s in self.contract_map if s not in cached_symbols]
+            if missing and time.time() - getattr(self, "_last_cache_rebuild", 0) > 300:
+                self._last_cache_rebuild = time.time()
+                logger.info("Rebuilding contract ID cache for missing symbols: %s", missing)
+                self._build_contract_id_cache()
 
             # Count total open contracts from API (authoritative)
             total_open = 0
