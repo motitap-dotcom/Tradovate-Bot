@@ -454,16 +454,9 @@ class TradovateBot:
                         strategy._prev_price = c
                     else:
                         # ORB: feed candles to build the opening range
+                        # and detect breakouts that already occurred.
                         for window in getattr(strategy, "windows", []):
-                            if not window.range_set:
-                                window.feed(c, h, l, candle_time.time())
-                            else:
-                                # Range is set — just track _last_price so
-                                # feed() can detect fresh crosses on live ticks.
-                                # Do NOT mark breakout_fired here: the fresh-cross
-                                # guard in feed() already prevents stale breakouts
-                                # (it requires _last_price inside the range).
-                                window._last_price = c
+                            window.feed(c, h, l, candle_time.time())
 
                     fed += 1
 
@@ -532,8 +525,12 @@ class TradovateBot:
         if price is None:
             return
 
-        high = data.get("high", {}).get("price", price)
-        low = data.get("low", {}).get("price", price)
+        # Use tick price for high/low — the quote-level "high"/"low" fields
+        # are SESSION extremes (day high/low), not per-tick values.
+        # Feeding session high/low into VWAP distorts the typical price
+        # calculation and prevents valid crossover signals.
+        high = price
+        low = price
         volume = data.get("trade", {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
