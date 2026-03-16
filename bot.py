@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot — v2.2 (quote-routing-fix)
+Tradovate Trading Bot — v2.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -32,7 +32,7 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
-from continuous_learner import ContinuousLearner
+from bot_commands import read_pending_command, execute_command
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -83,9 +83,6 @@ class TradovateBot:
 
         # Symbol → front-month contract name mapping
         self.contract_map: dict[str, str] = {}
-
-        # Contract name → contract ID mapping (for WebSocket quote filtering)
-        self.contract_ids: dict[str, int] = {}
 
         # Active strategy instances
         self.strategies: dict[str, object] = {}
@@ -222,14 +219,11 @@ class TradovateBot:
             if contract:
                 contract_name = contract.get("name", symbol)
                 self.contract_map[symbol] = contract_name
-                contract_id = contract.get("id")
-                if contract_id is not None:
-                    self.contract_ids[contract_name] = contract_id
                 logger.info(
                     "Resolved %s -> %s (id=%s)",
                     symbol,
                     contract_name,
-                    contract_id,
+                    contract.get("id"),
                 )
             else:
                 logger.warning(
@@ -376,22 +370,16 @@ class TradovateBot:
                     if v != symbol
                 }
 
-            # Update contract ID mapping
-            new_id = new_contract_data.get("id") if new_contract_data else None
-            if new_id is not None:
-                self.contract_ids[new_contract] = new_id
-
             # Subscribe to new contract
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
-                    contract_id=new_id,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_id,
+                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
             )
 
     # ─────────────────────────────────────────
@@ -467,9 +455,16 @@ class TradovateBot:
                         strategy._prev_price = c
                     else:
                         # ORB: feed candles to build the opening range
-                        # and detect breakouts that already occurred.
                         for window in getattr(strategy, "windows", []):
-                            window.feed(c, h, l, candle_time.time())
+                            if not window.range_set:
+                                window.feed(c, h, l, candle_time.time())
+                            else:
+                                # Range is set — just track _last_price so
+                                # feed() can detect fresh crosses on live ticks.
+                                # Do NOT mark breakout_fired here: the fresh-cross
+                                # guard in feed() already prevents stale breakouts
+                                # (it requires _last_price inside the range).
+                                window._last_price = c
 
                     fed += 1
 
@@ -500,9 +495,9 @@ class TradovateBot:
     # Market data
     # ─────────────────────────────────────────
 
-    def _start_market_data(self, force_rest: bool = False):
+    def _start_market_data(self):
         """Try WebSocket first; fall back to REST polling if WS is unavailable."""
-        if not force_rest and self.api.md_access_token:
+        if self.api.md_access_token:
             try:
                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
                 ws.start()
@@ -525,11 +520,9 @@ class TradovateBot:
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
-            contract_id = self.contract_ids.get(contract_name)
             self.md_stream.subscribe_quote(
                 contract_name,
                 lambda sym, data, s=symbol: self._on_quote(s, data),
-                contract_id=contract_id,
             )
 
     def _on_quote(self, symbol: str, data: dict):
@@ -540,12 +533,8 @@ class TradovateBot:
         if price is None:
             return
 
-        # Use tick price for high/low — the quote-level "high"/"low" fields
-        # are SESSION extremes (day high/low), not per-tick values.
-        # Feeding session high/low into VWAP distorts the typical price
-        # calculation and prevents valid crossover signals.
-        high = price
-        low = price
+        high = data.get("high", {}).get("price", price)
+        low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
@@ -569,9 +558,6 @@ class TradovateBot:
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
             return
-
-        # Track MAE/MFE for open trades (learning data)
-        self.journal.update_mae_mfe(symbol, price)
 
         # Feed price to strategy
         signal = None
@@ -682,47 +668,11 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
-
-            # Fill quality tracking: check actual fill price vs signal price
-            if not self.dry_run and result.get("orderId"):
-                try:
-                    time.sleep(0.5)
-                    fill_detail = self.api._get(f"/order/item?id={result['orderId']}")
-                    if fill_detail and fill_detail.get("avgPrice"):
-                        avg_fill = fill_detail["avgPrice"]
-                        expected = signal.entry_price or avg_fill  # Market order = no expected price
-                        slippage = abs(avg_fill - expected) if signal.entry_price else 0
-                        spec = config.CONTRACT_SPECS.get(signal.symbol, {})
-                        slippage_dollars = slippage * spec.get("point_value", 1)
-                        logger.info(
-                            "FILL QUALITY: %s filled at %.4f (expected %.4f) | slippage=%.4f pts ($%.2f)",
-                            signal.symbol, avg_fill, expected, slippage, slippage_dollars,
-                        )
-                except Exception as e:
-                    logger.debug("Fill quality check error: %s", e)
         else:
-            # Bug #23 fix: Do NOT leave risk manager thinking contracts are open
-            # when the order actually failed. Log clearly so we can debug.
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
-            # Verify position state from API to avoid desync
-            if not self.dry_run:
-                try:
-                    positions = self.api.get_positions()
-                    actual_open = sum(
-                        abs(p.get("netPos", 0)) for p in positions
-                        if p.get("netPos", 0) != 0
-                    )
-                    if actual_open != self.risk.open_contracts:
-                        logger.warning(
-                            "Risk desync detected: risk says %d contracts, API says %d. Correcting.",
-                            self.risk.open_contracts, actual_open,
-                        )
-                        self.risk.open_contracts = actual_open
-                except Exception as e:
-                    logger.warning("Position check after failed order: %s", e)
 
     # ─────────────────────────────────────────
     # Main loop
@@ -753,26 +703,6 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                        # Verify positions are actually flat (retry up to 3 times)
-                        for attempt in range(1, 4):
-                            time.sleep(2)
-                            remaining = [
-                                p for p in self.api.get_positions()
-                                if p.get("netPos", 0) != 0
-                            ]
-                            if not remaining:
-                                logger.info("Force close confirmed: all positions flat.")
-                                break
-                            logger.warning(
-                                "Force close attempt %d: %d positions still open. Retrying...",
-                                attempt, len(remaining),
-                            )
-                            self.api.close_all_positions()
-                        else:
-                            logger.critical(
-                                "FORCE CLOSE FAILED: %d positions still open after 3 attempts!",
-                                len(remaining),
-                            )
                     # Record force-close exits in journal
                     for t in self.trades_today:
                         if t.get("journal_id"):
@@ -780,25 +710,14 @@ class TradovateBot:
                                 t["symbol"], 0, 0, exit_reason="force_close"
                             )
                     self.risk.end_of_day_update(self.risk.current_balance)
-                    # Run continuous learning system at end of day
+                    # Run auto-tuner at end of day
                     try:
-                        learner = ContinuousLearner(self.journal)
-                        report = learner.run_daily_analysis()
-                        adj_count = len(report.get("tuner_adjustments", []))
-                        score = report.get("score", {}).get("total", 0)
-                        logger.info(
-                            "Daily learning: score=%d/100, %d adjustments, %d insights",
-                            score, adj_count, len(report.get("insights", [])),
-                        )
-                        # Weekly analysis on Fridays
-                        if now_et().weekday() == 4:  # Friday
-                            weekly = learner.run_weekly_analysis()
-                            logger.info(
-                                "Weekly learning: %d recommendations",
-                                len(weekly.get("recommendations", [])),
-                            )
+                        tuner = AutoTuner(self.journal)
+                        adjustments = tuner.run()
+                        if adjustments:
+                            logger.info("Auto-tuner made %d adjustments for next session", len(adjustments))
                     except Exception as e:
-                        logger.warning("Learning system error: %s", e)
+                        logger.warning("Auto-tuner error: %s", e)
                     self.running = False
                     break
 
@@ -841,44 +760,18 @@ class TradovateBot:
                 if not self.dry_run and self.md_stream:
                     is_stale = getattr(self.md_stream, "data_stale", False)
                     fell_back = getattr(self.md_stream, "fell_back", None)
-                    # Track consecutive staleness for escalating alerts
-                    if not hasattr(self, "_md_stale_count"):
-                        self._md_stale_count = 0
                     if is_stale or (fell_back and fell_back.is_set()):
-                        self._md_stale_count += 1
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
-                        was_websocket = isinstance(self.md_stream, MarketDataStream)
-                        if self._md_stale_count >= 10:  # 5+ minutes of stale data
-                            logger.critical(
-                                "MARKET DATA DOWN for %d cycles (%s). Trading may be impaired!",
-                                self._md_stale_count, reason,
-                            )
-                        else:
-                            logger.warning(
-                                "Market data stream unhealthy (%s, cycle %d). Restarting...",
-                                reason, self._md_stale_count,
-                            )
+                        logger.warning(
+                            "Market data stream unhealthy (%s). Restarting...", reason
+                        )
                         try:
                             self.md_stream.stop()
                         except Exception:
                             pass
-                        # If WebSocket was stale (connected but no data), force REST
-                        # polling. The periodic WS recovery (every 5 min) will try
-                        # WebSocket again later.
-                        force_rest = was_websocket and self._md_stale_count >= 1
-                        if force_rest:
-                            logger.warning(
-                                "WebSocket connected but delivered no data for %d cycles. "
-                                "Forcing REST polling (Yahoo Finance).",
-                                self._md_stale_count,
-                            )
-                        self.md_stream = self._start_market_data(force_rest=force_rest)
+                        self.md_stream = self._start_market_data()
                         if self.md_stream:
                             self._subscribe_market_data()
-                    else:
-                        if self._md_stale_count > 0:
-                            logger.info("Market data recovered after %d stale cycles", self._md_stale_count)
-                        self._md_stale_count = 0
 
                 # Periodic WebSocket recovery: if currently on REST polling,
                 # try to upgrade back to WebSocket every 5 minutes
@@ -929,6 +822,11 @@ class TradovateBot:
                 # Write live status file for external monitoring
                 self._write_live_status()
 
+                # Check for external commands (from dashboard / other windows)
+                cmd = read_pending_command()
+                if cmd:
+                    execute_command(cmd, self)
+
                 time.sleep(30)  # Status update every 30 seconds
 
             except KeyboardInterrupt:
@@ -940,15 +838,14 @@ class TradovateBot:
         self.stop()
 
     def _sync_fills(self):
-        """Check positions and fills to close journal trades and update contract count.
-
-        Uses API positions as authoritative source. Tracks by symbol AND order ID
-        to handle multiple trades on the same symbol correctly.
-        """
+        """Check positions and fills to close journal trades and update contract count."""
         try:
             positions = self.api.get_positions()
 
             # Build contractId -> base symbol mapping from our contract_map
+            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
+            # We need to match position contractId (int) to our symbols.
+            # Resolve this once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
             # Lazily build the mapping from API contract lookups
@@ -960,8 +857,8 @@ class TradovateBot:
 
             # Count total open contracts from API (authoritative)
             total_open = 0
-            # Track which base symbols have open positions and their net qty
-            open_positions_by_symbol: dict[str, int] = {}
+            # Track which base symbols have open positions
+            open_base_symbols = set()
             for p in positions:
                 net = abs(p.get("netPos", 0))
                 if net > 0:
@@ -969,30 +866,23 @@ class TradovateBot:
                     cid = p.get("contractId")
                     base_sym = self._contract_id_to_symbol.get(cid)
                     if base_sym:
-                        open_positions_by_symbol[base_sym] = (
-                            open_positions_by_symbol.get(base_sym, 0) + net
-                        )
+                        open_base_symbols.add(base_sym)
 
-            # Sync authoritative contract count from API
-            if total_open != self.risk.open_contracts:
-                logger.debug(
-                    "Contract count sync: risk=%d, API=%d",
-                    self.risk.open_contracts, total_open,
-                )
             self.risk.open_contracts = total_open
 
-            # Close journal trades where position is now flat for that symbol
+            # Close journal trades where position is now flat
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
                 sym = trade_info.get("symbol")
                 if not journal_id or trade_info.get("_closed"):
                     continue
 
-                if sym not in open_positions_by_symbol:
+                if sym not in open_base_symbols:
                     # Position is flat for this symbol — trade was closed (by SL/TP/manual)
                     self.journal.record_exit_by_symbol(
                         sym, 0, 0, exit_reason="bracket_fill"
                     )
+                    self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
 
@@ -1064,20 +954,6 @@ class TradovateBot:
                 "environment": config.ENVIRONMENT,
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
-                "websocket_connected": (
-                    isinstance(self.md_stream, MarketDataStream)
-                    and self.md_stream._connected.is_set()
-                ) if self.md_stream else False,
-                "market_data_source": (
-                    "websocket" if isinstance(self.md_stream, MarketDataStream)
-                    else "rest_polling" if isinstance(self.md_stream, RestMarketDataPoller)
-                    else "none"
-                ) if self.md_stream else "none",
-                "ws_quotes_received": (
-                    self.md_stream._quotes_received
-                    if isinstance(self.md_stream, MarketDataStream)
-                    else "n/a"
-                ) if self.md_stream else 0,
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
@@ -1119,106 +995,14 @@ class TradovateBot:
 # ─────────────────────────────────────────────
 
 
-def _us_market_holidays(year: int) -> set:
-    """Return a set of US market holiday dates for the given year.
-
-    Covers NYSE/CME observed holidays. Not exhaustive for every early close,
-    but catches the major full-closure days to prevent wasted trading attempts.
-    """
-    from datetime import date
-    holidays = set()
-    # Fixed-date holidays (observed: Mon if Sun, Fri if Sat)
-    def _observed(month, day):
-        d = date(year, month, day)
-        if d.weekday() == 5:  # Saturday -> Friday
-            d = d - timedelta(days=1)
-        elif d.weekday() == 6:  # Sunday -> Monday
-            d = d + timedelta(days=1)
-        return d
-
-    holidays.add(_observed(1, 1))   # New Year's Day
-    holidays.add(_observed(7, 4))   # Independence Day
-    holidays.add(_observed(12, 25)) # Christmas
-
-    # MLK Day: 3rd Monday in January
-    d = date(year, 1, 1)
-    mondays = 0
-    while mondays < 3:
-        if d.weekday() == 0:
-            mondays += 1
-            if mondays == 3:
-                holidays.add(d)
-        d += timedelta(days=1)
-
-    # Presidents' Day: 3rd Monday in February
-    d = date(year, 2, 1)
-    mondays = 0
-    while mondays < 3:
-        if d.weekday() == 0:
-            mondays += 1
-            if mondays == 3:
-                holidays.add(d)
-        d += timedelta(days=1)
-
-    # Good Friday: 2 days before Easter (simplified — covers most years)
-    # Easter algorithm (Anonymous Gregorian)
-    a = year % 19
-    b = year // 100
-    c = year % 100
-    d_val = b // 4
-    e = b % 4
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d_val - g + 15) % 30
-    i = c // 4
-    k = c % 4
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    month = (h + l - 7 * m + 114) // 31
-    day = ((h + l - 7 * m + 114) % 31) + 1
-    easter = date(year, month, day)
-    holidays.add(easter - timedelta(days=2))  # Good Friday
-
-    # Memorial Day: last Monday in May
-    d = date(year, 5, 31)
-    while d.weekday() != 0:
-        d -= timedelta(days=1)
-    holidays.add(d)
-
-    # Juneteenth: June 19
-    holidays.add(_observed(6, 19))
-
-    # Labor Day: 1st Monday in September
-    d = date(year, 9, 1)
-    while d.weekday() != 0:
-        d += timedelta(days=1)
-    holidays.add(d)
-
-    # Thanksgiving: 4th Thursday in November
-    d = date(year, 11, 1)
-    thursdays = 0
-    while thursdays < 4:
-        if d.weekday() == 3:
-            thursdays += 1
-            if thursdays == 4:
-                holidays.add(d)
-        d += timedelta(days=1)
-
-    return holidays
-
-
 def _next_trading_morning() -> datetime:
-    """Return the next weekday at 09:25 ET (5 min before market open).
-    Skips weekends and US market holidays."""
+    """Return the next weekday at 09:25 ET (5 min before market open)."""
     now = now_et()
     # Start from tomorrow
     candidate = now.replace(hour=9, minute=25, second=0, microsecond=0) + timedelta(days=1)
-    holidays = _us_market_holidays(candidate.year)
-    # Skip weekends and holidays (check next year too for Dec->Jan edge)
-    while candidate.weekday() >= 5 or candidate.date() in holidays:
+    # Skip weekends: Saturday=5, Sunday=6
+    while candidate.weekday() >= 5:
         candidate += timedelta(days=1)
-        if candidate.date().year != now.year:
-            holidays |= _us_market_holidays(candidate.year)
     return candidate
 
 

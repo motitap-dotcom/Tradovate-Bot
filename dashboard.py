@@ -14,9 +14,14 @@ Access: http://<server-ip>:8080
 import json
 import time
 import threading
+import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from datetime import datetime, timezone
+
+# ── Command file path (shared with bot_commands.py) ──
+COMMANDS_FILE = Path(__file__).parent / "bot_commands.json"
+COMMANDS_RESULT_FILE = Path(__file__).parent / "bot_commands_result.json"
 
 # ── Bot status file paths ──
 BOT_FILES = [
@@ -288,6 +293,18 @@ h1 {{ font-size: 1.6em; color: #58a6ff; margin-bottom: 8px; }}
 .green {{ color: #3fb950; }}
 .red {{ color: #f85149; }}
 .empty-msg {{ color: #484f58; font-size: 0.85em; font-style: italic; }}
+.command-panel {{ background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; margin-top: 20px; }}
+.cmd-buttons {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }}
+.cmd-btn {{ padding: 8px 18px; border: none; border-radius: 6px; font-size: 0.9em; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }}
+.cmd-btn:hover {{ opacity: 0.85; }}
+.btn-info {{ background: #1f6feb; color: #fff; }}
+.btn-danger {{ background: #da3633; color: #fff; }}
+.btn-warn {{ background: #d29922; color: #000; }}
+.btn-ok {{ background: #238636; color: #fff; }}
+.cmd-result {{ margin-top: 12px; padding: 8px 12px; border-radius: 6px; font-size: 0.85em; min-height: 20px; }}
+.cmd-result.ok {{ background: #0e4429; color: #3fb950; border: 1px solid #238636; }}
+.cmd-result.err {{ background: #490d0d; color: #f85149; border: 1px solid #da3633; }}
+.cmd-result.pending {{ background: #21262d; color: #8b949e; }}
 .footer {{ text-align: center; color: #484f58; font-size: 0.8em; margin-top: 24px; padding-top: 16px; border-top: 1px solid #21262d; }}
 </style>
 </head>
@@ -298,6 +315,34 @@ h1 {{ font-size: 1.6em; color: #58a6ff; margin-bottom: 8px; }}
 <div class="grid">
 {cards_html}
 </div>
+<div class="command-panel">
+<div class="section-title" style="margin-top:0">Bot Commands</div>
+<div class="cmd-buttons">
+  <button onclick="sendCmd('status')" class="cmd-btn btn-info">Refresh Status</button>
+  <button onclick="sendCmd('close_all')" class="cmd-btn btn-danger">Close All</button>
+  <button onclick="sendCmd('lock', {{reason: prompt('Lock reason:') || 'manual'}})" class="cmd-btn btn-warn">Lock Trading</button>
+  <button onclick="sendCmd('unlock')" class="cmd-btn btn-ok">Unlock Trading</button>
+  <button onclick="sendCmd('restart_market_data')" class="cmd-btn btn-info">Restart Market Data</button>
+</div>
+<div id="cmd-result" class="cmd-result"></div>
+</div>
+<script>
+async function sendCmd(command, params) {{
+  const body = Object.assign({{command}}, params || {{}});
+  const el = document.getElementById('cmd-result');
+  el.textContent = 'Sending ' + command + '...';
+  el.className = 'cmd-result pending';
+  try {{
+    const r = await fetch('/command', {{method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify(body)}});
+    const j = await r.json();
+    el.textContent = j.status === 'sent' ? 'Command sent: ' + command + ' (bot will execute within 30s)' : 'Error: ' + (j.message || j.error);
+    el.className = 'cmd-result ' + (j.status === 'sent' ? 'ok' : 'err');
+  }} catch(e) {{
+    el.textContent = 'Network error: ' + e.message;
+    el.className = 'cmd-result err';
+  }}
+}}
+</script>
 <div class="footer">Dashboard refreshes automatically every 5 seconds</div>
 </div>
 </body>
@@ -306,10 +351,65 @@ h1 {{ font-size: 1.6em; color: #58a6ff; margin-bottom: 8px; }}
 
 class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == "/command-result":
+            # Return latest command result as JSON
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            try:
+                if COMMANDS_RESULT_FILE.exists():
+                    data = COMMANDS_RESULT_FILE.read_text(encoding="utf-8")
+                else:
+                    data = json.dumps({"status": "none", "message": "No commands executed yet"})
+            except Exception:
+                data = json.dumps({"status": "error", "message": "Failed to read result"})
+            self.wfile.write(data.encode("utf-8"))
+            return
+
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
         self.wfile.write(_build_html().encode("utf-8"))
+
+    def do_POST(self):
+        """Handle command submissions from the dashboard."""
+        if self.path != "/command":
+            self.send_response(404)
+            self.end_headers()
+            return
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length).decode("utf-8")
+
+        try:
+            cmd = json.loads(body)
+        except json.JSONDecodeError:
+            # Try form-encoded
+            params = urllib.parse.parse_qs(body)
+            cmd = {k: v[0] for k, v in params.items()}
+
+        if "command" not in cmd:
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Missing 'command'"}).encode())
+            return
+
+        # Write command file for the bot to pick up
+        cmd["timestamp"] = datetime.now(timezone.utc).isoformat()
+        cmd["source"] = "dashboard"
+        try:
+            tmp = COMMANDS_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(cmd, indent=2))
+            tmp.replace(COMMANDS_FILE)
+            response = {"status": "sent", "command": cmd["command"]}
+        except Exception as e:
+            response = {"status": "error", "message": str(e)}
+
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode("utf-8"))
 
     def log_message(self, format, *args):
         # Suppress default request logging
