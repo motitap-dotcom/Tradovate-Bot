@@ -995,6 +995,8 @@ class MarketDataStream:
         self._consecutive_failures = 0
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
+        self._quotes_received: int = 0  # Count of actual market data events received
+        self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
@@ -1002,6 +1004,8 @@ class MarketDataStream:
         """Connect and start listening in a background thread."""
         self._should_run = True
         self._last_data_time = time.time()  # Grace period before staleness check
+        self._start_time = time.time()
+        self._quotes_received = 0
         self._connect()
         self._connected.wait(timeout=15)
 
@@ -1055,12 +1059,27 @@ class MarketDataStream:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
+    # How long to wait for first quote before declaring stream dead
+    NO_DATA_TIMEOUT = 60  # seconds
+
     @property
     def data_stale(self) -> bool:
-        """True if connected but no data received for DATA_TIMEOUT seconds."""
+        """True if connected but no data received for DATA_TIMEOUT seconds,
+        or if no quotes at all after NO_DATA_TIMEOUT since start."""
         if not self._last_data_time:
             return False  # Haven't started receiving yet
-        return (time.time() - self._last_data_time) > self.DATA_TIMEOUT
+        # Check 1: No data for DATA_TIMEOUT seconds (normal staleness)
+        if (time.time() - self._last_data_time) > self.DATA_TIMEOUT:
+            return True
+        # Check 2: Stream running but zero quotes received after NO_DATA_TIMEOUT
+        if self._quotes_received == 0 and self._start_time:
+            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
+                logger.warning(
+                    "WebSocket has been running for %.0fs but received 0 quotes. Declaring stale.",
+                    time.time() - self._start_time,
+                )
+                return True
+        return False
 
     def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
         """Subscribe to real-time quotes for a symbol."""
@@ -1134,6 +1153,7 @@ class MarketDataStream:
             # Quote data — dispatched by symbol from the "d" field
             if "e" in item and item["e"] == "md" and "d" in item:
                 self._last_data_time = time.time()
+                self._quotes_received += 1
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
