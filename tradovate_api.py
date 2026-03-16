@@ -260,7 +260,11 @@ class TradovateAPI:
                 f" org=\"{org}\"" if org else "",
             )
             resp = requests.post(url, json=payload, timeout=30)
-            data = resp.json()
+            try:
+                data = resp.json()
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                logger.error("Web auth: non-JSON response (status=%d): %s", resp.status_code, resp.text[:200])
+                return None
             if "accessToken" in data:
                 logger.info("Web auth succeeded")
                 return data
@@ -588,13 +592,12 @@ class TradovateAPI:
             if not self.renew_token():
                 logger.warning("Token renewal failed. Attempting full re-authentication...")
                 # Clear expired token so authenticate() doesn't short-circuit
-                old_token = self.access_token
                 self.access_token = None
                 self.md_access_token = None
                 if not self.authenticate():
-                    # Restore old token as last resort (might still work for a bit)
-                    self.access_token = old_token
-                    logger.error("Full re-authentication also failed!")
+                    # Do NOT restore expired token — it will cause 401 loops.
+                    # Leave token as None so next API call triggers re-auth via 401 handler.
+                    logger.error("Full re-authentication also failed! Token is now None.")
 
     def _headers(self) -> dict:
         return {
@@ -812,6 +815,13 @@ class TradovateAPI:
         oco_result = self._post("/order/placeOCO", oco_payload)
         if not oco_result or "orderId" not in oco_result:
             logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
+            # CRITICAL: Entry exists WITHOUT stop-loss protection.
+            # Cancel the unprotected entry to avoid unlimited risk.
+            logger.critical(
+                "Cancelling unprotected entry order %s — no SL/TP attached!", entry_order_id
+            )
+            self._post("/order/cancelorder", {"orderId": entry_order_id})
+            return None
         else:
             logger.info(
                 "OCO placed: SL orderId=%s TP orderId=%s",
@@ -888,7 +898,11 @@ class TradovateAPI:
                 if self._re_authenticate():
                     return self._get(endpoint, _retried=True)
             resp.raise_for_status()
-            return resp.json()
+            try:
+                return resp.json()
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                logger.error("GET %s: non-JSON response (status=%d): %s", endpoint, resp.status_code, resp.text[:200])
+                return None
         except requests.RequestException as e:
             logger.error("GET %s failed: %s", endpoint, e)
             return None
@@ -912,7 +926,11 @@ class TradovateAPI:
                     "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
                 )
             resp.raise_for_status()
-            result = resp.json()
+            try:
+                result = resp.json()
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                logger.error("POST %s: non-JSON response (status=%d): %s", endpoint, resp.status_code, resp.text[:200])
+                return None
             logger.debug("POST %s -> %s", endpoint, result)
             return result
         except requests.RequestException as e:
