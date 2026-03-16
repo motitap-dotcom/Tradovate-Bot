@@ -1184,13 +1184,17 @@ class MarketDataStream:
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif not target_sym:
-                        # Unknown contractId — dispatch to all (fallback for unmapped contracts)
-                        for sym, cbs in cb_snapshot.items():
-                            for cb in cbs:
-                                try:
-                                    cb(sym, quote)
-                                except Exception as e:
-                                    logger.error("Quote callback error for %s: %s", sym, e)
+                        # Unknown contractId — do NOT dispatch to all symbols.
+                        # That would mix prices across strategies (e.g. NQ data to ES),
+                        # corrupting ORB ranges and VWAP calculations.
+                        if contract_id not in getattr(self, "_warned_unmapped", set()):
+                            if not hasattr(self, "_warned_unmapped"):
+                                self._warned_unmapped = set()
+                            self._warned_unmapped.add(contract_id)
+                            logger.warning(
+                                "Unmapped contractId %s in quote — skipping (add via subscribe_quote contract_id param)",
+                                contract_id,
+                            )
 
     def _on_error(self, ws, error):
         error_str = str(error)
