@@ -330,6 +330,7 @@ class RiskManager:
             "balance": self.current_balance,
             "equity": equity,
             "day_pnl": self.day_pnl,
+            "unrealized_pnl": self.unrealized_pnl,
             "peak_balance": self.peak_balance,
             "drawdown_floor": self.drawdown_floor,
             "distance_to_floor": equity - self.drawdown_floor,
@@ -339,10 +340,17 @@ class RiskManager:
                 if self.daily_loss_limit
                 else None
             ),
+            "daily_profit_cap": self.daily_profit_cap,
+            "daily_profit_remaining": (
+                (self.daily_profit_cap - self.day_pnl)
+                if self.daily_profit_cap
+                else None
+            ),
             "open_contracts": self.open_contracts,
             "max_contracts": self.max_contracts,
             "trades_today": self.trades_today,
             "max_daily_trades": self.max_daily_trades,
             "locked": self.trading_locked,
             "lock_reason": self.lock_reason,
+            "balance_initialized": self._balance_initialized,
         }
