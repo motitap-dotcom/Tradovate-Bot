@@ -102,13 +102,21 @@ class _ORBWindow:
             if elapsed >= self.window_minutes and self.prices:
                 self.range_high = max(self.prices)
                 self.range_low = min(self.prices)
+                range_size = self.range_high - self.range_low
+                # Validate range: must be positive and not absurdly wide
+                if range_size <= 0:
+                    logger.warning(
+                        "ORB %d-min range invalid (size=%.2f). Skipping.",
+                        self.window_minutes, range_size,
+                    )
+                    return None
                 self.range_set = True
                 logger.info(
                     "ORB %d-min range: high=%.2f low=%.2f size=%.2f",
                     self.window_minutes,
                     self.range_high,
                     self.range_low,
-                    self.range_high - self.range_low,
+                    range_size,
                 )
                 # Fall through to check breakout
 
@@ -208,6 +216,9 @@ class ORBStrategy:
                 continue
 
             # Build signal
+            spec = config.CONTRACT_SPECS[self.symbol]
+            min_stop = spec["tick_size"] * 2  # minimum 2 ticks stop distance
+
             if direction == "long":
                 stop = window.range_low
                 stop_distance = price - stop
@@ -221,6 +232,10 @@ class ORBStrategy:
                 if stop_distance > self.stop_points:
                     stop = price - self.stop_points
                     stop_distance = self.stop_points
+                if stop_distance < min_stop:
+                    logger.info("ORB %s long skipped: stop distance %.4f < min %.4f",
+                                self.symbol, stop_distance, min_stop)
+                    continue
                 tp = price + (stop_distance * self.rr_ratio)
                 sig_dir = Direction.LONG
                 reason = (
@@ -240,6 +255,10 @@ class ORBStrategy:
                 if stop_distance > self.stop_points:
                     stop = price + self.stop_points
                     stop_distance = self.stop_points
+                if stop_distance < min_stop:
+                    logger.info("ORB %s short skipped: stop distance %.4f < min %.4f",
+                                self.symbol, stop_distance, min_stop)
+                    continue
                 tp = price - (stop_distance * self.rr_ratio)
                 sig_dir = Direction.SHORT
                 reason = (
@@ -336,19 +355,32 @@ class VWAPStrategy:
         self.last_long_time = None
         self.last_short_time = None
         self.last_any_trade_time = None
+        self._candle_count = 0
+        self._vwap_stale_bars = 0
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
         """Update the running VWAP with a new bar."""
         if volume <= 0:
+            self._vwap_stale_bars = getattr(self, "_vwap_stale_bars", 0) + 1
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
             high, low = low, high
+        # Validate close is within high/low range (data corruption)
+        if close > high:
+            close = high
+        elif close < low:
+            close = low
+        # Reject extreme outliers: if any price is <= 0 or NaN
+        if not (high > 0 and low > 0 and close > 0):
+            logger.warning("VWAP %s: invalid OHLC (h=%.4f l=%.4f c=%.4f). Skipping.", self.symbol, high, low, close)
+            return
         typical_price = (high + low + close) / 3.0
         self._cum_vol += volume
         self._cum_tp_vol += typical_price * volume
         if self._cum_vol > 0:
             self.vwap = self._cum_tp_vol / self._cum_vol
+        self._vwap_stale_bars = 0  # Reset staleness counter
 
     def _long_allowed(self) -> bool:
         """Check if a new long trade is allowed (count + cooldown)."""
@@ -370,6 +402,9 @@ class VWAPStrategy:
                 return False
         return True
 
+    # Minimum candles of data before generating signals
+    MIN_CANDLES_FOR_SIGNAL = 5
+
     def on_price(
         self, price: float, high: float, low: float, volume: float
     ) -> Optional[TradeSignal]:
@@ -378,8 +413,20 @@ class VWAPStrategy:
         Returns a TradeSignal if a confirmed VWAP crossover is detected.
         """
         self.update_vwap(high, low, price, volume)
+        self._candle_count = getattr(self, "_candle_count", 0) + 1
 
         if self.vwap is None or self._prev_price is None:
+            self._prev_price = price
+            return None
+
+        # Don't signal until we have enough data to compute a meaningful VWAP
+        if self._candle_count < self.MIN_CANDLES_FOR_SIGNAL:
+            self._prev_price = price
+            return None
+
+        # Don't signal if VWAP is stale (too many zero-volume bars)
+        stale_bars = getattr(self, "_vwap_stale_bars", 0)
+        if stale_bars >= 3:
             self._prev_price = price
             return None
 

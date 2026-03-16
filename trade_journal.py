@@ -96,6 +96,7 @@ class TradeJournal:
     ) -> str:
         """Record a new trade entry. Returns trade_id."""
         trade_id = f"{symbol}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+        now_utc = datetime.now(timezone.utc)
         trade = {
             "id": trade_id,
             "symbol": symbol,
@@ -106,14 +107,21 @@ class TradeJournal:
             "reason": reason,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
-            "entry_time": datetime.now(timezone.utc).isoformat(),
+            "entry_time": now_utc.isoformat(),
             "entry_hour_et": _current_et_hour(),
+            "entry_day_of_week": now_utc.strftime("%A"),
             "date": date.today().isoformat(),
             "exit_price": None,
             "pnl": None,
             "exit_reason": None,
             "exit_time": None,
             "status": "open",
+            # Learning fields — populated on exit
+            "r_multiple": None,
+            "duration_minutes": None,
+            "slippage_entry": None,     # Actual vs expected fill (set by bot)
+            "mae_points": None,         # Maximum Adverse Excursion (worst drawdown before exit)
+            "mfe_points": None,         # Maximum Favorable Excursion (best unrealized before exit)
         }
         self.trades.append(trade)
         self._save()
@@ -171,6 +179,37 @@ class TradeJournal:
                 self.record_exit(trade["id"], exit_price, pnl, exit_reason)
                 return
         logger.warning("Journal: no open trade found for %s", symbol)
+
+    def update_mae_mfe(self, symbol: str, current_price: float):
+        """Update Maximum Adverse/Favorable Excursion for open trades on a symbol.
+
+        Called on each price update to track how far the trade went against us
+        (MAE) and in our favor (MFE) before closing. This data is critical for
+        optimizing stop-loss and take-profit distances.
+        """
+        for trade in reversed(self.trades):
+            if trade["symbol"] != symbol or trade["status"] != "open":
+                continue
+            entry = trade.get("entry_price", 0)
+            if not entry:
+                break
+
+            if trade["direction"] == "Buy":
+                excursion = current_price - entry
+            else:
+                excursion = entry - current_price
+
+            # MAE = worst (most negative) excursion
+            current_mae = trade.get("mae_points") or 0
+            if excursion < current_mae:
+                trade["mae_points"] = round(excursion, 4)
+
+            # MFE = best (most positive) excursion
+            current_mfe = trade.get("mfe_points") or 0
+            if excursion > current_mfe:
+                trade["mfe_points"] = round(excursion, 4)
+
+            break  # Only update most recent open trade per symbol
 
     # ─────────────────────────────────────────
     # Analysis
@@ -319,6 +358,59 @@ class TradeJournal:
                 "total_pnl": sum(pnls),
             }
         return result
+
+    def analyze_by_day_of_week(self) -> dict:
+        """Performance breakdown by day of week."""
+        by_day = defaultdict(list)
+        for t in self._closed_trades():
+            dow = t.get("entry_day_of_week", "Unknown")
+            by_day[dow].append(t)
+
+        result = {}
+        day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        for dow in day_order:
+            trades = by_day.get(dow, [])
+            if not trades:
+                continue
+            pnls = [t["pnl"] for t in trades if t["pnl"] is not None]
+            wins = [p for p in pnls if p > 0]
+            result[dow] = {
+                "trades": len(trades),
+                "win_rate": len(wins) / len(pnls) if pnls else 0,
+                "total_pnl": sum(pnls),
+                "avg_pnl": statistics.mean(pnls) if pnls else 0,
+            }
+        return result
+
+    def analyze_streaks(self) -> dict:
+        """Analyze winning and losing streaks."""
+        closed = self._closed_trades()
+        if not closed:
+            return {"max_win_streak": 0, "max_loss_streak": 0, "current_streak": 0, "current_type": "none"}
+
+        max_win = max_loss = 0
+        cur_win = cur_loss = 0
+        for t in closed:
+            if t.get("pnl") is not None and t["pnl"] > 0:
+                cur_win += 1
+                cur_loss = 0
+                max_win = max(max_win, cur_win)
+            elif t.get("pnl") is not None and t["pnl"] < 0:
+                cur_loss += 1
+                cur_win = 0
+                max_loss = max(max_loss, cur_loss)
+            else:
+                cur_win = cur_loss = 0
+
+        current_type = "win" if cur_win > 0 else "loss" if cur_loss > 0 else "none"
+        current_streak = cur_win if cur_win > 0 else cur_loss
+
+        return {
+            "max_win_streak": max_win,
+            "max_loss_streak": max_loss,
+            "current_streak": current_streak,
+            "current_type": current_type,
+        }
 
     def analyze_by_exit_reason(self) -> dict:
         """How trades end: TP hit, SL hit, force-close, etc."""

@@ -260,7 +260,11 @@ class TradovateAPI:
                 f" org=\"{org}\"" if org else "",
             )
             resp = requests.post(url, json=payload, timeout=30)
-            data = resp.json()
+            try:
+                data = resp.json()
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                logger.error("Web auth: non-JSON response (status=%d): %s", resp.status_code, resp.text[:200])
+                return None
             if "accessToken" in data:
                 logger.info("Web auth succeeded")
                 return data
@@ -562,6 +566,9 @@ class TradovateAPI:
                 resp.raise_for_status()
                 data = resp.json()
                 self.access_token = data.get("accessToken", self.access_token)
+                # Sync md_access_token so WebSocket market data stays authenticated
+                if data.get("mdAccessToken"):
+                    self.md_access_token = data["mdAccessToken"]
                 if data.get("expirationTime"):
                     self.token_expiry = datetime.fromisoformat(
                         data["expirationTime"].replace("Z", "+00:00")
@@ -579,8 +586,8 @@ class TradovateAPI:
             return
         now = datetime.now(timezone.utc)
         remaining = (self.token_expiry - now).total_seconds()
-        # Renew if less than 10 minutes remain (was 5 — more buffer for slow networks)
-        if remaining < 600:
+        # Renew if less than 15 minutes remain (proactive — avoids expiry during slow API calls)
+        if remaining < 900:
             if remaining <= 0:
                 logger.warning("Token EXPIRED (%.0fs ago). Attempting full re-auth...", -remaining)
             else:
@@ -588,13 +595,12 @@ class TradovateAPI:
             if not self.renew_token():
                 logger.warning("Token renewal failed. Attempting full re-authentication...")
                 # Clear expired token so authenticate() doesn't short-circuit
-                old_token = self.access_token
                 self.access_token = None
                 self.md_access_token = None
                 if not self.authenticate():
-                    # Restore old token as last resort (might still work for a bit)
-                    self.access_token = old_token
-                    logger.error("Full re-authentication also failed!")
+                    # Do NOT restore expired token — it will cause 401 loops.
+                    # Leave token as None so next API call triggers re-auth via 401 handler.
+                    logger.error("Full re-authentication also failed! Token is now None.")
 
     def _headers(self) -> dict:
         return {
@@ -721,6 +727,9 @@ class TradovateAPI:
         Uses placeorder (entry) + placeOCO (SL/TP) because FundedNext
         blocks the placeOSO endpoint.
         """
+        if self.account_id is None:
+            logger.error("Cannot place bracket order: account_id is None (auth may have failed)")
+            return None
         opposite_action = "Sell" if action == "Buy" else "Buy"
 
         # --- Step 1: Entry order ---
@@ -812,6 +821,13 @@ class TradovateAPI:
         oco_result = self._post("/order/placeOCO", oco_payload)
         if not oco_result or "orderId" not in oco_result:
             logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
+            # CRITICAL: Entry exists WITHOUT stop-loss protection.
+            # Cancel the unprotected entry to avoid unlimited risk.
+            logger.critical(
+                "Cancelling unprotected entry order %s — no SL/TP attached!", entry_order_id
+            )
+            self._post("/order/cancelorder", {"orderId": entry_order_id})
+            return None
         else:
             logger.info(
                 "OCO placed: SL orderId=%s TP orderId=%s",
@@ -828,6 +844,9 @@ class TradovateAPI:
         self, symbol: str, action: str, qty: int
     ) -> Optional[dict]:
         """Place a simple market order (no brackets)."""
+        if self.account_id is None:
+            logger.error("Cannot place market order: account_id is None")
+            return None
         payload = {
             "accountSpec": self.account_spec,
             "accountId": self.account_id,
@@ -888,7 +907,11 @@ class TradovateAPI:
                 if self._re_authenticate():
                     return self._get(endpoint, _retried=True)
             resp.raise_for_status()
-            return resp.json()
+            try:
+                return resp.json()
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                logger.error("GET %s: non-JSON response (status=%d): %s", endpoint, resp.status_code, resp.text[:200])
+                return None
         except requests.RequestException as e:
             logger.error("GET %s failed: %s", endpoint, e)
             return None
@@ -912,7 +935,11 @@ class TradovateAPI:
                     "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
                 )
             resp.raise_for_status()
-            result = resp.json()
+            try:
+                result = resp.json()
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                logger.error("POST %s: non-JSON response (status=%d): %s", endpoint, resp.status_code, resp.text[:200])
+                return None
             logger.debug("POST %s -> %s", endpoint, result)
             return result
         except requests.RequestException as e:
@@ -958,6 +985,8 @@ class MarketDataStream:
         self.ws: Optional[websocket.WebSocketApp] = None
         self._request_id = 0
         self._callbacks: dict[str, list[Callable]] = {}
+        # Maps contractId (int) → symbol name (str) for correct quote routing
+        self._contract_id_to_symbol: dict[int, str] = {}
         self._callbacks_lock = threading.Lock()
         self._connected = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -966,6 +995,8 @@ class MarketDataStream:
         self._consecutive_failures = 0
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
+        self._quotes_received: int = 0  # Count of actual market data events received
+        self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
@@ -973,11 +1004,17 @@ class MarketDataStream:
         """Connect and start listening in a background thread."""
         self._should_run = True
         self._last_data_time = time.time()  # Grace period before staleness check
+        self._start_time = time.time()
+        self._quotes_received = 0
         self._connect()
         self._connected.wait(timeout=15)
 
     def _connect(self):
         """Create WebSocket and connect."""
+        # Wait for old thread to finish before starting a new connection
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=5)
+
         self.ws = websocket.WebSocketApp(
             config.WS_MARKET_URL,
             on_open=self._on_open,
@@ -987,6 +1024,12 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
+        # Send WebSocket-level pings every 25s to keep the TCP connection alive
+        # through load balancers, NAT, and server idle timeouts.
+        # Without this, the server closes the connection after ~30s of
+        # transport-level "silence" (application-level SockJS heartbeats don't count).
+        proxy_kwargs["ping_interval"] = 25
+        proxy_kwargs["ping_timeout"] = 10
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
@@ -1026,19 +1069,36 @@ class MarketDataStream:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
+    # How long to wait for first quote before declaring stream dead
+    NO_DATA_TIMEOUT = 60  # seconds
+
     @property
     def data_stale(self) -> bool:
-        """True if connected but no data received for DATA_TIMEOUT seconds."""
+        """True if connected but no data received for DATA_TIMEOUT seconds,
+        or if no quotes at all after NO_DATA_TIMEOUT since start."""
         if not self._last_data_time:
             return False  # Haven't started receiving yet
-        return (time.time() - self._last_data_time) > self.DATA_TIMEOUT
+        # Check 1: No data for DATA_TIMEOUT seconds (normal staleness)
+        if (time.time() - self._last_data_time) > self.DATA_TIMEOUT:
+            return True
+        # Check 2: Stream running but zero quotes received after NO_DATA_TIMEOUT
+        if self._quotes_received == 0 and self._start_time:
+            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
+                logger.warning(
+                    "WebSocket has been running for %.0fs but received 0 quotes. Declaring stale.",
+                    time.time() - self._start_time,
+                )
+                return True
+        return False
 
-    def subscribe_quote(self, symbol: str, callback: Callable):
+    def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
         """Subscribe to real-time quotes for a symbol."""
         with self._callbacks_lock:
             self._callbacks.setdefault(symbol, []).append(callback)
+        if contract_id is not None:
+            self._contract_id_to_symbol[contract_id] = symbol
         self._send("md/subscribeQuote", {"symbol": symbol})
-        logger.info("Subscribed to quotes: %s", symbol)
+        logger.info("Subscribed to quotes: %s (contractId=%s)", symbol, contract_id)
 
     def unsubscribe_quote(self, symbol: str):
         """Unsubscribe from quotes."""
@@ -1089,14 +1149,21 @@ class MarketDataStream:
                 self._connected.set()
                 continue
 
-            # Auth failure
+            # Auth failure — trigger reconnect with fresh token
             if item.get("i") == 1 and item.get("s") != 200:
-                logger.error("Market data auth failed: %s", item)
+                logger.error("Market data auth failed (status=%s): %s", item.get("s"), item)
+                self._got_403 = True  # Force full re-auth on reconnect
+                if self.ws:
+                    try:
+                        self.ws.close()  # Trigger _on_close -> reconnect with fresh token
+                    except Exception:
+                        pass
                 continue
 
             # Quote data — dispatched by symbol from the "d" field
             if "e" in item and item["e"] == "md" and "d" in item:
                 self._last_data_time = time.time()
+                self._quotes_received += 1
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
@@ -1105,12 +1172,25 @@ class MarketDataStream:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
                     contract_id = quote.get("contractId")
-                    for sym, cbs in cb_snapshot.items():
-                        for cb in cbs:
+                    # Route quote to the correct symbol's callbacks using contractId.
+                    # Without this filter, ALL quotes go to ALL symbols — causing
+                    # strategies to receive prices from wrong contracts (e.g., NQ
+                    # prices fed to GC strategy), which breaks ORB ranges and VWAP.
+                    target_sym = self._contract_id_to_symbol.get(contract_id)
+                    if target_sym and target_sym in cb_snapshot:
+                        for cb in cb_snapshot[target_sym]:
                             try:
-                                cb(sym, quote)
+                                cb(target_sym, quote)
                             except Exception as e:
-                                logger.error("Quote callback error for %s: %s", sym, e)
+                                logger.error("Quote callback error for %s: %s", target_sym, e)
+                    elif not target_sym:
+                        # Unknown contractId — dispatch to all (fallback for unmapped contracts)
+                        for sym, cbs in cb_snapshot.items():
+                            for cb in cbs:
+                                try:
+                                    cb(sym, quote)
+                                except Exception as e:
+                                    logger.error("Quote callback error for %s: %s", sym, e)
 
     def _on_error(self, ws, error):
         error_str = str(error)
@@ -1124,30 +1204,46 @@ class MarketDataStream:
         # premature fallback to REST polling.
 
     def _on_close(self, ws, close_status_code, close_msg):
-        logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
         self._connected.clear()
-        self._consecutive_failures += 1  # Every close counts as a failure
-        # Auto-reconnect (unlimited attempts — bot should never stop trying)
-        if self._should_run:
-            self._reconnect_count += 1
-            # Signal fallback after too many consecutive failures
-            if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
-                logger.warning(
-                    "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
-                    self._consecutive_failures,
-                )
-                self._should_run = False
-                self.fell_back.set()
-                return
-            # Cap delay at 60 seconds
-            delay = min(60, self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1)))
-            logger.info(
-                "Reconnecting in %ds (attempt %d)...",
-                delay, self._reconnect_count,
+        # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
+        # quickly without counting it as a failure.
+        is_graceful = close_status_code == 1000
+        if is_graceful:
+            logger.info("Market data WebSocket closed gracefully (1000 %s). Reconnecting...", close_msg)
+        else:
+            logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
+            self._consecutive_failures += 1
+
+        if not self._should_run:
+            return
+
+        # Signal fallback after too many consecutive *real* failures
+        if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
+            logger.warning(
+                "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
+                self._consecutive_failures,
             )
-            self._reconnect_timer = threading.Timer(delay, self._reconnect)
-            self._reconnect_timer.daemon = True
-            self._reconnect_timer.start()
+            self._should_run = False
+            self.fell_back.set()
+            return
+
+        self._reconnect_count += 1
+        # Cancel any pending reconnect timer to prevent timer leaks
+        if self._reconnect_timer:
+            self._reconnect_timer.cancel()
+            self._reconnect_timer = None
+        # Graceful close: reconnect quickly (1s). Error: exponential backoff up to 60s.
+        if is_graceful:
+            delay = 1
+        else:
+            delay = min(60, self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1)))
+        logger.info(
+            "Reconnecting in %ds (attempt %d, consecutive failures: %d)...",
+            delay, self._reconnect_count, self._consecutive_failures,
+        )
+        self._reconnect_timer = threading.Timer(delay, self._reconnect)
+        self._reconnect_timer.daemon = True
+        self._reconnect_timer.start()
 
     def _reconnect(self):
         """Reconnect and re-subscribe to all symbols. Refreshes token on 403."""
@@ -1357,7 +1453,7 @@ class RestMarketDataPoller:
         """Stop the polling thread."""
         self._should_run = False
 
-    def subscribe_quote(self, symbol: str, callback: Callable):
+    def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
         """Register a callback for a symbol. symbol is the contract name (e.g. NQH6)."""
         self._callbacks.setdefault(symbol, []).append(callback)
         # Map contract name to Yahoo symbol (strip month code + year digit)

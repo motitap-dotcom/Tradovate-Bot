@@ -24,6 +24,7 @@ env/
 credentials.json
 api_keys.json
 .tradovate_token.json
+.day_start_balance.json
 .gh_pat
 
 # Logs
@@ -39,6 +40,10 @@ trades/
 backtest_results/
 live_status.json
 verify_report.json
+trade_journal.json
+learning_report.json
+learning_history.json
+tuner_log.json
 
 # VPS generated files
 bot-ctl.sh

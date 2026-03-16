@@ -173,7 +173,13 @@ jobs:
           ls_path = os.path.join(bot_dir, "live_status.json")
           if os.path.exists(ls_path):
               try:
-                  with open(ls_path) as f: result["live_status"] = json.load(f)
+                  with open(ls_path) as f: ls_data = json.load(f)
+                  result["live_status"] = ls_data
+                  # Read actual WebSocket state from live_status.json (written by bot)
+                  if "websocket_connected" in ls_data:
+                      result["websocket_connected"] = ls_data["websocket_connected"]
+                  if "market_data_source" in ls_data:
+                      result["market_data_source"] = ls_data.get("market_data_source", "unknown")
               except: pass
           tk_path = os.path.join(bot_dir, ".tradovate_token.json")
           if os.path.exists(tk_path):
@@ -388,7 +394,7 @@ jobs:
                               print(f"  Trading active: {ta.get('trading_active')}")
                               print(f"  Signals: {len(ta.get('recent_signals', []))}")
                               print(f"  Trades: {len(ta.get('recent_trades', []))}")
-                              print(f"  WS connected: {ta.get('websocket_connected')}")
+                              print(f"  WS connected: {ta.get('websocket_connected')} (source: {ta.get('market_data_source', 'unknown')})")
                               print(f"  Errors in log: {len(ta.get('errors_in_log', []))}")
                           except Exception:
                               pass
@@ -767,7 +773,9 @@ jobs:
               print(f"| Token | {ta.get('token_status', '?')} |")
               print(f"| Token Expiry | {ta.get('token_expiry', '?')[:19] if ta.get('token_expiry') else 'N/A'} |")
               print(f"| Trading Active | {ta.get('trading_active', False)} |")
-              print(f"| WebSocket | {'Connected' if ta.get('websocket_connected') else 'Disconnected'} |")
+              md_src = ta.get('market_data_source', 'unknown')
+              ws_label = f"Connected ({md_src})" if ta.get('websocket_connected') else f"Disconnected ({md_src})"
+              print(f"| WebSocket | {ws_label} |")
               print(f"| Recent Signals | {len(ta.get('recent_signals', []))} |")
               print(f"| Recent Trades | {len(ta.get('recent_trades', []))} |")
               print(f"| Log Errors | {len(ta.get('errors_in_log', []))} |")

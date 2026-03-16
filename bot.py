@@ -32,6 +32,7 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+from bot_commands import read_pending_command, execute_command
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -821,6 +822,11 @@ class TradovateBot:
                 # Write live status file for external monitoring
                 self._write_live_status()
 
+                # Check for external commands (from dashboard / other windows)
+                cmd = read_pending_command()
+                if cmd:
+                    execute_command(cmd, self)
+
                 time.sleep(30)  # Status update every 30 seconds
 
             except KeyboardInterrupt:
@@ -938,16 +944,29 @@ class TradovateBot:
                 "balance": status["balance"],
                 "equity": status["equity"],
                 "day_pnl": status["day_pnl"],
+                "unrealized_pnl": status["unrealized_pnl"],
                 "peak_balance": status["peak_balance"],
                 "drawdown_floor": status["drawdown_floor"],
                 "distance_to_floor": status["distance_to_floor"],
+                "daily_profit_cap": status["daily_profit_cap"],
+                "daily_profit_remaining": status["daily_profit_remaining"],
                 "open_contracts": status["open_contracts"],
                 "trades_today": status["trades_today"],
                 "locked": status["locked"],
                 "lock_reason": status["lock_reason"],
+                "balance_initialized": status["balance_initialized"],
                 "environment": config.ENVIRONMENT,
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
+                "websocket_connected": (
+                    self.md_stream._connected.is_set()
+                    if self.md_stream and hasattr(self.md_stream, "_connected")
+                    else False
+                ),
+                "market_data_source": (
+                    "websocket" if isinstance(self.md_stream, MarketDataStream)
+                    else "rest" if self.md_stream else "none"
+                ),
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
