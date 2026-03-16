@@ -727,6 +727,9 @@ class TradovateAPI:
         Uses placeorder (entry) + placeOCO (SL/TP) because FundedNext
         blocks the placeOSO endpoint.
         """
+        if self.account_id is None:
+            logger.error("Cannot place bracket order: account_id is None (auth may have failed)")
+            return None
         opposite_action = "Sell" if action == "Buy" else "Buy"
 
         # --- Step 1: Entry order ---
@@ -841,6 +844,9 @@ class TradovateAPI:
         self, symbol: str, action: str, qty: int
     ) -> Optional[dict]:
         """Place a simple market order (no brackets)."""
+        if self.account_id is None:
+            logger.error("Cannot place market order: account_id is None")
+            return None
         payload = {
             "accountSpec": self.account_spec,
             "accountId": self.account_id,
@@ -1110,9 +1116,15 @@ class MarketDataStream:
                 self._connected.set()
                 continue
 
-            # Auth failure
+            # Auth failure — trigger reconnect with fresh token
             if item.get("i") == 1 and item.get("s") != 200:
-                logger.error("Market data auth failed: %s", item)
+                logger.error("Market data auth failed (status=%s): %s", item.get("s"), item)
+                self._got_403 = True  # Force full re-auth on reconnect
+                if self.ws:
+                    try:
+                        self.ws.close()  # Trigger _on_close -> reconnect with fresh token
+                    except Exception:
+                        pass
                 continue
 
             # Quote data — dispatched by symbol from the "d" field

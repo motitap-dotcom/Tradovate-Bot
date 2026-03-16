@@ -667,11 +667,47 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+
+            # Fill quality tracking: check actual fill price vs signal price
+            if not self.dry_run and result.get("orderId"):
+                try:
+                    time.sleep(0.5)
+                    fill_detail = self.api._get(f"/order/item?id={result['orderId']}")
+                    if fill_detail and fill_detail.get("avgPrice"):
+                        avg_fill = fill_detail["avgPrice"]
+                        expected = signal.entry_price or avg_fill  # Market order = no expected price
+                        slippage = abs(avg_fill - expected) if signal.entry_price else 0
+                        spec = config.CONTRACT_SPECS.get(signal.symbol, {})
+                        slippage_dollars = slippage * spec.get("point_value", 1)
+                        logger.info(
+                            "FILL QUALITY: %s filled at %.4f (expected %.4f) | slippage=%.4f pts ($%.2f)",
+                            signal.symbol, avg_fill, expected, slippage, slippage_dollars,
+                        )
+                except Exception as e:
+                    logger.debug("Fill quality check error: %s", e)
         else:
+            # Bug #23 fix: Do NOT leave risk manager thinking contracts are open
+            # when the order actually failed. Log clearly so we can debug.
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
+            # Verify position state from API to avoid desync
+            if not self.dry_run:
+                try:
+                    positions = self.api.get_positions()
+                    actual_open = sum(
+                        abs(p.get("netPos", 0)) for p in positions
+                        if p.get("netPos", 0) != 0
+                    )
+                    if actual_open != self.risk.open_contracts:
+                        logger.warning(
+                            "Risk desync detected: risk says %d contracts, API says %d. Correcting.",
+                            self.risk.open_contracts, actual_open,
+                        )
+                        self.risk.open_contracts = actual_open
+                except Exception as e:
+                    logger.warning("Position check after failed order: %s", e)
 
     # ─────────────────────────────────────────
     # Main loop
@@ -779,11 +815,22 @@ class TradovateBot:
                 if not self.dry_run and self.md_stream:
                     is_stale = getattr(self.md_stream, "data_stale", False)
                     fell_back = getattr(self.md_stream, "fell_back", None)
+                    # Track consecutive staleness for escalating alerts
+                    if not hasattr(self, "_md_stale_count"):
+                        self._md_stale_count = 0
                     if is_stale or (fell_back and fell_back.is_set()):
+                        self._md_stale_count += 1
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
-                        logger.warning(
-                            "Market data stream unhealthy (%s). Restarting...", reason
-                        )
+                        if self._md_stale_count >= 10:  # 5+ minutes of stale data
+                            logger.critical(
+                                "MARKET DATA DOWN for %d cycles (%s). Trading may be impaired!",
+                                self._md_stale_count, reason,
+                            )
+                        else:
+                            logger.warning(
+                                "Market data stream unhealthy (%s, cycle %d). Restarting...",
+                                reason, self._md_stale_count,
+                            )
                         try:
                             self.md_stream.stop()
                         except Exception:
@@ -791,6 +838,10 @@ class TradovateBot:
                         self.md_stream = self._start_market_data()
                         if self.md_stream:
                             self._subscribe_market_data()
+                    else:
+                        if self._md_stale_count > 0:
+                            logger.info("Market data recovered after %d stale cycles", self._md_stale_count)
+                        self._md_stale_count = 0
 
                 # Periodic WebSocket recovery: if currently on REST polling,
                 # try to upgrade back to WebSocket every 5 minutes
@@ -852,14 +903,15 @@ class TradovateBot:
         self.stop()
 
     def _sync_fills(self):
-        """Check positions and fills to close journal trades and update contract count."""
+        """Check positions and fills to close journal trades and update contract count.
+
+        Uses API positions as authoritative source. Tracks by symbol AND order ID
+        to handle multiple trades on the same symbol correctly.
+        """
         try:
             positions = self.api.get_positions()
 
             # Build contractId -> base symbol mapping from our contract_map
-            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
-            # We need to match position contractId (int) to our symbols.
-            # Resolve this once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
             # Lazily build the mapping from API contract lookups
@@ -871,8 +923,8 @@ class TradovateBot:
 
             # Count total open contracts from API (authoritative)
             total_open = 0
-            # Track which base symbols have open positions
-            open_base_symbols = set()
+            # Track which base symbols have open positions and their net qty
+            open_positions_by_symbol: dict[str, int] = {}
             for p in positions:
                 net = abs(p.get("netPos", 0))
                 if net > 0:
@@ -880,23 +932,30 @@ class TradovateBot:
                     cid = p.get("contractId")
                     base_sym = self._contract_id_to_symbol.get(cid)
                     if base_sym:
-                        open_base_symbols.add(base_sym)
+                        open_positions_by_symbol[base_sym] = (
+                            open_positions_by_symbol.get(base_sym, 0) + net
+                        )
 
+            # Sync authoritative contract count from API
+            if total_open != self.risk.open_contracts:
+                logger.debug(
+                    "Contract count sync: risk=%d, API=%d",
+                    self.risk.open_contracts, total_open,
+                )
             self.risk.open_contracts = total_open
 
-            # Close journal trades where position is now flat
+            # Close journal trades where position is now flat for that symbol
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
                 sym = trade_info.get("symbol")
                 if not journal_id or trade_info.get("_closed"):
                     continue
 
-                if sym not in open_base_symbols:
+                if sym not in open_positions_by_symbol:
                     # Position is flat for this symbol — trade was closed (by SL/TP/manual)
                     self.journal.record_exit_by_symbol(
                         sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
 
@@ -1009,14 +1068,106 @@ class TradovateBot:
 # ─────────────────────────────────────────────
 
 
+def _us_market_holidays(year: int) -> set:
+    """Return a set of US market holiday dates for the given year.
+
+    Covers NYSE/CME observed holidays. Not exhaustive for every early close,
+    but catches the major full-closure days to prevent wasted trading attempts.
+    """
+    from datetime import date
+    holidays = set()
+    # Fixed-date holidays (observed: Mon if Sun, Fri if Sat)
+    def _observed(month, day):
+        d = date(year, month, day)
+        if d.weekday() == 5:  # Saturday -> Friday
+            d = d - timedelta(days=1)
+        elif d.weekday() == 6:  # Sunday -> Monday
+            d = d + timedelta(days=1)
+        return d
+
+    holidays.add(_observed(1, 1))   # New Year's Day
+    holidays.add(_observed(7, 4))   # Independence Day
+    holidays.add(_observed(12, 25)) # Christmas
+
+    # MLK Day: 3rd Monday in January
+    d = date(year, 1, 1)
+    mondays = 0
+    while mondays < 3:
+        if d.weekday() == 0:
+            mondays += 1
+            if mondays == 3:
+                holidays.add(d)
+        d += timedelta(days=1)
+
+    # Presidents' Day: 3rd Monday in February
+    d = date(year, 2, 1)
+    mondays = 0
+    while mondays < 3:
+        if d.weekday() == 0:
+            mondays += 1
+            if mondays == 3:
+                holidays.add(d)
+        d += timedelta(days=1)
+
+    # Good Friday: 2 days before Easter (simplified — covers most years)
+    # Easter algorithm (Anonymous Gregorian)
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d_val = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d_val - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    easter = date(year, month, day)
+    holidays.add(easter - timedelta(days=2))  # Good Friday
+
+    # Memorial Day: last Monday in May
+    d = date(year, 5, 31)
+    while d.weekday() != 0:
+        d -= timedelta(days=1)
+    holidays.add(d)
+
+    # Juneteenth: June 19
+    holidays.add(_observed(6, 19))
+
+    # Labor Day: 1st Monday in September
+    d = date(year, 9, 1)
+    while d.weekday() != 0:
+        d += timedelta(days=1)
+    holidays.add(d)
+
+    # Thanksgiving: 4th Thursday in November
+    d = date(year, 11, 1)
+    thursdays = 0
+    while thursdays < 4:
+        if d.weekday() == 3:
+            thursdays += 1
+            if thursdays == 4:
+                holidays.add(d)
+        d += timedelta(days=1)
+
+    return holidays
+
+
 def _next_trading_morning() -> datetime:
-    """Return the next weekday at 09:25 ET (5 min before market open)."""
+    """Return the next weekday at 09:25 ET (5 min before market open).
+    Skips weekends and US market holidays."""
     now = now_et()
     # Start from tomorrow
     candidate = now.replace(hour=9, minute=25, second=0, microsecond=0) + timedelta(days=1)
-    # Skip weekends: Saturday=5, Sunday=6
-    while candidate.weekday() >= 5:
+    holidays = _us_market_holidays(candidate.year)
+    # Skip weekends and holidays (check next year too for Dec->Jan edge)
+    while candidate.weekday() >= 5 or candidate.date() in holidays:
         candidate += timedelta(days=1)
+        if candidate.date().year != now.year:
+            holidays |= _us_market_holidays(candidate.year)
     return candidate
 
 

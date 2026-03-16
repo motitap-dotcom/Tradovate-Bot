@@ -18,7 +18,27 @@ STATUS_FILE="server_status.json"
 
 cd "$BOT_DIR" || { echo "[$(date)] FATAL: $BOT_DIR not found"; exit 1; }
 
-# ── 0. Auto-detect deploy branch: prefer main, fall back to old branch ──
+# ── 0a. Log rotation: keep cron log under 5MB ──
+CRON_LOG="/var/log/tradovate-cron.log"
+if [ -f "$CRON_LOG" ]; then
+    LOG_SIZE=$(stat -f%z "$CRON_LOG" 2>/dev/null || stat -c%s "$CRON_LOG" 2>/dev/null || echo "0")
+    if [ "$LOG_SIZE" -gt 5242880 ] 2>/dev/null; then
+        # Keep last 1000 lines, rotate old log
+        tail -1000 "$CRON_LOG" > "${CRON_LOG}.tmp" && mv "${CRON_LOG}.tmp" "$CRON_LOG"
+        echo "[$(date)] Cron log rotated (was ${LOG_SIZE} bytes)"
+    fi
+fi
+
+# ── 0b. Source GH_PAT early so it's available for status push ──
+if [ -z "${GH_PAT:-}" ] && [ -f "$BOT_DIR/.gh_pat" ]; then
+    # shellcheck disable=SC1091
+    . "$BOT_DIR/.gh_pat" 2>/dev/null || true
+    if [ -z "${GH_PAT:-}" ]; then
+        echo "[$(date)] Warning: .gh_pat exists but GH_PAT is still empty. Check file format (should be: export GH_PAT=...)"
+    fi
+fi
+
+# ── 0c. Auto-detect deploy branch: prefer main, fall back to old branch ──
 if [ -n "${DEPLOY_BRANCH:-}" ]; then
     BRANCH="$DEPLOY_BRANCH"
 elif git ls-remote --heads origin main 2>/dev/null | grep -q main; then
@@ -176,7 +196,7 @@ echo "[$(date)] Status: bot_active=$BOT_ACTIVE, pid=$BOT_PID"
 
 # ── 4. Push status to GitHub via API (directly to main, no git push needed) ──
 if [ -z "${GH_PAT:-}" ]; then
-    echo "[$(date)] No GH_PAT set — status written locally only."
+    echo "[$(date)] No GH_PAT set — status written locally only. To fix: echo 'export GH_PAT=ghp_...' > $BOT_DIR/.gh_pat"
     exit 0
 fi
 
