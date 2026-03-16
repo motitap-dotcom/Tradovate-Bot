@@ -566,6 +566,9 @@ class TradovateAPI:
                 resp.raise_for_status()
                 data = resp.json()
                 self.access_token = data.get("accessToken", self.access_token)
+                # Sync md_access_token so WebSocket market data stays authenticated
+                if data.get("mdAccessToken"):
+                    self.md_access_token = data["mdAccessToken"]
                 if data.get("expirationTime"):
                     self.token_expiry = datetime.fromisoformat(
                         data["expirationTime"].replace("Z", "+00:00")
@@ -583,8 +586,8 @@ class TradovateAPI:
             return
         now = datetime.now(timezone.utc)
         remaining = (self.token_expiry - now).total_seconds()
-        # Renew if less than 10 minutes remain (was 5 — more buffer for slow networks)
-        if remaining < 600:
+        # Renew if less than 15 minutes remain (proactive — avoids expiry during slow API calls)
+        if remaining < 900:
             if remaining <= 0:
                 logger.warning("Token EXPIRED (%.0fs ago). Attempting full re-auth...", -remaining)
             else:
