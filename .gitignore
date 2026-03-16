@@ -40,6 +40,10 @@ trades/
 backtest_results/
 live_status.json
 verify_report.json
+trade_journal.json
+learning_report.json
+learning_history.json
+tuner_log.json
 
 # VPS generated files
 bot-ctl.sh
