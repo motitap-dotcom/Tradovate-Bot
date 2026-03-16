@@ -1076,6 +1076,11 @@ class TradovateBot:
                     else "rest_polling" if isinstance(self.md_stream, RestMarketDataPoller)
                     else "none"
                 ) if self.md_stream else "none",
+                "ws_quotes_received": (
+                    self.md_stream._quotes_received
+                    if isinstance(self.md_stream, MarketDataStream)
+                    else "n/a"
+                ) if self.md_stream else 0,
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
