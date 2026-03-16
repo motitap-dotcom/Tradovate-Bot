@@ -1042,6 +1042,15 @@ class TradovateBot:
                 "environment": config.ENVIRONMENT,
                 "dry_run": self.dry_run,
                 "active_symbols": list(self.contract_map.keys()),
+                "websocket_connected": (
+                    isinstance(self.md_stream, MarketDataStream)
+                    and self.md_stream._connected.is_set()
+                ) if self.md_stream else False,
+                "market_data_source": (
+                    "websocket" if isinstance(self.md_stream, MarketDataStream)
+                    else "rest_polling" if isinstance(self.md_stream, RestMarketDataPoller)
+                    else "none"
+                ) if self.md_stream else "none",
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
