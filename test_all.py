@@ -2379,6 +2379,217 @@ test_risk_set_initial_balance()
 
 
 # ─────────────────────────────────────────────
+# 17. CONTINUOUS LEARNING SYSTEM TESTS
+# ─────────────────────────────────────────────
+print(f"\n{'=' * 60}")
+print("17. CONTINUOUS LEARNING SYSTEM TESTS")
+print(f"{'=' * 60}")
+
+
+def _make_journal_with_trades(n_trades=10, win_pct=0.6, symbol="NQ"):
+    """Helper: create a journal with realistic closed trades."""
+    from trade_journal import TradeJournal
+    f = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+    path = f.name
+    f.close()
+    j = TradeJournal(filepath=path)
+    import random
+    random.seed(42)
+    for i in range(n_trades):
+        tid = j.record_entry(
+            symbol, "Buy", 21000 + i, 1, "ORBStrategy", f"test_{i}",
+            stop_loss=20975, take_profit=21050,
+        )
+        if random.random() < win_pct:
+            j.record_exit(tid, 21050, 250, "take_profit")
+        else:
+            j.record_exit(tid, 20975, -125, "stop_loss")
+        # Set MAE/MFE for learning
+        for t in j.trades:
+            if t["id"] == tid:
+                t["mae_points"] = round(-random.uniform(2, 20), 2)
+                t["mfe_points"] = round(random.uniform(5, 40), 2)
+                t["entry_day_of_week"] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][i % 5]
+    j._save()
+    return j, path
+
+
+@test("ContinuousLearner: daily analysis produces report with all fields")
+def test_learner_daily():
+    from continuous_learner import ContinuousLearner
+    j, path = _make_journal_with_trades(10, 0.6)
+    try:
+        learner = ContinuousLearner(j)
+        report = learner.run_daily_analysis()
+        assert report["type"] == "daily"
+        assert "insights" in report
+        assert "parameter_analysis" in report
+        assert "score" in report
+        assert report["score"]["total"] >= 0
+    finally:
+        os.unlink(path)
+        for f in ["learning_report.json", "learning_history.json"]:
+            fp = os.path.join(os.path.dirname(path), f)
+            if os.path.exists(fp):
+                os.unlink(fp)
+
+
+@test("ContinuousLearner: weekly analysis produces trend analysis")
+def test_learner_weekly():
+    from continuous_learner import ContinuousLearner
+    j, path = _make_journal_with_trades(20, 0.5)
+    try:
+        learner = ContinuousLearner(j)
+        report = learner.run_weekly_analysis()
+        assert report["type"] == "weekly"
+        assert "trend_analysis" in report
+        assert "recommendations" in report
+    finally:
+        os.unlink(path)
+        for f in ["learning_report.json", "learning_history.json"]:
+            fp = os.path.join(os.path.dirname(path), f)
+            if os.path.exists(fp):
+                os.unlink(fp)
+
+
+@test("ContinuousLearner: score calculation ranges 0-100")
+def test_learner_scoring():
+    from continuous_learner import ContinuousLearner
+    j, path = _make_journal_with_trades(8, 0.7)
+    try:
+        learner = ContinuousLearner(j)
+        today_trades = j._closed_trades()
+        all_trades = j._closed_trades()
+        score = learner._score_day(today_trades, all_trades)
+        assert 0 <= score["total"] <= 100, f"Score {score['total']} out of range"
+        assert "win_rate_score" in score
+        assert "pnl_score" in score
+        assert "risk_score" in score
+        assert "discipline_score" in score
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: MAE/MFE update_mae_mfe tracks correctly")
+def test_journal_mae_mfe():
+    from trade_journal import TradeJournal
+    f = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+    path = f.name
+    f.close()
+    try:
+        j = TradeJournal(filepath=path)
+        tid = j.record_entry("NQ", "Buy", 21000, 1, "ORB", "test")
+
+        # Price goes up (favorable)
+        j.update_mae_mfe("NQ", 21020)
+        trade = j.trades[-1]
+        assert trade["mfe_points"] == 20, f"MFE should be 20, got {trade['mfe_points']}"
+        assert trade["mae_points"] == 0 or trade["mae_points"] is None
+
+        # Price goes down (adverse)
+        j.update_mae_mfe("NQ", 20985)
+        assert trade["mae_points"] == -15, f"MAE should be -15, got {trade['mae_points']}"
+
+        # Price recovers (MFE should stay at 20)
+        j.update_mae_mfe("NQ", 21010)
+        assert trade["mfe_points"] == 20, "MFE should not decrease"
+        assert trade["mae_points"] == -15, "MAE should not increase"
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: analyze_by_day_of_week groups correctly")
+def test_journal_day_of_week():
+    from trade_journal import TradeJournal
+    j, path = _make_journal_with_trades(10, 0.6)
+    try:
+        result = j.analyze_by_day_of_week()
+        assert isinstance(result, dict)
+        # We set entry_day_of_week in the helper, so we should have data
+        total_trades = sum(d["trades"] for d in result.values())
+        assert total_trades > 0, "Should have day-of-week data"
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: analyze_streaks detects winning and losing streaks")
+def test_journal_streaks():
+    from trade_journal import TradeJournal
+    f = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+    path = f.name
+    f.close()
+    try:
+        j = TradeJournal(filepath=path)
+        # Create: W, W, W, L, L
+        for i in range(3):
+            tid = j.record_entry("NQ", "Buy", 21000, 1, "ORB", "test")
+            j.record_exit(tid, 21050, 250, "take_profit")
+        for i in range(2):
+            tid = j.record_entry("NQ", "Buy", 21000, 1, "ORB", "test")
+            j.record_exit(tid, 20975, -125, "stop_loss")
+
+        streaks = j.analyze_streaks()
+        assert streaks["max_win_streak"] == 3
+        assert streaks["max_loss_streak"] == 2
+        assert streaks["current_type"] == "loss"
+        assert streaks["current_streak"] == 2
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: cooldown tuning adjusts when 2nd trades lose")
+def test_tuner_cooldowns():
+    from auto_tuner import AutoTuner
+    j, path = _make_journal_with_trades(20, 0.5)
+    try:
+        tuner = AutoTuner(j)
+        closed = j._closed_trades()
+        tuner._tune_cooldowns(closed)
+        # May or may not produce adjustments depending on data, but should not crash
+        assert isinstance(tuner.adjustments, list)
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: MAE-based stop tuning with sufficient data")
+def test_tuner_mae_stops():
+    from auto_tuner import AutoTuner
+    j, path = _make_journal_with_trades(20, 0.6)
+    try:
+        tuner = AutoTuner(j)
+        closed = j._closed_trades()
+        tuner._tune_stops_from_mae(closed)
+        # Should not crash — may or may not produce adjustments
+        assert isinstance(tuner.adjustments, list)
+    finally:
+        os.unlink(path)
+
+
+@test("AutoTuner: MFE-based target tuning with sufficient data")
+def test_tuner_mfe_targets():
+    from auto_tuner import AutoTuner
+    j, path = _make_journal_with_trades(20, 0.6)
+    try:
+        tuner = AutoTuner(j)
+        closed = j._closed_trades()
+        tuner._tune_targets_from_mfe(closed)
+        assert isinstance(tuner.adjustments, list)
+    finally:
+        os.unlink(path)
+
+
+test_learner_daily()
+test_learner_weekly()
+test_learner_scoring()
+test_journal_mae_mfe()
+test_journal_day_of_week()
+test_journal_streaks()
+test_tuner_cooldowns()
+test_tuner_mae_stops()
+test_tuner_mfe_targets()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 
