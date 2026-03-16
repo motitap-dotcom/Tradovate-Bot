@@ -573,9 +573,10 @@ def test_vwap_long_crossover():
     strat = VWAPStrategy("MGC")
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
-    # Build initial VWAP around 2000
-    for i in range(10):
-        strat.update_vwap(2001, 1999, 2000, 100)
+    # Build initial VWAP around 2000 — feed enough candles through on_price
+    # to satisfy MIN_CANDLES_FOR_SIGNAL
+    for i in range(6):
+        strat.on_price(2000, 2001, 1999, 100)
 
     # Price below VWAP
     strat._prev_price = strat.vwap - 1
@@ -592,8 +593,9 @@ def test_vwap_short_crossover():
     strat = VWAPStrategy("MGC")
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
-    for i in range(10):
-        strat.update_vwap(2001, 1999, 2000, 100)
+    # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
+    for i in range(6):
+        strat.on_price(2000, 2001, 1999, 100)
 
     # Price above VWAP
     strat._prev_price = strat.vwap + 1
@@ -610,8 +612,9 @@ def test_vwap_cooldown():
     strat = VWAPStrategy("MGC")
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
-    for i in range(10):
-        strat.update_vwap(2001, 1999, 2000, 100)
+    # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
+    for i in range(6):
+        strat.on_price(2000, 2001, 1999, 100)
 
     # First long
     strat._prev_price = strat.vwap - 1

@@ -193,9 +193,10 @@ class RiskManager:
             )
 
     def _check_daily_profit_cap(self):
-        """Lock trading if daily profit exceeds cap (consistency rule)."""
+        """Lock trading if daily profit (including unrealized) exceeds cap (consistency rule)."""
         if self.daily_profit_cap is None:
             return
+        # Use day_pnl which already includes unrealized P&L (set in update_balance)
         if self.day_pnl >= self.daily_profit_cap:
             self._lock(
                 f"DAILY PROFIT CAP: day P&L ${self.day_pnl:.2f} hit "
@@ -277,6 +278,7 @@ class RiskManager:
         if trade_risk_budget <= 0:
             return 0
 
+        # Dollar risk per contract = stop distance in points * point value
         # Dollar risk per contract = stop distance in points * point value
         stop_points = spec["stop_loss_points"]
         point_value = spec["point_value"]
