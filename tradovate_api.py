@@ -985,6 +985,8 @@ class MarketDataStream:
         self.ws: Optional[websocket.WebSocketApp] = None
         self._request_id = 0
         self._callbacks: dict[str, list[Callable]] = {}
+        # Maps contractId (int) → symbol name (str) for correct quote routing
+        self._contract_id_to_symbol: dict[int, str] = {}
         self._callbacks_lock = threading.Lock()
         self._connected = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -1060,12 +1062,14 @@ class MarketDataStream:
             return False  # Haven't started receiving yet
         return (time.time() - self._last_data_time) > self.DATA_TIMEOUT
 
-    def subscribe_quote(self, symbol: str, callback: Callable):
+    def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
         """Subscribe to real-time quotes for a symbol."""
         with self._callbacks_lock:
             self._callbacks.setdefault(symbol, []).append(callback)
+        if contract_id is not None:
+            self._contract_id_to_symbol[contract_id] = symbol
         self._send("md/subscribeQuote", {"symbol": symbol})
-        logger.info("Subscribed to quotes: %s", symbol)
+        logger.info("Subscribed to quotes: %s (contractId=%s)", symbol, contract_id)
 
     def unsubscribe_quote(self, symbol: str):
         """Unsubscribe from quotes."""
@@ -1138,12 +1142,25 @@ class MarketDataStream:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
                     contract_id = quote.get("contractId")
-                    for sym, cbs in cb_snapshot.items():
-                        for cb in cbs:
+                    # Route quote to the correct symbol's callbacks using contractId.
+                    # Without this filter, ALL quotes go to ALL symbols — causing
+                    # strategies to receive prices from wrong contracts (e.g., NQ
+                    # prices fed to GC strategy), which breaks ORB ranges and VWAP.
+                    target_sym = self._contract_id_to_symbol.get(contract_id)
+                    if target_sym and target_sym in cb_snapshot:
+                        for cb in cb_snapshot[target_sym]:
                             try:
-                                cb(sym, quote)
+                                cb(target_sym, quote)
                             except Exception as e:
-                                logger.error("Quote callback error for %s: %s", sym, e)
+                                logger.error("Quote callback error for %s: %s", target_sym, e)
+                    elif not target_sym:
+                        # Unknown contractId — dispatch to all (fallback for unmapped contracts)
+                        for sym, cbs in cb_snapshot.items():
+                            for cb in cbs:
+                                try:
+                                    cb(sym, quote)
+                                except Exception as e:
+                                    logger.error("Quote callback error for %s: %s", sym, e)
 
     def _on_error(self, ws, error):
         error_str = str(error)
@@ -1406,7 +1423,7 @@ class RestMarketDataPoller:
         """Stop the polling thread."""
         self._should_run = False
 
-    def subscribe_quote(self, symbol: str, callback: Callable):
+    def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
         """Register a callback for a symbol. symbol is the contract name (e.g. NQH6)."""
         self._callbacks.setdefault(symbol, []).append(callback)
         # Map contract name to Yahoo symbol (strip month code + year digit)
