@@ -725,6 +725,26 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
+                        # Verify positions are actually flat (retry up to 3 times)
+                        for attempt in range(1, 4):
+                            time.sleep(2)
+                            remaining = [
+                                p for p in self.api.get_positions()
+                                if p.get("netPos", 0) != 0
+                            ]
+                            if not remaining:
+                                logger.info("Force close confirmed: all positions flat.")
+                                break
+                            logger.warning(
+                                "Force close attempt %d: %d positions still open. Retrying...",
+                                attempt, len(remaining),
+                            )
+                            self.api.close_all_positions()
+                        else:
+                            logger.critical(
+                                "FORCE CLOSE FAILED: %d positions still open after 3 attempts!",
+                                len(remaining),
+                            )
                     # Record force-close exits in journal
                     for t in self.trades_today:
                         if t.get("journal_id"):
