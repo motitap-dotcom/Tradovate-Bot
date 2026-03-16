@@ -1124,30 +1124,46 @@ class MarketDataStream:
         # premature fallback to REST polling.
 
     def _on_close(self, ws, close_status_code, close_msg):
-        logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
         self._connected.clear()
-        self._consecutive_failures += 1  # Every close counts as a failure
-        # Auto-reconnect (unlimited attempts — bot should never stop trying)
-        if self._should_run:
-            self._reconnect_count += 1
-            # Signal fallback after too many consecutive failures
-            if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
-                logger.warning(
-                    "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
-                    self._consecutive_failures,
-                )
-                self._should_run = False
-                self.fell_back.set()
-                return
-            # Cap delay at 60 seconds
-            delay = min(60, self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1)))
-            logger.info(
-                "Reconnecting in %ds (attempt %d)...",
-                delay, self._reconnect_count,
+        # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
+        # quickly without counting it as a failure.
+        is_graceful = close_status_code == 1000
+        if is_graceful:
+            logger.info("Market data WebSocket closed gracefully (1000 %s). Reconnecting...", close_msg)
+        else:
+            logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
+            self._consecutive_failures += 1
+
+        if not self._should_run:
+            return
+
+        # Signal fallback after too many consecutive *real* failures
+        if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
+            logger.warning(
+                "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
+                self._consecutive_failures,
             )
-            self._reconnect_timer = threading.Timer(delay, self._reconnect)
-            self._reconnect_timer.daemon = True
-            self._reconnect_timer.start()
+            self._should_run = False
+            self.fell_back.set()
+            return
+
+        self._reconnect_count += 1
+        # Cancel any pending reconnect timer to prevent timer leaks
+        if self._reconnect_timer:
+            self._reconnect_timer.cancel()
+            self._reconnect_timer = None
+        # Graceful close: reconnect quickly (1s). Error: exponential backoff up to 60s.
+        if is_graceful:
+            delay = 1
+        else:
+            delay = min(60, self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_count - 1)))
+        logger.info(
+            "Reconnecting in %ds (attempt %d, consecutive failures: %d)...",
+            delay, self._reconnect_count, self._consecutive_failures,
+        )
+        self._reconnect_timer = threading.Timer(delay, self._reconnect)
+        self._reconnect_timer.daemon = True
+        self._reconnect_timer.start()
 
     def _reconnect(self):
         """Reconnect and re-subscribe to all symbols. Refreshes token on 403."""
