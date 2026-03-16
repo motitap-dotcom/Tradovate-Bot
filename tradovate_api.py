@@ -978,6 +978,10 @@ class MarketDataStream:
 
     def _connect(self):
         """Create WebSocket and connect."""
+        # Wait for old thread to finish before starting a new connection
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=5)
+
         self.ws = websocket.WebSocketApp(
             config.WS_MARKET_URL,
             on_open=self._on_open,
@@ -987,6 +991,12 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
+        # Send WebSocket-level pings every 25s to keep the TCP connection alive
+        # through load balancers, NAT, and server idle timeouts.
+        # Without this, the server closes the connection after ~30s of
+        # transport-level "silence" (application-level SockJS heartbeats don't count).
+        proxy_kwargs["ping_interval"] = 25
+        proxy_kwargs["ping_timeout"] = 10
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
