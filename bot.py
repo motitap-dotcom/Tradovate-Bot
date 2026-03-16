@@ -501,9 +501,9 @@ class TradovateBot:
     # Market data
     # ─────────────────────────────────────────
 
-    def _start_market_data(self):
+    def _start_market_data(self, force_rest: bool = False):
         """Try WebSocket first; fall back to REST polling if WS is unavailable."""
-        if self.api.md_access_token:
+        if not force_rest and self.api.md_access_token:
             try:
                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
                 ws.start()
@@ -844,6 +844,7 @@ class TradovateBot:
                     if is_stale or (fell_back and fell_back.is_set()):
                         self._md_stale_count += 1
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
+                        was_websocket = isinstance(self.md_stream, MarketDataStream)
                         if self._md_stale_count >= 10:  # 5+ minutes of stale data
                             logger.critical(
                                 "MARKET DATA DOWN for %d cycles (%s). Trading may be impaired!",
@@ -858,7 +859,17 @@ class TradovateBot:
                             self.md_stream.stop()
                         except Exception:
                             pass
-                        self.md_stream = self._start_market_data()
+                        # If WebSocket was stale (connected but no data), force REST
+                        # polling. The periodic WS recovery (every 5 min) will try
+                        # WebSocket again later.
+                        force_rest = was_websocket and self._md_stale_count >= 1
+                        if force_rest:
+                            logger.warning(
+                                "WebSocket connected but delivered no data for %d cycles. "
+                                "Forcing REST polling (Yahoo Finance).",
+                                self._md_stale_count,
+                            )
+                        self.md_stream = self._start_market_data(force_rest=force_rest)
                         if self.md_stream:
                             self._subscribe_market_data()
                     else:
