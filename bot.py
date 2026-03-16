@@ -32,6 +32,7 @@ from strategies import create_strategy, TradeSignal, Direction
 from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, YAHOO_SYMBOLS
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
+from continuous_learner import ContinuousLearner
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -558,6 +559,9 @@ class TradovateBot:
         if current < start or current >= cutoff:
             return
 
+        # Track MAE/MFE for open trades (learning data)
+        self.journal.update_mae_mfe(symbol, price)
+
         # Feed price to strategy
         signal = None
         if hasattr(strategy, "on_price"):
@@ -765,14 +769,25 @@ class TradovateBot:
                                 t["symbol"], 0, 0, exit_reason="force_close"
                             )
                     self.risk.end_of_day_update(self.risk.current_balance)
-                    # Run auto-tuner at end of day
+                    # Run continuous learning system at end of day
                     try:
-                        tuner = AutoTuner(self.journal)
-                        adjustments = tuner.run()
-                        if adjustments:
-                            logger.info("Auto-tuner made %d adjustments for next session", len(adjustments))
+                        learner = ContinuousLearner(self.journal)
+                        report = learner.run_daily_analysis()
+                        adj_count = len(report.get("tuner_adjustments", []))
+                        score = report.get("score", {}).get("total", 0)
+                        logger.info(
+                            "Daily learning: score=%d/100, %d adjustments, %d insights",
+                            score, adj_count, len(report.get("insights", [])),
+                        )
+                        # Weekly analysis on Fridays
+                        if now_et().weekday() == 4:  # Friday
+                            weekly = learner.run_weekly_analysis()
+                            logger.info(
+                                "Weekly learning: %d recommendations",
+                                len(weekly.get("recommendations", [])),
+                            )
                     except Exception as e:
-                        logger.warning("Auto-tuner error: %s", e)
+                        logger.warning("Learning system error: %s", e)
                     self.running = False
                     break
 
