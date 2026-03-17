@@ -14,7 +14,6 @@ Usage:
 """
 
 import argparse
-import concurrent.futures
 import json
 import logging
 import os
@@ -85,6 +84,9 @@ class TradovateBot:
         # Symbol → front-month contract name mapping
         self.contract_map: dict[str, str] = {}
 
+        # Symbol → Tradovate contract ID (int) for WebSocket quote routing
+        self.contract_ids: dict[str, int] = {}
+
         # Active strategy instances
         self.strategies: dict[str, object] = {}
 
@@ -138,11 +140,6 @@ class TradovateBot:
 
         # Resolve front-month contracts
         self._resolve_contracts()
-
-        # Build contract ID cache (so _sync_fills doesn't block the main loop)
-        self._contract_id_to_symbol = {}
-        if not self.dry_run:
-            self._build_contract_id_cache()
 
         # Initialize strategies
         self._init_strategies()
@@ -205,26 +202,6 @@ class TradovateBot:
             logger.error("Failed to fetch initial balance: %s", e)
 
     # ─────────────────────────────────────────
-    # Timeout helper — protects main loop from blocking API calls
-    # ─────────────────────────────────────────
-
-    _timeout_pool = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="bot-timeout")
-
-    def _call_with_timeout(self, func, timeout_sec: float = 10, label: str = ""):
-        """Run *func* (no args) in a thread pool with a timeout.
-
-        Returns the result or raises TimeoutError / the original exception.
-        This prevents a single slow API call from freezing the main loop.
-        """
-        future = self._timeout_pool.submit(func)
-        try:
-            return future.result(timeout=timeout_sec)
-        except concurrent.futures.TimeoutError:
-            logger.warning("Timeout (%ds) on %s — skipping this cycle", timeout_sec, label or func.__name__)
-            future.cancel()
-            raise TimeoutError(f"{label or func.__name__} timed out after {timeout_sec}s")
-
-    # ─────────────────────────────────────────
     # Contract resolution
     # ─────────────────────────────────────────
 
@@ -245,27 +222,19 @@ class TradovateBot:
             if contract:
                 contract_name = contract.get("name", symbol)
                 self.contract_map[symbol] = contract_name
+                cid = contract.get("id")
+                if cid is not None:
+                    self.contract_ids[symbol] = cid
                 logger.info(
                     "Resolved %s -> %s (id=%s)",
                     symbol,
                     contract_name,
-                    contract.get("id"),
+                    cid,
                 )
             else:
                 logger.warning(
                     "Could not resolve front-month for %s. Skipping.", symbol
                 )
-
-    def _build_contract_id_cache(self):
-        """Resolve contract IDs once at startup so _sync_fills doesn't need to."""
-        for symbol, contract_name in self.contract_map.items():
-            try:
-                contract = self.api.find_contract(contract_name)
-                if contract and contract.get("id"):
-                    self._contract_id_to_symbol[contract["id"]] = symbol
-                    logger.info("Cached contract ID %s -> %s", contract["id"], symbol)
-            except Exception as e:
-                logger.warning("Failed to cache contract ID for %s: %s", symbol, e)
 
     # ─────────────────────────────────────────
     # Contract rollover
@@ -400,6 +369,11 @@ class TradovateBot:
             # Update mapping
             self.contract_map[symbol] = new_contract
 
+            # Update contract ID for quote routing
+            new_cid = new_contract_data.get("id") if new_contract_data else None
+            if new_cid is not None:
+                self.contract_ids[symbol] = new_cid
+
             # Clear cached contract ID mapping so _sync_fills rebuilds it
             if hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {
@@ -407,16 +381,17 @@ class TradovateBot:
                     if v != symbol
                 }
 
-            # Subscribe to new contract
+            # Subscribe to new contract with contract_id for proper routing
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
+                    contract_id=new_cid,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
+                symbol, new_contract, new_cid,
             )
 
     # ─────────────────────────────────────────
@@ -557,20 +532,14 @@ class TradovateBot:
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
-            # Look up cached contract ID so MarketDataStream can route quotes
-            # to the correct strategy (without this, ALL quotes go to ALL symbols)
-            contract_id = None
-            for cid, sym in self._contract_id_to_symbol.items():
-                if sym == symbol:
-                    contract_id = cid
-                    break
+            cid = self.contract_ids.get(symbol)
             self.md_stream.subscribe_quote(
                 contract_name,
                 lambda sym, data, s=symbol: self._on_quote(s, data),
-                contract_id=contract_id,
+                contract_id=cid,
             )
-            if contract_id is None:
-                logger.warning("No contract ID cached for %s — quotes may route incorrectly", symbol)
+            if cid:
+                logger.info("Mapped contractId %d -> %s for quote routing", cid, symbol)
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
@@ -792,21 +761,12 @@ class TradovateBot:
                     break
 
                 # Update balance from API FIRST (before logging status)
-                # Wrapped with timeout (10s) to prevent freezing if API is slow
                 api_ok = True
                 if not self.dry_run:
                     try:
-                        self._call_with_timeout(self._sync_balance, timeout_sec=10, label="sync_balance")
-                        self._call_with_timeout(self._sync_fills, timeout_sec=10, label="sync_fills")
+                        self._sync_balance()
+                        self._sync_fills()
                         self._consecutive_api_failures = 0  # Reset on success
-                    except TimeoutError:
-                        self._consecutive_api_failures += 1
-                        api_ok = False
-                        logger.warning(
-                            "API sync timed out (%d/%d)",
-                            self._consecutive_api_failures,
-                            _MAX_API_FAILURES_BEFORE_REAUTH,
-                        )
                     except Exception as e:
                         self._consecutive_api_failures += 1
                         api_ok = False
@@ -864,7 +824,7 @@ class TradovateBot:
                             try:
                                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
                                 ws.start()
-                                if ws._connected.wait(timeout=3):
+                                if ws._connected.wait(timeout=10):
                                     logger.info("WebSocket recovery succeeded! Switching from REST to WebSocket.")
                                     self.md_stream.stop()
                                     self.md_stream = ws
@@ -921,17 +881,18 @@ class TradovateBot:
         try:
             positions = self.api.get_positions()
 
-            # Use contract ID cache built at startup (no blocking API calls here).
-            # If a symbol is missing from cache (e.g. after rollover), rebuild lazily
-            # but only for the missing ones and with a cooldown.
+            # Build contractId -> base symbol mapping from our contract_map
+            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
+            # We need to match position contractId (int) to our symbols.
+            # Resolve this once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
-            cached_symbols = set(self._contract_id_to_symbol.values())
-            missing = [s for s in self.contract_map if s not in cached_symbols]
-            if missing and time.time() - getattr(self, "_last_cache_rebuild", 0) > 300:
-                self._last_cache_rebuild = time.time()
-                logger.info("Rebuilding contract ID cache for missing symbols: %s", missing)
-                self._build_contract_id_cache()
+            # Lazily build the mapping from API contract lookups
+            for symbol, contract_name in self.contract_map.items():
+                if symbol not in [v for v in self._contract_id_to_symbol.values()]:
+                    contract = self.api.find_contract(contract_name)
+                    if contract:
+                        self._contract_id_to_symbol[contract["id"]] = symbol
 
             # Count total open contracts from API (authoritative)
             total_open = 0
