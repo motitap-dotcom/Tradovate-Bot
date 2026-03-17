@@ -542,22 +542,38 @@ class TradovateBot:
                 logger.info("Mapped contractId %d -> %s for quote routing", cid, symbol)
 
     def _on_quote(self, symbol: str, data: dict):
-        """Handle incoming quote data from WebSocket."""
-        # Extract price from quote data
-        # Tradovate quote structure includes bid/ask/last
-        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+        """Handle incoming quote data from WebSocket or REST poller."""
+        # Tradovate WebSocket quotes use "entries" with capitalized keys:
+        #   {"contractId": ..., "entries": {"Trade": {"price": ...}, "Bid": {...}, ...}}
+        # REST poller (Yahoo) uses lowercase flat keys:
+        #   {"trade": {"price": ...}, "bid": {...}, "high": {...}, ...}
+        entries = data.get("entries", {})
+        if entries:
+            # WebSocket format — extract from entries dict
+            price = (
+                entries.get("Trade", {}).get("price")
+                or entries.get("Bid", {}).get("price")
+                or entries.get("Offer", {}).get("price")
+            )
+            high = entries.get("HighPrice", {}).get("price", price) if price else None
+            low = entries.get("LowPrice", {}).get("price", price) if price else None
+            volume = entries.get("TotalTradeVolume", {}).get("size", 0)
+        else:
+            # REST poller format (Yahoo Finance)
+            price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+            high = data.get("high", {}).get("price", price) if price else None
+            low = data.get("low", {}).get("price", price) if price else None
+            volume = data.get("trade", {}).get("size", 0)
+
         if price is None:
             # Log first few missing-price events per symbol so we can debug
             miss_key = f"_quote_miss_{symbol}"
             miss_count = getattr(self, miss_key, 0) + 1
             setattr(self, miss_key, miss_count)
             if miss_count <= 3:
-                logger.warning("Quote for %s has no price. keys=%s", symbol, list(data.keys()))
+                logger.warning("Quote for %s has no price. keys=%s entries_keys=%s",
+                               symbol, list(data.keys()), list(entries.keys()) if entries else "none")
             return
-
-        high = data.get("high", {}).get("price", price)
-        low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
 
