@@ -978,6 +978,13 @@ class MarketDataStream:
     RECONNECT_BASE_DELAY = 2  # seconds
     # After this many consecutive reconnect failures, signal caller to fall back
     FALLBACK_THRESHOLD = 10
+    # Application-level keepalive interval (seconds).
+    # Tradovate uses SockJS heartbeats ("h" / "[]"), NOT WebSocket-level pings.
+    # Sending "[]" periodically keeps the TCP connection alive through
+    # load balancers and NAT that may drop idle connections after ~30s.
+    KEEPALIVE_INTERVAL = 15
+    # If no heartbeat "h" from server for this many seconds, consider connection dead
+    HEARTBEAT_TIMEOUT = 45
 
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
@@ -999,6 +1006,8 @@ class MarketDataStream:
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
+        self._last_heartbeat_time: float = 0  # Track server heartbeats
+        self._keepalive_thread: Optional[threading.Thread] = None
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1024,12 +1033,14 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
-        # Send WebSocket-level pings every 25s to keep the TCP connection alive
-        # through load balancers, NAT, and server idle timeouts.
-        # Without this, the server closes the connection after ~30s of
-        # transport-level "silence" (application-level SockJS heartbeats don't count).
-        proxy_kwargs["ping_interval"] = 25
-        proxy_kwargs["ping_timeout"] = 10
+        # NOTE: Do NOT set ping_interval/ping_timeout here.
+        # Tradovate uses SockJS protocol with application-level heartbeats
+        # ("h" from server, "[]" from client), NOT WebSocket-level ping/pong
+        # (RFC 6455 control frames). Setting ping_interval causes the
+        # websocket-client library to send WebSocket pings that the server
+        # doesn't respond to with pongs, causing the library to close the
+        # connection after ping_timeout — resulting in disconnects every ~30s.
+        # Instead, we use a custom keepalive thread (see _keepalive_loop).
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
@@ -1053,6 +1064,47 @@ class MarketDataStream:
     # No data for 2 minutes means the connection is stale
     DATA_TIMEOUT = 120
 
+    def _keepalive_loop(self):
+        """Send periodic SockJS keepalive frames to prevent idle disconnects.
+
+        Tradovate's infrastructure (load balancers / NAT) drops TCP connections
+        that are silent at the transport level for ~30 seconds.  The server sends
+        SockJS heartbeat "h" frames every ~25 seconds and expects the client to
+        reply with "[]".  However, during periods when the server heartbeat is
+        delayed or missed, the connection can still be dropped.
+
+        This thread proactively sends "[]" every KEEPALIVE_INTERVAL seconds to
+        guarantee transport-level activity regardless of server heartbeat timing.
+        It also monitors server heartbeats — if none arrive for HEARTBEAT_TIMEOUT
+        seconds, we close the socket to trigger a clean reconnect rather than
+        waiting for a stale connection to eventually time out.
+        """
+        while self._should_run:
+            time.sleep(self.KEEPALIVE_INTERVAL)
+            if not self._should_run:
+                break
+            if not self._connected.is_set() or not self.ws:
+                continue
+            # Send application-level keepalive
+            try:
+                self.ws.send("[]")
+            except Exception:
+                # Socket already dead — _on_close will handle reconnect
+                break
+            # Check if server heartbeats have stopped (connection dead but not yet closed)
+            if self._last_heartbeat_time and \
+               (time.time() - self._last_heartbeat_time) > self.HEARTBEAT_TIMEOUT:
+                logger.warning(
+                    "No server heartbeat for %.0fs (timeout=%ds). Closing stale connection.",
+                    time.time() - self._last_heartbeat_time,
+                    self.HEARTBEAT_TIMEOUT,
+                )
+                try:
+                    self.ws.close()
+                except Exception:
+                    pass
+                break
+
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
@@ -1065,7 +1117,9 @@ class MarketDataStream:
                 self.ws.close()
             except Exception:
                 pass
-        # Wait briefly for the thread to finish
+        # Wait briefly for threads to finish
+        if self._keepalive_thread and self._keepalive_thread.is_alive():
+            self._keepalive_thread.join(timeout=5)
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
@@ -1115,6 +1169,15 @@ class MarketDataStream:
 
     def _on_open(self, ws):
         logger.info("Market data WebSocket connected")
+        self._last_heartbeat_time = time.time()
+        # Start keepalive thread (replaces websocket-client's ping_interval)
+        if self._keepalive_thread and self._keepalive_thread.is_alive():
+            pass  # Previous keepalive still running, it will pick up the new ws
+        else:
+            self._keepalive_thread = threading.Thread(
+                target=self._keepalive_loop, daemon=True
+            )
+            self._keepalive_thread.start()
 
     def _on_message(self, ws, message: str):
         if message == "o":
@@ -1124,7 +1187,8 @@ class MarketDataStream:
             return
 
         if message == "h":
-            # Heartbeat — reply to keep connection alive
+            # SockJS heartbeat from server — reply and record timestamp
+            self._last_heartbeat_time = time.time()
             ws.send("[]")
             return
 
