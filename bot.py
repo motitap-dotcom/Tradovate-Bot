@@ -33,6 +33,7 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
+import bot_state
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -135,6 +136,13 @@ class TradovateBot:
         if not self.dry_run:
             self._init_balance_from_api()
 
+        # Restore day_start_balance from persisted state (survives mid-day restarts)
+        self._restore_day_start_balance()
+
+        # Persist state (so first run of the day saves day_start_balance for future restarts)
+        if not self.dry_run:
+            self._save_bot_state()
+
         # Resolve front-month contracts
         self._resolve_contracts()
 
@@ -197,6 +205,54 @@ class TradovateBot:
                           config.ACTIVE_CHALLENGE["account_size"])
         except Exception as e:
             logger.error("Failed to fetch initial balance: %s", e)
+
+    def _restore_day_start_balance(self):
+        """Restore day_start_balance from persisted state to survive mid-day restarts.
+
+        Without this, a restart after profitable trades resets day_start_balance
+        to the current (higher) balance, making day_pnl appear worse than reality
+        and triggering false daily loss brakes.
+        """
+        state = bot_state.load_state()
+        if not state:
+            return
+
+        saved_balance = state.get("day_start_balance")
+        if saved_balance is None:
+            return
+
+        current_dsb = self.risk.day_start_balance
+        if abs(saved_balance - current_dsb) < 0.01:
+            return  # already correct
+
+        logger.info(
+            "Restoring day_start_balance from persisted state: $%.2f (was $%.2f from API)",
+            saved_balance, current_dsb,
+        )
+        self.risk.day_start_balance = saved_balance
+        # Recalculate day_pnl with corrected start balance
+        self.risk.day_pnl = self.risk.current_balance - saved_balance + self.risk.unrealized_pnl
+
+        # If the bot was locked due to false daily loss, check if unlock is warranted
+        if self.risk.trading_locked and "DAILY LOSS BRAKE" in self.risk.lock_reason:
+            brake_threshold = -self.risk.daily_loss_limit * self.risk.brake_pct
+            if self.risk.day_pnl > brake_threshold:
+                logger.info(
+                    "Unlocking trading — corrected day P&L $%.2f is above brake threshold $%.2f",
+                    self.risk.day_pnl, brake_threshold,
+                )
+                self.risk.trading_locked = False
+                self.risk.lock_reason = ""
+
+    def _save_bot_state(self):
+        """Persist bot state including day_start_balance for restart resilience."""
+        state = bot_state.build_state(
+            strategies=self.strategies,
+            trades_today_count=self.risk.trades_today,
+            trades_today_list=self.trades_today,
+            day_start_balance=self.risk.day_start_balance,
+        )
+        bot_state.save_state(state)
 
     # ─────────────────────────────────────────
     # Contract resolution
@@ -668,6 +724,7 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+            self._save_bot_state()
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
@@ -885,6 +942,7 @@ class TradovateBot:
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
+                    self._save_bot_state()
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
