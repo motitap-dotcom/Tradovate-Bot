@@ -489,6 +489,18 @@ class TradovateBot:
                     symbol, fed, type(strategy).__name__,
                 )
 
+                # After warmup, reset _last_price so the fresh-cross
+                # guard in feed() allows the first live tick to detect
+                # breakouts.  Without this, if warmup's last candle close
+                # was already outside the range, the bot would never fire.
+                for w in getattr(strategy, "windows", []):
+                    if w.range_set and not w.breakout_fired:
+                        w._last_price = None
+                        logger.info(
+                            "ORB %d-min: reset _last_price after warmup (ready for live breakout)",
+                            w.window_minutes,
+                        )
+
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
