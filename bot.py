@@ -109,7 +109,7 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def start(self):
-        """Initialize connections, resolve contracts, and start trading."""
+        """Initialize connections, resolve contracts, and start trading. v2-fix"""
         logger.info("=" * 60)
         logger.info("Tradovate Bot starting | env=%s | dry_run=%s", config.ENVIRONMENT, self.dry_run)
         logger.info("Prop firm: %s | Account size: %s", config.PROP_FIRM, config.ACTIVE_CHALLENGE["account_size"])
