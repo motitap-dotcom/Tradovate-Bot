@@ -56,6 +56,8 @@ class RiskManager:
 
         # Open position tracking
         self.open_contracts: int = 0
+        # Aggregate risk: total $ at risk from all open positions' stop losses
+        self._open_risk_by_symbol: dict[str, float] = {}
 
         # Daily trade counter (safety cap)
         self.max_daily_trades: int = config.MAX_DAILY_TRADES
@@ -245,10 +247,18 @@ class RiskManager:
 
         return True, "OK"
 
+    @property
+    def aggregate_open_risk(self) -> float:
+        """Total $ at risk from all open positions' stop losses."""
+        return sum(self._open_risk_by_symbol.values())
+
     def calculate_position_size(self, symbol: str) -> int:
         """
         Calculate how many contracts to trade for the given symbol,
         based on tick value and the per-trade risk budget.
+
+        Ensures the AGGREGATE risk of all open positions (including this new
+        one) won't exceed the daily loss budget.
 
         Returns 0 if trading is locked or risk budget is insufficient.
         """
@@ -273,12 +283,12 @@ class RiskManager:
         trade_risk_budget = self.account_size * config.RISK_PER_TRADE_PCT
 
         # Don't risk more than remaining daily budget
-        trade_risk_budget = min(trade_risk_budget, daily_budget + self.day_pnl)
+        remaining_daily = daily_budget + self.day_pnl
+        trade_risk_budget = min(trade_risk_budget, remaining_daily)
 
         if trade_risk_budget <= 0:
             return 0
 
-        # Dollar risk per contract = stop distance in points * point value
         # Dollar risk per contract = stop distance in points * point value
         stop_points = spec["stop_loss_points"]
         point_value = spec["point_value"]
@@ -293,31 +303,92 @@ class RiskManager:
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
 
-        # At least 1 if we have budget, at most max_contracts
+        # ── Aggregate open risk check ──
+        # Ensure that if ALL open stops + this new position's stop hit,
+        # the total loss stays within the daily loss budget.
+        if contracts > 0 and self.daily_loss_limit is not None:
+            current_agg_risk = self.aggregate_open_risk
+            # How much room is left for new risk?
+            # remaining_daily already accounts for realized day_pnl
+            max_new_risk = remaining_daily - current_agg_risk
+            if max_new_risk <= 0:
+                logger.warning(
+                    "AGGREGATE RISK BLOCK: %s rejected — open risk $%.0f already "
+                    "covers remaining daily budget $%.0f",
+                    symbol, current_agg_risk, remaining_daily,
+                )
+                return 0
+            # Reduce contracts if needed to fit within aggregate budget
+            max_contracts_by_agg = int(math.floor(max_new_risk / risk_per_contract))
+            if max_contracts_by_agg < contracts:
+                logger.info(
+                    "AGGREGATE RISK CAP: %s reduced from %d to %d contracts "
+                    "(open risk $%.0f + new $%.0f would exceed budget $%.0f)",
+                    symbol, contracts, max_contracts_by_agg,
+                    current_agg_risk, contracts * risk_per_contract, remaining_daily,
+                )
+                contracts = max_contracts_by_agg
+
         contracts = max(contracts, 0)
 
         logger.info(
-            "Position size for %s: %d contracts | budget=%.2f | risk/contract=%.2f",
+            "Position size for %s: %d contracts | budget=%.2f | risk/contract=%.2f | agg_open_risk=%.2f",
             symbol,
             contracts,
             trade_risk_budget,
             risk_per_contract,
+            self.aggregate_open_risk,
         )
         return contracts
 
-    def register_open(self, qty: int):
-        """Track that we opened positions."""
+    def register_open(self, qty: int, symbol: str = "", risk_per_contract: float = 0.0):
+        """Track that we opened positions.
+
+        Args:
+            qty: Number of contracts opened.
+            symbol: The base symbol (e.g. "NQ", "ES").
+            risk_per_contract: Dollar risk per contract (stop_points * point_value).
+                If 0, it will be looked up from CONTRACT_SPECS.
+        """
         self.open_contracts += qty
         self.trades_today += 1
 
-    def register_close(self, qty: int):
-        """Track that we closed positions."""
+        # Track aggregate risk
+        if symbol:
+            if risk_per_contract <= 0:
+                spec = config.CONTRACT_SPECS.get(symbol)
+                if spec:
+                    risk_per_contract = spec["stop_loss_points"] * spec["point_value"]
+            total_risk = qty * risk_per_contract
+            self._open_risk_by_symbol[symbol] = (
+                self._open_risk_by_symbol.get(symbol, 0.0) + total_risk
+            )
+            logger.info(
+                "Registered open: %s x%d (risk $%.0f) | aggregate open risk: $%.0f",
+                symbol, qty, total_risk, self.aggregate_open_risk,
+            )
+
+    def register_close(self, qty: int, symbol: str = ""):
+        """Track that we closed positions.
+
+        Args:
+            qty: Number of contracts closed.
+            symbol: The base symbol (e.g. "NQ", "ES").
+        """
         if qty > self.open_contracts:
             logger.warning(
                 "register_close(%d) exceeds open_contracts(%d) — clamping to 0",
                 qty, self.open_contracts,
             )
         self.open_contracts = max(0, self.open_contracts - qty)
+
+        # Remove symbol from aggregate risk tracking
+        if symbol and symbol in self._open_risk_by_symbol:
+            del self._open_risk_by_symbol[symbol]
+            logger.info(
+                "Registered close: %s x%d | aggregate open risk: $%.0f",
+                symbol, qty, self.aggregate_open_risk,
+            )
 
     # ─────────────────────────────────────────
     # Status
@@ -346,6 +417,8 @@ class RiskManager:
                 if self.daily_profit_cap
                 else None
             ),
+            "aggregate_open_risk": self.aggregate_open_risk,
+            "open_risk_by_symbol": dict(self._open_risk_by_symbol),
             "open_contracts": self.open_contracts,
             "max_contracts": self.max_contracts,
             "trades_today": self.trades_today,
