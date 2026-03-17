@@ -1184,13 +1184,16 @@ class MarketDataStream:
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif not target_sym:
-                        # Unknown contractId — dispatch to all (fallback for unmapped contracts)
-                        for sym, cbs in cb_snapshot.items():
-                            for cb in cbs:
-                                try:
-                                    cb(sym, quote)
-                                except Exception as e:
-                                    logger.error("Quote callback error for %s: %s", sym, e)
+                        # Unknown contractId — log and discard to prevent
+                        # cross-contamination between strategies
+                        unmapped_key = "_unmapped_log_count"
+                        count = getattr(self, unmapped_key, 0) + 1
+                        setattr(self, unmapped_key, count)
+                        if count <= 5:
+                            logger.warning(
+                                "Quote with unmapped contractId=%s discarded (known ids: %s)",
+                                contract_id, list(self._contract_id_to_symbol.keys()),
+                            )
 
     def _on_error(self, ws, error):
         error_str = str(error)
