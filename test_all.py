@@ -1797,6 +1797,88 @@ def test_bot_state_restore_orb():
     assert strategy.windows[0].breakout_fired is True
 
 
+@test("BotState: build_state persists day_start_balance")
+def test_bot_state_day_start_balance():
+    import bot_state
+    from bot_state import build_state
+    original_file = bot_state.STATE_FILE
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            bot_state.STATE_FILE = f.name
+
+        # Build state with day_start_balance
+        state = build_state({}, 2, [], day_start_balance=60000.0)
+        assert state["day_start_balance"] == 60000.0
+
+        # Save and reload
+        bot_state.save_state(state)
+        loaded = bot_state.load_state()
+        assert loaded is not None
+        assert loaded["day_start_balance"] == 60000.0
+
+        # Without day_start_balance
+        state2 = build_state({}, 0, [])
+        assert "day_start_balance" not in state2
+    finally:
+        if os.path.exists(bot_state.STATE_FILE):
+            os.unlink(bot_state.STATE_FILE)
+        bot_state.STATE_FILE = original_file
+
+
+@test("BotState: day_start_balance survives mid-day restart")
+def test_bot_state_day_start_balance_restart():
+    """Simulate: bot profits, restarts, then loses — day_pnl should reflect full day."""
+    from risk_manager import RiskManager
+    import bot_state
+    original_file = bot_state.STATE_FILE
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            bot_state.STATE_FILE = f.name
+
+        # Day starts at $60,000
+        rm = RiskManager()
+        rm.set_initial_balance(60000.0)
+
+        # Bot makes $800 profit, balance goes to $60,800
+        rm.update_balance(60800.0, 0)
+        assert abs(rm.day_pnl - 800.0) < 0.01
+
+        # Save state before restart
+        state = bot_state.build_state({}, 1, [], day_start_balance=rm.day_start_balance)
+        bot_state.save_state(state)
+
+        # === RESTART ===
+        # New risk manager (simulating fresh bot)
+        rm2 = RiskManager()
+        rm2.set_initial_balance(60800.0)  # API returns current balance
+        # Without fix: day_start_balance = 60800, day_pnl = 0
+        assert rm2.day_start_balance == 60800.0  # wrong!
+
+        # Restore persisted day_start_balance
+        saved = bot_state.load_state()
+        assert saved is not None
+        rm2.day_start_balance = saved["day_start_balance"]
+        rm2.day_pnl = rm2.current_balance - rm2.day_start_balance
+
+        # Now day_start_balance is correctly $60,000
+        assert rm2.day_start_balance == 60000.0
+        assert abs(rm2.day_pnl - 800.0) < 0.01  # still shows +$800
+
+        # Bot loses $600 → balance = $60,200
+        rm2.update_balance(60200.0, 0)
+        assert abs(rm2.day_pnl - 200.0) < 0.01  # net +$200 for the day
+
+        # Without fix, day_pnl would be 60200 - 60800 = -600 → false brake!
+        assert not rm2.trading_locked, "Should NOT be locked — net day P&L is +$200"
+
+    finally:
+        if os.path.exists(bot_state.STATE_FILE):
+            os.unlink(bot_state.STATE_FILE)
+        bot_state.STATE_FILE = original_file
+
+
 test_bot_state_roundtrip()
 test_bot_state_missing_file()
 test_bot_state_stale_date()
@@ -1804,6 +1886,8 @@ test_bot_state_corrupt()
 test_bot_state_build_orb()
 test_bot_state_build_vwap()
 test_bot_state_restore_orb()
+test_bot_state_day_start_balance()
+test_bot_state_day_start_balance_restart()
 
 
 # ─────────────────────────────────────────────

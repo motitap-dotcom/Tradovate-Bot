@@ -59,6 +59,7 @@ def build_state(
     strategies: dict,
     trades_today_count: int,
     trades_today_list: list,
+    day_start_balance: Optional[float] = None,
 ) -> dict:
     """
     Build a state dict from current strategy instances.
@@ -68,6 +69,10 @@ def build_state(
         "trades_today_count": trades_today_count,
         "symbols": {},
     }
+
+    # Persist day_start_balance so mid-day restarts don't lose earlier P&L
+    if day_start_balance is not None:
+        state["day_start_balance"] = day_start_balance
 
     for symbol, strategy in strategies.items():
         sym_state = {"type": type(strategy).__name__}
