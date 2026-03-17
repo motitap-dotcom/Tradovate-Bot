@@ -470,12 +470,17 @@ class TradovateBot:
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
+                                # If feed() just set the range AND detected a
+                                # breakout on the same candle, undo it — warmup
+                                # should only build state, never fire breakouts.
+                                if window.breakout_fired:
+                                    window.breakout_fired = False
+                                    logger.info(
+                                        "ORB %d-min: cleared false breakout from warmup candle",
+                                        window.window_minutes,
+                                    )
                             else:
-                                # Range is set — just track _last_price so
-                                # feed() can detect fresh crosses on live ticks.
-                                # Do NOT mark breakout_fired here: the fresh-cross
-                                # guard in feed() already prevents stale breakouts
-                                # (it requires _last_price inside the range).
+                                # Range already set — just track _last_price
                                 window._last_price = c
 
                     fed += 1
