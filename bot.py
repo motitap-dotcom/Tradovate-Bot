@@ -84,6 +84,9 @@ class TradovateBot:
         # Symbol → front-month contract name mapping
         self.contract_map: dict[str, str] = {}
 
+        # Symbol → Tradovate contract ID (int) for WebSocket quote routing
+        self.contract_ids: dict[str, int] = {}
+
         # Active strategy instances
         self.strategies: dict[str, object] = {}
 
@@ -219,11 +222,14 @@ class TradovateBot:
             if contract:
                 contract_name = contract.get("name", symbol)
                 self.contract_map[symbol] = contract_name
+                cid = contract.get("id")
+                if cid is not None:
+                    self.contract_ids[symbol] = cid
                 logger.info(
                     "Resolved %s -> %s (id=%s)",
                     symbol,
                     contract_name,
-                    contract.get("id"),
+                    cid,
                 )
             else:
                 logger.warning(
@@ -363,6 +369,11 @@ class TradovateBot:
             # Update mapping
             self.contract_map[symbol] = new_contract
 
+            # Update contract ID for quote routing
+            new_cid = new_contract_data.get("id") if new_contract_data else None
+            if new_cid is not None:
+                self.contract_ids[symbol] = new_cid
+
             # Clear cached contract ID mapping so _sync_fills rebuilds it
             if hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {
@@ -370,16 +381,17 @@ class TradovateBot:
                     if v != symbol
                 }
 
-            # Subscribe to new contract
+            # Subscribe to new contract with contract_id for proper routing
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
+                    contract_id=new_cid,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
+                symbol, new_contract, new_cid,
             )
 
     # ─────────────────────────────────────────
@@ -520,10 +532,14 @@ class TradovateBot:
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
+            cid = self.contract_ids.get(symbol)
             self.md_stream.subscribe_quote(
                 contract_name,
                 lambda sym, data, s=symbol: self._on_quote(s, data),
+                contract_id=cid,
             )
+            if cid:
+                logger.info("Mapped contractId %d -> %s for quote routing", cid, symbol)
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
