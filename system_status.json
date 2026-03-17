@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-17T17:10:44Z",
+  "timestamp": "2026-03-17T18:10:00Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,26 +11,26 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 60679.68,
+    "totalCashValue": 59727.9,
     "initialMargin": 0.0,
-    "netLiq": 60854.68
+    "netLiq": 59452.9
   },
   "positions": [
     {
-      "contractId": 4086428,
+      "contractId": 3570918,
       "netPos": -1,
-      "netPrice": 24809.5
+      "netPrice": 6730.25
     }
   ],
   "orders": [
     {
-      "id": 409583842979,
+      "id": 409583843066,
       "action": "Buy",
       "qty": null,
       "status": "Working"
     },
     {
-      "id": 409583842978,
+      "id": 409583843067,
       "action": "Buy",
       "qty": null,
       "status": "Working"
@@ -39,26 +39,26 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "2163473",
-    "uptime_since": "Tue 2026-03-17 17:03:20 UTC",
+    "bot_pid": "2166011",
+    "uptime_since": "Tue 2026-03-17 17:12:02 UTC",
     "disk": "17%",
-    "memory": "2691MB/7941MB (34%)",
+    "memory": "2681MB/7941MB (34%)",
     "hostname": "vmi3096165",
-    "git_commit": "a901553 Auto-merge claude/accurate-status-update-GEDxs \u2192 main",
+    "git_commit": "e58c742 Auto-merge claude/accurate-status-update-GEDxs \u2192 main",
     "live_status": {
-      "timestamp": "2026-03-17T17:10:30.598916+00:00",
-      "timestamp_et": "2026-03-17T13:10:30.598941-04:00",
-      "balance": 60659.68,
-      "equity": 60659.68,
-      "day_pnl": 774.3199999999997,
+      "timestamp": "2026-03-17T18:09:35.069903+00:00",
+      "timestamp_et": "2026-03-17T14:09:35.069924-04:00",
+      "balance": 59515.4,
+      "equity": 59515.4,
+      "day_pnl": -369.9599999999991,
       "unrealized_pnl": 0.0,
-      "peak_balance": 60769.68,
-      "drawdown_floor": 58269.68,
-      "distance_to_floor": 2390.0,
+      "peak_balance": 61046.16,
+      "drawdown_floor": 58546.16,
+      "distance_to_floor": 969.239999999998,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 1625.6800000000003,
+      "daily_profit_remaining": 2769.959999999999,
       "open_contracts": 1,
-      "trades_today": 1,
+      "trades_today": 4,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -73,25 +73,25 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-17 17:09:59,689 [INFO] bot: DIAG NQ | price=24812.50 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1\n2026-03-17 17:10:00,230 [INFO] bot: Status | balance=60609.68 | day_pnl=724.32 | to_floor=2340.00 | contracts=1/10 | trades=1/16 | locked=False\n2026-03-17 17:10:00,309 [INFO] bot: DIAG CL | price=95.61 | vwap=95.94 | trades=0\n2026-03-17 17:10:02,488 [INFO] bot: DIAG ES | price=6731.00 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1\n2026-03-17 17:10:03,461 [INFO] bot: DIAG NQ | price=24812.25 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1\n2026-03-17 17:10:04,264 [INFO] bot: DIAG GC | price=5000.50 | vwap=5014.82 | trades=0\n2026-03-17 17:10:04,393 [INFO] bot: DIAG CL | price=95.63 | vwap=95.94 | trades=0\n2026-03-17 17:10:05,225 [INFO] bot: DIAG ES | price=6731.25 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1\n2026-03-17 17:10:07,030 [INFO] bot: DIAG NQ | price=24812.50 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1\n2026-03-17 17:10:08,448 [INFO] bot: DIAG ES | price=6731.25 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1\n2026-03-17 17:10:10,169 [INFO] bot: DIAG CL | price=95.64 | vwap=95.94 | trades=0\n2026-03-17 17:10:12,209 [INFO] bot: DIAG ES | price",
-    "bot_log_tail": "2026-03-17 17:10:24,451 [INFO] tradovate_api: Re-subscribed to: GCH6\n2026-03-17 17:10:24,451 [INFO] tradovate_api: Re-subscribed to: CLJ6\n2026-03-17 17:10:25,399 [INFO] bot: DIAG ES | price=6731.50 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1\n2026-03-17 17:10:25,684 [INFO] bot: DIAG NQ | price=24812.75 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1\n2026-03-17 17:10:28,790 [INFO] bot: DIAG ES | price=6731.50 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1\n2026-03-17 17:10:29,310 [INFO] bot: DIAG CL | price=95.63 | vwap=95.95 | trades=0\n2026-03-17 17:10:30,598 [INFO] bot: Status | balance=60659.68 | day_pnl=774.32 | to_floor=2390.00 | contracts=1/10 | trades=1/16 | locked=False\n2026-03-17 17:10:30,926 [INFO] bot: DIAG NQ | price=24810.25 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1\n2026-03-17 17:10:31,466 [INFO] bot: DIAG ES | price=6731.00 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1\n2026-03-17 17:10:34,136 [INFO] bot: DIAG NQ | price=24809.50 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1\n2026-03-17 17:10:34,246 [INFO] bot: DIAG CL | price=95.68 | vwap=95.95 | trades=0\n2026-03-17 17:10:34,680 [INFO] bot: DIAG ES | price=6731.25 | ORB-5m:range=6783.2",
-    "cron_log_tail": "  Errors (1h): 12 | Warnings: 6\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 3s)\n  Balance: $60609.68\n  Day P&L: $724.3199999999997\n  Trades today: 1\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 33.8%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Mar 17 17:10:03 UTC 2026] Status: bot_active=true, pid=2163473\n[Tue Mar 17 17:10:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-17 18:09:13,669 [INFO] bot: DIAG ES | price=6734.50 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4\n2026-03-17 18:09:17,513 [INFO] bot: DIAG CL | price=95.50 | vwap=95.97 | trades=0\n2026-03-17 18:09:17,520 [INFO] bot: DIAG ES | price=6734.50 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4\n2026-03-17 18:09:18,237 [INFO] bot: DIAG NQ | price=24831.50 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4\n2026-03-17 18:09:22,549 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-17 18:09:22,549 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-17 18:09:22,549 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-17 18:09:22,549 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-17 18:09:24,552 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-17 18:09:24,755 [INFO] websocket: Websocket connected\n2026-03-17 18:09:24,756 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-17 18:09:24,878 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-17 18:09:24,879 [INFO] tradovate_api: Re-subscribed to: NQH6\n2026-03-17 18:09:24,879 [INFO] tradovate_api: Re-subscribed to: ESH6\n2026-03-17 18:09:24,879 [INFO] tradovate_api: Re-subscribed to: GCH6\n2026-03-17 18:09:24,879 [INFO] tradovate_api: Re-subscribed to: CLJ6\n2026-03-17 18:09:25,887 [INFO] bot: DIAG ES | price=6734.50 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6",
+    "bot_log_tail": "2026-03-17 18:09:44,877 [INFO] bot: DIAG NQ | price=24835.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4\n2026-03-17 18:09:48,569 [INFO] bot: DIAG ES | price=6734.75 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4\n2026-03-17 18:09:48,747 [INFO] bot: DIAG CL | price=95.48 | vwap=95.97 | trades=0\n2026-03-17 18:09:49,285 [INFO] bot: DIAG NQ | price=24836.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4\n2026-03-17 18:09:51,991 [INFO] bot: DIAG ES | price=6735.00 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4\n2026-03-17 18:09:52,621 [INFO] bot: DIAG CL | price=95.42 | vwap=95.97 | trades=0\n2026-03-17 18:09:54,403 [INFO] bot: DIAG NQ | price=24837.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4\n2026-03-17 18:09:55,002 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-17 18:09:55,003 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-17 18:09:55,003 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-17 18:09:55,003 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-17 18:09:57,004 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-17 18:09:57,186 [INFO] websocket: Websocket connected\n2026",
+    "cron_log_tail": "  Errors (1h): 12 | Warnings: 6\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 2s)\n  Balance: $59883.66\n  Day P&L: $-1.6999999999970896\n  Trades today: 4\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 17% | Memory: 34.0%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Mar 17 18:05:04 UTC 2026] Status: bot_active=true, pid=2166011\n[Tue Mar 17 18:05:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-17T17:10:30.598916+00:00",
-      "timestamp_et": "2026-03-17T13:10:30.598941-04:00",
-      "balance": 60659.68,
-      "equity": 60659.68,
-      "day_pnl": 774.3199999999997,
+      "timestamp": "2026-03-17T18:09:35.069903+00:00",
+      "timestamp_et": "2026-03-17T14:09:35.069924-04:00",
+      "balance": 59515.4,
+      "equity": 59515.4,
+      "day_pnl": -369.9599999999991,
       "unrealized_pnl": 0.0,
-      "peak_balance": 60769.68,
-      "drawdown_floor": 58269.68,
-      "distance_to_floor": 2390.0,
+      "peak_balance": 61046.16,
+      "drawdown_floor": 58546.16,
+      "distance_to_floor": 969.239999999998,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 1625.6800000000003,
+      "daily_profit_remaining": 2769.959999999999,
       "open_contracts": 1,
-      "trades_today": 1,
+      "trades_today": 4,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -107,76 +107,162 @@
       "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-17T18:23:20.645000+00:00",
+    "token_expiry": "2026-03-17T18:32:03.339000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-17 17:10:22,149 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-17 17:10:22,149 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-      "2026-03-17 17:10:22,149 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-      "2026-03-17 17:10:22,150 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
-      "2026-03-17 17:10:24,150 [INFO] tradovate_api: Refreshed market data token for reconnection",
-      "2026-03-17 17:10:24,328 [INFO] websocket: Websocket connected",
-      "2026-03-17 17:10:24,328 [INFO] tradovate_api: Market data WebSocket connected",
-      "2026-03-17 17:10:24,450 [INFO] tradovate_api: Market data WebSocket authenticated",
-      "2026-03-17 17:10:24,451 [INFO] tradovate_api: Re-subscribed to: NQH6",
-      "2026-03-17 17:10:24,451 [INFO] tradovate_api: Re-subscribed to: ESH6",
-      "2026-03-17 17:10:24,451 [INFO] tradovate_api: Re-subscribed to: GCH6",
-      "2026-03-17 17:10:24,451 [INFO] tradovate_api: Re-subscribed to: CLJ6",
-      "2026-03-17 17:10:25,399 [INFO] bot: DIAG ES | price=6731.50 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1",
-      "2026-03-17 17:10:25,684 [INFO] bot: DIAG NQ | price=24812.75 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1",
-      "2026-03-17 17:10:28,790 [INFO] bot: DIAG ES | price=6731.50 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1",
-      "2026-03-17 17:10:29,310 [INFO] bot: DIAG CL | price=95.63 | vwap=95.95 | trades=0",
-      "2026-03-17 17:10:30,598 [INFO] bot: Status | balance=60659.68 | day_pnl=774.32 | to_floor=2390.00 | contracts=1/10 | trades=1/16 | locked=False",
-      "2026-03-17 17:10:30,926 [INFO] bot: DIAG NQ | price=24810.25 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1",
-      "2026-03-17 17:10:31,466 [INFO] bot: DIAG ES | price=6731.00 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1",
-      "2026-03-17 17:10:34,136 [INFO] bot: DIAG NQ | price=24809.50 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1",
-      "2026-03-17 17:10:34,246 [INFO] bot: DIAG CL | price=95.68 | vwap=95.95 | trades=0",
-      "2026-03-17 17:10:34,680 [INFO] bot: DIAG ES | price=6731.25 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1",
-      "2026-03-17 17:10:36,649 [INFO] bot: DIAG ES | price=6729.75 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1",
-      "2026-03-17 17:10:36,649 [INFO] bot: DIAG NQ | price=24803.50 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1",
-      "2026-03-17 17:10:39,533 [INFO] bot: DIAG ES | price=6729.75 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1",
-      "2026-03-17 17:10:39,658 [INFO] bot: DIAG NQ | price=24805.25 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1",
-      "2026-03-17 17:10:40,108 [INFO] bot: DIAG GC | price=5000.50 | vwap=5014.75 | trades=0",
-      "2026-03-17 17:10:40,768 [INFO] bot: DIAG CL | price=95.64 | vwap=95.95 | trades=0",
-      "2026-03-17 17:10:42,178 [INFO] bot: DIAG ES | price=6729.00 | ORB-5m:range=6783.25-6802.75 last=6729.75 | ORB-15m:range=6783.25-6804.25 last=None | ORB-30m:range=6783.25-6808.50 last=None | ORB-60m:range=6779.25-6808.50 last=None | trades=1",
-      "2026-03-17 17:10:42,233 [INFO] bot: DIAG NQ | price=24802.25 | ORB-5m:range=24964.00-25072.75 last=24809.5 | ORB-15m:range=24964.00-25075.00 last=None | ORB-30m:range=24964.00-25117.00 last=None | ORB-60m:range=24964.00-25117.00 last=None | trades=1"
+      "2026-03-17 18:09:31,413 [INFO] bot: DIAG NQ | price=24833.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4",
+      "2026-03-17 18:09:35,069 [INFO] bot: Status | balance=59515.40 | day_pnl=-369.96 | to_floor=969.24 | contracts=1/10 | trades=4/16 | locked=False",
+      "2026-03-17 18:09:35,295 [INFO] bot: DIAG ES | price=6734.25 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4",
+      "2026-03-17 18:09:35,801 [INFO] bot: DIAG GC | price=5004.20 | vwap=5010.81 | trades=0",
+      "2026-03-17 18:09:36,220 [INFO] bot: DIAG NQ | price=24833.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4",
+      "2026-03-17 18:09:36,370 [INFO] bot: DIAG CL | price=95.51 | vwap=95.97 | trades=0",
+      "2026-03-17 18:09:40,123 [INFO] bot: DIAG ES | price=6734.50 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4",
+      "2026-03-17 18:09:40,722 [INFO] bot: DIAG NQ | price=24834.50 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4",
+      "2026-03-17 18:09:41,443 [INFO] bot: DIAG CL | price=95.49 | vwap=95.97 | trades=0",
+      "2026-03-17 18:09:44,536 [INFO] bot: DIAG ES | price=6734.75 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4",
+      "2026-03-17 18:09:44,877 [INFO] bot: DIAG NQ | price=24835.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4",
+      "2026-03-17 18:09:48,569 [INFO] bot: DIAG ES | price=6734.75 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4",
+      "2026-03-17 18:09:48,747 [INFO] bot: DIAG CL | price=95.48 | vwap=95.97 | trades=0",
+      "2026-03-17 18:09:49,285 [INFO] bot: DIAG NQ | price=24836.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4",
+      "2026-03-17 18:09:51,991 [INFO] bot: DIAG ES | price=6735.00 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4",
+      "2026-03-17 18:09:52,621 [INFO] bot: DIAG CL | price=95.42 | vwap=95.97 | trades=0",
+      "2026-03-17 18:09:54,403 [INFO] bot: DIAG NQ | price=24837.00 | ORB-5m:range=24964.00-25072.75 last=24804.25 | ORB-15m:range=24964.00-25075.00 last=24800.25 | ORB-30m:range=24964.00-25117.00 last=24814.0 | ORB-60m:range=24964.00-25117.00 last=24820.75 | trades=4",
+      "2026-03-17 18:09:55,002 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-17 18:09:55,003 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-17 18:09:55,003 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+      "2026-03-17 18:09:55,003 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
+      "2026-03-17 18:09:57,004 [INFO] tradovate_api: Refreshed market data token for reconnection",
+      "2026-03-17 18:09:57,186 [INFO] websocket: Websocket connected",
+      "2026-03-17 18:09:57,187 [INFO] tradovate_api: Market data WebSocket connected",
+      "2026-03-17 18:09:57,311 [INFO] tradovate_api: Market data WebSocket authenticated",
+      "2026-03-17 18:09:57,312 [INFO] tradovate_api: Re-subscribed to: NQH6",
+      "2026-03-17 18:09:57,312 [INFO] tradovate_api: Re-subscribed to: ESH6",
+      "2026-03-17 18:09:57,312 [INFO] tradovate_api: Re-subscribed to: GCH6",
+      "2026-03-17 18:09:57,313 [INFO] tradovate_api: Re-subscribed to: CLJ6",
+      "2026-03-17 18:09:59,011 [INFO] bot: DIAG ES | price=6735.25 | ORB-5m:range=6783.25-6802.75 last=6728.75 | ORB-15m:range=6783.25-6804.25 last=6728.75 | ORB-30m:range=6783.25-6808.50 last=6730.0 | ORB-60m:range=6779.25-6808.50 last=6730.25 | trades=4"
     ],
     "journal_summary": {
-      "total_trades": 0,
+      "total_trades": 1,
       "wins": 0,
       "losses": 0,
-      "win_rate": 0,
+      "win_rate": 0.0,
       "total_pnl": 0,
-      "trades_today": 1
+      "avg_win": 0,
+      "avg_loss": 0,
+      "profit_factor": 0,
+      "expectancy": 0,
+      "best_trade": 0,
+      "worst_trade": 0,
+      "avg_r_multiple": 0,
+      "highest_day_profit": 0.0,
+      "effective_target": 12359,
+      "base_target": 12359,
+      "consistency_adjusted": false,
+      "trades_today": 4
     },
     "trading_active": true,
     "websocket_connected": true,
     "errors_in_log": [
-      "2026-03-17 17:08:12,451 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-      "2026-03-17 17:08:12,451 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-      "2026-03-17 17:08:44,875 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-17 17:08:44,875 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-      "2026-03-17 17:09:17,303 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-17 17:09:17,303 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-      "2026-03-17 17:09:49,720 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
-      "2026-03-17 17:09:49,720 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
-      "2026-03-17 17:10:22,149 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-17 17:10:22,149 [ERROR] websocket: Connection to remote host was lost. - goodbye"
+      "2026-03-17 18:07:45,234 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+      "2026-03-17 18:07:45,234 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+      "2026-03-17 18:08:17,667 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-17 18:08:17,667 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-17 18:08:50,112 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-17 18:08:50,113 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-17 18:09:22,549 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-17 18:09:22,549 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-17 18:09:55,002 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-17 18:09:55,003 [ERROR] websocket: Connection to remote host was lost. - goodbye"
     ],
     "market_data_source": "websocket",
     "today_trades": [
       {
-        "id": "NQ_20260317_170324",
-        "symbol": "NQ",
+        "id": "ES_20260317_171207",
+        "symbol": "ES",
         "direction": "Sell",
         "entry_price": 0,
         "qty": 1,
         "strategy": "ORBStrategy",
-        "reason": "ORB-5m short breakout below 24964.00",
-        "stop_loss": 24834.5,
-        "take_profit": 24759.5,
-        "entry_time": "2026-03-17T17:03:24.545687+00:00",
+        "reason": "ORB-5m short breakout below 6783.25",
+        "stop_loss": 6734.75,
+        "take_profit": 6716.75,
+        "entry_time": "2026-03-17T17:12:07.128244+00:00",
+        "entry_hour_et": 13,
+        "entry_day_of_week": "Tuesday",
+        "date": "2026-03-17",
+        "exit_price": null,
+        "pnl": null,
+        "exit_reason": null,
+        "exit_time": null,
+        "status": "open",
+        "r_multiple": null,
+        "duration_minutes": null,
+        "slippage_entry": null,
+        "mae_points": null,
+        "mfe_points": null
+      },
+      {
+        "id": "CL_20260317_172220",
+        "symbol": "CL",
+        "direction": "Buy",
+        "entry_price": 0,
+        "qty": 2,
+        "strategy": "VWAPStrategy",
+        "reason": "VWAP long #1 at 96.0400 (VWAP=96.0353)",
+        "stop_loss": 95.8353318288521,
+        "take_profit": 96.44000000000001,
+        "entry_time": "2026-03-17T17:22:20.180709+00:00",
+        "entry_hour_et": 13,
+        "entry_day_of_week": "Tuesday",
+        "date": "2026-03-17",
+        "exit_price": 0,
+        "pnl": 0,
+        "exit_reason": "bracket_fill",
+        "exit_time": "2026-03-17T17:27:26.539143+00:00",
+        "status": "closed",
+        "r_multiple": 0,
+        "duration_minutes": 5.1059738999999995,
+        "slippage_entry": null,
+        "mae_points": null,
+        "mfe_points": null
+      },
+      {
+        "id": "ES_20260317_172707",
+        "symbol": "ES",
+        "direction": "Sell",
+        "entry_price": 0,
+        "qty": 1,
+        "strategy": "ORBStrategy",
+        "reason": "ORB-15m short breakout below 6783.25",
+        "stop_loss": 6734.75,
+        "take_profit": 6716.75,
+        "entry_time": "2026-03-17T17:27:07.235338+00:00",
+        "entry_hour_et": 13,
+        "entry_day_of_week": "Tuesday",
+        "date": "2026-03-17",
+        "exit_price": null,
+        "pnl": null,
+        "exit_reason": null,
+        "exit_time": null,
+        "status": "open",
+        "r_multiple": null,
+        "duration_minutes": null,
+        "slippage_entry": null,
+        "mae_points": null,
+        "mfe_points": null
+      },
+      {
+        "id": "ES_20260317_174207",
+        "symbol": "ES",
+        "direction": "Sell",
+        "entry_price": 0,
+        "qty": 1,
+        "strategy": "ORBStrategy",
+        "reason": "ORB-30m short breakout below 6783.25",
+        "stop_loss": 6736.0,
+        "take_profit": 6718.0,
+        "entry_time": "2026-03-17T17:42:07.309805+00:00",
         "entry_hour_et": 13,
         "entry_day_of_week": "Tuesday",
         "date": "2026-03-17",
@@ -200,6 +286,110 @@
         "qty": 1,
         "price": 24864.75,
         "timestamp": "2026-03-17T15:01:17.813Z"
+      },
+      {
+        "id": 409583842906,
+        "action": "Buy",
+        "contractId": 3273620,
+        "qty": 2,
+        "price": 95.92,
+        "timestamp": "2026-03-17T15:49:08.448Z"
+      },
+      {
+        "id": 409583843076,
+        "action": "Buy",
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6734.75,
+        "timestamp": "2026-03-17T18:07:48.566Z"
+      },
+      {
+        "id": 409583843004,
+        "action": "Sell",
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6728.75,
+        "timestamp": "2026-03-17T17:12:05.678Z"
+      },
+      {
+        "id": 409583842679,
+        "action": "Buy",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24829.0,
+        "timestamp": "2026-03-17T14:19:19.936Z"
+      },
+      {
+        "id": 409583843046,
+        "action": "Sell",
+        "contractId": 3273620,
+        "qty": 2,
+        "price": 95.83,
+        "timestamp": "2026-03-17T17:27:09.299Z"
+      },
+      {
+        "id": 409583842693,
+        "action": "Sell",
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6734.5,
+        "timestamp": "2026-03-17T14:31:19.934Z"
+      },
+      {
+        "id": 409583842867,
+        "action": "Buy",
+        "contractId": 3273620,
+        "qty": 2,
+        "price": 95.69,
+        "timestamp": "2026-03-17T15:37:18.617Z"
+      },
+      {
+        "id": 409583842883,
+        "action": "Sell",
+        "contractId": 3273620,
+        "qty": 2,
+        "price": 95.72,
+        "timestamp": "2026-03-17T15:40:20.373Z"
+      },
+      {
+        "id": 409583842772,
+        "action": "Buy",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24864.75,
+        "timestamp": "2026-03-17T15:01:14.700Z"
+      },
+      {
+        "id": 409583842841,
+        "action": "Sell",
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6737.5,
+        "timestamp": "2026-03-17T15:16:54.451Z"
+      },
+      {
+        "id": 409583842804,
+        "action": "Buy",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24864.0,
+        "timestamp": "2026-03-17T15:01:51.279Z"
+      },
+      {
+        "id": 409583843060,
+        "action": "Sell",
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6730.25,
+        "timestamp": "2026-03-17T17:42:05.802Z"
+      },
+      {
+        "id": 409583842620,
+        "action": "Buy",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24798.5,
+        "timestamp": "2026-03-17T14:15:06.246Z"
       },
       {
         "id": 409583842705,
@@ -242,12 +432,12 @@
         "timestamp": "2026-03-17T15:01:54.440Z"
       },
       {
-        "id": 409583842679,
-        "action": "Buy",
-        "contractId": 4086428,
-        "qty": 1,
-        "price": 24829.0,
-        "timestamp": "2026-03-17T14:19:19.936Z"
+        "id": 409583842897,
+        "action": "Sell",
+        "contractId": 3273620,
+        "qty": 2,
+        "price": 95.48,
+        "timestamp": "2026-03-17T15:44:10.018Z"
       },
       {
         "id": 409583842740,
@@ -258,12 +448,20 @@
         "timestamp": "2026-03-17T15:00:06.618Z"
       },
       {
-        "id": 409583842897,
+        "id": 409583843034,
         "action": "Sell",
-        "contractId": 3273620,
-        "qty": 2,
-        "price": 95.48,
-        "timestamp": "2026-03-17T15:44:10.018Z"
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6728.5,
+        "timestamp": "2026-03-17T17:27:05.713Z"
+      },
+      {
+        "id": 409583843084,
+        "action": "Buy",
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6734.75,
+        "timestamp": "2026-03-17T18:07:48.566Z"
       },
       {
         "id": 409583842667,
@@ -274,12 +472,12 @@
         "timestamp": "2026-03-17T14:16:18.368Z"
       },
       {
-        "id": 409583842906,
+        "id": 409583843019,
         "action": "Buy",
         "contractId": 3273620,
         "qty": 2,
-        "price": 95.92,
-        "timestamp": "2026-03-17T15:49:08.448Z"
+        "price": 96.05,
+        "timestamp": "2026-03-17T17:22:18.744Z"
       },
       {
         "id": 409583842608,
@@ -290,14 +488,6 @@
         "timestamp": "2026-03-17T14:09:51.540Z"
       },
       {
-        "id": 409583842693,
-        "action": "Sell",
-        "contractId": 3570918,
-        "qty": 1,
-        "price": 6734.5,
-        "timestamp": "2026-03-17T14:31:19.934Z"
-      },
-      {
         "id": 409583842597,
         "action": "Buy",
         "contractId": 4086428,
@@ -306,28 +496,12 @@
         "timestamp": "2026-03-17T14:09:43.538Z"
       },
       {
-        "id": 409583842867,
-        "action": "Buy",
-        "contractId": 3273620,
-        "qty": 2,
-        "price": 95.69,
-        "timestamp": "2026-03-17T15:37:18.617Z"
-      },
-      {
         "id": 409583842751,
         "action": "Sell",
         "contractId": 4086428,
         "qty": 1,
         "price": 24858.0,
         "timestamp": "2026-03-17T15:00:10.461Z"
-      },
-      {
-        "id": 409583842883,
-        "action": "Sell",
-        "contractId": 3273620,
-        "qty": 2,
-        "price": 95.72,
-        "timestamp": "2026-03-17T15:40:20.373Z"
       },
       {
         "id": 409583842574,
@@ -354,28 +528,20 @@
         "timestamp": "2026-03-17T15:51:44.282Z"
       },
       {
-        "id": 409583842772,
-        "action": "Buy",
-        "contractId": 4086428,
-        "qty": 1,
-        "price": 24864.75,
-        "timestamp": "2026-03-17T15:01:14.700Z"
-      },
-      {
-        "id": 409583842841,
-        "action": "Sell",
-        "contractId": 3570918,
-        "qty": 1,
-        "price": 6737.5,
-        "timestamp": "2026-03-17T15:16:54.451Z"
-      },
-      {
         "id": 409583842935,
         "action": "Sell",
         "contractId": 4086428,
         "qty": 1,
         "price": 24758.0,
         "timestamp": "2026-03-17T16:06:44.355Z"
+      },
+      {
+        "id": 409583842993,
+        "action": "Buy",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24803.0,
+        "timestamp": "2026-03-17T17:12:02.545Z"
       },
       {
         "id": 409583842827,
@@ -394,28 +560,12 @@
         "timestamp": "2026-03-17T14:50:25.950Z"
       },
       {
-        "id": 409583842804,
-        "action": "Buy",
-        "contractId": 4086428,
-        "qty": 1,
-        "price": 24864.0,
-        "timestamp": "2026-03-17T15:01:51.279Z"
-      },
-      {
         "id": 409583842972,
         "action": "Sell",
         "contractId": 4086428,
         "qty": 1,
         "price": 24809.5,
         "timestamp": "2026-03-17T17:03:23.133Z"
-      },
-      {
-        "id": 409583842620,
-        "action": "Buy",
-        "contractId": 4086428,
-        "qty": 1,
-        "price": 24798.5,
-        "timestamp": "2026-03-17T14:15:06.246Z"
       },
       {
         "id": 409583842958,
@@ -431,7 +581,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 17915,
+    "ssh_output_len": 20872,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
