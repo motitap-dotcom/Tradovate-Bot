@@ -752,7 +752,7 @@ class TradovateAPI:
             entry_payload,
         )
 
-        entry_result = self._post("/order/placeorder", entry_payload, timeout=30)
+        entry_result = self._post("/order/placeorder", entry_payload)
         if not entry_result or "orderId" not in entry_result:
             logger.error("Entry order failed: %s", entry_result)
             return None
@@ -818,7 +818,7 @@ class TradovateAPI:
             },
         }
 
-        oco_result = self._post("/order/placeOCO", oco_payload, timeout=30)
+        oco_result = self._post("/order/placeOCO", oco_payload)
         if not oco_result or "orderId" not in oco_result:
             logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
             # CRITICAL: Entry exists WITHOUT stop-loss protection.
@@ -857,7 +857,7 @@ class TradovateAPI:
             "timeInForce": "Day",
             "isAutomated": True,
         }
-        return self._post("/order/placeorder", payload, timeout=30)
+        return self._post("/order/placeorder", payload)
 
     def cancel_all_orders(self) -> bool:
         """Cancel all working orders for the account."""
@@ -895,17 +895,17 @@ class TradovateAPI:
     # HTTP helpers
     # ─────────────────────────────────────────
 
-    def _get(self, endpoint: str, _retried: bool = False, timeout: int = 15) -> Any:
+    def _get(self, endpoint: str, _retried: bool = False) -> Any:
         self.ensure_token_valid()
         try:
             resp = requests.get(
-                f"{self.base_url}{endpoint}", headers=self._headers(), timeout=timeout
+                f"{self.base_url}{endpoint}", headers=self._headers(), timeout=30
             )
             # Auto re-auth on 401/403 (expired token) — retry once
             if resp.status_code in (401, 403) and not _retried:
                 logger.warning("GET %s returned %d. Re-authenticating...", endpoint, resp.status_code)
                 if self._re_authenticate():
-                    return self._get(endpoint, _retried=True, timeout=timeout)
+                    return self._get(endpoint, _retried=True)
             resp.raise_for_status()
             try:
                 return resp.json()
@@ -916,20 +916,20 @@ class TradovateAPI:
             logger.error("GET %s failed: %s", endpoint, e)
             return None
 
-    def _post(self, endpoint: str, payload: dict, _retried: bool = False, timeout: int = 15) -> Any:
+    def _post(self, endpoint: str, payload: dict, _retried: bool = False) -> Any:
         self.ensure_token_valid()
         try:
             resp = requests.post(
                 f"{self.base_url}{endpoint}",
                 headers=self._headers(),
                 json=payload,
-                timeout=timeout,
+                timeout=30,
             )
             # Auto re-auth on 401/403 (expired token) — retry once
             if resp.status_code in (401, 403) and not _retried:
                 logger.warning("POST %s returned %d. Re-authenticating...", endpoint, resp.status_code)
                 if self._re_authenticate():
-                    return self._post(endpoint, payload, _retried=True, timeout=timeout)
+                    return self._post(endpoint, payload, _retried=True)
             if resp.status_code != 200:
                 logger.error(
                     "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
@@ -978,13 +978,6 @@ class MarketDataStream:
     RECONNECT_BASE_DELAY = 2  # seconds
     # After this many consecutive reconnect failures, signal caller to fall back
     FALLBACK_THRESHOLD = 10
-    # Application-level keepalive interval (seconds).
-    # Tradovate uses SockJS heartbeats ("h" / "[]"), NOT WebSocket-level pings.
-    # Sending "[]" periodically keeps the TCP connection alive through
-    # load balancers and NAT that may drop idle connections after ~30s.
-    KEEPALIVE_INTERVAL = 15
-    # If no heartbeat "h" from server for this many seconds, consider connection dead
-    HEARTBEAT_TIMEOUT = 45
 
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
@@ -1006,8 +999,6 @@ class MarketDataStream:
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
-        self._last_heartbeat_time: float = 0  # Track server heartbeats
-        self._keepalive_thread: Optional[threading.Thread] = None
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1016,7 +1007,7 @@ class MarketDataStream:
         self._start_time = time.time()
         self._quotes_received = 0
         self._connect()
-        self._connected.wait(timeout=5)
+        self._connected.wait(timeout=15)
 
     def _connect(self):
         """Create WebSocket and connect."""
@@ -1033,14 +1024,12 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
-        # NOTE: Do NOT set ping_interval/ping_timeout here.
-        # Tradovate uses SockJS protocol with application-level heartbeats
-        # ("h" from server, "[]" from client), NOT WebSocket-level ping/pong
-        # (RFC 6455 control frames). Setting ping_interval causes the
-        # websocket-client library to send WebSocket pings that the server
-        # doesn't respond to with pongs, causing the library to close the
-        # connection after ping_timeout — resulting in disconnects every ~30s.
-        # Instead, we use a custom keepalive thread (see _keepalive_loop).
+        # Send WebSocket-level pings every 25s to keep the TCP connection alive
+        # through load balancers, NAT, and server idle timeouts.
+        # Without this, the server closes the connection after ~30s of
+        # transport-level "silence" (application-level SockJS heartbeats don't count).
+        proxy_kwargs["ping_interval"] = 25
+        proxy_kwargs["ping_timeout"] = 10
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
@@ -1064,47 +1053,6 @@ class MarketDataStream:
     # No data for 2 minutes means the connection is stale
     DATA_TIMEOUT = 120
 
-    def _keepalive_loop(self):
-        """Send periodic SockJS keepalive frames to prevent idle disconnects.
-
-        Tradovate's infrastructure (load balancers / NAT) drops TCP connections
-        that are silent at the transport level for ~30 seconds.  The server sends
-        SockJS heartbeat "h" frames every ~25 seconds and expects the client to
-        reply with "[]".  However, during periods when the server heartbeat is
-        delayed or missed, the connection can still be dropped.
-
-        This thread proactively sends "[]" every KEEPALIVE_INTERVAL seconds to
-        guarantee transport-level activity regardless of server heartbeat timing.
-        It also monitors server heartbeats — if none arrive for HEARTBEAT_TIMEOUT
-        seconds, we close the socket to trigger a clean reconnect rather than
-        waiting for a stale connection to eventually time out.
-        """
-        while self._should_run:
-            time.sleep(self.KEEPALIVE_INTERVAL)
-            if not self._should_run:
-                break
-            if not self._connected.is_set() or not self.ws:
-                continue
-            # Send application-level keepalive
-            try:
-                self.ws.send("[]")
-            except Exception:
-                # Socket already dead — _on_close will handle reconnect
-                break
-            # Check if server heartbeats have stopped (connection dead but not yet closed)
-            if self._last_heartbeat_time and \
-               (time.time() - self._last_heartbeat_time) > self.HEARTBEAT_TIMEOUT:
-                logger.warning(
-                    "No server heartbeat for %.0fs (timeout=%ds). Closing stale connection.",
-                    time.time() - self._last_heartbeat_time,
-                    self.HEARTBEAT_TIMEOUT,
-                )
-                try:
-                    self.ws.close()
-                except Exception:
-                    pass
-                break
-
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
@@ -1117,9 +1065,7 @@ class MarketDataStream:
                 self.ws.close()
             except Exception:
                 pass
-        # Wait briefly for threads to finish
-        if self._keepalive_thread and self._keepalive_thread.is_alive():
-            self._keepalive_thread.join(timeout=5)
+        # Wait briefly for the thread to finish
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
@@ -1169,15 +1115,6 @@ class MarketDataStream:
 
     def _on_open(self, ws):
         logger.info("Market data WebSocket connected")
-        self._last_heartbeat_time = time.time()
-        # Start keepalive thread (replaces websocket-client's ping_interval)
-        if self._keepalive_thread and self._keepalive_thread.is_alive():
-            pass  # Previous keepalive still running, it will pick up the new ws
-        else:
-            self._keepalive_thread = threading.Thread(
-                target=self._keepalive_loop, daemon=True
-            )
-            self._keepalive_thread.start()
 
     def _on_message(self, ws, message: str):
         if message == "o":
@@ -1187,8 +1124,7 @@ class MarketDataStream:
             return
 
         if message == "h":
-            # SockJS heartbeat from server — reply and record timestamp
-            self._last_heartbeat_time = time.time()
+            # Heartbeat — reply to keep connection alive
             ws.send("[]")
             return
 
@@ -1248,16 +1184,15 @@ class MarketDataStream:
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif not target_sym:
-                        # Unknown contractId — do NOT dispatch to all symbols.
-                        # That would mix prices across strategies (e.g. NQ data to ES),
-                        # corrupting ORB ranges and VWAP calculations.
-                        if contract_id not in getattr(self, "_warned_unmapped", set()):
-                            if not hasattr(self, "_warned_unmapped"):
-                                self._warned_unmapped = set()
-                            self._warned_unmapped.add(contract_id)
+                        # Unknown contractId — log and discard to prevent
+                        # cross-contamination between strategies
+                        unmapped_key = "_unmapped_log_count"
+                        count = getattr(self, unmapped_key, 0) + 1
+                        setattr(self, unmapped_key, count)
+                        if count <= 5:
                             logger.warning(
-                                "Unmapped contractId %s in quote — skipping (add via subscribe_quote contract_id param)",
-                                contract_id,
+                                "Quote with unmapped contractId=%s discarded (known ids: %s)",
+                                contract_id, list(self._contract_id_to_symbol.keys()),
                             )
 
     def _on_error(self, ws, error):

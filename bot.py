@@ -494,17 +494,23 @@ class TradovateBot:
                     symbol, fed, type(strategy).__name__,
                 )
 
-                # After warmup, reset _last_price so the fresh-cross
-                # guard in feed() allows the first live tick to detect
-                # breakouts.  Without this, if warmup's last candle close
-                # was already outside the range, the bot would never fire.
-                for w in getattr(strategy, "windows", []):
-                    if w.range_set and not w.breakout_fired:
-                        w._last_price = None
-                        logger.info(
-                            "ORB %d-min: reset _last_price after warmup (ready for live breakout)",
-                            w.window_minutes,
-                        )
+                # After warmup, reset state so strategies detect fresh
+                # signals on live ticks instead of carrying stale warmup values.
+                if hasattr(strategy, "update_vwap"):
+                    # VWAP: reset _prev_price so first live tick isn't
+                    # treated as a crossover from the last warmup candle.
+                    strategy._prev_price = None
+                    logger.info("VWAP %s: reset _prev_price after warmup", symbol)
+                else:
+                    # ORB: reset _last_price so fresh-cross guard allows
+                    # the first live tick to detect breakouts.
+                    for w in getattr(strategy, "windows", []):
+                        if w.range_set and not w.breakout_fired:
+                            w._last_price = None
+                            logger.info(
+                                "ORB %d-min: reset _last_price after warmup (ready for live breakout)",
+                                w.window_minutes,
+                            )
 
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
@@ -582,7 +588,7 @@ class TradovateBot:
             low = data.get("low", {}).get("price", price) if price else None
             volume = data.get("trade", {}).get("size", 0)
 
-        if price is None:
+        if price is None or price <= 0:
             # Log first few missing-price events per symbol so we can debug
             miss_key = f"_quote_miss_{symbol}"
             miss_count = getattr(self, miss_key, 0) + 1
@@ -591,6 +597,12 @@ class TradovateBot:
                 logger.warning("Quote for %s has no price. keys=%s entries_keys=%s",
                                symbol, list(data.keys()), list(entries.keys()) if entries else "none")
             return
+
+        # Ensure high/low have valid values (default to price if missing)
+        if high is None or high <= 0:
+            high = price
+        if low is None or low <= 0:
+            low = price
 
         self._process_price(symbol, price, high, low, volume)
 
