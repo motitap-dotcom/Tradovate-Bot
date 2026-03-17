@@ -531,6 +531,12 @@ class TradovateBot:
         # Tradovate quote structure includes bid/ask/last
         price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
+            # Log first few missing-price events per symbol so we can debug
+            miss_key = f"_quote_miss_{symbol}"
+            miss_count = getattr(self, miss_key, 0) + 1
+            setattr(self, miss_key, miss_count)
+            if miss_count <= 3:
+                logger.warning("Quote for %s has no price. keys=%s", symbol, list(data.keys()))
             return
 
         high = data.get("high", {}).get("price", price)
@@ -558,6 +564,23 @@ class TradovateBot:
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
             return
+
+        # Periodic price diagnostics (every ~60 ticks per symbol)
+        diag_key = f"_diag_count_{symbol}"
+        count = getattr(self, diag_key, 0) + 1
+        setattr(self, diag_key, count)
+        if count % 60 == 1:
+            # Log strategy state so we can diagnose signal generation
+            diag_parts = [f"price={price:.2f}"]
+            if hasattr(strategy, "windows"):
+                for w in strategy.windows:
+                    state = "waiting" if not w.range_set else (
+                        f"range={w.range_low:.2f}-{w.range_high:.2f} last={w._last_price}"
+                    )
+                    diag_parts.append(f"ORB-{w.window_minutes}m:{state}")
+            if hasattr(strategy, "vwap") and strategy.vwap:
+                diag_parts.append(f"vwap={strategy.vwap:.2f}")
+            logger.info("DIAG %s | %s | trades=%d", symbol, " | ".join(diag_parts), getattr(strategy, "trades_taken", 0))
 
         # Feed price to strategy
         signal = None
