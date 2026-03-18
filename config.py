@@ -322,10 +322,10 @@ MARKET_OPEN_ET = "09:30"
 TRADING_START_ET = "09:30"
 
 # Stop placing new trades after this time
-TRADING_CUTOFF_ET = "16:15"
+TRADING_CUTOFF_ET = "19:30"  # Extended for evening session test (was 16:15)
 
 # Force-close everything before this time
-FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
+FORCE_CLOSE_ET = "19:45"  # Extended for evening session test (was from ACTIVE_CHALLENGE)
 
 # ─────────────────────────────────────────────
 # Position Sizing
