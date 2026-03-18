@@ -128,8 +128,12 @@ class _ORBWindow:
         self._last_price = price
 
         if prev is not None and not (self.range_low <= prev <= self.range_high):
-            # Previous price was outside the range — not a fresh cross
-            return None
+            # Allow near-range prices (within 0.5% of range size) as "inside"
+            # This prevents missed signals when cooldown delays the check
+            range_size = self.range_high - self.range_low
+            tolerance = range_size * 0.005  # 0.5% of range
+            if not (self.range_low - tolerance <= prev <= self.range_high + tolerance):
+                return None
 
         if price > self.range_high:
             self.breakout_fired = True

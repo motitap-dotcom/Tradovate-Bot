@@ -644,6 +644,7 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
+            # entry_price=0 for market orders — patched later from actual fill
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
@@ -703,12 +704,24 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                    # Record force-close exits in journal
+                    # Record force-close exits in journal with real prices
+                    fills = self.api.get_fills()
+                    fills_by_contract: dict[int, list[dict]] = {}
+                    for f in fills:
+                        cid = f.get("contractId")
+                        if cid:
+                            fills_by_contract.setdefault(cid, []).append(f)
                     for t in self.trades_today:
-                        if t.get("journal_id"):
-                            self.journal.record_exit_by_symbol(
-                                t["symbol"], 0, 0, exit_reason="force_close"
+                        if t.get("journal_id") and not t.get("_closed"):
+                            exit_price, entry_price, pnl = self._resolve_fill_prices(
+                                t["symbol"], t, fills_by_contract
                             )
+                            self.journal.record_exit_by_symbol(
+                                t["symbol"], exit_price, pnl, exit_reason="force_close"
+                            )
+                            if entry_price:
+                                self.journal.patch_entry_price(t["symbol"], entry_price)
+                            t["_closed"] = True
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -843,12 +856,8 @@ class TradovateBot:
             positions = self.api.get_positions()
 
             # Build contractId -> base symbol mapping from our contract_map
-            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
-            # We need to match position contractId (int) to our symbols.
-            # Resolve this once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
-            # Lazily build the mapping from API contract lookups
             for symbol, contract_name in self.contract_map.items():
                 if symbol not in [v for v in self._contract_id_to_symbol.values()]:
                     contract = self.api.find_contract(contract_name)
@@ -857,7 +866,6 @@ class TradovateBot:
 
             # Count total open contracts from API (authoritative)
             total_open = 0
-            # Track which base symbols have open positions
             open_base_symbols = set()
             for p in positions:
                 net = abs(p.get("netPos", 0))
@@ -870,6 +878,15 @@ class TradovateBot:
 
             self.risk.open_contracts = total_open
 
+            # Fetch recent fills to get actual prices
+            fills = self.api.get_fills()
+            # Index fills by contractId for quick lookup
+            fills_by_contract: dict[int, list[dict]] = {}
+            for f in fills:
+                cid = f.get("contractId")
+                if cid:
+                    fills_by_contract.setdefault(cid, []).append(f)
+
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
@@ -878,16 +895,90 @@ class TradovateBot:
                     continue
 
                 if sym not in open_base_symbols:
-                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
-                    self.journal.record_exit_by_symbol(
-                        sym, 0, 0, exit_reason="bracket_fill"
+                    # Position is flat — find actual exit fill price and compute P&L
+                    exit_price, entry_price, pnl = self._resolve_fill_prices(
+                        sym, trade_info, fills_by_contract
                     )
+                    self.journal.record_exit_by_symbol(
+                        sym, exit_price, pnl, exit_reason="bracket_fill"
+                    )
+                    # Also patch entry_price if it was 0
+                    if entry_price and trade_info.get("journal_id"):
+                        self.journal.patch_entry_price(sym, entry_price)
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    logger.info(
+                        "Position closed for %s (flat) | entry=%.2f exit=%.2f pnl=%.2f",
+                        sym, entry_price or 0, exit_price, pnl,
+                    )
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
+
+    def _resolve_fill_prices(
+        self,
+        symbol: str,
+        trade_info: dict,
+        fills_by_contract: dict[int, list[dict]],
+    ) -> tuple[float, float, float]:
+        """Find actual entry/exit fill prices for a closed trade.
+
+        Returns (exit_price, entry_price, pnl).
+        """
+        direction = trade_info.get("direction", "")
+        order_id = trade_info.get("order_id")
+
+        # Find contractId for this symbol
+        contract_id = None
+        for cid, sym in self._contract_id_to_symbol.items():
+            if sym == symbol:
+                contract_id = cid
+                break
+
+        if not contract_id or contract_id not in fills_by_contract:
+            return 0.0, 0.0, 0.0
+
+        symbol_fills = sorted(
+            fills_by_contract[contract_id],
+            key=lambda f: f.get("timestamp", ""),
+        )
+
+        # Find entry and exit fills for this trade based on direction and timing
+        trade_time = trade_info.get("time", "")
+        entry_action = "Sell" if direction == "Sell" else "Buy"
+        exit_action = "Buy" if direction == "Sell" else "Sell"
+
+        entry_fill = None
+        exit_fill = None
+
+        for f in symbol_fills:
+            fill_time = f.get("timestamp", "")
+            if f.get("action") == entry_action and fill_time >= trade_time:
+                if entry_fill is None:
+                    entry_fill = f
+            elif f.get("action") == exit_action and entry_fill and fill_time > entry_fill.get("timestamp", ""):
+                exit_fill = f
+                break  # First exit after entry
+
+        if not entry_fill or not exit_fill:
+            # Fallback: try matching by order_id proximity
+            entry_price_val = entry_fill["price"] if entry_fill else 0.0
+            exit_price_val = exit_fill["price"] if exit_fill else 0.0
+            return exit_price_val, entry_price_val, 0.0
+
+        entry_price_val = entry_fill["price"]
+        exit_price_val = exit_fill["price"]
+        qty = trade_info.get("qty", 1)
+
+        spec = config.CONTRACT_SPECS.get(symbol, {})
+        point_value = spec.get("point_value", 1)
+
+        if direction == "Sell":
+            pnl = (entry_price_val - exit_price_val) * qty * point_value
+        else:
+            pnl = (exit_price_val - entry_price_val) * qty * point_value
+
+        return exit_price_val, entry_price_val, round(pnl, 2)
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
