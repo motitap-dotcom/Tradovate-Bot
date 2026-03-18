@@ -987,6 +987,8 @@ class MarketDataStream:
         self._callbacks: dict[str, list[Callable]] = {}
         # Maps contractId (int) → symbol name (str) for correct quote routing
         self._contract_id_to_symbol: dict[int, str] = {}
+        # Maps request_id → symbol for auto-learning contractId from subscription responses
+        self._pending_subscriptions: dict[int, str] = {}
         self._callbacks_lock = threading.Lock()
         self._connected = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -1097,6 +1099,9 @@ class MarketDataStream:
             self._callbacks.setdefault(symbol, []).append(callback)
         if contract_id is not None:
             self._contract_id_to_symbol[contract_id] = symbol
+        # Track request_id for auto-learning contractId from response
+        next_req_id = self._request_id + 1
+        self._pending_subscriptions[next_req_id] = symbol
         self._send("md/subscribeQuote", {"symbol": symbol})
         logger.info("Subscribed to quotes: %s (contractId=%s)", symbol, contract_id)
 
@@ -1160,6 +1165,19 @@ class MarketDataStream:
                         pass
                 continue
 
+            # Subscription response — auto-learn contractId mapping
+            req_id = item.get("i")
+            if req_id and req_id in self._pending_subscriptions and item.get("s") == 200:
+                sym = self._pending_subscriptions.pop(req_id)
+                # Extract contractId from response body if available
+                body = item.get("d", {})
+                if isinstance(body, dict):
+                    cid = body.get("contractId")
+                    if cid is not None and cid not in self._contract_id_to_symbol:
+                        self._contract_id_to_symbol[cid] = sym
+                        logger.info("Auto-mapped contractId %s -> %s from subscription response", cid, sym)
+                continue
+
             # Quote data — dispatched by symbol from the "d" field
             if "e" in item and item["e"] == "md" and "d" in item:
                 self._last_data_time = time.time()
@@ -1183,17 +1201,22 @@ class MarketDataStream:
                                 cb(target_sym, quote)
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
-                    elif not target_sym:
-                        # Unknown contractId — log and discard to prevent
-                        # cross-contamination between strategies
-                        unmapped_key = "_unmapped_log_count"
-                        count = getattr(self, unmapped_key, 0) + 1
-                        setattr(self, unmapped_key, count)
-                        if count <= 5:
-                            logger.warning(
-                                "Quote with unmapped contractId=%s discarded (known ids: %s)",
-                                contract_id, list(self._contract_id_to_symbol.keys()),
-                            )
+                    elif contract_id is not None and not target_sym:
+                        # Unknown contractId with no mapping — try to auto-map from
+                        # subscription response.  Only dispatch to the single symbol
+                        # whose contract name matches, to avoid cross-contamination.
+                        logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
+                    elif contract_id is None and len(cb_snapshot) == 1:
+                        # No contractId in quote and only one symbol subscribed — safe to dispatch
+                        for sym, cbs in cb_snapshot.items():
+                            for cb in cbs:
+                                try:
+                                    cb(sym, quote)
+                                except Exception as e:
+                                    logger.error("Quote callback error for %s: %s", sym, e)
+                    else:
+                        # No contractId and multiple symbols — cannot safely route, skip
+                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
 
     def _on_error(self, ws, error):
         error_str = str(error)
@@ -1286,6 +1309,9 @@ class MarketDataStream:
             with self._callbacks_lock:
                 symbols = list(self._callbacks.keys())
             for symbol in symbols:
+                # Track re-subscription for auto-learning contractId
+                next_req_id = self._request_id + 1
+                self._pending_subscriptions[next_req_id] = symbol
                 self._send("md/subscribeQuote", {"symbol": symbol})
                 logger.info("Re-subscribed to: %s", symbol)
         elif self._should_run and self._api:
@@ -1300,6 +1326,8 @@ class MarketDataStream:
                     with self._callbacks_lock:
                         symbols = list(self._callbacks.keys())
                     for symbol in symbols:
+                        next_req_id = self._request_id + 1
+                        self._pending_subscriptions[next_req_id] = symbol
                         self._send("md/subscribeQuote", {"symbol": symbol})
                         logger.info("Re-subscribed to: %s", symbol)
 
