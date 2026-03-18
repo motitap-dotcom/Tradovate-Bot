@@ -1017,6 +1017,7 @@ class MarketDataStream:
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
+        self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
     def start(self):
@@ -1072,9 +1073,17 @@ class MarketDataStream:
     # No data for 2 minutes means the connection is stale
     DATA_TIMEOUT = 120
 
+    # SockJS application-level heartbeat interval (seconds).
+    # Tradovate's server closes idle connections after ~30s of silence at
+    # the application layer.  WebSocket-level pings don't count — the server
+    # expects SockJS frames.  Sending "[]" (empty SockJS message) every 10s
+    # keeps the connection alive reliably.
+    _HEARTBEAT_INTERVAL = 10
+
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
+        self._stop_heartbeat()
         # Cancel pending reconnect timer
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
@@ -1087,6 +1096,34 @@ class MarketDataStream:
         # Wait briefly for the thread to finish
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
+
+    def _start_heartbeat(self):
+        """Start sending periodic SockJS heartbeats ("[]") to keep alive."""
+        self._stop_heartbeat()
+
+        def _beat():
+            if not self._should_run or not self._connected.is_set():
+                return
+            if self.ws:
+                try:
+                    self.ws.send("[]")
+                except Exception:
+                    pass  # Connection lost — _on_close will handle reconnect
+            # Schedule next beat
+            if self._should_run:
+                self._heartbeat_timer = threading.Timer(self._HEARTBEAT_INTERVAL, _beat)
+                self._heartbeat_timer.daemon = True
+                self._heartbeat_timer.start()
+
+        self._heartbeat_timer = threading.Timer(self._HEARTBEAT_INTERVAL, _beat)
+        self._heartbeat_timer.daemon = True
+        self._heartbeat_timer.start()
+
+    def _stop_heartbeat(self):
+        """Cancel the periodic heartbeat timer."""
+        if self._heartbeat_timer:
+            self._heartbeat_timer.cancel()
+            self._heartbeat_timer = None
 
     # How long to wait for first quote before declaring stream dead
     NO_DATA_TIMEOUT = 60  # seconds
@@ -1169,6 +1206,7 @@ class MarketDataStream:
                 logger.info("Market data WebSocket authenticated")
                 self._reconnect_count = 0
                 self._connected.set()
+                self._start_heartbeat()
                 continue
 
             # Auth failure — trigger reconnect with fresh token
@@ -1248,6 +1286,7 @@ class MarketDataStream:
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
+        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
         is_graceful = close_status_code == 1000
