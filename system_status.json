@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-18T20:02:35Z",
+  "timestamp": "2026-03-18T20:03:07Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "2540875",
     "uptime_since": "Wed 2026-03-18 19:56:44 UTC",
     "disk": "17%",
-    "memory": "2711MB/7941MB (34%)",
+    "memory": "2708MB/7941MB (34%)",
     "hostname": "vmi3096165",
     "git_commit": "acc2d6e Auto-merge claude/debug-bot-transactions-wgnBI \u2192 main",
     "live_status": {
-      "timestamp": "2026-03-18T20:02:23.523900+00:00",
-      "timestamp_et": "2026-03-18T16:02:23.523925-04:00",
+      "timestamp": "2026-03-18T20:02:53.886700+00:00",
+      "timestamp_et": "2026-03-18T16:02:53.886723-04:00",
       "balance": 58005.18,
       "equity": 58005.18,
       "day_pnl": 0.0,
@@ -54,14 +54,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-18 20:00:31,787 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-18 20:00:31,787 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-18 20:00:33,788 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-18 20:00:33,971 [INFO] websocket: Websocket connected\n2026-03-18 20:00:33,972 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:00:34,097 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:00:34,097 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:00:34,097 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:00:34,098 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:00:34,098 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:00:52,433 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-18 20:01:04,224 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-03-18 20:01:04,225 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye\n2026-03-18 20:01:04,225 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-18 20:01:04,226 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-18 20:01:06,228 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-18 20:01:06,412 [INFO] websocket: Websocket connected\n2026-03-18 20:01:06,413 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:01:06,533 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:01:22,778 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_flo",
-    "bot_log_tail": "2026-03-18 20:01:38,833 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:01:38,958 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:01:38,958 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:01:38,960 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:01:38,961 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:01:38,961 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:01:53,151 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-18 20:02:09,085 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-18 20:02:09,085 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-18 20:02:09,085 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-18 20:02:09,085 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-18 20:02:11,087 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-18 20:02:11,297 [INFO] websocket: Websocket connected\n2026-03-18 20:02:11,297 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:02:11,413 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:02:23,523 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+    "journal_tail": "2026-03-18 20:01:04,225 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-18 20:01:04,226 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-18 20:01:06,228 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-18 20:01:06,412 [INFO] websocket: Websocket connected\n2026-03-18 20:01:06,413 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:01:06,533 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:01:22,778 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-18 20:01:36,654 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-18 20:01:36,654 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-18 20:01:36,654 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-18 20:01:36,654 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-18 20:01:38,655 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-18 20:01:38,833 [INFO] websocket: Websocket connected\n2026-03-18 20:01:38,833 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:01:38,958 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:01:38,958 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:01:38,960 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:01:38,961 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:01:38,961 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:01:53,151 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_f",
+    "bot_log_tail": "2026-03-18 20:02:11,297 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:02:11,413 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:02:23,523 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-18 20:02:41,532 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-03-18 20:02:41,532 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-03-18 20:02:41,532 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-18 20:02:41,532 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-03-18 20:02:43,533 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-03-18 20:02:43,705 [INFO] websocket: Websocket connected\n2026-03-18 20:02:43,706 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-18 20:02:43,819 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MNQH6\n2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MESH6\n2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MCLJ6\n2026-03-18 20:02:53,885 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
     "cron_log_tail": "  Errors (1h): 16 | Warnings: 9\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 13s)\n  Balance: $58005.18\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 17% | Memory: 34.4%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 18 20:00:05 UTC 2026] Status: bot_active=true, pid=2540875\n[Wed Mar 18 20:00:05 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-18T20:02:23.523900+00:00",
-      "timestamp_et": "2026-03-18T16:02:23.523925-04:00",
+      "timestamp": "2026-03-18T20:02:53.886700+00:00",
+      "timestamp_et": "2026-03-18T16:02:53.886723-04:00",
       "balance": 58005.18,
       "equity": 58005.18,
       "day_pnl": 0.0,
@@ -92,19 +92,6 @@
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MESH6",
-      "2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MGCJ6",
-      "2026-03-18 20:01:06,534 [INFO] tradovate_api: Re-subscribed to: MCLJ6",
-      "2026-03-18 20:01:22,778 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
-      "2026-03-18 20:01:36,654 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-18 20:01:36,654 [ERROR] websocket: Connection to remote host was lost. - goodbye",
-      "2026-03-18 20:01:36,654 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-      "2026-03-18 20:01:36,654 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
-      "2026-03-18 20:01:38,655 [INFO] tradovate_api: Refreshed market data token for reconnection",
-      "2026-03-18 20:01:38,833 [INFO] websocket: Websocket connected",
-      "2026-03-18 20:01:38,833 [INFO] tradovate_api: Market data WebSocket connected",
-      "2026-03-18 20:01:38,958 [INFO] tradovate_api: Market data WebSocket authenticated",
-      "2026-03-18 20:01:38,958 [INFO] tradovate_api: Re-subscribed to: MNQH6",
       "2026-03-18 20:01:38,960 [INFO] tradovate_api: Re-subscribed to: MESH6",
       "2026-03-18 20:01:38,961 [INFO] tradovate_api: Re-subscribed to: MGCJ6",
       "2026-03-18 20:01:38,961 [INFO] tradovate_api: Re-subscribed to: MCLJ6",
@@ -121,7 +108,20 @@
       "2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MESH6",
       "2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MGCJ6",
       "2026-03-18 20:02:11,414 [INFO] tradovate_api: Re-subscribed to: MCLJ6",
-      "2026-03-18 20:02:23,523 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False"
+      "2026-03-18 20:02:23,523 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-18 20:02:41,532 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-18 20:02:41,532 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-18 20:02:41,532 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+      "2026-03-18 20:02:41,532 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
+      "2026-03-18 20:02:43,533 [INFO] tradovate_api: Refreshed market data token for reconnection",
+      "2026-03-18 20:02:43,705 [INFO] websocket: Websocket connected",
+      "2026-03-18 20:02:43,706 [INFO] tradovate_api: Market data WebSocket connected",
+      "2026-03-18 20:02:43,819 [INFO] tradovate_api: Market data WebSocket authenticated",
+      "2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MNQH6",
+      "2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MESH6",
+      "2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MGCJ6",
+      "2026-03-18 20:02:43,820 [INFO] tradovate_api: Re-subscribed to: MCLJ6",
+      "2026-03-18 20:02:53,885 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -134,8 +134,6 @@
     "trading_active": true,
     "websocket_connected": true,
     "errors_in_log": [
-      "2026-03-18 19:59:59,160 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-18 19:59:59,160 [ERROR] websocket: Connection to remote host was lost. - goodbye",
       "2026-03-18 20:00:31,787 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
       "2026-03-18 20:00:31,787 [ERROR] websocket: Connection to remote host was lost. - goodbye",
       "2026-03-18 20:01:04,224 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
@@ -143,7 +141,9 @@
       "2026-03-18 20:01:36,654 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
       "2026-03-18 20:01:36,654 [ERROR] websocket: Connection to remote host was lost. - goodbye",
       "2026-03-18 20:02:09,085 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-03-18 20:02:09,085 [ERROR] websocket: Connection to remote host was lost. - goodbye"
+      "2026-03-18 20:02:09,085 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-03-18 20:02:41,532 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-03-18 20:02:41,532 [ERROR] websocket: Connection to remote host was lost. - goodbye"
     ],
     "market_data_source": "websocket",
     "today_trades": [],
@@ -234,7 +234,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 12527,
+    "ssh_output_len": 12523,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
