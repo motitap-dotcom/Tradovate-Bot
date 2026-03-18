@@ -675,6 +675,23 @@ class TradovateAPI:
         """List recent fills."""
         return self._get("/fill/list") or []
 
+    def get_order_detail(self, order_id: int) -> Optional[dict]:
+        """Get detailed info for a specific order (status, avgPrice, filledQty)."""
+        try:
+            return self._get(f"/order/item?id={order_id}")
+        except Exception as e:
+            logger.warning("Failed to get order detail for %s: %s", order_id, e)
+            return None
+
+    def get_order_fills(self, order_id: int) -> list[dict]:
+        """Get all fills for a specific order."""
+        try:
+            result = self._get(f"/fill/deps?masterid={order_id}")
+            return result if isinstance(result, list) else []
+        except Exception as e:
+            logger.warning("Failed to get fills for order %s: %s", order_id, e)
+            return []
+
     # ─────────────────────────────────────────
     # Contract lookup
     # ─────────────────────────────────────────

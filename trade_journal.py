@@ -136,6 +136,12 @@ class TradeJournal:
         exit_reason: str = "signal",
     ):
         """Record a trade exit."""
+        if exit_price == 0 and pnl == 0:
+            logger.warning(
+                "Journal: recording exit for %s with exit_price=0 AND pnl=0 — "
+                "fill data may be missing. Check _sync_fills() logic.",
+                trade_id,
+            )
         for trade in reversed(self.trades):
             if trade["id"] == trade_id and trade["status"] == "open":
                 trade["exit_price"] = exit_price
