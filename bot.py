@@ -33,6 +33,7 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
+import bot_state
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -140,6 +141,16 @@ class TradovateBot:
 
         # Initialize strategies
         self._init_strategies()
+
+        # Restore persisted state (peak_balance, drawdown_floor, strategy flags)
+        saved_state = bot_state.load_state()
+        if saved_state:
+            bot_state.restore_risk(saved_state, self.risk)
+            bot_state.restore_strategies(saved_state, self.strategies)
+            self.risk.trades_today = saved_state.get("trades_today_count", 0)
+            logger.info("Restored bot state from disk")
+        else:
+            logger.info("No saved state — starting fresh")
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
@@ -669,11 +680,25 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+            self._save_state()
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
+
+    def _save_state(self):
+        """Persist bot state to disk (strategies, risk manager, trade count)."""
+        try:
+            state = bot_state.build_state(
+                self.strategies,
+                self.risk.trades_today,
+                self.trades_today,
+                risk_manager=self.risk,
+            )
+            bot_state.save_state(state)
+        except Exception as e:
+            logger.error("Failed to save bot state: %s", e)
 
     # ─────────────────────────────────────────
     # Main loop
@@ -911,6 +936,8 @@ class TradovateBot:
                         "Position closed for %s (flat) | entry=%.2f exit=%.2f pnl=%.2f",
                         sym, entry_price or 0, exit_price, pnl,
                     )
+
+            self._save_state()
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)

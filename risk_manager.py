@@ -79,23 +79,28 @@ class RiskManager:
         This corrects day_start_balance so that day_pnl is calculated
         relative to today's opening balance, not the original account_size.
         Can be called at startup or later (via _sync_balance fallback).
+
+        IMPORTANT: drawdown_floor must NEVER decrease. It only ratchets up
+        as peak_balance increases. On restart, bot_state restores the
+        historical peak/floor before this method runs.
         """
         logger.info(
             "Setting initial balance from API: $%.2f (was $%.2f from config)",
             balance, self.day_start_balance,
         )
         self.current_balance = balance
-        self.day_start_balance = balance
+        if not self._balance_initialized:
+            self.day_start_balance = balance
         self._balance_initialized = True
-        # Peak/floor must also reflect reality
+
+        # Only raise peak — never lower it (bot_state may have restored a higher one)
         if balance > self.peak_balance:
             self.peak_balance = balance
-            self.drawdown_floor = self.peak_balance - self.max_trailing_drawdown
-        elif balance < self.drawdown_floor + self.max_trailing_drawdown:
-            # Balance is below where peak should be — set peak = balance
-            # so drawdown floor is correct
-            self.peak_balance = balance
-            self.drawdown_floor = balance - self.max_trailing_drawdown
+            new_floor = self.peak_balance - self.max_trailing_drawdown
+            # Floor only ratchets up, never down
+            if new_floor > self.drawdown_floor:
+                self.drawdown_floor = new_floor
+
         logger.info(
             "Initial state: balance=$%.2f | peak=$%.2f | floor=$%.2f | day_start=$%.2f",
             self.current_balance, self.peak_balance, self.drawdown_floor, self.day_start_balance,

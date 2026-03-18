@@ -59,7 +59,7 @@ def build_state(
     strategies: dict,
     trades_today_count: int,
     trades_today_list: list,
-    day_start_balance: Optional[float] = None,
+    risk_manager=None,
 ) -> dict:
     """
     Build a state dict from current strategy instances.
@@ -70,9 +70,13 @@ def build_state(
         "symbols": {},
     }
 
-    # Persist day_start_balance so mid-day restarts don't lose earlier P&L
-    if day_start_balance is not None:
-        state["day_start_balance"] = day_start_balance
+    # Persist risk manager's trailing drawdown state
+    if risk_manager is not None:
+        state["risk"] = {
+            "peak_balance": risk_manager.peak_balance,
+            "drawdown_floor": risk_manager.drawdown_floor,
+            "day_start_balance": risk_manager.day_start_balance,
+        }
 
     for symbol, strategy in strategies.items():
         sym_state = {"type": type(strategy).__name__}
@@ -114,6 +118,39 @@ def build_state(
         state["symbols"][symbol] = sym_state
 
     return state
+
+
+def restore_risk(state: dict, risk_manager) -> bool:
+    """
+    Restore peak_balance and drawdown_floor from persisted state.
+    The trailing drawdown floor must NEVER go down — only up.
+    Returns True if state was restored.
+    """
+    if not state:
+        return False
+    risk_state = state.get("risk")
+    if not risk_state:
+        return False
+
+    saved_peak = risk_state.get("peak_balance", 0)
+    saved_floor = risk_state.get("drawdown_floor", 0)
+
+    # Floor must never decrease — use the higher of saved vs current
+    if saved_floor > risk_manager.drawdown_floor:
+        risk_manager.drawdown_floor = saved_floor
+        logger.info("Restored drawdown_floor: $%.2f", saved_floor)
+
+    if saved_peak > risk_manager.peak_balance:
+        risk_manager.peak_balance = saved_peak
+        logger.info("Restored peak_balance: $%.2f", saved_peak)
+
+    # Also restore day_start_balance if available
+    saved_day_start = risk_state.get("day_start_balance")
+    if saved_day_start:
+        risk_manager.day_start_balance = saved_day_start
+        logger.info("Restored day_start_balance: $%.2f", saved_day_start)
+
+    return True
 
 
 def restore_strategies(state: dict, strategies: dict):
