@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot — v2.2.1 (never-die)
+Tradovate Trading Bot — v2.1.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -33,7 +33,6 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
-import bot_state
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -85,9 +84,6 @@ class TradovateBot:
         # Symbol → front-month contract name mapping
         self.contract_map: dict[str, str] = {}
 
-        # Symbol → Tradovate contract ID (int) for WebSocket quote routing
-        self.contract_ids: dict[str, int] = {}
-
         # Active strategy instances
         self.strategies: dict[str, object] = {}
 
@@ -110,7 +106,7 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def start(self):
-        """Initialize connections, resolve contracts, and start trading. v2-fix"""
+        """Initialize connections, resolve contracts, and start trading."""
         logger.info("=" * 60)
         logger.info("Tradovate Bot starting | env=%s | dry_run=%s", config.ENVIRONMENT, self.dry_run)
         logger.info("Prop firm: %s | Account size: %s", config.PROP_FIRM, config.ACTIVE_CHALLENGE["account_size"])
@@ -138,13 +134,6 @@ class TradovateBot:
         # Fetch real balance from API to seed risk manager correctly
         if not self.dry_run:
             self._init_balance_from_api()
-
-        # Restore day_start_balance from persisted state (survives mid-day restarts)
-        self._restore_day_start_balance()
-
-        # Persist state (so first run of the day saves day_start_balance for future restarts)
-        if not self.dry_run:
-            self._save_bot_state()
 
         # Resolve front-month contracts
         self._resolve_contracts()
@@ -209,54 +198,6 @@ class TradovateBot:
         except Exception as e:
             logger.error("Failed to fetch initial balance: %s", e)
 
-    def _restore_day_start_balance(self):
-        """Restore day_start_balance from persisted state to survive mid-day restarts.
-
-        Without this, a restart after profitable trades resets day_start_balance
-        to the current (higher) balance, making day_pnl appear worse than reality
-        and triggering false daily loss brakes.
-        """
-        state = bot_state.load_state()
-        if not state:
-            return
-
-        saved_balance = state.get("day_start_balance")
-        if saved_balance is None:
-            return
-
-        current_dsb = self.risk.day_start_balance
-        if abs(saved_balance - current_dsb) < 0.01:
-            return  # already correct
-
-        logger.info(
-            "Restoring day_start_balance from persisted state: $%.2f (was $%.2f from API)",
-            saved_balance, current_dsb,
-        )
-        self.risk.day_start_balance = saved_balance
-        # Recalculate day_pnl with corrected start balance
-        self.risk.day_pnl = self.risk.current_balance - saved_balance + self.risk.unrealized_pnl
-
-        # If the bot was locked due to false daily loss, check if unlock is warranted
-        if self.risk.trading_locked and "DAILY LOSS BRAKE" in self.risk.lock_reason:
-            brake_threshold = -self.risk.daily_loss_limit * self.risk.brake_pct
-            if self.risk.day_pnl > brake_threshold:
-                logger.info(
-                    "Unlocking trading — corrected day P&L $%.2f is above brake threshold $%.2f",
-                    self.risk.day_pnl, brake_threshold,
-                )
-                self.risk.trading_locked = False
-                self.risk.lock_reason = ""
-
-    def _save_bot_state(self):
-        """Persist bot state including day_start_balance for restart resilience."""
-        state = bot_state.build_state(
-            strategies=self.strategies,
-            trades_today_count=self.risk.trades_today,
-            trades_today_list=self.trades_today,
-            day_start_balance=self.risk.day_start_balance,
-        )
-        bot_state.save_state(state)
-
     # ─────────────────────────────────────────
     # Contract resolution
     # ─────────────────────────────────────────
@@ -278,14 +219,11 @@ class TradovateBot:
             if contract:
                 contract_name = contract.get("name", symbol)
                 self.contract_map[symbol] = contract_name
-                cid = contract.get("id")
-                if cid is not None:
-                    self.contract_ids[symbol] = cid
                 logger.info(
                     "Resolved %s -> %s (id=%s)",
                     symbol,
                     contract_name,
-                    cid,
+                    contract.get("id"),
                 )
             else:
                 logger.warning(
@@ -425,11 +363,6 @@ class TradovateBot:
             # Update mapping
             self.contract_map[symbol] = new_contract
 
-            # Update contract ID for quote routing
-            new_cid = new_contract_data.get("id") if new_contract_data else None
-            if new_cid is not None:
-                self.contract_ids[symbol] = new_cid
-
             # Clear cached contract ID mapping so _sync_fills rebuilds it
             if hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {
@@ -437,17 +370,16 @@ class TradovateBot:
                     if v != symbol
                 }
 
-            # Subscribe to new contract with contract_id for proper routing
+            # Subscribe to new contract
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
-                    contract_id=new_cid,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_cid,
+                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
             )
 
     # ─────────────────────────────────────────
@@ -526,17 +458,12 @@ class TradovateBot:
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
-                                # If feed() just set the range AND detected a
-                                # breakout on the same candle, undo it — warmup
-                                # should only build state, never fire breakouts.
-                                if window.breakout_fired:
-                                    window.breakout_fired = False
-                                    logger.info(
-                                        "ORB %d-min: cleared false breakout from warmup candle",
-                                        window.window_minutes,
-                                    )
                             else:
-                                # Range already set — just track _last_price
+                                # Range is set — just track _last_price so
+                                # feed() can detect fresh crosses on live ticks.
+                                # Do NOT mark breakout_fired here: the fresh-cross
+                                # guard in feed() already prevents stale breakouts
+                                # (it requires _last_price inside the range).
                                 window._last_price = c
 
                     fed += 1
@@ -549,24 +476,6 @@ class TradovateBot:
                     "Warmed up %s with %d candles | strategy=%s",
                     symbol, fed, type(strategy).__name__,
                 )
-
-                # After warmup, reset state so strategies detect fresh
-                # signals on live ticks instead of carrying stale warmup values.
-                if hasattr(strategy, "update_vwap"):
-                    # VWAP: reset _prev_price so first live tick isn't
-                    # treated as a crossover from the last warmup candle.
-                    strategy._prev_price = None
-                    logger.info("VWAP %s: reset _prev_price after warmup", symbol)
-                else:
-                    # ORB: reset _last_price so fresh-cross guard allows
-                    # the first live tick to detect breakouts.
-                    for w in getattr(strategy, "windows", []):
-                        if w.range_set and not w.breakout_fired:
-                            w._last_price = None
-                            logger.info(
-                                "ORB %d-min: reset _last_price after warmup (ready for live breakout)",
-                                w.window_minutes,
-                            )
 
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
@@ -611,54 +520,22 @@ class TradovateBot:
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
-            cid = self.contract_ids.get(symbol)
             self.md_stream.subscribe_quote(
                 contract_name,
                 lambda sym, data, s=symbol: self._on_quote(s, data),
-                contract_id=cid,
             )
-            if cid:
-                logger.info("Mapped contractId %d -> %s for quote routing", cid, symbol)
 
     def _on_quote(self, symbol: str, data: dict):
-        """Handle incoming quote data from WebSocket or REST poller."""
-        # Tradovate WebSocket quotes use "entries" with capitalized keys:
-        #   {"contractId": ..., "entries": {"Trade": {"price": ...}, "Bid": {...}, ...}}
-        # REST poller (Yahoo) uses lowercase flat keys:
-        #   {"trade": {"price": ...}, "bid": {...}, "high": {...}, ...}
-        entries = data.get("entries", {})
-        if entries:
-            # WebSocket format — extract from entries dict
-            price = (
-                entries.get("Trade", {}).get("price")
-                or entries.get("Bid", {}).get("price")
-                or entries.get("Offer", {}).get("price")
-            )
-            high = entries.get("HighPrice", {}).get("price", price) if price else None
-            low = entries.get("LowPrice", {}).get("price", price) if price else None
-            volume = entries.get("TotalTradeVolume", {}).get("size", 0)
-        else:
-            # REST poller format (Yahoo Finance)
-            price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
-            high = data.get("high", {}).get("price", price) if price else None
-            low = data.get("low", {}).get("price", price) if price else None
-            volume = data.get("trade", {}).get("size", 0)
-
-        if price is None or price <= 0:
-            # Log first few missing-price events per symbol so we can debug
-            miss_key = f"_quote_miss_{symbol}"
-            miss_count = getattr(self, miss_key, 0) + 1
-            setattr(self, miss_key, miss_count)
-            if miss_count <= 3:
-                logger.warning("Quote for %s has no price. keys=%s entries_keys=%s",
-                               symbol, list(data.keys()), list(entries.keys()) if entries else "none")
+        """Handle incoming quote data from WebSocket."""
+        # Extract price from quote data
+        # Tradovate quote structure includes bid/ask/last
+        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+        if price is None:
             return
 
-        # Ensure high/low have valid values (default to price if missing)
-        if high is None or high <= 0:
-            high = price
-        if low is None or low <= 0:
-            low = price
+        high = data.get("high", {}).get("price", price)
+        low = data.get("low", {}).get("price", price)
+        volume = data.get("trade", {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -681,23 +558,6 @@ class TradovateBot:
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
             return
-
-        # Periodic price diagnostics (every ~60 ticks per symbol)
-        diag_key = f"_diag_count_{symbol}"
-        count = getattr(self, diag_key, 0) + 1
-        setattr(self, diag_key, count)
-        if count % 60 == 1:
-            # Log strategy state so we can diagnose signal generation
-            diag_parts = [f"price={price:.2f}"]
-            if hasattr(strategy, "windows"):
-                for w in strategy.windows:
-                    state = "waiting" if not w.range_set else (
-                        f"range={w.range_low:.2f}-{w.range_high:.2f} last={w._last_price}"
-                    )
-                    diag_parts.append(f"ORB-{w.window_minutes}m:{state}")
-            if hasattr(strategy, "vwap") and strategy.vwap:
-                diag_parts.append(f"vwap={strategy.vwap:.2f}")
-            logger.info("DIAG %s | %s | trades=%d", symbol, " | ".join(diag_parts), getattr(strategy, "trades_taken", 0))
 
         # Feed price to strategy
         signal = None
@@ -783,7 +643,7 @@ class TradovateBot:
 
         if result:
             self._last_order_time = time.time()
-            self.risk.register_open(signal.qty, symbol=signal.symbol)
+            self.risk.register_open(signal.qty)
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
@@ -808,7 +668,6 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
-            self._save_bot_state()
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
@@ -1023,10 +882,9 @@ class TradovateBot:
                     self.journal.record_exit_by_symbol(
                         sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(trade_info.get("qty", 1), symbol=sym)
+                    self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
-                    self._save_bot_state()
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
