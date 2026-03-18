@@ -90,7 +90,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 10,              # minis (FundedNext limit)
+        "max_contracts": 10,              # micros (switched from minis for tighter risk)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -122,7 +122,9 @@ MAX_DAILY_TRADES = 16
 # Contract Specifications
 # ─────────────────────────────────────────────
 CONTRACT_SPECS = {
-    # ─── Micro Contracts (disabled — FundedNext rejects micro orders) ──
+    # ─── Micro Contracts (active) ──────────────────────────────
+    # Switched from minis to micros for tighter risk control.
+    # Point values are 1/10 of minis, allowing finer position sizing.
     "MNQ": {
         "name": "Micro E-mini Nasdaq-100",
         "exchange": "CME",
@@ -130,7 +132,7 @@ CONTRACT_SPECS = {
         "tick_value": 0.50,
         "point_value": 2.00,
         "strategy": "ORB",
-        "enabled": False,
+        "enabled": True,
         "orb_windows": [5, 15],
         "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
@@ -145,7 +147,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.25,
         "point_value": 5.00,
         "strategy": "ORB",
-        "enabled": False,
+        "enabled": True,
         "orb_windows": [5, 15],
         "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
@@ -160,7 +162,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.00,
         "point_value": 10.00,
         "strategy": "VWAP",
-        "enabled": False,
+        "enabled": True,
         "stop_loss_points": 5.0,
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
@@ -175,7 +177,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.00,
         "point_value": 100.00,
         "strategy": "VWAP",
-        "enabled": False,
+        "enabled": True,
         "stop_loss_points": 0.20,
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
@@ -183,9 +185,7 @@ CONTRACT_SPECS = {
         "max_vwap_trades_per_direction": 2,
         "vwap_cooldown_minutes": 30,
     },
-    # ─── Mini Contracts (active) ─────────────────────────────
-    # Risk manager auto-sizes to 1 contract per trade (point_value is 10x micros).
-    # Max 10 contracts per FundedNext rules.
+    # ─── Mini Contracts (disabled — switched to micros) ──────
     "NQ": {
         "name": "E-mini Nasdaq-100",
         "exchange": "CME",
@@ -193,9 +193,9 @@ CONTRACT_SPECS = {
         "tick_value": 5.00,
         "point_value": 20.00,
         "strategy": "ORB",
-        "enabled": True,
-        "orb_windows": [5, 15, 30, 60],
-        "max_orb_trades": 4,
+        "enabled": False,
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 25,
         "take_profit_points": 50,
@@ -208,9 +208,9 @@ CONTRACT_SPECS = {
         "tick_value": 12.50,
         "point_value": 50.00,
         "strategy": "ORB",
-        "enabled": True,
-        "orb_windows": [5, 15, 30, 60],
-        "max_orb_trades": 4,
+        "enabled": False,
+        "orb_windows": [5, 15],
+        "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 6,
         "take_profit_points": 12,
@@ -223,13 +223,13 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 100.00,
         "strategy": "VWAP",
-        "enabled": True,
+        "enabled": False,
         "stop_loss_points": 5.0,
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 3,
-        "vwap_cooldown_minutes": 20,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
     },
     "CL": {
         "name": "WTI Crude Oil",
@@ -238,13 +238,13 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 1_000.00,
         "strategy": "VWAP",
-        "enabled": True,
+        "enabled": False,
         "stop_loss_points": 0.20,
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 3,
-        "vwap_cooldown_minutes": 20,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
     },
     "SI": {
         "name": "Silver (COMEX)",
