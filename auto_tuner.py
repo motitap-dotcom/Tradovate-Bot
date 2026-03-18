@@ -30,18 +30,23 @@ TUNER_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuner_log.
 _BOUNDS = {
     "stop_loss_points": {
         "NQ": (15, 40), "ES": (4, 12), "GC": (3, 10), "CL": (0.10, 0.40),
+        "MNQ": (15, 40), "MES": (4, 12), "MGC": (3, 10), "MCL": (0.10, 0.40),
     },
     "take_profit_points": {
         "NQ": (30, 80), "ES": (8, 24), "GC": (6, 20), "CL": (0.20, 0.80),
+        "MNQ": (30, 80), "MES": (8, 24), "MGC": (6, 20), "MCL": (0.20, 0.80),
     },
     "orb_cooldown_minutes": {
         "NQ": (5, 45), "ES": (5, 45),
+        "MNQ": (5, 45), "MES": (5, 45),
     },
     "vwap_cooldown_minutes": {
         "GC": (10, 90), "CL": (10, 90),
+        "MGC": (10, 90), "MCL": (10, 90),
     },
     "risk_reward_ratio": {
         "NQ": (1.5, 3.5), "ES": (1.5, 3.5), "GC": (1.5, 3.5), "CL": (1.5, 3.5),
+        "MNQ": (1.5, 3.5), "MES": (1.5, 3.5), "MGC": (1.5, 3.5), "MCL": (1.5, 3.5),
     },
 }
 
