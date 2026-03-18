@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot — v2.1.1 (never-die)
+Tradovate Trading Bot — v2.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -33,7 +33,6 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
-import bot_state
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -143,16 +142,6 @@ class TradovateBot:
 
         # Initialize strategies
         self._init_strategies()
-
-        # Restore persisted state (peak_balance, drawdown_floor, strategy flags)
-        saved_state = bot_state.load_state()
-        if saved_state:
-            bot_state.restore_risk(saved_state, self.risk)
-            bot_state.restore_strategies(saved_state, self.strategies)
-            self.risk.trades_today = saved_state.get("trades_today_count", 0)
-            logger.info("Restored bot state from disk")
-        else:
-            logger.info("No saved state — starting fresh")
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
@@ -664,11 +653,27 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
-            # entry_price=0 for market orders — patched later from actual fill
+
+            # Fetch actual fill price for market orders (signal.entry_price
+            # is the theoretical price at signal time, not the actual fill)
+            actual_entry_price = signal.entry_price or 0
+            entry_order_id = result.get("orderId")
+            if entry_order_id:
+                try:
+                    fill_price = self._get_fill_price_for_order(entry_order_id)
+                    if isinstance(fill_price, (int, float)) and fill_price > 0:
+                        actual_entry_price = fill_price
+                        logger.info(
+                            "Entry fill price for %s: %.4f (signal was %.4f)",
+                            signal.symbol, fill_price, signal.entry_price or 0,
+                        )
+                except Exception as e:
+                    logger.warning("Could not fetch entry fill price: %s", e)
+
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=actual_entry_price,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -685,29 +690,19 @@ class TradovateBot:
                     "target": signal.take_profit,
                     "reason": signal.reason,
                     "order_id": result.get("orderId"),
+                    "sl_order_id": result.get("slOrderId"),
+                    "tp_order_id": result.get("tpOrderId"),
                     "journal_id": trade_id,
+                    "entry_price": actual_entry_price,
+                    "_balance_at_entry": getattr(self.risk, "current_balance", 0),
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
-            self._save_state()
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
-
-    def _save_state(self):
-        """Persist bot state to disk (strategies, risk manager, trade count)."""
-        try:
-            state = bot_state.build_state(
-                self.strategies,
-                self.risk.trades_today,
-                self.trades_today,
-                risk_manager=self.risk,
-            )
-            bot_state.save_state(state)
-        except Exception as e:
-            logger.error("Failed to save bot state: %s", e)
 
     # ─────────────────────────────────────────
     # Main loop
@@ -738,23 +733,16 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                    # Record force-close exits in journal with real prices
-                    fills = self.api.get_fills()
-                    fills_by_contract: dict[int, list[dict]] = {}
-                    for f in fills:
-                        cid = f.get("contractId")
-                        if cid:
-                            fills_by_contract.setdefault(cid, []).append(f)
+                    # Wait briefly for force-close fills to settle
+                    time.sleep(2)
+                    # Record force-close exits with real fill data
                     for t in self.trades_today:
                         if t.get("journal_id") and not t.get("_closed"):
-                            exit_price, entry_price, pnl = self._resolve_fill_prices(
-                                t["symbol"], t, fills_by_contract
-                            )
+                            exit_price, pnl, _ = self._compute_trade_exit(t)
                             self.journal.record_exit_by_symbol(
-                                t["symbol"], exit_price, pnl, exit_reason="force_close"
+                                t["symbol"], exit_price, pnl,
+                                exit_reason="force_close"
                             )
-                            if entry_price:
-                                self.journal.patch_entry_price(t["symbol"], entry_price)
                             t["_closed"] = True
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
@@ -885,7 +873,11 @@ class TradovateBot:
         self.stop()
 
     def _sync_fills(self):
-        """Check positions and fills to close journal trades and update contract count."""
+        """Check positions and fills to close journal trades and update contract count.
+
+        When a position goes flat (SL/TP/manual close), fetches actual fill
+        data from the API to record the real exit price and P&L in the journal.
+        """
         try:
             positions = self.api.get_positions()
 
@@ -912,15 +904,6 @@ class TradovateBot:
 
             self.risk.open_contracts = total_open
 
-            # Fetch recent fills to get actual prices
-            fills = self.api.get_fills()
-            # Index fills by contractId for quick lookup
-            fills_by_contract: dict[int, list[dict]] = {}
-            for f in fills:
-                cid = f.get("contractId")
-                if cid:
-                    fills_by_contract.setdefault(cid, []).append(f)
-
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
@@ -929,92 +912,239 @@ class TradovateBot:
                     continue
 
                 if sym not in open_base_symbols:
-                    # Position is flat — find actual exit fill price and compute P&L
-                    exit_price, entry_price, pnl = self._resolve_fill_prices(
-                        sym, trade_info, fills_by_contract
-                    )
+                    # Position is flat — compute real exit price and P&L
+                    exit_price, pnl, exit_reason = self._compute_trade_exit(trade_info)
                     self.journal.record_exit_by_symbol(
-                        sym, exit_price, pnl, exit_reason="bracket_fill"
+                        sym, exit_price, pnl, exit_reason=exit_reason
                     )
-                    # Also patch entry_price if it was 0
-                    if entry_price and trade_info.get("journal_id"):
-                        self.journal.patch_entry_price(sym, entry_price)
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
                     logger.info(
-                        "Position closed for %s (flat) | entry=%.2f exit=%.2f pnl=%.2f",
-                        sym, entry_price or 0, exit_price, pnl,
+                        "Position closed for %s | exit=%.4f | pnl=$%.2f | reason=%s",
+                        sym, exit_price, pnl, exit_reason,
                     )
-
-            self._save_state()
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
 
-    def _resolve_fill_prices(
-        self,
-        symbol: str,
-        trade_info: dict,
-        fills_by_contract: dict[int, list[dict]],
-    ) -> tuple[float, float, float]:
-        """Find actual entry/exit fill prices for a closed trade.
+    def _compute_trade_exit(self, trade_info: dict) -> tuple[float, float, str]:
+        """Compute real exit price and P&L for a closed trade.
 
-        Returns (exit_price, entry_price, pnl).
+        Tries multiple methods in order of reliability:
+        1. Fetch fills from the entry order's bracket (SL/TP order fills)
+        2. Fetch all recent fills and match by contract
+        3. Compute from balance change as last resort
+
+        Returns (exit_price, pnl_dollars, exit_reason).
         """
-        direction = trade_info.get("direction", "")
-        order_id = trade_info.get("order_id")
-
-        # Find contractId for this symbol
-        contract_id = None
-        for cid, sym in self._contract_id_to_symbol.items():
-            if sym == symbol:
-                contract_id = cid
-                break
-
-        if not contract_id or contract_id not in fills_by_contract:
-            return 0.0, 0.0, 0.0
-
-        symbol_fills = sorted(
-            fills_by_contract[contract_id],
-            key=lambda f: f.get("timestamp", ""),
-        )
-
-        # Find entry and exit fills for this trade based on direction and timing
-        trade_time = trade_info.get("time", "")
-        entry_action = "Sell" if direction == "Sell" else "Buy"
-        exit_action = "Buy" if direction == "Sell" else "Sell"
-
-        entry_fill = None
-        exit_fill = None
-
-        for f in symbol_fills:
-            fill_time = f.get("timestamp", "")
-            if f.get("action") == entry_action and fill_time >= trade_time:
-                if entry_fill is None:
-                    entry_fill = f
-            elif f.get("action") == exit_action and entry_fill and fill_time > entry_fill.get("timestamp", ""):
-                exit_fill = f
-                break  # First exit after entry
-
-        if not entry_fill or not exit_fill:
-            # Fallback: try matching by order_id proximity
-            entry_price_val = entry_fill["price"] if entry_fill else 0.0
-            exit_price_val = exit_fill["price"] if exit_fill else 0.0
-            return exit_price_val, entry_price_val, 0.0
-
-        entry_price_val = entry_fill["price"]
-        exit_price_val = exit_fill["price"]
+        sym = trade_info.get("symbol", "")
+        entry_price = trade_info.get("entry_price", 0)
+        direction = trade_info.get("direction", "Buy")
         qty = trade_info.get("qty", 1)
+        order_id = trade_info.get("order_id")
+        sl_order_id = trade_info.get("sl_order_id")
+        tp_order_id = trade_info.get("tp_order_id")
 
-        spec = config.CONTRACT_SPECS.get(symbol, {})
+        spec = config.CONTRACT_SPECS.get(sym, {})
         point_value = spec.get("point_value", 1)
 
-        if direction == "Sell":
-            pnl = (entry_price_val - exit_price_val) * qty * point_value
-        else:
-            pnl = (exit_price_val - entry_price_val) * qty * point_value
+        # If we don't have entry_price from the signal, try to get it from
+        # the entry order's actual fill
+        if (not entry_price or entry_price == 0) and order_id:
+            entry_price = self._get_fill_price_for_order(order_id) or 0
 
-        return exit_price_val, entry_price_val, round(pnl, 2)
+        # --- Method 1: Check SL/TP order fills directly ---
+        exit_price = 0.0
+        exit_reason = "bracket_fill"
+
+        for oid, reason_label in [(tp_order_id, "take_profit"), (sl_order_id, "stop_loss")]:
+            if not oid:
+                continue
+            fill_price = self._get_fill_price_for_order(oid)
+            if fill_price and fill_price > 0:
+                exit_price = fill_price
+                exit_reason = reason_label
+                logger.debug(
+                    "Exit price from %s order %s: %.4f", reason_label, oid, fill_price
+                )
+                break
+
+        # --- Method 2: Search all recent fills for this contract ---
+        if exit_price == 0:
+            exit_price, exit_reason = self._find_exit_from_all_fills(trade_info)
+
+        # --- Method 3: Use entry order detail (avgPrice) if position was
+        # closed manually and we can't find exit fills ---
+        if exit_price == 0 and order_id:
+            detail = self.api.get_order_detail(order_id)
+            if detail:
+                avg = detail.get("avgPrice", 0)
+                if avg and avg > 0 and entry_price == 0:
+                    # At minimum, record the entry fill price
+                    entry_price = avg
+
+        # --- Compute P&L ---
+        if exit_price > 0 and entry_price > 0:
+            if direction == "Buy":
+                pnl = (exit_price - entry_price) * qty * point_value
+            else:
+                pnl = (entry_price - exit_price) * qty * point_value
+            pnl = round(pnl, 2)
+        else:
+            # Cannot determine exact P&L from fills — use balance delta
+            pnl = self._estimate_pnl_from_balance(trade_info)
+            if exit_price == 0:
+                exit_price = entry_price  # Better than 0 for journal display
+            exit_reason = "bracket_fill_estimated"
+            logger.warning(
+                "Could not determine exact exit price for %s — P&L estimated from balance: $%.2f",
+                sym, pnl,
+            )
+
+        # Update entry_price in journal if it was 0 and we found the real one
+        if entry_price > 0:
+            self._update_journal_entry_price(trade_info, entry_price)
+
+        return exit_price, pnl, exit_reason
+
+    def _get_fill_price_for_order(self, order_id: int) -> float:
+        """Get the average fill price for a specific order from the API.
+
+        First tries /fill/deps (fills for order), then falls back to
+        order detail's avgPrice field.
+        """
+        if not order_id:
+            return 0.0
+
+        try:
+            # Try fills endpoint first (most accurate)
+            fills = self.api.get_order_fills(order_id)
+            if isinstance(fills, list) and fills:
+                total_qty = 0
+                total_value = 0.0
+                for f in fills:
+                    if not isinstance(f, dict):
+                        continue
+                    fqty = f.get("qty", 0)
+                    fprice = f.get("price", 0)
+                    if isinstance(fqty, (int, float)) and isinstance(fprice, (int, float)):
+                        if fqty > 0 and fprice > 0:
+                            total_qty += fqty
+                            total_value += fqty * fprice
+                if total_qty > 0:
+                    return round(total_value / total_qty, 6)
+
+            # Fall back to order detail
+            detail = self.api.get_order_detail(order_id)
+            if isinstance(detail, dict):
+                avg = detail.get("avgPrice", 0)
+                if isinstance(avg, (int, float)) and avg > 0:
+                    return avg
+        except Exception as e:
+            logger.warning("Error fetching fill price for order %s: %s", order_id, e)
+
+        return 0.0
+
+    def _find_exit_from_all_fills(self, trade_info: dict) -> tuple[float, str]:
+        """Search all recent fills to find the closing fill for a trade.
+
+        Matches by contract name and opposite direction (closing fill).
+        Returns (exit_price, exit_reason) or (0, "bracket_fill") if not found.
+        """
+        sym = trade_info.get("symbol", "")
+        direction = trade_info.get("direction", "Buy")
+        contract_name = self.contract_map.get(sym, "")
+        if not contract_name:
+            return 0.0, "bracket_fill"
+
+        # Find the contract ID for matching fills
+        contract = self.api.find_contract(contract_name)
+        if not contract:
+            return 0.0, "bracket_fill"
+        target_contract_id = contract.get("id")
+
+        # Closing fill has opposite action
+        close_action = "Sell" if direction == "Buy" else "Buy"
+
+        all_fills = self.api.get_fills()
+        matching = []
+        for f in all_fills:
+            if (
+                f.get("contractId") == target_contract_id
+                and f.get("action") == close_action
+                and f.get("id") not in self._known_fill_ids
+            ):
+                matching.append(f)
+
+        if not matching:
+            return 0.0, "bracket_fill"
+
+        # Sort by timestamp descending — take the most recent
+        matching.sort(key=lambda f: f.get("timestamp", ""), reverse=True)
+
+        # Compute VWAP of matching exit fills
+        total_qty = 0
+        total_value = 0.0
+        for f in matching:
+            fqty = f.get("qty", 0)
+            fprice = f.get("price", 0)
+            if fqty > 0 and fprice > 0:
+                total_qty += fqty
+                total_value += fqty * fprice
+                # Mark as known so we don't reuse
+                self._known_fill_ids.add(f.get("id"))
+
+        if total_qty > 0:
+            avg_price = round(total_value / total_qty, 6)
+            # Try to determine if it was SL or TP based on price relative to entry
+            exit_reason = self._infer_exit_reason(trade_info, avg_price)
+            return avg_price, exit_reason
+
+        return 0.0, "bracket_fill"
+
+    def _infer_exit_reason(self, trade_info: dict, exit_price: float) -> str:
+        """Infer whether exit was SL or TP based on price proximity."""
+        sl = trade_info.get("stop", 0)
+        tp = trade_info.get("target", 0)
+        if not sl or not tp or not exit_price:
+            return "bracket_fill"
+
+        sl_dist = abs(exit_price - sl)
+        tp_dist = abs(exit_price - tp)
+
+        # Whichever bracket level is closer to the exit price
+        if sl_dist < tp_dist:
+            return "stop_loss"
+        elif tp_dist < sl_dist:
+            return "take_profit"
+        return "bracket_fill"
+
+    def _estimate_pnl_from_balance(self, trade_info: dict) -> float:
+        """Last-resort P&L estimation from balance change.
+
+        Compares current balance to what it was when the trade was opened.
+        This is imprecise if multiple trades overlap, but better than $0.
+        """
+        balance_at_entry = trade_info.get("_balance_at_entry")
+        if balance_at_entry and balance_at_entry > 0:
+            current_balance = self.risk.current_balance
+            return round(current_balance - balance_at_entry, 2)
+        return 0.0
+
+    def _update_journal_entry_price(self, trade_info: dict, real_entry_price: float):
+        """Update the journal's entry_price if it was recorded as 0 (market order)."""
+        journal_id = trade_info.get("journal_id")
+        if not journal_id:
+            return
+        for trade in reversed(self.journal.trades):
+            if trade["id"] == journal_id:
+                if not trade.get("entry_price") or trade["entry_price"] == 0:
+                    trade["entry_price"] = real_entry_price
+                    logger.info(
+                        "Updated journal entry price for %s: %.4f",
+                        journal_id, real_entry_price,
+                    )
+                break
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
