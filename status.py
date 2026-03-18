@@ -153,7 +153,7 @@ def get_prices():
     """Fetch current futures prices."""
     try:
         import requests
-        symbols = {"MNQ": "NQ=F", "MES": "ES=F", "MGC": "GC=F", "MCL": "CL=F"}
+        symbols = {"NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F"}
         prices = {}
         for name, sym in symbols.items():
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1m&range=1d"

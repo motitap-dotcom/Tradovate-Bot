@@ -90,7 +90,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 10,              # micros (switched from minis for tighter risk)
+        "max_contracts": 10,              # minis (FundedNext limit)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -122,9 +122,7 @@ MAX_DAILY_TRADES = 16
 # Contract Specifications
 # ─────────────────────────────────────────────
 CONTRACT_SPECS = {
-    # ─── Micro Contracts (active) ──────────────────────────────
-    # Switched from minis to micros for tighter risk control.
-    # Point values are 1/10 of minis, allowing finer position sizing.
+    # ─── Micro Contracts (disabled — FundedNext bot rejects micros) ──
     "MNQ": {
         "name": "Micro E-mini Nasdaq-100",
         "exchange": "CME",
@@ -132,7 +130,7 @@ CONTRACT_SPECS = {
         "tick_value": 0.50,
         "point_value": 2.00,
         "strategy": "ORB",
-        "enabled": True,
+        "enabled": False,
         "orb_windows": [5, 15],
         "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
@@ -147,7 +145,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.25,
         "point_value": 5.00,
         "strategy": "ORB",
-        "enabled": True,
+        "enabled": False,
         "orb_windows": [5, 15],
         "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
@@ -162,7 +160,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.00,
         "point_value": 10.00,
         "strategy": "VWAP",
-        "enabled": True,
+        "enabled": False,
         "stop_loss_points": 5.0,
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
@@ -177,7 +175,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.00,
         "point_value": 100.00,
         "strategy": "VWAP",
-        "enabled": True,
+        "enabled": False,
         "stop_loss_points": 0.20,
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
@@ -185,7 +183,7 @@ CONTRACT_SPECS = {
         "max_vwap_trades_per_direction": 2,
         "vwap_cooldown_minutes": 30,
     },
-    # ─── Mini Contracts (disabled — switched to micros) ──────
+    # ─── Mini Contracts (active) ─────────────────────────────
     "NQ": {
         "name": "E-mini Nasdaq-100",
         "exchange": "CME",
@@ -193,7 +191,7 @@ CONTRACT_SPECS = {
         "tick_value": 5.00,
         "point_value": 20.00,
         "strategy": "ORB",
-        "enabled": False,
+        "enabled": True,
         "orb_windows": [5, 15],
         "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
@@ -208,7 +206,7 @@ CONTRACT_SPECS = {
         "tick_value": 12.50,
         "point_value": 50.00,
         "strategy": "ORB",
-        "enabled": False,
+        "enabled": True,
         "orb_windows": [5, 15],
         "max_orb_trades": 2,
         "orb_cooldown_minutes": 15,
@@ -223,7 +221,7 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 100.00,
         "strategy": "VWAP",
-        "enabled": False,
+        "enabled": True,
         "stop_loss_points": 5.0,
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
@@ -238,7 +236,7 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 1_000.00,
         "strategy": "VWAP",
-        "enabled": False,
+        "enabled": True,
         "stop_loss_points": 0.20,
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
