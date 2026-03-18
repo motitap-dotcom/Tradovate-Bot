@@ -1,5 +1,5 @@
 """
-Tradovate Bot Configuration — Micro Contracts Active
+Tradovate Bot Configuration — Micro Contracts Active  v2.3
 ============================
 All settings for the multi-asset trading bot.
 Put your API credentials in a .env file (never commit it).
