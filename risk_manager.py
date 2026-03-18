@@ -230,6 +230,23 @@ class RiskManager:
     # Pre-trade validation
     # ─────────────────────────────────────────
 
+    @property
+    def calm_mode(self) -> bool:
+        """True when equity is dangerously close to drawdown floor.
+
+        Calm mode activates when distance to floor < 50% of max drawdown,
+        reducing trade frequency and position sizes to protect the account.
+        """
+        equity = self.current_balance + self.unrealized_pnl
+        distance = equity - self.drawdown_floor
+        threshold = self.max_trailing_drawdown * 0.50  # 50% = $1,250 for $2,500 DD
+        return distance < threshold
+
+    @property
+    def calm_mode_max_trades(self) -> int:
+        """In calm mode, limit total daily trades."""
+        return 4
+
     def can_trade(self) -> tuple[bool, str]:
         """Check whether a new trade is allowed right now."""
         if self.trading_locked:
@@ -243,6 +260,13 @@ class RiskManager:
         if self.trades_today >= self.max_daily_trades:
             return False, (
                 f"Daily trade cap reached: {self.trades_today}/{self.max_daily_trades}"
+            )
+
+        # Calm mode: restrict trades when close to drawdown floor
+        if self.calm_mode and self.trades_today >= self.calm_mode_max_trades:
+            return False, (
+                f"CALM MODE: trades capped at {self.calm_mode_max_trades} "
+                f"(distance to floor: ${self.current_balance + self.unrealized_pnl - self.drawdown_floor:.0f})"
             )
 
         return True, "OK"
@@ -281,6 +305,11 @@ class RiskManager:
 
         # Per-trade risk = configured % of account
         trade_risk_budget = self.account_size * config.RISK_PER_TRADE_PCT
+
+        # Calm mode: halve risk budget to protect against drawdown
+        if self.calm_mode:
+            trade_risk_budget *= 0.5
+            logger.info("CALM MODE: risk budget halved to $%.2f", trade_risk_budget)
 
         # Don't risk more than remaining daily budget
         remaining_daily = daily_budget + self.day_pnl
@@ -426,4 +455,5 @@ class RiskManager:
             "locked": self.trading_locked,
             "lock_reason": self.lock_reason,
             "balance_initialized": self._balance_initialized,
+            "calm_mode": self.calm_mode,
         }
