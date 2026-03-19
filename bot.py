@@ -727,7 +727,7 @@ class TradovateBot:
         In real-time mode, the WebSocket feeds drive strategy via callbacks.
         This loop handles time-based events (force close, status updates).
         """
-        logger.info("Entering main loop...")
+        logger.info("Entering main loop (v2)...")
 
         # Track known fills to detect new ones
         self._known_fill_ids: set = set()
