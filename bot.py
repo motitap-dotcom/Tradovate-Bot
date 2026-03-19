@@ -482,6 +482,40 @@ class TradovateBot:
                     symbol, fed, type(strategy).__name__,
                 )
 
+                # Late-start fix: if ORB range is set but _last_price
+                # drifted outside the range during warmup, reset it to the
+                # range midpoint so the first live tick can trigger a fresh
+                # breakout instead of being blocked by the stale-cross guard.
+                for w in getattr(strategy, "windows", []):
+                    if (
+                        w.range_set
+                        and not w.breakout_fired
+                        and w._last_price is not None
+                    ):
+                        if (
+                            w._last_price > w.range_high
+                            or w._last_price < w.range_low
+                        ):
+                            mid = (w.range_high + w.range_low) / 2
+                            logger.info(
+                                "Late-start fix: ORB %d-min _last_price=%.2f "
+                                "outside range [%.2f-%.2f]. Resetting to "
+                                "midpoint %.2f to allow fresh breakout.",
+                                w.window_minutes,
+                                w._last_price,
+                                w.range_low,
+                                w.range_high,
+                                mid,
+                            )
+                            w._last_price = mid
+
+                # VWAP warmup fix: carry over candle count so the
+                # MIN_CANDLES_FOR_SIGNAL guard doesn't block early signals.
+                if hasattr(strategy, "_candle_count"):
+                    strategy._candle_count = max(
+                        getattr(strategy, "_candle_count", 0), fed
+                    )
+
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
