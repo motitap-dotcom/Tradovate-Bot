@@ -580,6 +580,69 @@ class TradovateBot:
             if contract_id:
                 logger.info("Mapped contractId %s -> %s for quote routing", contract_id, contract_name)
 
+    @staticmethod
+    def _extract_quote_price(data: dict) -> tuple:
+        """
+        Extract price, high, low, volume from Tradovate quote data.
+
+        Tradovate WebSocket may send quotes in different formats:
+        1. Documented: {"trade": {"price": X}, "bid": {"price": Y}, "high": {"price": Z}}
+        2. Entries:    {"entries": {"Trade": {"price": X}, "Bid": {"price": Y}}}
+        3. Flat:       {"price": X} or {"last": X}
+        """
+        price = None
+        high = None
+        low = None
+        volume = 0
+
+        # Format 1: Documented nested structure
+        trade_obj = data.get("trade")
+        if isinstance(trade_obj, dict):
+            price = trade_obj.get("price")
+            volume = trade_obj.get("size", 0)
+
+        # Format 2: entries-wrapped (Tradovate web trader format)
+        if price is None:
+            entries = data.get("entries", {})
+            if isinstance(entries, dict):
+                trade_entry = entries.get("Trade") or entries.get("trade", {})
+                if isinstance(trade_entry, dict):
+                    price = trade_entry.get("price")
+                    volume = trade_entry.get("size", 0)
+                if price is None:
+                    bid_entry = entries.get("Bid") or entries.get("bid", {})
+                    if isinstance(bid_entry, dict):
+                        price = bid_entry.get("price")
+                # High / Low from entries
+                hp = entries.get("HighPrice") or entries.get("High") or entries.get("high", {})
+                if isinstance(hp, dict):
+                    high = hp.get("price")
+                lp = entries.get("LowPrice") or entries.get("Low") or entries.get("low", {})
+                if isinstance(lp, dict):
+                    low = lp.get("price")
+
+        # Format 3: Flat structure
+        if price is None:
+            price = data.get("price") or data.get("last") or data.get("Last")
+
+        # Fallback for bid if trade price unavailable
+        if price is None:
+            bid_obj = data.get("bid")
+            if isinstance(bid_obj, dict):
+                price = bid_obj.get("price")
+            elif isinstance(bid_obj, (int, float)):
+                price = bid_obj
+
+        # High/Low from standard nested
+        if high is None:
+            h = data.get("high")
+            high = h.get("price") if isinstance(h, dict) else h if isinstance(h, (int, float)) else None
+        if low is None:
+            lo = data.get("low")
+            low = lo.get("price") if isinstance(lo, dict) else lo if isinstance(lo, (int, float)) else None
+
+        return price, high, low, volume
+
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
         # Diagnostic: count callbacks per symbol
@@ -588,23 +651,24 @@ class TradovateBot:
             self._quote_null_counts: dict[str, int] = {}
         self._quote_counts[symbol] = self._quote_counts.get(symbol, 0) + 1
 
-        # Extract price from quote data
-        # Tradovate quote structure includes bid/ask/last
-        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+        # Extract price — supports multiple Tradovate quote formats
+        price, high, low, volume = self._extract_quote_price(data)
+
         if price is None:
             self._quote_null_counts[symbol] = self._quote_null_counts.get(symbol, 0) + 1
-            # Log first null and then every 100th to diagnose data format issues
             null_count = self._quote_null_counts[symbol]
             if null_count == 1 or null_count % 100 == 0:
                 logger.warning(
-                    "Quote for %s: price=None (#%d nulls). Keys: %s",
+                    "Quote for %s: price=None (#%d nulls). Keys: %s | Sample: %s",
                     symbol, null_count, list(data.keys())[:10],
+                    str(data)[:200],
                 )
             return
 
-        high = data.get("high", {}).get("price", price)
-        low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
+        if high is None:
+            high = price
+        if low is None:
+            low = price
 
         # Log first price received per symbol
         count = self._quote_counts[symbol]
