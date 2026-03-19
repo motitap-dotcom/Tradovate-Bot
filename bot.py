@@ -103,6 +103,10 @@ class TradovateBot:
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
 
+        # Track WebSocket restart attempts to force REST fallback
+        self._ws_restart_count: int = 0
+        self._max_ws_restarts: int = 3  # After 3 stale-restarts, force REST
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -556,6 +560,14 @@ class TradovateBot:
         logger.info("Market data via REST polling (Yahoo Finance)")
         return poller
 
+    def _force_rest_polling(self):
+        """Skip WebSocket entirely and go straight to REST polling."""
+        poller = RestMarketDataPoller()
+        poller._last_ts.update(self._warmup_last_ts)
+        poller.start()
+        logger.info("Market data via REST polling (forced fallback)")
+        return poller
+
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
@@ -876,14 +888,24 @@ class TradovateBot:
                     fell_back = getattr(self.md_stream, "fell_back", None)
                     if is_stale or (fell_back and fell_back.is_set()):
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
+                        self._ws_restart_count += 1
                         logger.warning(
-                            "Market data stream unhealthy (%s). Restarting...", reason
+                            "Market data stream unhealthy (%s). Restart attempt %d/%d",
+                            reason, self._ws_restart_count, self._max_ws_restarts,
                         )
                         try:
                             self.md_stream.stop()
                         except Exception:
                             pass
-                        self.md_stream = self._start_market_data()
+                        # After too many stale-restarts, force REST polling
+                        if self._ws_restart_count >= self._max_ws_restarts:
+                            logger.warning(
+                                "WebSocket failed %d times. Forcing REST polling fallback.",
+                                self._ws_restart_count,
+                            )
+                            self.md_stream = self._force_rest_polling()
+                        else:
+                            self.md_stream = self._start_market_data()
                         if self.md_stream:
                             self._subscribe_market_data()
 
@@ -903,6 +925,7 @@ class TradovateBot:
                                     logger.info("WebSocket recovery succeeded! Switching from REST to WebSocket.")
                                     self.md_stream.stop()
                                     self.md_stream = ws
+                                    self._ws_restart_count = 0  # Reset counter on successful WS
                                     self._subscribe_market_data()
                                 else:
                                     logger.info("WebSocket still unavailable, staying on REST polling.")
