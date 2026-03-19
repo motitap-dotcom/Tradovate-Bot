@@ -570,15 +570,37 @@ class TradovateBot:
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
+        # Diagnostic: count callbacks per symbol
+        if not hasattr(self, "_quote_counts"):
+            self._quote_counts: dict[str, int] = {}
+            self._quote_null_counts: dict[str, int] = {}
+        self._quote_counts[symbol] = self._quote_counts.get(symbol, 0) + 1
+
         # Extract price from quote data
         # Tradovate quote structure includes bid/ask/last
         price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
+            self._quote_null_counts[symbol] = self._quote_null_counts.get(symbol, 0) + 1
+            # Log first null and then every 100th to diagnose data format issues
+            null_count = self._quote_null_counts[symbol]
+            if null_count == 1 or null_count % 100 == 0:
+                logger.warning(
+                    "Quote for %s: price=None (#%d nulls). Keys: %s",
+                    symbol, null_count, list(data.keys())[:10],
+                )
             return
 
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
+
+        # Log first price received per symbol
+        count = self._quote_counts[symbol]
+        if count == 1 or count == 10:
+            logger.info(
+                "Quote %s: price=%.4f high=%.4f low=%.4f vol=%s (tick #%d)",
+                symbol, price, high, low, volume, count,
+            )
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -612,6 +634,29 @@ class TradovateBot:
             else:
                 # ORB strategy
                 signal = strategy.on_price(price, current, high, low)
+
+        # Diagnostic: log first price feed per symbol to confirm strategy is receiving data
+        if not hasattr(self, "_price_feed_counts"):
+            self._price_feed_counts: dict[str, int] = {}
+        self._price_feed_counts[symbol] = self._price_feed_counts.get(symbol, 0) + 1
+        count = self._price_feed_counts[symbol]
+        if count == 1:
+            # Log ORB window state for debugging
+            orb_info = ""
+            for w in getattr(strategy, "windows", []):
+                orb_info += (
+                    f" | ORB-{w.window_minutes}m: range_set={w.range_set}"
+                    f" fired={w.breakout_fired}"
+                    f" last_price={w._last_price}"
+                    f" range=[{w.range_low}-{w.range_high}]"
+                )
+            vwap_info = ""
+            if hasattr(strategy, "vwap") and strategy.vwap:
+                vwap_info = f" | VWAP={strategy.vwap:.4f} prev={getattr(strategy, '_prev_price', None)}"
+            logger.info(
+                "DIAG first price feed %s: price=%.4f%s%s",
+                symbol, price, orb_info, vwap_info,
+            )
 
         if signal is not None:
             self._execute_signal(signal)
@@ -875,8 +920,19 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
+                # Include quote diagnostic counts
+                q_info = ""
+                if hasattr(self, "_quote_counts") and self._quote_counts:
+                    q_info = " | quotes=" + ",".join(
+                        f"{s}:{c}" for s, c in sorted(self._quote_counts.items())
+                    )
+                    null_info = {s: c for s, c in self._quote_null_counts.items() if c > 0} if hasattr(self, "_quote_null_counts") else {}
+                    if null_info:
+                        q_info += " nulls=" + ",".join(
+                            f"{s}:{c}" for s, c in sorted(null_info.items())
+                        )
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -886,6 +942,7 @@ class TradovateBot:
                     status["max_daily_trades"],
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
+                    q_info,
                 )
 
                 # Write live status file for external monitoring
