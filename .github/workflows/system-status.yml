@@ -269,6 +269,7 @@ jobs:
       # ── Debug: Show SSH step outcome ──
       - name: SSH debug info
         if: always()
+        continue-on-error: true
         env:
           HAS_SECRET: ${{ secrets.SERVER_HOST != '' }}
           HAS_VAR: ${{ vars.SERVER_HOST != '' }}
@@ -279,10 +280,16 @@ jobs:
           echo "Has SERVER_HOST secret: $HAS_SECRET"
           echo "Has SERVER_HOST var: $HAS_VAR"
           echo "Has SSH_KEY secret: $HAS_KEY"
-          echo "SSH stdout lines: $(echo '${{ steps.ssh_status.outputs.stdout }}' | wc -l)"
+          # Count output lines safely (avoid inline expansion of large SSH output)
+          if [ -f /tmp/ssh_output.txt ]; then
+            echo "SSH output: $(wc -l < /tmp/ssh_output.txt) lines, $(wc -c < /tmp/ssh_output.txt) bytes"
+          else
+            echo "SSH output: no file"
+          fi
 
       # ── Step C: Check system status (API + optional SSH token) ──
       - name: Check system status
+        if: always()
         env:
           TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
           TRADOVATE_USERNAME: ${{ secrets.TRADOVATE_USERNAME }}
@@ -685,6 +692,7 @@ jobs:
           PYEOF
 
       - name: Commit and push status
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
