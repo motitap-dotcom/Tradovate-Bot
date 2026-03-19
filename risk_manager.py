@@ -56,8 +56,7 @@ class RiskManager:
 
         # Open position tracking
         self.open_contracts: int = 0
-        # Aggregate risk: total $ at risk from all open positions' stop losses
-        self._open_risk_by_symbol: dict[str, float] = {}
+        self._open_positions: list[dict] = []  # [{symbol, qty, stop_loss}, ...]
 
         # Daily trade counter (safety cap)
         self.max_daily_trades: int = config.MAX_DAILY_TRADES
@@ -79,28 +78,23 @@ class RiskManager:
         This corrects day_start_balance so that day_pnl is calculated
         relative to today's opening balance, not the original account_size.
         Can be called at startup or later (via _sync_balance fallback).
-
-        IMPORTANT: drawdown_floor must NEVER decrease. It only ratchets up
-        as peak_balance increases. On restart, bot_state restores the
-        historical peak/floor before this method runs.
         """
         logger.info(
             "Setting initial balance from API: $%.2f (was $%.2f from config)",
             balance, self.day_start_balance,
         )
         self.current_balance = balance
-        if not self._balance_initialized:
-            self.day_start_balance = balance
+        self.day_start_balance = balance
         self._balance_initialized = True
-
-        # Only raise peak — never lower it (bot_state may have restored a higher one)
+        # Peak/floor must also reflect reality
         if balance > self.peak_balance:
             self.peak_balance = balance
-            new_floor = self.peak_balance - self.max_trailing_drawdown
-            # Floor only ratchets up, never down
-            if new_floor > self.drawdown_floor:
-                self.drawdown_floor = new_floor
-
+            self.drawdown_floor = self.peak_balance - self.max_trailing_drawdown
+        elif balance < self.drawdown_floor + self.max_trailing_drawdown:
+            # Balance is below where peak should be — set peak = balance
+            # so drawdown floor is correct
+            self.peak_balance = balance
+            self.drawdown_floor = balance - self.max_trailing_drawdown
         logger.info(
             "Initial state: balance=$%.2f | peak=$%.2f | floor=$%.2f | day_start=$%.2f",
             self.current_balance, self.peak_balance, self.drawdown_floor, self.day_start_balance,
@@ -235,23 +229,6 @@ class RiskManager:
     # Pre-trade validation
     # ─────────────────────────────────────────
 
-    @property
-    def calm_mode(self) -> bool:
-        """True when equity is dangerously close to drawdown floor.
-
-        Calm mode activates when distance to floor < 50% of max drawdown,
-        reducing trade frequency and position sizes to protect the account.
-        """
-        equity = self.current_balance + self.unrealized_pnl
-        distance = equity - self.drawdown_floor
-        threshold = self.max_trailing_drawdown * 0.50  # 50% = $1,250 for $2,500 DD
-        return distance < threshold
-
-    @property
-    def calm_mode_max_trades(self) -> int:
-        """In calm mode, limit total daily trades."""
-        return 4
-
     def can_trade(self) -> tuple[bool, str]:
         """Check whether a new trade is allowed right now."""
         if self.trading_locked:
@@ -267,27 +244,15 @@ class RiskManager:
                 f"Daily trade cap reached: {self.trades_today}/{self.max_daily_trades}"
             )
 
-        # Calm mode: restrict trades when close to drawdown floor
-        if self.calm_mode and self.trades_today >= self.calm_mode_max_trades:
-            return False, (
-                f"CALM MODE: trades capped at {self.calm_mode_max_trades} "
-                f"(distance to floor: ${self.current_balance + self.unrealized_pnl - self.drawdown_floor:.0f})"
-            )
-
         return True, "OK"
-
-    @property
-    def aggregate_open_risk(self) -> float:
-        """Total $ at risk from all open positions' stop losses."""
-        return sum(self._open_risk_by_symbol.values())
 
     def calculate_position_size(self, symbol: str) -> int:
         """
         Calculate how many contracts to trade for the given symbol,
         based on tick value and the per-trade risk budget.
 
-        Ensures the AGGREGATE risk of all open positions (including this new
-        one) won't exceed the daily loss budget.
+        Includes aggregate risk check: total open stop-loss exposure
+        plus new trade risk must not exceed daily loss budget.
 
         Returns 0 if trading is locked or risk budget is insufficient.
         """
@@ -308,17 +273,23 @@ class RiskManager:
             equity = self.current_balance + self.unrealized_pnl
             daily_budget = equity - self.drawdown_floor
 
-        # Per-trade risk = configured % of account
+        # Remaining budget = daily budget minus losses already taken today
+        remaining_budget = daily_budget + self.day_pnl  # day_pnl is negative when losing
+
+        # Subtract aggregate open risk (stop losses on existing positions)
+        aggregate_open_risk = self._calculate_aggregate_open_risk()
+        available_for_new_trade = remaining_budget - aggregate_open_risk
+
+        if available_for_new_trade <= 0:
+            logger.warning(
+                "Position size = 0 for %s: remaining_budget=%.2f - open_risk=%.2f = %.2f (no room)",
+                symbol, remaining_budget, aggregate_open_risk, available_for_new_trade,
+            )
+            return 0
+
+        # Per-trade risk = configured % of account, capped at available budget
         trade_risk_budget = self.account_size * config.RISK_PER_TRADE_PCT
-
-        # Calm mode: halve risk budget to protect against drawdown
-        if self.calm_mode:
-            trade_risk_budget *= 0.5
-            logger.info("CALM MODE: risk budget halved to $%.2f", trade_risk_budget)
-
-        # Don't risk more than remaining daily budget
-        remaining_daily = daily_budget + self.day_pnl
-        trade_risk_budget = min(trade_risk_budget, remaining_daily)
+        trade_risk_budget = min(trade_risk_budget, available_for_new_trade)
 
         if trade_risk_budget <= 0:
             return 0
@@ -337,92 +308,63 @@ class RiskManager:
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
 
-        # ── Aggregate open risk check ──
-        # Ensure that if ALL open stops + this new position's stop hit,
-        # the total loss stays within the daily loss budget.
-        if contracts > 0 and self.daily_loss_limit is not None:
-            current_agg_risk = self.aggregate_open_risk
-            # How much room is left for new risk?
-            # remaining_daily already accounts for realized day_pnl
-            max_new_risk = remaining_daily - current_agg_risk
-            if max_new_risk <= 0:
-                logger.warning(
-                    "AGGREGATE RISK BLOCK: %s rejected — open risk $%.0f already "
-                    "covers remaining daily budget $%.0f",
-                    symbol, current_agg_risk, remaining_daily,
-                )
-                return 0
-            # Reduce contracts if needed to fit within aggregate budget
-            max_contracts_by_agg = int(math.floor(max_new_risk / risk_per_contract))
-            if max_contracts_by_agg < contracts:
-                logger.info(
-                    "AGGREGATE RISK CAP: %s reduced from %d to %d contracts "
-                    "(open risk $%.0f + new $%.0f would exceed budget $%.0f)",
-                    symbol, contracts, max_contracts_by_agg,
-                    current_agg_risk, contracts * risk_per_contract, remaining_daily,
-                )
-                contracts = max_contracts_by_agg
-
+        # At least 1 if we have budget, at most max_contracts
         contracts = max(contracts, 0)
 
         logger.info(
-            "Position size for %s: %d contracts | budget=%.2f | risk/contract=%.2f | agg_open_risk=%.2f",
+            "Position size for %s: %d contracts | budget=%.2f | open_risk=%.2f | risk/contract=%.2f",
             symbol,
             contracts,
             trade_risk_budget,
+            aggregate_open_risk,
             risk_per_contract,
-            self.aggregate_open_risk,
         )
         return contracts
 
-    def register_open(self, qty: int, symbol: str = "", risk_per_contract: float = 0.0):
-        """Track that we opened positions.
+    def _calculate_aggregate_open_risk(self) -> float:
+        """Calculate total dollar risk from all currently open positions.
 
-        Args:
-            qty: Number of contracts opened.
-            symbol: The base symbol (e.g. "NQ", "ES").
-            risk_per_contract: Dollar risk per contract (stop_points * point_value).
-                If 0, it will be looked up from CONTRACT_SPECS.
+        Uses the open_positions list tracked by the bot to sum up
+        stop-loss exposure for each open trade.
         """
+        total_risk = 0.0
+        for pos in self._open_positions:
+            spec = config.CONTRACT_SPECS.get(pos.get("symbol", ""))
+            if spec:
+                stop_points = spec["stop_loss_points"]
+                point_value = spec["point_value"]
+                qty = abs(pos.get("qty", 1))
+                total_risk += stop_points * point_value * qty
+        return total_risk
+
+    def register_open(self, qty: int, symbol: str = ""):
+        """Track that we opened positions."""
         self.open_contracts += qty
         self.trades_today += 1
-
-        # Track aggregate risk
         if symbol:
-            if risk_per_contract <= 0:
-                spec = config.CONTRACT_SPECS.get(symbol)
-                if spec:
-                    risk_per_contract = spec["stop_loss_points"] * spec["point_value"]
-            total_risk = qty * risk_per_contract
-            self._open_risk_by_symbol[symbol] = (
-                self._open_risk_by_symbol.get(symbol, 0.0) + total_risk
-            )
+            self._open_positions.append({"symbol": symbol, "qty": qty})
             logger.info(
-                "Registered open: %s x%d (risk $%.0f) | aggregate open risk: $%.0f",
-                symbol, qty, total_risk, self.aggregate_open_risk,
+                "Registered open: %s x%d | aggregate_risk=$%.2f",
+                symbol, qty, self._calculate_aggregate_open_risk(),
             )
 
     def register_close(self, qty: int, symbol: str = ""):
-        """Track that we closed positions.
-
-        Args:
-            qty: Number of contracts closed.
-            symbol: The base symbol (e.g. "NQ", "ES").
-        """
+        """Track that we closed positions."""
         if qty > self.open_contracts:
             logger.warning(
                 "register_close(%d) exceeds open_contracts(%d) — clamping to 0",
                 qty, self.open_contracts,
             )
         self.open_contracts = max(0, self.open_contracts - qty)
-
-        # Remove symbol from aggregate risk tracking
-        if symbol and symbol in self._open_risk_by_symbol:
-            del self._open_risk_by_symbol[symbol]
-            logger.info(
-                "Registered close: %s x%d | aggregate open risk: $%.0f",
-                symbol, qty, self.aggregate_open_risk,
-            )
+        # Remove from open positions list
+        if symbol:
+            for i, pos in enumerate(self._open_positions):
+                if pos.get("symbol") == symbol:
+                    self._open_positions.pop(i)
+                    break
+        elif self._open_positions:
+            # No symbol specified — remove first entry
+            self._open_positions.pop(0)
 
     # ─────────────────────────────────────────
     # Status
@@ -451,8 +393,6 @@ class RiskManager:
                 if self.daily_profit_cap
                 else None
             ),
-            "aggregate_open_risk": self.aggregate_open_risk,
-            "open_risk_by_symbol": dict(self._open_risk_by_symbol),
             "open_contracts": self.open_contracts,
             "max_contracts": self.max_contracts,
             "trades_today": self.trades_today,
@@ -460,5 +400,4 @@ class RiskManager:
             "locked": self.trading_locked,
             "lock_reason": self.lock_reason,
             "balance_initialized": self._balance_initialized,
-            "calm_mode": self.calm_mode,
         }
