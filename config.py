@@ -1,7 +1,7 @@
 """
 Tradovate Bot Configuration
 ============================
-All settings for the multi-asset trading bot.
+All settings for the multi-asset trading bot (v2.4 — mini contracts).
 Put your API credentials in a .env file (never commit it).
 """
 
