@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-19T15:27:36Z",
+  "timestamp": "2026-03-19T15:27:59Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "2806183",
     "uptime_since": "Thu 2026-03-19 15:03:58 UTC",
     "disk": "18%",
-    "memory": "2720MB/7941MB (34%)",
+    "memory": "2714MB/7941MB (34%)",
     "hostname": "vmi3096165",
     "git_commit": "f37f661 Auto-merge claude/debug-bot-trading-GqveY \u2192 main",
     "live_status": {
-      "timestamp": "2026-03-19T15:27:23.368661+00:00",
-      "timestamp_et": "2026-03-19T11:27:23.368687-04:00",
+      "timestamp": "2026-03-19T15:27:53.709997+00:00",
+      "timestamp_et": "2026-03-19T11:27:53.710027-04:00",
       "balance": 58005.18,
       "equity": 58005.18,
       "day_pnl": 0.0,
@@ -54,14 +54,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-19 15:04:01,192 [INFO] bot: Mapped contractId 3273620 -> CLJ6 for quote routing\n2026-03-19 15:04:01,192 [INFO] bot: Entering main loop...\n2026-03-19 15:04:01,315 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-19 15:04:03,722 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:04:34,067 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:05:04,452 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:05:34,805 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:06:05,156 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:06:35,529 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:07:05,882 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:07:36,244 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:08:06,619 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:08:36,996 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:09:07,343 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:09:37,711 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:10:08,100 [INFO] bot: Status | balance=58005.18 | day_",
-    "bot_log_tail": "2026-03-19 15:17:44,979 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:18:15,328 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:18:45,685 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:19:16,057 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:19:46,410 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:20:16,768 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:20:47,119 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:21:17,497 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:21:47,857 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:22:18,221 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:22:48,560 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:23:19,016 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:23:49,387 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:24:21,186 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 1",
+    "journal_tail": "2026-03-19 15:04:01,192 [INFO] bot: Entering main loop...\n2026-03-19 15:04:01,315 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-19 15:04:03,722 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:04:34,067 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:05:04,452 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:05:34,805 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:06:05,156 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:06:35,529 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:07:05,882 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:07:36,244 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:08:06,619 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:08:36,996 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:09:07,343 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:09:37,711 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:10:08,100 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:",
+    "bot_log_tail": "2026-03-19 15:18:15,328 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:18:45,685 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:19:16,057 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:19:46,410 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:20:16,768 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:20:47,119 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:21:17,497 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:21:47,857 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:22:18,221 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:22:48,560 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:23:19,016 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:23:49,387 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:24:21,186 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 15:24:51,534 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 1",
     "cron_log_tail": "  Errors (1h): 0 | Warnings: 1\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 12s)\n  Balance: $58005.18\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['NQ', 'ES', 'GC', 'CL']\n  Disk: 18% | Memory: 34.5%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Mar 19 15:25:04 UTC 2026] Status: bot_active=true, pid=2806183\n[Thu Mar 19 15:25:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-19T15:27:23.368661+00:00",
-      "timestamp_et": "2026-03-19T11:27:23.368687-04:00",
+      "timestamp": "2026-03-19T15:27:53.709997+00:00",
+      "timestamp_et": "2026-03-19T11:27:53.710027-04:00",
       "balance": 58005.18,
       "equity": 58005.18,
       "day_pnl": 0.0,
@@ -92,7 +92,6 @@
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-19 15:12:39,871 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
       "2026-03-19 15:13:10,231 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
       "2026-03-19 15:13:40,594 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
       "2026-03-19 15:14:12,428 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
@@ -121,7 +120,8 @@
       "2026-03-19 15:25:52,306 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
       "2026-03-19 15:26:22,666 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
       "2026-03-19 15:26:53,014 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
-      "2026-03-19 15:27:23,367 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False"
+      "2026-03-19 15:27:23,367 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 15:27:53,709 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False"
     ],
     "journal_summary": {
       "total_trades": 0,
