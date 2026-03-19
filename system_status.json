@@ -1,24 +1,34 @@
 {
-  "timestamp": "2026-03-19T07:31:40Z",
+  "timestamp": "2026-03-19T08:52:16Z",
   "api_reachable": true,
-  "authenticated": false,
-  "auth_method": null,
-  "account": {},
-  "balance": {},
+  "authenticated": true,
+  "auth_method": "server_token",
+  "account": {
+    "name": "FNFTCHMOTITAPIRO67510",
+    "id": 39996695,
+    "active": true
+  },
+  "balance": {
+    "realizedPnl": null,
+    "unrealizedPnl": null,
+    "totalCashValue": 58005.18,
+    "initialMargin": 0.0,
+    "netLiq": 58005.18
+  },
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "2681357",
-    "uptime_since": "Thu 2026-03-19 06:10:06 UTC",
+    "bot_pid": "2701734",
+    "uptime_since": "Thu 2026-03-19 07:35:21 UTC",
     "disk": "17%",
-    "memory": "2996MB/7941MB (38%)",
+    "memory": "2750MB/7941MB (35%)",
     "hostname": "vmi3096165",
-    "git_commit": "9432944 status: 2026-03-19 06:06 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "3c2d05a status: 2026-03-19 07:31 UTC | api=ok auth=None bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-03-19T07:26:23.763806+00:00",
-      "timestamp_et": "2026-03-19T03:26:23.763826-04:00",
+      "timestamp": "2026-03-19T08:52:01.042638+00:00",
+      "timestamp_et": "2026-03-19T04:52:01.042665-04:00",
       "balance": 58005.18,
       "equity": 58005.18,
       "day_pnl": 0.0,
@@ -41,17 +51,17 @@
         "MGC",
         "MCL"
       ],
-      "websocket_connected": false,
-      "market_data_source": "rest"
+      "websocket_connected": true,
+      "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-19 07:27:46,642 [INFO] tradovate_api: Waiting for auth response (up to 60s)...\n2026-03-19 07:27:55,814 [WARNING] tradovate_api: Browser auth attempt 2: no token captured\n2026-03-19 07:27:55,814 [ERROR] tradovate_api: All authentication methods exhausted\n2026-03-19 07:27:57,020 [WARNING] tradovate_api: Browser auth attempt 1: no token captured\n2026-03-19 07:28:02,692 [INFO] tradovate_api: Still waiting... current URL: https://trader.tradovate.com/welcome\n2026-03-19 07:28:07,020 [INFO] tradovate_api: Attempting browser-based login at https://trader.tradovate.com (attempt 2/2)...\n2026-03-19 07:28:07,540 [INFO] tradovate_api: Launching Chromium (headless)...\n2026-03-19 07:28:07,693 [INFO] tradovate_api: Loading https://trader.tradovate.com ...\n2026-03-19 07:28:08,478 [INFO] tradovate_api: Page loaded. Title: Tradovate. Waiting for login form...\n2026-03-19 07:28:18,551 [INFO] tradovate_api: Login form found. Filling credentials...\n2026-03-19 07:28:19,144 [INFO] tradovate_api: Clicking login button: 'login'\n2026-03-19 07:28:19,293 [INFO] tradovate_api: Waiting for auth response (up to 60s)...\n2026-03-19 07:28:31,900 [INFO] tradovate_api: REST poller health: 349 candles dispatched, 4 symbols tracked, 24 polls\n2026-03-19 07:28:35,336 [INFO] tradovate_api: Still waiting... current URL: https://trader.tradovate.com/welcome\n2026-03-19 07:28:46,890 [WARNING] tradovate_api: Browser auth attempt 1: no token captured\n2026-03-19 07:28:56,890 [INFO] tradovate_api: Attempting browser-based login at https://trader.tradovate.com (attempt 2/2)...\n2026-03-19 07:28:57,420 [INFO] tradovate_api: Launching Chromium (headless)...\n2026-03-19 07:28:57,581 [INFO] tradovate_api: Loading https://trader.tradovate.com ...\n2026-03-19 07:28:58,351 [INFO] tradovate_api: Page loaded. Title: Tradovate. Waiting for login form...\n2026-03-19 07:29:08,413 [INFO] tradovate_api: Login form found. Filling credentials...\n2026-03-19 07:29:09,002 [INFO] tradovate_api: Clicking login button: 'login'\n2026-03",
-    "bot_log_tail": "2026-03-19 07:30:09,622 [WARNING] tradovate_api: GET /position/list returned 401. Re-authenticating...\n2026-03-19 07:30:09,623 [INFO] tradovate_api: Trying web auth on live endpoint first...\n2026-03-19 07:30:09,623 [INFO] tradovate_api: Trying web-style authentication (no CID needed)...\n2026-03-19 07:30:09,824 [INFO] tradovate_api: Credentials accepted! Device verification required (p-ticket received, captcha=True, timeout=15s)\n2026-03-19 07:30:09,824 [INFO] tradovate_api: CAPTCHA required for device verification. Attempting browser-based login...\n2026-03-19 07:30:09,824 [INFO] tradovate_api: Attempting browser-based login at https://trader.tradovate.com (attempt 1/2)...\n2026-03-19 07:30:10,405 [INFO] tradovate_api: Launching Chromium (headless)...\n2026-03-19 07:30:10,596 [INFO] tradovate_api: Loading https://trader.tradovate.com ...\n2026-03-19 07:30:11,364 [INFO] tradovate_api: Page loaded. Title: Tradovate. Waiting for login form...\n2026-03-19 07:30:21,429 [INFO] tradovate_api: Login form found. Filling credentials...\n2026-03-19 07:30:22,027 [INFO] tradovate_api: Clicking login button: 'login'\n2026-03-19 07:30:22,208 [INFO] tradovate_api: Waiting for auth response (up to 60s)...\n2026-03-19 07:30:34,780 [INFO] tradovate_api: REST poller health: 397 candles dispatched, 4 symbols tracked, 48 polls\n2026-03-19 07:30:38,251 [INFO] tradovate_api: Still waiting... current URL: https://trader.tradovate.com/welcome\n2026-03-19 07:31:22,463 [WARNING] tradovate_api: Browser auth attempt 1: no token captured\n2026-03-19 07:31:32,463 [INFO] tradovate_api: Attempting browser-based login at https://trader.tradovate.com (attempt 2/2)...\n2026-03-19 07:31:32,954 [INFO] tradovate_api: Launching Chromium (headless)...\n2026-03-19 07:31:33,111 [INFO] tradovate_api: Loading https://trader.tradovate.com ...\n2026-03-19 07:31:33,897 [INFO] tradovate_api: Page loaded. Title: Tradovate. Waiting for login form...\n2026-03-19 07:31:36,273 [INFO] tradovate_api: REST poller health: 419 candles dispa",
-    "cron_log_tail": "  Errors (1h): 28 | Warnings: 38\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 218s)\n  Balance: $58005.18\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 17% | Memory: 38.1%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Mar 19 07:30:02 UTC 2026] Status: bot_active=true, pid=2681357\n[Thu Mar 19 07:30:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-19 08:28:10,975 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:28:41,337 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:29:11,681 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:29:42,044 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:30:12,403 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:30:42,752 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:31:13,110 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:31:43,454 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:32:13,797 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:32:44,145 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:33:14,534 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:33:44,903 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:34:15,259 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:34:45,616 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 0",
+    "bot_log_tail": "2026-03-19 08:42:22,809 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:42:53,171 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:43:23,530 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:43:53,877 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:44:24,220 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:44:54,575 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:45:24,934 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:45:55,305 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:46:27,123 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:46:57,460 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:47:27,819 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:47:58,188 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:48:28,533 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 08:48:58,884 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False\n2026-03-19 0",
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 5s)\n  Balance: $58005.18\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 17% | Memory: 34.6%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Mar 19 08:50:04 UTC 2026] Status: bot_active=true, pid=2701734\n[Thu Mar 19 08:50:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-19T07:26:23.763806+00:00",
-      "timestamp_et": "2026-03-19T03:26:23.763826-04:00",
+      "timestamp": "2026-03-19T08:52:01.042638+00:00",
+      "timestamp_et": "2026-03-19T04:52:01.042665-04:00",
       "balance": 58005.18,
       "equity": 58005.18,
       "day_pnl": 0.0,
@@ -74,44 +84,44 @@
         "MGC",
         "MCL"
       ],
-      "websocket_connected": false,
-      "market_data_source": "rest"
+      "websocket_connected": true,
+      "market_data_source": "websocket"
     },
-    "token_status": "missing",
-    "token_expiry": "",
+    "token_status": "valid",
+    "token_expiry": "2026-03-19T10:00:51.243000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-19 07:29:09,002 [INFO] tradovate_api: Clicking login button: 'login'",
-      "2026-03-19 07:29:09,153 [INFO] tradovate_api: Waiting for auth response (up to 60s)...",
-      "2026-03-19 07:29:19,530 [WARNING] tradovate_api: Browser auth attempt 2: no token captured",
-      "2026-03-19 07:29:19,530 [ERROR] tradovate_api: All authentication methods exhausted",
-      "2026-03-19 07:29:25,194 [INFO] tradovate_api: Still waiting... current URL: https://trader.tradovate.com/welcome",
-      "2026-03-19 07:29:33,505 [INFO] tradovate_api: REST poller health: 374 candles dispatched, 4 symbols tracked, 36 polls",
-      "2026-03-19 07:30:09,435 [WARNING] tradovate_api: Browser auth attempt 2: no token captured",
-      "2026-03-19 07:30:09,435 [ERROR] tradovate_api: All authentication methods exhausted",
-      "2026-03-19 07:30:09,446 [ERROR] tradovate_api: POST /cashBalance/getcashbalancesnapshot status=401 body=Access is denied",
-      "2026-03-19 07:30:09,446 [ERROR] tradovate_api: POST /cashBalance/getcashbalancesnapshot failed: 401 Client Error: Unauthorized for url: https://demo.tradovateapi.com/v1/cashBalance/getcashbalancesnapshot",
-      "2026-03-19 07:30:09,622 [WARNING] tradovate_api: GET /position/list returned 401. Re-authenticating...",
-      "2026-03-19 07:30:09,623 [INFO] tradovate_api: Trying web auth on live endpoint first...",
-      "2026-03-19 07:30:09,623 [INFO] tradovate_api: Trying web-style authentication (no CID needed)...",
-      "2026-03-19 07:30:09,824 [INFO] tradovate_api: Credentials accepted! Device verification required (p-ticket received, captcha=True, timeout=15s)",
-      "2026-03-19 07:30:09,824 [INFO] tradovate_api: CAPTCHA required for device verification. Attempting browser-based login...",
-      "2026-03-19 07:30:09,824 [INFO] tradovate_api: Attempting browser-based login at https://trader.tradovate.com (attempt 1/2)...",
-      "2026-03-19 07:30:10,405 [INFO] tradovate_api: Launching Chromium (headless)...",
-      "2026-03-19 07:30:10,596 [INFO] tradovate_api: Loading https://trader.tradovate.com ...",
-      "2026-03-19 07:30:11,364 [INFO] tradovate_api: Page loaded. Title: Tradovate. Waiting for login form...",
-      "2026-03-19 07:30:21,429 [INFO] tradovate_api: Login form found. Filling credentials...",
-      "2026-03-19 07:30:22,027 [INFO] tradovate_api: Clicking login button: 'login'",
-      "2026-03-19 07:30:22,208 [INFO] tradovate_api: Waiting for auth response (up to 60s)...",
-      "2026-03-19 07:30:34,780 [INFO] tradovate_api: REST poller health: 397 candles dispatched, 4 symbols tracked, 48 polls",
-      "2026-03-19 07:30:38,251 [INFO] tradovate_api: Still waiting... current URL: https://trader.tradovate.com/welcome",
-      "2026-03-19 07:31:22,463 [WARNING] tradovate_api: Browser auth attempt 1: no token captured",
-      "2026-03-19 07:31:32,463 [INFO] tradovate_api: Attempting browser-based login at https://trader.tradovate.com (attempt 2/2)...",
-      "2026-03-19 07:31:32,954 [INFO] tradovate_api: Launching Chromium (headless)...",
-      "2026-03-19 07:31:33,111 [INFO] tradovate_api: Loading https://trader.tradovate.com ...",
-      "2026-03-19 07:31:33,897 [INFO] tradovate_api: Page loaded. Title: Tradovate. Waiting for login form...",
-      "2026-03-19 07:31:36,273 [INFO] tradovate_api: REST poller health: 419 candles dispatched, 4 symbols tracked, 60 polls"
+      "2026-03-19 08:38:19,503 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:38:49,841 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:39:20,212 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:39:50,723 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:40:21,106 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:40:51,108 [INFO] tradovate_api: Token expiring in 870s. Renewing...",
+      "2026-03-19 08:40:51,309 [INFO] tradovate_api: Token renewed via demo.tradovateapi.com. Expires: 2026-03-19 10:00:51.243000+00:00",
+      "2026-03-19 08:40:51,702 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:41:22,093 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:41:52,445 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:42:22,809 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:42:53,171 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:43:23,530 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:43:53,877 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:44:24,220 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:44:54,575 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:45:24,934 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:45:55,305 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:46:27,123 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:46:57,460 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:47:27,819 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:47:58,188 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:48:28,533 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:48:58,884 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:49:29,227 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:49:59,588 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:50:29,941 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:51:00,313 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:51:30,662 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False",
+      "2026-03-19 08:52:01,041 [INFO] bot: Status | balance=58005.18 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -122,29 +132,17 @@
       "trades_today": 0
     },
     "trading_active": true,
-    "websocket_connected": false,
-    "errors_in_log": [
-      "2026-03-19 07:25:36,267 [ERROR] websocket: [Errno -3] Temporary failure in name resolution - goodbye",
-      "2026-03-19 07:25:58,671 [ERROR] tradovate_api: All authentication methods exhausted",
-      "hbalancesnapshot (Caused by NameResolutionError(\"HTTPSConnection(host='demo.tradovateapi.com', port=443): Failed to resolve 'demo.tradovateapi.com' ([Errno -3] Temporary failure in name resolution)\"))",
-      "v1/position/list (Caused by NameResolutionError(\"HTTPSConnection(host='demo.tradovateapi.com', port=443): Failed to resolve 'demo.tradovateapi.com' ([Errno -3] Temporary failure in name resolution)\"))",
-      "2026-03-19 07:26:42,558 [ERROR] tradovate_api: All authentication methods exhausted",
-      "2026-03-19 07:27:55,814 [ERROR] tradovate_api: All authentication methods exhausted",
-      "2026-03-19 07:29:19,530 [ERROR] tradovate_api: All authentication methods exhausted",
-      "2026-03-19 07:30:09,435 [ERROR] tradovate_api: All authentication methods exhausted",
-      "2026-03-19 07:30:09,446 [ERROR] tradovate_api: POST /cashBalance/getcashbalancesnapshot status=401 body=Access is denied",
-      "6-03-19 07:30:09,446 [ERROR] tradovate_api: POST /cashBalance/getcashbalancesnapshot failed: 401 Client Error: Unauthorized for url: https://demo.tradovateapi.com/v1/cashBalance/getcashbalancesnapshot"
-    ],
-    "market_data_source": "rest",
-    "today_trades": []
+    "websocket_connected": true,
+    "errors_in_log": [],
+    "market_data_source": "websocket",
+    "today_trades": [],
+    "today_fills": []
   },
-  "errors": [
-    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
-  ],
+  "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 11268,
+    "ssh_output_len": 12036,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -153,23 +151,5 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
-  },
-  "last_known": {
-    "timestamp": "2026-03-19T06:05:59Z",
-    "auth_method": "server_token",
-    "account": {
-      "name": "FNFTCHMOTITAPIRO67510",
-      "id": 39996695,
-      "active": true
-    },
-    "balance": {
-      "realizedPnl": null,
-      "unrealizedPnl": null,
-      "totalCashValue": 58005.18,
-      "initialMargin": 0.0,
-      "netLiq": 58005.18
-    },
-    "positions": [],
-    "orders": []
   }
 }
