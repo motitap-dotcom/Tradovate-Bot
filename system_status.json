@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-19T20:01:32Z",
+  "timestamp": "2026-03-19T21:04:06Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -20,15 +20,15 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "2864664",
-    "uptime_since": "Thu 2026-03-19 19:10:30 UTC",
-    "disk": "18%",
-    "memory": "2774MB/7941MB (35%)",
+    "bot_pid": "2877620",
+    "uptime_since": "Thu 2026-03-19 20:05:28 UTC",
+    "disk": "17%",
+    "memory": "2739MB/7941MB (34%)",
     "hostname": "vmi3096165",
-    "git_commit": "e6327af status: 2026-03-19 19:06 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "021c8e4 status: 2026-03-19 20:01 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-03-19T20:01:25.394970+00:00",
-      "timestamp_et": "2026-03-19T16:01:25.395000-04:00",
+      "timestamp": "2026-03-19T20:58:54.088323+00:00",
+      "timestamp_et": "2026-03-19T16:58:54.088349-04:00",
       "balance": 56987.9,
       "equity": 56987.9,
       "day_pnl": 0.0,
@@ -54,14 +54,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-19 19:45:35,660 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:45120,MES:50125,MGC:42697,MNQ:42242\n2026-03-19 19:46:06,013 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:45457,MES:50740,MGC:43035,MNQ:42756\n2026-03-19 19:46:36,385 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:46003,MES:51365,MGC:43435,MNQ:43190\n2026-03-19 19:47:06,760 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:46364,MES:52031,MGC:43806,MNQ:43717\n2026-03-19 19:47:37,128 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:46629,MES:52748,MGC:44150,MNQ:44283\n2026-03-19 19:48:07,494 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:46826,MES:53472,MGC:44607,MNQ:44856\n2026-03-19 19:48:37,863 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:46954,MES:54079,MGC:44940,MNQ:45313\n2026-03-19 19:49:08,221 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:47218,MES:54721,MGC:45300,MNQ:45702\n2026-03-19 19:49:38,614 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:47446,MES:55321,MGC:45640,MNQ:46073\n2026-03-19 19:50:08,968 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:47729,MES:56048,MGC:46148,MNQ:46577\n2026-03-19 19:50:39,316 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=25",
-    "bot_log_tail": "2026-03-19 19:57:28,269 [ERROR] tradovate_api: Entry order REJECTED after submit: reason=None text=None | full={'id': 409583843604, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T19:57:27.018Z', 'action': 'Sell', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}\n2026-03-19 19:57:28,440 [ERROR] tradovate_api: CommandReport for rejected order: [{'id': 409583843605, 'commandId': 409583843604, 'timestamp': '2026-03-19T19:57:27.019Z', 'commandStatus': 'RiskRejected', 'rejectReason': 'LiquidationOnly', 'text': 'Your account is currently set to liquidation only due to Manual Enable. Please contact the Trade Desk for additional details.'}]\n2026-03-19 19:57:28,441 [ERROR] bot: Order placement FAILED for Sell MGC 10 \u2014 signal discarded (risk manager NOT updated)\n2026-03-19 19:57:51,195 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:52626,MES:66625,MGC:53726,MNQ:55179\n2026-03-19 19:58:21,577 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:53015,MES:67392,MGC:54309,MNQ:55783\n2026-03-19 19:58:51,942 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:53357,MES:68009,MGC:54903,MNQ:56175\n2026-03-19 19:59:22,328 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:53864,MES:68782,MGC:55417,MNQ:56784\n2026-03-19 19:59:52,731 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:54342,MES:69661,MGC:56041,MNQ:57493\n2026-03-19 20:00:23,102 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:54647,MES:70547,MGC:56655,MNQ:58331\n2026-03-19 20:00:27,386 [INFO] strategi",
-    "cron_log_tail": "  Errors (1h): 18 | Warnings: 0\n  Signals today: 6\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 16s)\n  Balance: $56987.9\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 18% | Memory: 34.9%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Mar 19 20:00:09 UTC 2026] Status: bot_active=true, pid=2864664\n[Thu Mar 19 20:00:09 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-19 20:49:15,776 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:22018,MES:4506,MGC:13513,MNQ:11251\n2026-03-19 20:49:46,120 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:22236,MES:4568,MGC:13624,MNQ:11400\n2026-03-19 20:50:16,471 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:22391,MES:4602,MGC:13826,MNQ:11480\n2026-03-19 20:50:46,837 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:22596,MES:4624,MGC:13961,MNQ:11559\n2026-03-19 20:51:17,210 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:22808,MES:4648,MGC:14045,MNQ:11619\n2026-03-19 20:51:47,556 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:23025,MES:4669,MGC:14242,MNQ:11689\n2026-03-19 20:52:17,899 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:23169,MES:4705,MGC:14548,MNQ:11718\n2026-03-19 20:52:48,255 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:23361,MES:4736,MGC:14665,MNQ:11773\n2026-03-19 20:53:18,614 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:23592,MES:4783,MGC:14906,MNQ:11822\n2026-03-19 20:53:48,983 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:23750,MES:4803,MGC:14995,MNQ:11887\n2026-03-19 20:54:19,374 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | co",
+    "bot_log_tail": "2026-03-19 20:59:24,907 [INFO] bot:   balance: 56987.9\n2026-03-19 20:59:24,907 [INFO] bot:   equity: 56987.9\n2026-03-19 20:59:24,907 [INFO] bot:   day_pnl: 0.0\n2026-03-19 20:59:24,907 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-19 20:59:24,907 [INFO] bot:   peak_balance: 56987.9\n2026-03-19 20:59:24,908 [INFO] bot:   drawdown_floor: 54487.9\n2026-03-19 20:59:24,908 [INFO] bot:   distance_to_floor: 2500.0\n2026-03-19 20:59:24,908 [INFO] bot:   daily_loss_limit: 1000\n2026-03-19 20:59:24,908 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-03-19 20:59:24,908 [INFO] bot:   daily_profit_cap: 2400\n2026-03-19 20:59:24,908 [INFO] bot:   daily_profit_remaining: 2400.0\n2026-03-19 20:59:24,908 [INFO] bot:   open_contracts: 0\n2026-03-19 20:59:24,908 [INFO] bot:   max_contracts: 10\n2026-03-19 20:59:24,908 [INFO] bot:   trades_today: 0\n2026-03-19 20:59:24,908 [INFO] bot:   max_daily_trades: 16\n2026-03-19 20:59:24,908 [INFO] bot:   locked: False\n2026-03-19 20:59:24,908 [INFO] bot:   lock_reason: \n2026-03-19 20:59:24,908 [INFO] bot:   balance_initialized: True\n2026-03-19 20:59:24,908 [INFO] bot: Bot stopped.\n2026-03-19 20:59:24,908 [INFO] bot: Session ended. Next trading session: 2026-03-20 09:25 ET (sleeping 986 minutes)",
+    "cron_log_tail": "  Errors (1h): 3 | Warnings: 2\n  Signals today: 1\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 69s)\n  Balance: $56987.9\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 17% | Memory: 34.8%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Mar 19 21:00:04 UTC 2026] Status: bot_active=true, pid=2877620\n[Thu Mar 19 21:00:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-19T20:01:25.394970+00:00",
-      "timestamp_et": "2026-03-19T16:01:25.395000-04:00",
+      "timestamp": "2026-03-19T20:58:54.088323+00:00",
+      "timestamp_et": "2026-03-19T16:58:54.088349-04:00",
       "balance": 56987.9,
       "equity": 56987.9,
       "day_pnl": 0.0,
@@ -88,48 +88,42 @@
       "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-19T20:30:31.068000+00:00",
+    "token_expiry": "2026-03-19T21:25:29.287000+00:00",
     "recent_signals": [
-      "2026-03-19 19:10:33,127 [INFO] bot: SIGNAL: Buy MNQ 10 @ market | SL=24409.2500 TP=24484.2500 | ORB-5m long breakout above 24429.25",
-      "2026-03-19 19:10:34,683 [INFO] bot: SIGNAL: Buy MES 10 @ market | SL=6623.7500 TP=6641.7500 | ORB-5m long breakout above 6629.50",
-      "2026-03-19 19:25:23,861 [INFO] bot: SIGNAL: Sell MGC 10 @ market | SL=4651.5240 TP=4636.2000 | VWAP short #1 at 4646.2000 (VWAP=4646.5240)",
-      "2026-03-19 19:25:50,142 [INFO] bot: SIGNAL: Sell MES 10 @ market | SL=6617.5000 TP=6599.5000 | ORB-15m short breakout below 6611.75",
-      "2026-03-19 19:28:25,175 [INFO] bot: SIGNAL: Buy MGC 10 @ market | SL=4641.9628 TP=4657.1000 | VWAP long #1 at 4647.1000 (VWAP=4646.9628)",
-      "2026-03-19 19:57:26,899 [INFO] bot: SIGNAL: Sell MGC 10 @ market | SL=4654.5889 TP=4639.5000 | VWAP short #2 at 4649.5000 (VWAP=4649.5889)",
-      "2026-03-19 20:00:27,386 [INFO] bot: SIGNAL: Buy MGC 10 @ market | SL=4644.8962 TP=4660.7000 | VWAP long #2 at 4650.7000 (VWAP=4649.8962)"
+      "2026-03-19 20:06:14,618 [INFO] bot: SIGNAL: Sell MES 10 @ market | SL=6617.0000 TP=6599.0000 | ORB-5m short breakout below 6611.75"
     ],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-19 19:55:49,559 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:51198,MES:64092,MGC:51373,MNQ:53230",
-      "2026-03-19 19:56:20,022 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:51518,MES:64756,MGC:51968,MNQ:53797",
-      "2026-03-19 19:56:50,422 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:51884,MES:65423,MGC:52713,MNQ:54246",
-      "2026-03-19 19:57:20,800 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:52186,MES:66018,MGC:53209,MNQ:54723",
-      "2026-03-19 19:57:26,897 [INFO] strategies: VWAP MGC SHORT #2 at 4649.5000 | VWAP=4649.5889 | SL=4654.5889 TP=4639.5000",
-      "2026-03-19 19:57:26,898 [INFO] risk_manager: Position size for MGC: 10 contracts | budget=500.00 | open_risk=0.00 | risk/contract=50.00",
-      "2026-03-19 19:57:26,899 [INFO] bot: SIGNAL: Sell MGC 10 @ market | SL=4654.5889 TP=4639.5000 | VWAP short #2 at 4649.5000 (VWAP=4649.5889)",
-      "2026-03-19 19:57:26,899 [INFO] tradovate_api: Placing bracket Sell 10 MGCJ6 @ Market | SL=4654.59 TP=4639.50 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Sell', 'symbol': 'MGCJ6', 'orderQty': 10, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}",
-      "2026-03-19 19:57:27,081 [INFO] tradovate_api: Entry order placed: orderId=409583843604 status=Unknown | full_response={'orderId': 409583843604}",
-      "2026-03-19 19:57:28,268 [INFO] tradovate_api: Entry order check: orderId=409583843604 status=Rejected filled=0 avgPrice=0 | detail={'id': 409583843604, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T19:57:27.018Z', 'action': 'Sell', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
-      "2026-03-19 19:57:28,269 [ERROR] tradovate_api: Entry order REJECTED after submit: reason=None text=None | full={'id': 409583843604, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T19:57:27.018Z', 'action': 'Sell', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
-      "2026-03-19 19:57:28,440 [ERROR] tradovate_api: CommandReport for rejected order: [{'id': 409583843605, 'commandId': 409583843604, 'timestamp': '2026-03-19T19:57:27.019Z', 'commandStatus': 'RiskRejected', 'rejectReason': 'LiquidationOnly', 'text': 'Your account is currently set to liquidation only due to Manual Enable. Please contact the Trade Desk for additional details.'}]",
-      "2026-03-19 19:57:28,441 [ERROR] bot: Order placement FAILED for Sell MGC 10 \u2014 signal discarded (risk manager NOT updated)",
-      "2026-03-19 19:57:51,195 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:52626,MES:66625,MGC:53726,MNQ:55179",
-      "2026-03-19 19:58:21,577 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:53015,MES:67392,MGC:54309,MNQ:55783",
-      "2026-03-19 19:58:51,942 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:53357,MES:68009,MGC:54903,MNQ:56175",
-      "2026-03-19 19:59:22,328 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:53864,MES:68782,MGC:55417,MNQ:56784",
-      "2026-03-19 19:59:52,731 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:54342,MES:69661,MGC:56041,MNQ:57493",
-      "2026-03-19 20:00:23,102 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:54647,MES:70547,MGC:56655,MNQ:58331",
-      "2026-03-19 20:00:27,386 [INFO] strategies: VWAP MGC LONG #2 at 4650.7000 | VWAP=4649.8962 | SL=4644.8962 TP=4660.7000",
-      "2026-03-19 20:00:27,386 [INFO] risk_manager: Position size for MGC: 10 contracts | budget=500.00 | open_risk=0.00 | risk/contract=50.00",
-      "2026-03-19 20:00:27,386 [INFO] bot: SIGNAL: Buy MGC 10 @ market | SL=4644.8962 TP=4660.7000 | VWAP long #2 at 4650.7000 (VWAP=4649.8962)",
-      "2026-03-19 20:00:27,386 [INFO] tradovate_api: Placing bracket Buy 10 MGCJ6 @ Market | SL=4644.90 TP=4660.70 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Buy', 'symbol': 'MGCJ6', 'orderQty': 10, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}",
-      "2026-03-19 20:00:27,590 [INFO] tradovate_api: Entry order placed: orderId=409583843606 status=Unknown | full_response={'orderId': 409583843606}",
-      "2026-03-19 20:00:28,779 [INFO] tradovate_api: Entry order check: orderId=409583843606 status=Rejected filled=0 avgPrice=0 | detail={'id': 409583843606, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T20:00:27.526Z', 'action': 'Buy', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
-      "2026-03-19 20:00:28,781 [ERROR] tradovate_api: Entry order REJECTED after submit: reason=None text=None | full={'id': 409583843606, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T20:00:27.526Z', 'action': 'Buy', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
-      "2026-03-19 20:00:28,952 [ERROR] tradovate_api: CommandReport for rejected order: [{'id': 409583843607, 'commandId': 409583843606, 'timestamp': '2026-03-19T20:00:27.527Z', 'commandStatus': 'RiskRejected', 'rejectReason': 'LiquidationOnly', 'text': 'Your account is currently set to liquidation only due to Manual Enable. Please contact the Trade Desk for additional details.'}]",
-      "2026-03-19 20:00:28,952 [ERROR] bot: Order placement FAILED for Buy MGC 10 \u2014 signal discarded (risk manager NOT updated)",
-      "2026-03-19 20:00:53,470 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:54875,MES:71074,MGC:57054,MNQ:58771",
-      "2026-03-19 20:01:25,394 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/16 | locked=False | quotes=MCL:55197,MES:71593,MGC:57511,MNQ:59161"
+      "2026-03-19 20:59:24,089 [WARNING] bot: Force close time reached. Closing all positions.",
+      "2026-03-19 20:59:24,260 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-03-19 20:59:24,435 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
+      "2026-03-19 20:59:24,436 [INFO] bot: Shutting down bot...",
+      "2026-03-19 20:59:24,606 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-03-19 20:59:24,905 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+      "2026-03-19 20:59:24,907 [INFO] bot: ============================================================",
+      "2026-03-19 20:59:24,907 [INFO] bot: END OF DAY SUMMARY",
+      "2026-03-19 20:59:24,907 [INFO] bot: ============================================================",
+      "2026-03-19 20:59:24,907 [INFO] bot: Total trades: 0",
+      "2026-03-19 20:59:24,907 [INFO] bot:   balance: 56987.9",
+      "2026-03-19 20:59:24,907 [INFO] bot:   equity: 56987.9",
+      "2026-03-19 20:59:24,907 [INFO] bot:   day_pnl: 0.0",
+      "2026-03-19 20:59:24,907 [INFO] bot:   unrealized_pnl: 0.0",
+      "2026-03-19 20:59:24,907 [INFO] bot:   peak_balance: 56987.9",
+      "2026-03-19 20:59:24,908 [INFO] bot:   drawdown_floor: 54487.9",
+      "2026-03-19 20:59:24,908 [INFO] bot:   distance_to_floor: 2500.0",
+      "2026-03-19 20:59:24,908 [INFO] bot:   daily_loss_limit: 1000",
+      "2026-03-19 20:59:24,908 [INFO] bot:   daily_loss_remaining: 1000.0",
+      "2026-03-19 20:59:24,908 [INFO] bot:   daily_profit_cap: 2400",
+      "2026-03-19 20:59:24,908 [INFO] bot:   daily_profit_remaining: 2400.0",
+      "2026-03-19 20:59:24,908 [INFO] bot:   open_contracts: 0",
+      "2026-03-19 20:59:24,908 [INFO] bot:   max_contracts: 10",
+      "2026-03-19 20:59:24,908 [INFO] bot:   trades_today: 0",
+      "2026-03-19 20:59:24,908 [INFO] bot:   max_daily_trades: 16",
+      "2026-03-19 20:59:24,908 [INFO] bot:   locked: False",
+      "2026-03-19 20:59:24,908 [INFO] bot:   lock_reason: ",
+      "2026-03-19 20:59:24,908 [INFO] bot:   balance_initialized: True",
+      "2026-03-19 20:59:24,908 [INFO] bot: Bot stopped.",
+      "2026-03-19 20:59:24,908 [INFO] bot: Session ended. Next trading session: 2026-03-20 09:25 ET (sleeping 986 minutes)"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -142,28 +136,13 @@
     "trading_active": true,
     "websocket_connected": true,
     "errors_in_log": [
-      "2026-03-19 19:25:51,680 [ERROR] bot: Order placement FAILED for Sell MES 10 \u2014 signal discarded (risk manager NOT updated)",
-      "d': 409583843602, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T19:28:25.281Z', 'action': 'Buy', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
+      "': 409583843608, 'accountId': 39996695, 'contractId': 4214195, 'timestamp': '2026-03-19T20:06:14.742Z', 'action': 'Sell', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
       "andStatus': 'RiskRejected', 'rejectReason': 'LiquidationOnly', 'text': 'Your account is currently set to liquidation only due to Manual Enable. Please contact the Trade Desk for additional details.'}]",
-      "2026-03-19 19:28:26,730 [ERROR] bot: Order placement FAILED for Buy MGC 10 \u2014 signal discarded (risk manager NOT updated)",
-      "': 409583843604, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T19:57:27.018Z', 'action': 'Sell', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
-      "andStatus': 'RiskRejected', 'rejectReason': 'LiquidationOnly', 'text': 'Your account is currently set to liquidation only due to Manual Enable. Please contact the Trade Desk for additional details.'}]",
-      "2026-03-19 19:57:28,441 [ERROR] bot: Order placement FAILED for Sell MGC 10 \u2014 signal discarded (risk manager NOT updated)",
-      "d': 409583843606, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-03-19T20:00:27.526Z', 'action': 'Buy', 'ordStatus': 'Rejected', 'archived': False, 'external': False, 'admin': False}",
-      "andStatus': 'RiskRejected', 'rejectReason': 'LiquidationOnly', 'text': 'Your account is currently set to liquidation only due to Manual Enable. Please contact the Trade Desk for additional details.'}]",
-      "2026-03-19 20:00:28,952 [ERROR] bot: Order placement FAILED for Buy MGC 10 \u2014 signal discarded (risk manager NOT updated)"
+      "2026-03-19 20:06:16,157 [ERROR] bot: Order placement FAILED for Sell MES 10 \u2014 signal discarded (risk manager NOT updated)"
     ],
     "market_data_source": "websocket",
     "today_trades": [],
     "today_fills": [
-      {
-        "id": 409583843536,
-        "action": "Sell",
-        "contractId": 4086428,
-        "qty": 1,
-        "price": 24234.25,
-        "timestamp": "2026-03-19T16:35:25.402Z"
-      },
       {
         "id": 409583843510,
         "action": "Sell",
@@ -181,6 +160,22 @@
         "timestamp": "2026-03-19T16:36:41.031Z"
       },
       {
+        "id": 409583843522,
+        "action": "Buy",
+        "contractId": 3570918,
+        "qty": 1,
+        "price": 6601.75,
+        "timestamp": "2026-03-19T16:07:59.668Z"
+      },
+      {
+        "id": 409583843536,
+        "action": "Sell",
+        "contractId": 4086428,
+        "qty": 1,
+        "price": 24234.25,
+        "timestamp": "2026-03-19T16:35:25.402Z"
+      },
+      {
         "id": 409583843496,
         "action": "Buy",
         "contractId": 4086428,
@@ -195,14 +190,6 @@
         "qty": 1,
         "price": 24216.5,
         "timestamp": "2026-03-19T15:51:41.028Z"
-      },
-      {
-        "id": 409583843522,
-        "action": "Buy",
-        "contractId": 3570918,
-        "qty": 1,
-        "price": 6601.75,
-        "timestamp": "2026-03-19T16:07:59.668Z"
       }
     ]
   },
@@ -210,7 +197,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 17615,
+    "ssh_output_len": 10514,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
