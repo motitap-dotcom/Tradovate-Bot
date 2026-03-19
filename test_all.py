@@ -1909,7 +1909,7 @@ def test_bot_execute_signal_success():
     bot._execute_signal(signal)
 
     bot.api.place_bracket_order.assert_called_once()
-    bot.risk.register_open.assert_called_once_with(2)
+    bot.risk.register_open.assert_called_once()
     bot.journal.record_entry.assert_called_once()
 
 

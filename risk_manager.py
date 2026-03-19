@@ -56,6 +56,7 @@ class RiskManager:
 
         # Open position tracking
         self.open_contracts: int = 0
+        self._open_positions: list[dict] = []  # [{symbol, qty, stop_loss}, ...]
 
         # Daily trade counter (safety cap)
         self.max_daily_trades: int = config.MAX_DAILY_TRADES
@@ -250,6 +251,9 @@ class RiskManager:
         Calculate how many contracts to trade for the given symbol,
         based on tick value and the per-trade risk budget.
 
+        Includes aggregate risk check: total open stop-loss exposure
+        plus new trade risk must not exceed daily loss budget.
+
         Returns 0 if trading is locked or risk budget is insufficient.
         """
         ok, reason = self.can_trade()
@@ -269,16 +273,27 @@ class RiskManager:
             equity = self.current_balance + self.unrealized_pnl
             daily_budget = equity - self.drawdown_floor
 
-        # Per-trade risk = configured % of account
-        trade_risk_budget = self.account_size * config.RISK_PER_TRADE_PCT
+        # Remaining budget = daily budget minus losses already taken today
+        remaining_budget = daily_budget + self.day_pnl  # day_pnl is negative when losing
 
-        # Don't risk more than remaining daily budget
-        trade_risk_budget = min(trade_risk_budget, daily_budget + self.day_pnl)
+        # Subtract aggregate open risk (stop losses on existing positions)
+        aggregate_open_risk = self._calculate_aggregate_open_risk()
+        available_for_new_trade = remaining_budget - aggregate_open_risk
+
+        if available_for_new_trade <= 0:
+            logger.warning(
+                "Position size = 0 for %s: remaining_budget=%.2f - open_risk=%.2f = %.2f (no room)",
+                symbol, remaining_budget, aggregate_open_risk, available_for_new_trade,
+            )
+            return 0
+
+        # Per-trade risk = configured % of account, capped at available budget
+        trade_risk_budget = self.account_size * config.RISK_PER_TRADE_PCT
+        trade_risk_budget = min(trade_risk_budget, available_for_new_trade)
 
         if trade_risk_budget <= 0:
             return 0
 
-        # Dollar risk per contract = stop distance in points * point value
         # Dollar risk per contract = stop distance in points * point value
         stop_points = spec["stop_loss_points"]
         point_value = spec["point_value"]
@@ -297,20 +312,43 @@ class RiskManager:
         contracts = max(contracts, 0)
 
         logger.info(
-            "Position size for %s: %d contracts | budget=%.2f | risk/contract=%.2f",
+            "Position size for %s: %d contracts | budget=%.2f | open_risk=%.2f | risk/contract=%.2f",
             symbol,
             contracts,
             trade_risk_budget,
+            aggregate_open_risk,
             risk_per_contract,
         )
         return contracts
 
-    def register_open(self, qty: int):
+    def _calculate_aggregate_open_risk(self) -> float:
+        """Calculate total dollar risk from all currently open positions.
+
+        Uses the open_positions list tracked by the bot to sum up
+        stop-loss exposure for each open trade.
+        """
+        total_risk = 0.0
+        for pos in self._open_positions:
+            spec = config.CONTRACT_SPECS.get(pos.get("symbol", ""))
+            if spec:
+                stop_points = spec["stop_loss_points"]
+                point_value = spec["point_value"]
+                qty = abs(pos.get("qty", 1))
+                total_risk += stop_points * point_value * qty
+        return total_risk
+
+    def register_open(self, qty: int, symbol: str = ""):
         """Track that we opened positions."""
         self.open_contracts += qty
         self.trades_today += 1
+        if symbol:
+            self._open_positions.append({"symbol": symbol, "qty": qty})
+            logger.info(
+                "Registered open: %s x%d | aggregate_risk=$%.2f",
+                symbol, qty, self._calculate_aggregate_open_risk(),
+            )
 
-    def register_close(self, qty: int):
+    def register_close(self, qty: int, symbol: str = ""):
         """Track that we closed positions."""
         if qty > self.open_contracts:
             logger.warning(
@@ -318,6 +356,15 @@ class RiskManager:
                 qty, self.open_contracts,
             )
         self.open_contracts = max(0, self.open_contracts - qty)
+        # Remove from open positions list
+        if symbol:
+            for i, pos in enumerate(self._open_positions):
+                if pos.get("symbol") == symbol:
+                    self._open_positions.pop(i)
+                    break
+        elif self._open_positions:
+            # No symbol specified — remove first entry
+            self._open_positions.pop(0)
 
     # ─────────────────────────────────────────
     # Status
