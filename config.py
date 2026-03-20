@@ -90,7 +90,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 10,              # micros (switched from minis for tighter risk)
+        "max_contracts": 40,              # micros: 10 mini-equivalents × 4 = 40 micro slots (4 symbols)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -139,6 +139,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
+        "max_qty": 10,  # cap per trade (= 1 mini NQ equivalent)
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -154,6 +155,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
+        "max_qty": 10,  # cap per trade (= 1 mini ES equivalent)
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -169,6 +171,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 2,
         "vwap_cooldown_minutes": 30,
+        "max_qty": 10,  # cap per trade (= 1 mini GC equivalent)
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -184,6 +187,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 2,
         "vwap_cooldown_minutes": 30,
+        "max_qty": 10,  # cap per trade (= 1 mini CL equivalent)
     },
     # ─── Mini Contracts (disabled — switched to micros) ──────
     "NQ": {
