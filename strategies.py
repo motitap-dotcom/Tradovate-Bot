@@ -63,6 +63,9 @@ class _ORBWindow:
         self.breakout_fired: bool = False
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
+        # Late-entry support: track breakout direction/price from warmup
+        self._warmup_breakout_direction: Optional[str] = None
+        self._warmup_breakout_price: Optional[float] = None
 
     def reset(self):
         self.range_high = None
@@ -71,6 +74,8 @@ class _ORBWindow:
         self.breakout_fired = False
         self.prices = []
         self._last_price = None
+        self._warmup_breakout_direction = None
+        self._warmup_breakout_price = None
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
@@ -217,6 +222,35 @@ class ORBStrategy:
         # Try each window (shorter windows fire earlier)
         for window in self.windows:
             direction = window.feed(price, high, low, current_time)
+
+            # Late-entry: if breakout was detected during warmup and this is
+            # the first live tick, check if price is still close to the breakout
+            # level (within 1× stop distance).  This allows the bot to enter
+            # after a restart without chasing runaway moves.
+            if direction is None and window._warmup_breakout_direction:
+                wb_dir = window._warmup_breakout_direction
+                wb_price = window._warmup_breakout_price
+                window._warmup_breakout_direction = None  # consume — try once only
+                window._warmup_breakout_price = None
+
+                max_chase = self.stop_points  # don't chase further than 1× stop
+                if wb_dir == "long" and price > window.range_high:
+                    chase_dist = price - wb_price
+                    if 0 <= chase_dist <= max_chase:
+                        direction = "long"
+                        logger.info(
+                            "ORB %s late-entry LONG: warmup breakout at %.2f, now %.2f (chase=%.2f <= %.2f)",
+                            self.symbol, wb_price, price, chase_dist, max_chase,
+                        )
+                elif wb_dir == "short" and price < window.range_low:
+                    chase_dist = wb_price - price
+                    if 0 <= chase_dist <= max_chase:
+                        direction = "short"
+                        logger.info(
+                            "ORB %s late-entry SHORT: warmup breakout at %.2f, now %.2f (chase=%.2f <= %.2f)",
+                            self.symbol, wb_price, price, chase_dist, max_chase,
+                        )
+
             if direction is None:
                 continue
 

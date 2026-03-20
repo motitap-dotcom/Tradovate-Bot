@@ -459,24 +459,20 @@ class TradovateBot:
                         strategy.update_vwap(h, l, c, v or 0)
                         strategy._prev_price = c
                     else:
-                        # ORB: feed candles to build the opening range
+                        # ORB: feed ALL candles through feed() so breakouts
+                        # are correctly detected during warmup.  This marks
+                        # breakout_fired=True for windows where the breakout
+                        # already happened, and keeps windows open where it hasn't.
                         for window in getattr(strategy, "windows", []):
-                            if not window.range_set:
-                                window.feed(c, h, l, candle_time.time())
-                            else:
-                                # Range is set — track _last_price for live tick processing.
-                                window._last_price = c
-                                # If price has already broken out of the range during
-                                # warmup (historical data), mark the breakout as fired.
-                                # Without this, the fresh-cross guard in feed() permanently
-                                # blocks signals: _last_price is outside the range so no
-                                # "fresh cross" is ever detected, leaving the window stuck.
-                                if not window.breakout_fired and (c > window.range_high or c < window.range_low):
-                                    window.breakout_fired = True
-                                    logger.info(
-                                        "  ORB %d-min: breakout already occurred in history (price=%.2f, range=%.2f-%.2f)",
-                                        window.window_minutes, c, window.range_low, window.range_high,
-                                    )
+                            direction = window.feed(c, h, l, candle_time.time())
+                            if direction and not window._warmup_breakout_direction:
+                                # Record the breakout for potential late entry
+                                window._warmup_breakout_direction = direction
+                                window._warmup_breakout_price = c
+                                logger.info(
+                                    "  ORB %d-min warmup: breakout %s detected at %.2f",
+                                    window.window_minutes, direction, c,
+                                )
 
                     fed += 1
 
@@ -549,14 +545,11 @@ class TradovateBot:
         if price is None:
             return
 
-        # IMPORTANT: Tradovate WebSocket "high"/"low" are SESSION-level values
-        # (the day's extreme prices, including overnight), NOT per-tick or per-bar.
-        # Strategies expect bar-level high/low, so use the trade price for both.
-        # This gives correct ORB range (range of ticks, not session extremes)
-        # and correct VWAP (typical_price = price, which is the true VWAP definition).
+        high = data.get("high", {}).get("price", price)
+        low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
 
-        self._process_price(symbol, price, price, price, volume)
+        self._process_price(symbol, price, high, low, volume)
 
     def _process_price(
         self, symbol: str, price: float, high: float, low: float, volume: float = 0
