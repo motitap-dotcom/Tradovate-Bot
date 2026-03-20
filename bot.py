@@ -459,17 +459,20 @@ class TradovateBot:
                         strategy.update_vwap(h, l, c, v or 0)
                         strategy._prev_price = c
                     else:
-                        # ORB: feed candles to build the opening range
+                        # ORB: feed ALL candles through feed() so breakouts
+                        # are correctly detected during warmup.  This marks
+                        # breakout_fired=True for windows where the breakout
+                        # already happened, and keeps windows open where it hasn't.
                         for window in getattr(strategy, "windows", []):
-                            if not window.range_set:
-                                window.feed(c, h, l, candle_time.time())
-                            else:
-                                # Range is set — just track _last_price so
-                                # feed() can detect fresh crosses on live ticks.
-                                # Do NOT mark breakout_fired here: the fresh-cross
-                                # guard in feed() already prevents stale breakouts
-                                # (it requires _last_price inside the range).
-                                window._last_price = c
+                            direction = window.feed(c, h, l, candle_time.time())
+                            if direction and not window._warmup_breakout_direction:
+                                # Record the breakout for potential late entry
+                                window._warmup_breakout_direction = direction
+                                window._warmup_breakout_price = c
+                                logger.info(
+                                    "  ORB %d-min warmup: breakout %s detected at %.2f",
+                                    window.window_minutes, direction, c,
+                                )
 
                     fed += 1
 
