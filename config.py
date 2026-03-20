@@ -90,7 +90,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 40,              # micros: 10 mini-equivalents × 4 = 40 micro slots (4 symbols)
+        "max_contracts": 40,              # micros: 10 mini-equiv × 4 symbols = 40 micro slots
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
