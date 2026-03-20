@@ -103,10 +103,6 @@ class TradovateBot:
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
 
-        # Track WebSocket restart attempts to force REST fallback
-        self._ws_restart_count: int = 0
-        self._max_ws_restarts: int = 3  # After 3 stale-restarts, force REST
-
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -468,12 +464,19 @@ class TradovateBot:
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
                             else:
-                                # Range is set — just track _last_price so
-                                # feed() can detect fresh crosses on live ticks.
-                                # Do NOT mark breakout_fired here: the fresh-cross
-                                # guard in feed() already prevents stale breakouts
-                                # (it requires _last_price inside the range).
+                                # Range is set — track _last_price for live tick processing.
                                 window._last_price = c
+                                # If price has already broken out of the range during
+                                # warmup (historical data), mark the breakout as fired.
+                                # Without this, the fresh-cross guard in feed() permanently
+                                # blocks signals: _last_price is outside the range so no
+                                # "fresh cross" is ever detected, leaving the window stuck.
+                                if not window.breakout_fired and (c > window.range_high or c < window.range_low):
+                                    window.breakout_fired = True
+                                    logger.info(
+                                        "  ORB %d-min: breakout already occurred in history (price=%.2f, range=%.2f-%.2f)",
+                                        window.window_minutes, c, window.range_low, window.range_high,
+                                    )
 
                     fed += 1
 
@@ -485,40 +488,6 @@ class TradovateBot:
                     "Warmed up %s with %d candles | strategy=%s",
                     symbol, fed, type(strategy).__name__,
                 )
-
-                # Late-start fix: if ORB range is set but _last_price
-                # drifted outside the range during warmup, reset it to the
-                # range midpoint so the first live tick can trigger a fresh
-                # breakout instead of being blocked by the stale-cross guard.
-                for w in getattr(strategy, "windows", []):
-                    if (
-                        w.range_set
-                        and not w.breakout_fired
-                        and w._last_price is not None
-                    ):
-                        if (
-                            w._last_price > w.range_high
-                            or w._last_price < w.range_low
-                        ):
-                            mid = (w.range_high + w.range_low) / 2
-                            logger.info(
-                                "Late-start fix: ORB %d-min _last_price=%.2f "
-                                "outside range [%.2f-%.2f]. Resetting to "
-                                "midpoint %.2f to allow fresh breakout.",
-                                w.window_minutes,
-                                w._last_price,
-                                w.range_low,
-                                w.range_high,
-                                mid,
-                            )
-                            w._last_price = mid
-
-                # VWAP warmup fix: carry over candle count so the
-                # MIN_CANDLES_FOR_SIGNAL guard doesn't block early signals.
-                if hasattr(strategy, "_candle_count"):
-                    strategy._candle_count = max(
-                        getattr(strategy, "_candle_count", 0), fed
-                    )
 
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
@@ -560,14 +529,6 @@ class TradovateBot:
         logger.info("Market data via REST polling (Yahoo Finance)")
         return poller
 
-    def _force_rest_polling(self):
-        """Skip WebSocket entirely and go straight to REST polling."""
-        poller = RestMarketDataPoller()
-        poller._last_ts.update(self._warmup_last_ts)
-        poller.start()
-        logger.info("Market data via REST polling (forced fallback)")
-        return poller
-
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
@@ -580,105 +541,22 @@ class TradovateBot:
             if contract_id:
                 logger.info("Mapped contractId %s -> %s for quote routing", contract_id, contract_name)
 
-    @staticmethod
-    def _extract_quote_price(data: dict) -> tuple:
-        """
-        Extract price, high, low, volume from Tradovate quote data.
-
-        Tradovate WebSocket may send quotes in different formats:
-        1. Documented: {"trade": {"price": X}, "bid": {"price": Y}, "high": {"price": Z}}
-        2. Entries:    {"entries": {"Trade": {"price": X}, "Bid": {"price": Y}}}
-        3. Flat:       {"price": X} or {"last": X}
-        """
-        price = None
-        high = None
-        low = None
-        volume = 0
-
-        # Format 1: Documented nested structure
-        trade_obj = data.get("trade")
-        if isinstance(trade_obj, dict):
-            price = trade_obj.get("price")
-            volume = trade_obj.get("size", 0)
-
-        # Format 2: entries-wrapped (Tradovate web trader format)
-        if price is None:
-            entries = data.get("entries", {})
-            if isinstance(entries, dict):
-                trade_entry = entries.get("Trade") or entries.get("trade", {})
-                if isinstance(trade_entry, dict):
-                    price = trade_entry.get("price")
-                    volume = trade_entry.get("size", 0)
-                if price is None:
-                    bid_entry = entries.get("Bid") or entries.get("bid", {})
-                    if isinstance(bid_entry, dict):
-                        price = bid_entry.get("price")
-                # High / Low from entries
-                hp = entries.get("HighPrice") or entries.get("High") or entries.get("high", {})
-                if isinstance(hp, dict):
-                    high = hp.get("price")
-                lp = entries.get("LowPrice") or entries.get("Low") or entries.get("low", {})
-                if isinstance(lp, dict):
-                    low = lp.get("price")
-
-        # Format 3: Flat structure
-        if price is None:
-            price = data.get("price") or data.get("last") or data.get("Last")
-
-        # Fallback for bid if trade price unavailable
-        if price is None:
-            bid_obj = data.get("bid")
-            if isinstance(bid_obj, dict):
-                price = bid_obj.get("price")
-            elif isinstance(bid_obj, (int, float)):
-                price = bid_obj
-
-        # High/Low from standard nested
-        if high is None:
-            h = data.get("high")
-            high = h.get("price") if isinstance(h, dict) else h if isinstance(h, (int, float)) else None
-        if low is None:
-            lo = data.get("low")
-            low = lo.get("price") if isinstance(lo, dict) else lo if isinstance(lo, (int, float)) else None
-
-        return price, high, low, volume
-
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
-        # Diagnostic: count callbacks per symbol
-        if not hasattr(self, "_quote_counts"):
-            self._quote_counts: dict[str, int] = {}
-            self._quote_null_counts: dict[str, int] = {}
-        self._quote_counts[symbol] = self._quote_counts.get(symbol, 0) + 1
-
-        # Extract price — supports multiple Tradovate quote formats
-        price, high, low, volume = self._extract_quote_price(data)
-
+        # Extract price from quote data
+        # Tradovate quote structure includes bid/ask/last
+        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
-            self._quote_null_counts[symbol] = self._quote_null_counts.get(symbol, 0) + 1
-            null_count = self._quote_null_counts[symbol]
-            if null_count == 1 or null_count % 100 == 0:
-                logger.warning(
-                    "Quote for %s: price=None (#%d nulls). Keys: %s | Sample: %s",
-                    symbol, null_count, list(data.keys())[:10],
-                    str(data)[:200],
-                )
             return
 
-        if high is None:
-            high = price
-        if low is None:
-            low = price
+        # IMPORTANT: Tradovate WebSocket "high"/"low" are SESSION-level values
+        # (the day's extreme prices, including overnight), NOT per-tick or per-bar.
+        # Strategies expect bar-level high/low, so use the trade price for both.
+        # This gives correct ORB range (range of ticks, not session extremes)
+        # and correct VWAP (typical_price = price, which is the true VWAP definition).
+        volume = data.get("trade", {}).get("size", 0)
 
-        # Log first price received per symbol
-        count = self._quote_counts[symbol]
-        if count == 1 or count == 10:
-            logger.info(
-                "Quote %s: price=%.4f high=%.4f low=%.4f vol=%s (tick #%d)",
-                symbol, price, high, low, volume, count,
-            )
-
-        self._process_price(symbol, price, high, low, volume)
+        self._process_price(symbol, price, price, price, volume)
 
     def _process_price(
         self, symbol: str, price: float, high: float, low: float, volume: float = 0
@@ -710,29 +588,6 @@ class TradovateBot:
             else:
                 # ORB strategy
                 signal = strategy.on_price(price, current, high, low)
-
-        # Diagnostic: log first price feed per symbol to confirm strategy is receiving data
-        if not hasattr(self, "_price_feed_counts"):
-            self._price_feed_counts: dict[str, int] = {}
-        self._price_feed_counts[symbol] = self._price_feed_counts.get(symbol, 0) + 1
-        count = self._price_feed_counts[symbol]
-        if count == 1:
-            # Log ORB window state for debugging
-            orb_info = ""
-            for w in getattr(strategy, "windows", []):
-                orb_info += (
-                    f" | ORB-{w.window_minutes}m: range_set={w.range_set}"
-                    f" fired={w.breakout_fired}"
-                    f" last_price={w._last_price}"
-                    f" range=[{w.range_low}-{w.range_high}]"
-                )
-            vwap_info = ""
-            if hasattr(strategy, "vwap") and strategy.vwap:
-                vwap_info = f" | VWAP={strategy.vwap:.4f} prev={getattr(strategy, '_prev_price', None)}"
-            logger.info(
-                "DIAG first price feed %s: price=%.4f%s%s",
-                symbol, price, orb_info, vwap_info,
-            )
 
         if signal is not None:
             self._execute_signal(signal)
@@ -807,7 +662,7 @@ class TradovateBot:
 
         if result:
             self._last_order_time = time.time()
-            self.risk.register_open(signal.qty, symbol=signal.symbol)
+            self.risk.register_open(signal.qty)
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
@@ -848,7 +703,7 @@ class TradovateBot:
         In real-time mode, the WebSocket feeds drive strategy via callbacks.
         This loop handles time-based events (force close, status updates).
         """
-        logger.info("Entering main loop (v2)...")
+        logger.info("Entering main loop...")
 
         # Track known fills to detect new ones
         self._known_fill_ids: set = set()
@@ -926,24 +781,14 @@ class TradovateBot:
                     fell_back = getattr(self.md_stream, "fell_back", None)
                     if is_stale or (fell_back and fell_back.is_set()):
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
-                        self._ws_restart_count += 1
                         logger.warning(
-                            "Market data stream unhealthy (%s). Restart attempt %d/%d",
-                            reason, self._ws_restart_count, self._max_ws_restarts,
+                            "Market data stream unhealthy (%s). Restarting...", reason
                         )
                         try:
                             self.md_stream.stop()
                         except Exception:
                             pass
-                        # After too many stale-restarts, force REST polling
-                        if self._ws_restart_count >= self._max_ws_restarts:
-                            logger.warning(
-                                "WebSocket failed %d times. Forcing REST polling fallback.",
-                                self._ws_restart_count,
-                            )
-                            self.md_stream = self._force_rest_polling()
-                        else:
-                            self.md_stream = self._start_market_data()
+                        self.md_stream = self._start_market_data()
                         if self.md_stream:
                             self._subscribe_market_data()
 
@@ -963,7 +808,6 @@ class TradovateBot:
                                     logger.info("WebSocket recovery succeeded! Switching from REST to WebSocket.")
                                     self.md_stream.stop()
                                     self.md_stream = ws
-                                    self._ws_restart_count = 0  # Reset counter on successful WS
                                     self._subscribe_market_data()
                                 else:
                                     logger.info("WebSocket still unavailable, staying on REST polling.")
@@ -981,19 +825,8 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
-                # Include quote diagnostic counts
-                q_info = ""
-                if hasattr(self, "_quote_counts") and self._quote_counts:
-                    q_info = " | quotes=" + ",".join(
-                        f"{s}:{c}" for s, c in sorted(self._quote_counts.items())
-                    )
-                    null_info = {s: c for s, c in self._quote_null_counts.items() if c > 0} if hasattr(self, "_quote_null_counts") else {}
-                    if null_info:
-                        q_info += " nulls=" + ",".join(
-                            f"{s}:{c}" for s, c in sorted(null_info.items())
-                        )
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -1003,7 +836,6 @@ class TradovateBot:
                     status["max_daily_trades"],
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
-                    q_info,
                 )
 
                 # Write live status file for external monitoring
@@ -1069,7 +901,7 @@ class TradovateBot:
                     self.journal.record_exit_by_symbol(
                         sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(trade_info.get("qty", 1), symbol=sym)
+                    self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
 
