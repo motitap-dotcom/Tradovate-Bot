@@ -411,11 +411,20 @@ class VWAPStrategy:
         self.last_any_trade_time = None
         self._candle_count = 0
         self._vwap_stale_bars = 0
+        self._last_vwap_update_time = None
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
-        """Update the running VWAP with a new bar."""
+        """Update the running VWAP with a new bar/tick.
+
+        When called with volume=0 (e.g. WebSocket bid/ask ticks), the VWAP
+        value is unchanged but we do NOT count this as "stale" — the stale
+        counter is reserved for prolonged periods with zero trade volume
+        (tracked via time, not tick count).
+        """
         if volume <= 0:
-            self._vwap_stale_bars = getattr(self, "_vwap_stale_bars", 0) + 1
+            # Don't increment stale counter on every tick — tick-based
+            # feeds send many bid/ask updates with vol=0.  Staleness is
+            # checked via _last_vwap_update_time instead.
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
@@ -435,6 +444,7 @@ class VWAPStrategy:
         if self._cum_vol > 0:
             self.vwap = self._cum_tp_vol / self._cum_vol
         self._vwap_stale_bars = 0  # Reset staleness counter
+        self._last_vwap_update_time = self._current_time  # Track freshness
 
     def _long_allowed(self) -> bool:
         """Check if a new long trade is allowed (count + cooldown)."""
@@ -478,9 +488,12 @@ class VWAPStrategy:
             self._prev_price = price
             return None
 
-        # Don't signal if VWAP is stale (too many zero-volume bars)
-        stale_bars = getattr(self, "_vwap_stale_bars", 0)
-        if stale_bars >= 3:
+        # Don't signal if VWAP was never initialized (no volume data at all).
+        # Note: stale_bars check was removed — it incorrectly blocked signals
+        # on WebSocket tick feeds where bid/ask updates always have vol=0.
+        # The VWAP from warmup (historical candles) is valid for crossover
+        # detection even without live volume updates.
+        if self._cum_vol <= 0:
             self._prev_price = price
             return None
 
@@ -494,10 +507,10 @@ class VWAPStrategy:
         # Diagnostic: log VWAP state periodically (every 200 ticks)
         if self._candle_count % 200 == 0:
             logger.info(
-                "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d stale=%d",
+                "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d cum_vol=%.0f",
                 self.symbol, self.vwap, self._prev_price, price,
                 "above" if price > self.vwap else "below" if price < self.vwap else "at",
-                self._candle_count, stale_bars,
+                self._candle_count, self._cum_vol,
             )
 
         signal = None
