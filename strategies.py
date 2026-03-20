@@ -479,8 +479,11 @@ class VWAPStrategy:
             self._prev_price = price
             return None
 
-        # Don't signal until we have enough data to compute a meaningful VWAP
-        if self._candle_count < self.MIN_CANDLES_FOR_SIGNAL:
+        # Don't signal until we have enough data to compute a meaningful VWAP.
+        # Skip this check if VWAP was already initialized from warmup (cum_vol > 0)
+        # — the warmup data is sufficient, and skipping the first few ticks would
+        # consume the warmup→live crossover opportunity.
+        if self._cum_vol <= 0 and self._candle_count < self.MIN_CANDLES_FOR_SIGNAL:
             self._prev_price = price
             return None
 

@@ -497,7 +497,12 @@ class TradovateBot:
                             w.range_high - w.range_low,
                         )
                 if hasattr(strategy, "vwap") and strategy.vwap:
-                    logger.info("  VWAP: %.4f", strategy.vwap)
+                    prev = getattr(strategy, "_prev_price", None)
+                    side = "above" if prev and prev > strategy.vwap else "below" if prev and prev < strategy.vwap else "at"
+                    logger.info(
+                        "  VWAP: %.4f | prev_price=%.4f (%s VWAP) | cum_vol=%.0f",
+                        strategy.vwap, prev or 0, side, strategy._cum_vol,
+                    )
 
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
