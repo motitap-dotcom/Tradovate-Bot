@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot — v2.2 (diagnostic)
+Tradovate Trading Bot — v2.3 (VWAP fix)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
