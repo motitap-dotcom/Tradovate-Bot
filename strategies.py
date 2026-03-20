@@ -12,6 +12,7 @@ stop-loss and take-profit prices, ready to be sent as a bracket order.
 """
 
 import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from enum import Enum
@@ -311,6 +312,20 @@ class VWAPStrategy:
     a fresh move separated by at least vwap_cooldown_minutes.
     """
 
+    @staticmethod
+    def _round_to_tick(price: float, tick_size: float, direction: str = "nearest") -> float:
+        """Round a price to the nearest valid tick boundary.
+
+        For stop-losses, round in the protective direction (away from entry).
+        """
+        if tick_size <= 0:
+            return price
+        if direction == "up":
+            return math.ceil(price / tick_size) * tick_size
+        elif direction == "down":
+            return math.floor(price / tick_size) * tick_size
+        return round(price / tick_size) * tick_size
+
     def __init__(self, symbol: str):
         self.symbol = symbol
         spec = config.CONTRACT_SPECS.get(symbol)
@@ -320,6 +335,7 @@ class VWAPStrategy:
         self.tp_points: float = spec["take_profit_points"]
         self.rr_ratio: float = spec["risk_reward_ratio"]
         self.point_value: float = spec["point_value"]
+        self.tick_size: float = spec["tick_size"]
         self.confirmation_candles: int = spec.get("vwap_confirmation_candles", 1)
 
         # Multi-trade settings
@@ -452,8 +468,8 @@ class VWAPStrategy:
                 self._cross_above_count >= self.confirmation_candles
                 and self._long_allowed()
             ):
-                stop = self.vwap - self.stop_points
-                tp = price + self.tp_points
+                stop = self._round_to_tick(self.vwap - self.stop_points, self.tick_size, "down")
+                tp = self._round_to_tick(price + self.tp_points, self.tick_size, "up")
                 self.long_count += 1
                 self.last_long_time = self._current_time
                 self.last_any_trade_time = self._current_time
@@ -490,8 +506,8 @@ class VWAPStrategy:
                 self._cross_below_count >= self.confirmation_candles
                 and self._short_allowed()
             ):
-                stop = self.vwap + self.stop_points
-                tp = price - self.tp_points
+                stop = self._round_to_tick(self.vwap + self.stop_points, self.tick_size, "up")
+                tp = self._round_to_tick(price - self.tp_points, self.tick_size, "down")
                 self.short_count += 1
                 self.last_short_time = self._current_time
                 self.last_any_trade_time = self._current_time

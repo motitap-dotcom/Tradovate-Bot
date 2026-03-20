@@ -566,11 +566,6 @@ class TradovateBot:
         if strategy is None:
             return
 
-        # Check if we can trade
-        ok, reason = self.risk.can_trade()
-        if not ok:
-            return
-
         # Check time constraints — only trade within the configured window
         current = now_et()
         start = parse_time_et(config.TRADING_START_ET)
@@ -578,7 +573,8 @@ class TradovateBot:
         if current < start or current >= cutoff:
             return
 
-        # Feed price to strategy
+        # Always feed price to strategy (keeps ORB ranges / VWAP updated)
+        # even when trading is locked or max contracts reached.
         signal = None
         if hasattr(strategy, "on_price"):
             if hasattr(strategy, "update_vwap"):
@@ -589,8 +585,13 @@ class TradovateBot:
                 # ORB strategy
                 signal = strategy.on_price(price, current, high, low)
 
+        # Only execute if risk manager allows trading
         if signal is not None:
-            self._execute_signal(signal)
+            ok, reason = self.risk.can_trade()
+            if ok:
+                self._execute_signal(signal)
+            else:
+                logger.debug("Signal for %s suppressed: %s", symbol, reason)
 
     # ─────────────────────────────────────────
     # Order execution

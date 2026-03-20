@@ -304,6 +304,11 @@ class RiskManager:
 
         contracts = int(math.floor(trade_risk_budget / risk_per_contract))
 
+        # Cap at per-symbol max (prevents micros from filling all slots)
+        max_qty = spec.get("max_qty")
+        if max_qty is not None:
+            contracts = min(contracts, max_qty)
+
         # Cap at available contract slots
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
