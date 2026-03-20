@@ -258,16 +258,16 @@ WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/contents/sys
 - **Daily loss limit**: $1,000
 - **Daily profit cap**: $2,400 (כלל עקביות — מקסימום 40% מהרווח המצטבר ביום אחד)
 - **Profit target**: $3,000
-- **Max contracts**: 10 (מיקרו — MNQ, MES, MGC, MCL)
+- **Max contracts**: 40 (micro slots; 10 per symbol × 4 symbols)
 - **סגירת פוזיציות**: עד 16:59 ET
 
-## חוזים פעילים
-| חוזה | אסטרטגיה | Stop | TP | $/pt | ריסק/חוזה |
-|-------|----------|------|-----|------|-----------|
-| **MNQ** (Micro Nasdaq) | ORB | 25pt | 50pt | $2 | $50 |
-| **MES** (Micro S&P) | ORB | 6pt | 12pt | $5 | $30 |
-| **MGC** (Micro Gold) | VWAP | 5pt | 10pt | $10 | $50 |
-| **MCL** (Micro Oil) | VWAP | 0.20pt | 0.40pt | $100 | $20 |
+## חוזים פעילים (Micro Contracts)
+| חוזה | אסטרטגיה | Stop | TP | $/pt | כמות מקס |
+|-------|----------|------|-----|------|----------|
+| **MNQ** (Micro Nasdaq) | ORB | 25pt | 50pt | $2 | 10 |
+| **MES** (Micro S&P) | ORB | 6pt | 12pt | $5 | 10 |
+| **MGC** (Micro Gold) | VWAP | 5pt | 10pt | $10 | 10 |
+| **MCL** (Micro Crude) | VWAP | 0.20pt | 0.40pt | $100 | 10 |
 
 ---
 

@@ -491,6 +491,15 @@ class VWAPStrategy:
                 self._prev_price = price
                 return None
 
+        # Diagnostic: log VWAP state periodically (every 200 ticks)
+        if self._candle_count % 200 == 0:
+            logger.info(
+                "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d stale=%d",
+                self.symbol, self.vwap, self._prev_price, price,
+                "above" if price > self.vwap else "below" if price < self.vwap else "at",
+                self._candle_count, stale_bars,
+            )
+
         signal = None
 
         # Detect crossover above VWAP
