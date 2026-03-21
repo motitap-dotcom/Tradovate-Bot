@@ -55,6 +55,17 @@ fi
 # Auto-detect repo from git remote
 GITHUB_REPO="${GITHUB_REPO:-$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')}"
 
+# ── 0d. Ensure git remote uses HTTPS (SSH protocol may fail without deploy key) ──
+CURRENT_URL=$(git remote get-url origin 2>/dev/null || echo "")
+if echo "$CURRENT_URL" | grep -q "git@github.com"; then
+    HTTPS_URL="https://github.com/${GITHUB_REPO}.git"
+    echo "[$(date)] Switching remote from SSH to HTTPS: $HTTPS_URL"
+    git remote set-url origin "$HTTPS_URL"
+elif [ -n "${GH_PAT:-}" ] && ! echo "$CURRENT_URL" | grep -q "x-access-token"; then
+    # If PAT is available and not already embedded, use authenticated HTTPS
+    git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPO}.git"
+fi
+
 # ── 1. Pull latest code ──
 echo "[$(date)] Checking for updates on $BRANCH..."
 if git fetch origin "$BRANCH" 2>/dev/null; then
