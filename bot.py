@@ -603,7 +603,12 @@ class TradovateBot:
             if hasattr(strategy, "update_vwap"):
                 # VWAP strategy — pass current timestamp for cooldown tracking
                 strategy._current_time = current
-                signal = strategy.on_price(price, high, low, volume)
+                # WebSocket quotes arrive as individual ticks with volume=0
+                # (bid/ask updates carry no trade size).  Use minimum volume
+                # of 1 so VWAP keeps updating and the staleness check doesn't
+                # permanently block signals.
+                vwap_vol = max(volume, 1)
+                signal = strategy.on_price(price, high, low, vwap_vol)
             else:
                 # ORB strategy
                 signal = strategy.on_price(price, current, high, low)
