@@ -1,20 +1,10 @@
 {
-  "timestamp": "2026-03-20T21:36:16Z",
+  "timestamp": "2026-03-21T10:35:31Z",
   "api_reachable": true,
-  "authenticated": true,
-  "auth_method": "server_token",
-  "account": {
-    "name": "FNFTCHMOTITAPIRO67510",
-    "id": 39996695,
-    "active": true
-  },
-  "balance": {
-    "realizedPnl": null,
-    "unrealizedPnl": null,
-    "totalCashValue": 56987.9,
-    "initialMargin": 0.0,
-    "netLiq": 56987.9
-  },
+  "authenticated": false,
+  "auth_method": null,
+  "account": {},
+  "balance": {},
   "positions": [],
   "orders": [],
   "server": {
@@ -63,7 +53,8 @@
     },
     "journal_tail": "2026-03-20 20:58:22,340 [INFO] bot: QUOTE MES #7200: price=6586.0000 high=6586.0000 low=6586.0000 vol=0\n2026-03-20 20:58:24,690 [INFO] bot: QUOTE MNQ #10000: price=24205.5000 high=24205.5000 low=24205.5000 vol=0\n2026-03-20 20:58:27,939 [INFO] bot: QUOTE MCL #2600: price=98.0900 high=98.0900 low=98.0900 vol=0\n2026-03-20 20:58:30,589 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False\n2026-03-20 20:58:30,651 [INFO] bot: QUOTE MES #7300: price=6586.2500 high=6586.2500 low=6586.2500 vol=0\n2026-03-20 20:58:30,709 [INFO] bot: QUOTE MNQ #10100: price=24206.5000 high=24206.5000 low=24206.5000 vol=0\n2026-03-20 20:58:34,732 [INFO] bot: QUOTE MNQ #10200: price=24207.0000 high=24207.0000 low=24207.0000 vol=0\n2026-03-20 20:58:36,441 [INFO] bot: QUOTE MES #7400: price=6586.7500 high=6586.7500 low=6586.7500 vol=0\n2026-03-20 20:58:37,337 [INFO] bot: QUOTE MGC #2900: price=4496.6000 high=4496.6000 low=4496.6000 vol=0\n2026-03-20 20:58:38,548 [INFO] bot: QUOTE MNQ #10300: price=24209.2500 high=24209.2500 low=24209.2500 vol=0\n2026-03-20 20:58:39,880 [INFO] bot: QUOTE MES #7500: price=6586.7500 high=6586.7500 low=6586.7500 vol=0\n2026-03-20 20:58:43,103 [INFO] bot: QUOTE MNQ #10400: price=24208.0000 high=24208.0000 low=24208.0000 vol=0\n2026-03-20 20:58:45,665 [INFO] bot: QUOTE MES #7600: price=6586.0000 high=6586.0000 low=6586.0000 vol=0\n2026-03-20 20:58:47,130 [INFO] bot: QUOTE MGC #3000: price=4496.1000 high=4496.1000 low=4496.1000 vol=0\n2026-03-20 20:58:48,060 [INFO] bot: QUOTE MNQ #10500: price=24205.2500 high=24205.2500 low=24205.2500 vol=0\n2026-03-20 20:58:50,769 [INFO] bot: QUOTE MCL #2700: price=98.1200 high=98.1200 low=98.1200 vol=0\n2026-03-20 20:58:52,809 [INFO] bot: QUOTE MES #7700: price=6586.0000 high=6586.0000 low=6586.0000 vol=0\n2026-03-20 20:58:53,464 [INFO] bot: QUOTE MNQ #10600: price=24205.5000 high=24205.5000 low=24205.5000 vol=0\n2026-03-20 20:58:59,884 [INFO] bot: QUOTE MNQ #10700: price=24206.7500 hig",
     "bot_log_tail": "2026-03-20 20:59:01,438 [INFO] bot:   balance: 56987.9\n2026-03-20 20:59:01,438 [INFO] bot:   equity: 56987.9\n2026-03-20 20:59:01,438 [INFO] bot:   day_pnl: 0.0\n2026-03-20 20:59:01,438 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-20 20:59:01,438 [INFO] bot:   peak_balance: 56987.9\n2026-03-20 20:59:01,438 [INFO] bot:   drawdown_floor: 54487.9\n2026-03-20 20:59:01,438 [INFO] bot:   distance_to_floor: 2500.0\n2026-03-20 20:59:01,438 [INFO] bot:   daily_loss_limit: 1000\n2026-03-20 20:59:01,438 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-03-20 20:59:01,438 [INFO] bot:   daily_profit_cap: 2400\n2026-03-20 20:59:01,438 [INFO] bot:   daily_profit_remaining: 2400.0\n2026-03-20 20:59:01,438 [INFO] bot:   open_contracts: 0\n2026-03-20 20:59:01,438 [INFO] bot:   max_contracts: 40\n2026-03-20 20:59:01,438 [INFO] bot:   trades_today: 0\n2026-03-20 20:59:01,438 [INFO] bot:   max_daily_trades: 16\n2026-03-20 20:59:01,438 [INFO] bot:   locked: False\n2026-03-20 20:59:01,438 [INFO] bot:   lock_reason: \n2026-03-20 20:59:01,438 [INFO] bot:   balance_initialized: True\n2026-03-20 20:59:01,438 [INFO] bot: Bot stopped.\n2026-03-20 20:59:01,438 [INFO] bot: Session ended. Next trading session: 2026-03-23 09:25 ET (sleeping 3866 minutes)",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 2\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 2193s)\n  Balance: $56987.9\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 18% | Memory: 34.9%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 20 21:35:03 UTC 2026] Status: bot_active=true, pid=3223228\n[Fri Mar 20 21:35:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 2\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 2193s)\n  Balance: $56987.9\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 18% | Memory: 34.9%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 20 21:35:03 UTC 2026] Status: bot_active=true, pid=3223228\n[Fri Mar 20 21:35:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat",
+    "_stale": true
   },
   "trading_activity": {
     "live_status": {
@@ -150,13 +141,16 @@
     "errors_in_log": [],
     "market_data_source": "websocket",
     "today_trades": [],
-    "today_fills": []
+    "today_fills": [],
+    "_stale": true
   },
-  "errors": [],
+  "errors": [
+    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+  ],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 9254,
+    "ssh_output_len": 0,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -165,5 +159,23 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
+  },
+  "last_known": {
+    "timestamp": "2026-03-20T21:36:16Z",
+    "auth_method": "server_token",
+    "account": {
+      "name": "FNFTCHMOTITAPIRO67510",
+      "id": 39996695,
+      "active": true
+    },
+    "balance": {
+      "realizedPnl": null,
+      "unrealizedPnl": null,
+      "totalCashValue": 56987.9,
+      "initialMargin": 0.0,
+      "netLiq": 56987.9
+    },
+    "positions": [],
+    "orders": []
   }
 }
