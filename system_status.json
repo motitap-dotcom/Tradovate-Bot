@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-21T10:35:31Z",
+  "timestamp": "2026-03-21T11:30:23Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -159,23 +159,5 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
-  },
-  "last_known": {
-    "timestamp": "2026-03-20T21:36:16Z",
-    "auth_method": "server_token",
-    "account": {
-      "name": "FNFTCHMOTITAPIRO67510",
-      "id": 39996695,
-      "active": true
-    },
-    "balance": {
-      "realizedPnl": null,
-      "unrealizedPnl": null,
-      "totalCashValue": 56987.9,
-      "initialMargin": 0.0,
-      "netLiq": 56987.9
-    },
-    "positions": [],
-    "orders": []
   }
 }
