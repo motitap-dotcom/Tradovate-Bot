@@ -131,8 +131,8 @@ jobs:
           fi
 
       # SSH deploy (if SERVER_HOST is configured as variable OR secret)
-      # continue-on-error: SSH is best-effort — server cron pulls main every 5 min
       - name: Deploy to server via SSH
+        id: ssh_deploy
         if: steps.server_check.outputs.available == 'true'
         continue-on-error: true
         uses: appleboy/ssh-action@v1
@@ -141,12 +141,23 @@ jobs:
           username: ${{ steps.server_check.outputs.user }}
           key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY || secrets.VPS_KEY }}
           password: ${{ secrets.VPS_PASSWORD }}
-          envs: SERVER_GH_PAT
+          envs: SERVER_GH_PAT,DEPLOY_TOKEN
           script: |
             set -e
             echo "=== Auto-merge deploy: ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }} ==="
             BOT_DIR="${{ env.BOT_DIR }}"
             cd "$BOT_DIR" || exit 1
+
+            # ── Ensure git remote uses HTTPS (works for public repos; with PAT for private) ──
+            GITHUB_REPO=$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')
+            TOKEN="${SERVER_GH_PAT:-${DEPLOY_TOKEN:-}}"
+            if [ -n "$TOKEN" ]; then
+              git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPO}.git"
+            else
+              # Public HTTPS (no auth) — works for public repos
+              git remote set-url origin "https://github.com/${GITHUB_REPO}.git"
+            fi
+
             git fetch origin ${{ env.DEPLOY_BRANCH }}
             git reset --hard origin/${{ env.DEPLOY_BRANCH }}
             echo "Now at: $(git log -1 --oneline)"
@@ -199,6 +210,19 @@ jobs:
             fi
         env:
           SERVER_GH_PAT: ${{ secrets.SERVER_GH_PAT }}
+          DEPLOY_TOKEN: ${{ github.token }}
+
+      # Verify deploy actually worked (don't mask failures)
+      - name: Verify deploy
+        if: steps.server_check.outputs.available == 'true'
+        run: |
+          if [ "${{ steps.ssh_deploy.outcome }}" = "failure" ]; then
+            echo "::error::SSH deploy FAILED — server may have old code!"
+            echo "Check: git remote URL on server, SSH key, network connectivity."
+            echo "The server cron should pick up changes within 5 minutes if git fetch works."
+          else
+            echo "SSH deploy succeeded."
+          fi
 
       # Fallback: webhook if no SSH host configured
       - name: Trigger server webhook (fallback)
