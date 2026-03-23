@@ -1195,17 +1195,26 @@ class MarketDataStream:
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
 
-                # Log first 3 raw quote payloads for debugging quote structure
-                if self._quotes_received <= 3:
-                    logger.info("RAW QUOTE #%d: %s", self._quotes_received, json.dumps(data)[:500])
+                # Log first 5 raw quote payloads for debugging quote structure
+                if self._quotes_received <= 5:
+                    logger.info("RAW MD #%d keys=%s data=%s", self._quotes_received,
+                                list(data.keys()) if isinstance(data, dict) else type(data).__name__,
+                                json.dumps(data)[:500])
 
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
+
+                # contractId may be at the data level (wrapping the quotes) rather than
+                # on individual quote entries. Check both locations.
+                data_contract_id = (data.get("contractId") or data.get("id")
+                                    ) if isinstance(data, dict) else None
+
                 # Snapshot callbacks under lock to avoid race with subscribe/unsubscribe
                 with self._callbacks_lock:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
-                    # Try multiple field names for contractId (Tradovate may vary)
-                    contract_id = quote.get("contractId") or quote.get("id") or quote.get("cid")
+                    # Try contractId from quote first, fall back to data-level contractId
+                    contract_id = (quote.get("contractId") or quote.get("id") or quote.get("cid")
+                                   or data_contract_id)
                     # Route quote to the correct symbol's callbacks using contractId.
                     # Without this filter, ALL quotes go to ALL symbols — causing
                     # strategies to receive prices from wrong contracts (e.g., NQ
@@ -1243,30 +1252,21 @@ class MarketDataStream:
                                     list(cb_snapshot.keys()),
                                 )
                     elif contract_id is None:
-                        # No contractId in quote — try to identify from subscription order
-                        # or broadcast to all (Tradovate demo may not include contractId)
+                        # No contractId anywhere — log warning and skip
+                        # (broadcasting to all strategies would corrupt their state)
                         no_cid_count = getattr(self, "_no_cid_warn_count", 0)
-                        if no_cid_count < 5:
+                        if no_cid_count < 10:
                             self._no_cid_warn_count = no_cid_count + 1
                             logger.warning(
-                                "Quote without contractId (#%d). Symbols: %s. Quote keys: %s",
-                                no_cid_count + 1, list(cb_snapshot.keys()),
-                                list(quote.keys()) if isinstance(quote, dict) else type(quote).__name__,
+                                "Quote without contractId (#%d). data_keys=%s quote_keys=%s. Skipping.",
+                                no_cid_count + 1,
+                                list(data.keys()) if isinstance(data, dict) else "?",
+                                list(quote.keys()) if isinstance(quote, dict) else "?",
                             )
                         if len(cb_snapshot) == 1:
                             # Only one symbol — safe to dispatch
                             for sym, cbs in cb_snapshot.items():
                                 self._quotes_dispatched += 1
-                                for cb in cbs:
-                                    try:
-                                        cb(sym, quote)
-                                    except Exception as e:
-                                        logger.error("Quote callback error for %s: %s", sym, e)
-                        else:
-                            # Multiple symbols — broadcast to all (better than dropping)
-                            # Each strategy will filter by price range naturally
-                            self._quotes_dispatched += 1
-                            for sym, cbs in cb_snapshot.items():
                                 for cb in cbs:
                                     try:
                                         cb(sym, quote)
