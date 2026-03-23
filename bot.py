@@ -669,12 +669,14 @@ class TradovateBot:
         start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
+            self._signals_log[-1]["blocked"] = f"outside trading window ({current.strftime('%H:%M')})"
             logger.info("Signal blocked: outside trading window (%s)", current.strftime("%H:%M"))
             return
 
         # Check if we can trade
         ok, reason = self.risk.can_trade()
         if not ok:
+            self._signals_log[-1]["blocked"] = f"risk manager: {reason}"
             logger.warning("Signal blocked by risk manager: %s", reason)
             return
 
@@ -686,9 +688,12 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
+        sig_entry = self._signals_log[-1] if hasattr(self, "_signals_log") and self._signals_log else {}
+
         # Global cooldown: prevent rapid-fire orders across all symbols
         elapsed = time.time() - self._last_order_time
         if elapsed < self._min_order_gap_seconds:
+            sig_entry["blocked"] = f"cooldown ({int(self._min_order_gap_seconds - elapsed)}s left)"
             logger.info(
                 "Signal for %s deferred: global cooldown (%ds remaining)",
                 signal.symbol, int(self._min_order_gap_seconds - elapsed),
@@ -697,18 +702,21 @@ class TradovateBot:
 
         ok, reason = self.risk.can_trade()
         if not ok:
+            sig_entry["blocked"] = f"risk: {reason}"
             logger.warning("Signal rejected by risk manager: %s", reason)
             return
 
         # Calculate position size
         qty = self.risk.calculate_position_size(signal.symbol)
         if qty <= 0:
+            sig_entry["blocked"] = "position_size=0"
             logger.warning("Position size = 0 for %s. Signal skipped.", signal.symbol)
             return
         signal.qty = qty
 
         contract_name = self.contract_map.get(signal.symbol)
         if not contract_name:
+            sig_entry["blocked"] = "no_contract_mapping"
             logger.error("No contract mapping for %s", signal.symbol)
             return
 
@@ -723,6 +731,7 @@ class TradovateBot:
         )
 
         if self.dry_run:
+            sig_entry["blocked"] = "dry_run"
             logger.info("[DRY RUN] Order would be placed: %s", signal)
             self.trades_today.append(
                 {
@@ -774,8 +783,10 @@ class TradovateBot:
                     "journal_id": trade_id,
                 }
             )
+            sig_entry["executed"] = f"orderId={result.get('orderId')}"
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
         else:
+            sig_entry["blocked"] = "order_placement_failed"
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
