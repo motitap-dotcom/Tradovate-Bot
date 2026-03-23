@@ -821,7 +821,7 @@ class TradovateBot:
             return
 
         be_threshold = config.BREAKEVEN_R_THRESHOLD
-        trail_step = config.TRAILING_STOP_R_STEP
+        trail_step = config.TRAILING_STOP_STEP_R
 
         for trade in self.trades_today:
             if trade.get("_closed"):
