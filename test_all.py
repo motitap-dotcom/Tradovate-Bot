@@ -981,13 +981,13 @@ print("8. END-TO-END TRADING SIMULATION")
 print("=" * 60)
 
 
-@test("Full trading day simulation with NQ ORB")
+@test("Full trading day simulation with MNQ ORB")
 def test_e2e_nq_orb():
-    """Simulate a complete trading day with NQ mini ORB breakout."""
+    """Simulate a complete trading day with MNQ micro ORB breakout."""
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -1009,7 +1009,7 @@ def test_e2e_nq_orb():
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("NQ")
+                qty = rm.calculate_position_size("MNQ")
                 if qty > 0:
                     signal.qty = qty
                     rm.register_open(qty)
@@ -1470,13 +1470,13 @@ def test_tuner_widen_stops():
         tuner = AutoTuner(journal=j)
 
         # 8 SL hits, 2 TP hits = 80% SL rate
-        trades = _make_closed_trades("NQ", 8, 2)
+        trades = _make_closed_trades("MNQ", 8, 2)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
         # Should have proposed widening
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1, f"Expected 1 SL adjustment, got {len(sl_adj)}"
         assert sl_adj[0]["new_value"] > old_sl, "New SL should be wider (larger)"
     finally:
@@ -1494,12 +1494,12 @@ def test_tuner_tighten_stops():
         tuner = AutoTuner(journal=j)
 
         # 1 SL hit, 6 TP hits = ~14% SL rate
-        trades = _make_closed_trades("NQ", 1, 6)
+        trades = _make_closed_trades("MNQ", 1, 6)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1
         assert sl_adj[0]["new_value"] < old_sl, "New SL should be tighter (smaller)"
     finally:
@@ -1517,12 +1517,12 @@ def test_tuner_widen_tp():
         tuner = AutoTuner(journal=j)
 
         # High R-multiple trades
-        trades = _make_closed_trades("NQ", 1, 4, r_mult=2.0)
+        trades = _make_closed_trades("MNQ", 1, 4, r_mult=2.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] > old_tp, "TP should be widened for high R"
     finally:
@@ -1541,12 +1541,12 @@ def test_tuner_tighten_tp():
 
         # Negative R-multiple trades — all stop_loss exits (no TP trades)
         # so we reach the avg_r < -0.5 branch (not blocked by tp_trades > 0)
-        trades = _make_closed_trades("NQ", 4, 0, r_mult=-1.0)
+        trades = _make_closed_trades("MNQ", 4, 0, r_mult=-1.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] < old_tp, "TP should be tightened for negative R"
     finally:
@@ -1906,6 +1906,9 @@ def test_bot_execute_signal_dry_run():
 
     bot = TradovateBot(dry_run=True)
     bot.api = MagicMock()
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (True, "OK")
+    bot.risk.calculate_position_size.return_value = 1
     bot.contract_map = {"NQ": "NQH6"}
     bot.strategies = {"NQ": MagicMock()}
     bot._last_order_time = 0  # No cooldown
