@@ -593,15 +593,25 @@ class TradovateBot:
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
-        # Extract price from quote data
-        # Tradovate quote structure includes bid/ask/last
-        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+        # Tradovate WS quote structure: {entries: {Trade: {price, size}, Bid: {price}, ...}}
+        entries = data.get("entries", {})
+        if entries:
+            # Standard Tradovate quote with entries dict
+            trade = entries.get("Trade", {})
+            bid = entries.get("Bid", {})
+            price = trade.get("price") or bid.get("price")
+            high = entries.get("HighPrice", {}).get("price", price) if price else None
+            low = entries.get("LowPrice", {}).get("price", price) if price else None
+            volume = trade.get("size", 0)
+        else:
+            # Fallback: flat structure (e.g. REST poller or legacy format)
+            price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+            high = data.get("high", {}).get("price", price) if price else None
+            low = data.get("low", {}).get("price", price) if price else None
+            volume = data.get("trade", {}).get("size", 0)
+
         if price is None:
             return
-
-        high = data.get("high", {}).get("price", price)
-        low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
 
         # Periodic quote logging: log every 100th quote per symbol for diagnostics
         count_key = f"_quote_count_{symbol}"
