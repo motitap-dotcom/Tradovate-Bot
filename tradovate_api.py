@@ -1000,7 +1000,8 @@ class MarketDataStream:
         self.md_token = md_access_token
         self._api = api  # Reference to API client for token refresh on 403
         self.ws: Optional[websocket.WebSocketApp] = None
-        self._request_id = 0
+        # Start at 1 to avoid collision with hardcoded auth request_id=1
+        self._request_id = 1
         self._callbacks: dict[str, list[Callable]] = {}
         # Maps contractId (int) → symbol name (str) for correct quote routing
         self._contract_id_to_symbol: dict[int, str] = {}
@@ -1015,6 +1016,7 @@ class MarketDataStream:
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
         self._quotes_received: int = 0  # Count of actual market data events received
+        self._quotes_dispatched: int = 0  # Count of quotes successfully routed to callbacks
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
         self._heartbeat_timer: Optional[threading.Timer] = None
@@ -1259,16 +1261,36 @@ class MarketDataStream:
                     # prices fed to GC strategy), which breaks ORB ranges and VWAP.
                     target_sym = self._contract_id_to_symbol.get(contract_id)
                     if target_sym and target_sym in cb_snapshot:
+                        self._quotes_dispatched += 1
                         for cb in cb_snapshot[target_sym]:
                             try:
                                 cb(target_sym, quote)
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif contract_id is not None and not target_sym:
-                        # Unknown contractId with no mapping — try to auto-map from
-                        # subscription response.  Only dispatch to the single symbol
-                        # whose contract name matches, to avoid cross-contamination.
-                        logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
+                        # Unknown contractId — try auto-mapping if only one subscription
+                        # is waiting, otherwise log warning for diagnostics.
+                        if len(cb_snapshot) == 1:
+                            # Only one symbol subscribed — safe to assume this is it
+                            for sym, cbs in cb_snapshot.items():
+                                self._contract_id_to_symbol[contract_id] = sym
+                                logger.info("Auto-mapped unmapped contractId %s -> %s (single symbol)", contract_id, sym)
+                                for cb in cbs:
+                                    try:
+                                        cb(sym, quote)
+                                    except Exception as e:
+                                        logger.error("Quote callback error for %s: %s", sym, e)
+                        else:
+                            # Log first 10 unmapped IDs as WARNING for diagnostics
+                            unmapped_count = getattr(self, "_unmapped_warn_count", 0)
+                            if unmapped_count < 10:
+                                self._unmapped_warn_count = unmapped_count + 1
+                                logger.warning(
+                                    "Unmapped contractId %s — skipping. Known IDs: %s. Callbacks: %s",
+                                    contract_id,
+                                    list(self._contract_id_to_symbol.keys()),
+                                    list(cb_snapshot.keys()),
+                                )
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
                         for sym, cbs in cb_snapshot.items():

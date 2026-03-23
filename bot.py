@@ -875,10 +875,11 @@ class TradovateBot:
                 if self.md_stream:
                     md_type = type(self.md_stream).__name__
                     md_quotes = getattr(self.md_stream, "_quotes_received", "?")
+                    md_dispatched = getattr(self.md_stream, "_quotes_dispatched", "?")
                     md_stale = getattr(self.md_stream, "data_stale", False)
                     md_connected = getattr(self.md_stream, "_connected", None)
                     ws_ok = md_connected.is_set() if md_connected else "?"
-                    md_info = f" | md={md_type} quotes={md_quotes} stale={md_stale} ws_ok={ws_ok}"
+                    md_info = f" | md={md_type} recv={md_quotes} disp={md_dispatched} stale={md_stale} ws={ws_ok}"
 
                 logger.info(
                     "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s%s",
