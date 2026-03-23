@@ -484,29 +484,29 @@ class TradovateBot:
                     symbol, fed, type(strategy).__name__,
                 )
 
-                # After warmup, reset ORB _last_price so breakout detection
-                # can fire on real-time ticks. Without this, _last_price is the
-                # last historical close (likely outside the range), and the
-                # fresh-cross guard prevents any breakout detection.
+                # After warmup, reset ORB state so breakout detection can fire
+                # on real-time ticks. Without this:
+                # 1. _last_price is the last historical close (outside range) →
+                #    fresh-cross guard blocks breakouts
+                # 2. breakout_fired may be True from warmup feed() which both
+                #    builds range AND detects breakout on the same call
                 for w in getattr(strategy, "windows", []):
-                    if w.range_set and not w.breakout_fired:
+                    if w.range_set:
+                        was_fired = w.breakout_fired
                         w._last_price = None  # First real-time tick will set this
+                        w.breakout_fired = False  # Re-arm for real-time detection
                         logger.info(
-                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) — armed for breakout",
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) — armed for breakout%s",
                             w.window_minutes, w.range_low, w.range_high,
                             w.range_high - w.range_low,
-                        )
-                    elif w.range_set:
-                        logger.info(
-                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) — already fired",
-                            w.window_minutes, w.range_low, w.range_high,
-                            w.range_high - w.range_low,
+                            " (was fired during warmup, re-armed)" if was_fired else "",
                         )
                 if hasattr(strategy, "vwap") and strategy.vwap:
                     # Reset _prev_price to None so first real-time tick sets it,
                     # allowing crossover detection on the second tick.
                     strategy._prev_price = None
-                    strategy._candle_count = max(strategy._candle_count, strategy.MIN_CANDLES_FOR_SIGNAL)
+                    candle_count = getattr(strategy, "_candle_count", 0)
+                    strategy._candle_count = max(candle_count, strategy.MIN_CANDLES_FOR_SIGNAL)
                     side = "above" if (strategy._prev_price or 0) >= strategy.vwap else "below"
                     logger.info("  VWAP: %.4f — armed for crossover", strategy.vwap)
 
