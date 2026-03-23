@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-23T15:26:45Z",
+  "timestamp": "2026-03-23T15:27:33Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "436806",
     "uptime_since": "Mon 2026-03-23 15:19:44 UTC",
     "disk": "17%",
-    "memory": "956MB/7941MB (12%)",
+    "memory": "927MB/7941MB (12%)",
     "hostname": "vmi3096165",
     "git_commit": "bdfe6d1 Auto-merge claude/prepare-bot-trading-b6bxG \u2192 main",
     "live_status": {
-      "timestamp": "2026-03-23T15:26:29.015632+00:00",
-      "timestamp_et": "2026-03-23T11:26:29.015654-04:00",
+      "timestamp": "2026-03-23T15:27:29.707131+00:00",
+      "timestamp_et": "2026-03-23T11:27:29.707166-04:00",
       "balance": 56987.9,
       "equity": 56987.9,
       "day_pnl": 0.0,
@@ -54,14 +54,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-23 15:19:46,471 [INFO] bot:   ORB 5-min range: 24432.50 - 24516.50 (size=84.00) \u2014 armed for breakout\n2026-03-23 15:19:46,471 [INFO] bot:   ORB 15-min range: 24432.50 - 24567.75 (size=135.25) \u2014 armed for breakout\n2026-03-23 15:19:46,595 [INFO] strategies: ORB 5-min range: high=6662.00 low=6643.75 size=18.25\n2026-03-23 15:19:46,595 [INFO] strategies: ORB 5-min BREAKOUT SHORT at 6640.75 (range_low=6643.75)\n2026-03-23 15:19:46,595 [INFO] strategies: ORB 15-min range: high=6674.00 low=6638.00 size=36.00\n2026-03-23 15:19:46,595 [INFO] bot: Warmed up MES with 671 candles | strategy=ORBStrategy\n2026-03-23 15:19:46,595 [INFO] bot:   ORB 5-min range: 6643.75 - 6662.00 (size=18.25) \u2014 already fired\n2026-03-23 15:19:46,595 [INFO] bot:   ORB 15-min range: 6638.00 - 6674.00 (size=36.00) \u2014 armed for breakout\n2026-03-23 15:19:46,753 [INFO] bot: Warmed up MGC with 671 candles | strategy=VWAPStrategy\n2026-03-23 15:19:46,753 [WARNING] bot: Warmup failed for MGC: 'VWAPStrategy' object has no attribute '_candle_count'\n2026-03-23 15:19:46,803 [INFO] bot: Warmed up MCL with 671 candles | strategy=VWAPStrategy\n2026-03-23 15:19:46,803 [WARNING] bot: Warmup failed for MCL: 'VWAPStrategy' object has no attribute '_candle_count'\n2026-03-23 15:19:46,976 [INFO] websocket: Websocket connected\n2026-03-23 15:19:46,977 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-23 15:19:47,100 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-23 15:19:47,100 [INFO] bot: Market data via WebSocket\n2026-03-23 15:19:47,102 [INFO] tradovate_api: Subscribed to quotes: MNQM6 (contractId=4327110)\n2026-03-23 15:19:47,102 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing\n2026-03-23 15:19:47,102 [INFO] tradovate_api: Subscribed to quotes: MESM6 (contractId=4327108)\n2026-03-23 15:19:47,102 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing\n2026-03-23 15:19:47,103 [INFO] tradovate_api: Subscribed to quotes: MGCJ6 (contractId=3924410)\n2026-03-23 15:19:47,103 [",
-    "bot_log_tail": "2026-03-23 15:19:47,222 [INFO] tradovate_api: Subscription confirmed for MCLK6 (status=200)\n2026-03-23 15:19:47,223 [INFO] tradovate_api: RAW MD #3 keys=['quotes'] data={\"quotes\": [{\"id\": 3924410, \"timestamp\": \"2026-03-23T15:19:46.714Z\", \"contractId\": 3924410, \"entries\": {\"Bid\": {\"price\": 4443.0, \"size\": 3}, \"Offer\": {\"price\": 4443.7, \"size\": 2}, \"Trade\": {\"price\": 4443.5, \"size\": 1}, \"OpeningPrice\": {\"price\": 4462.6}, \"SettlementPrice\": {\"price\": 4574.9}, \"TotalTradeVolume\": {\"size\": 928982}, \"OpenInterest\": {\"size\": 51291}, \"HighPrice\": {\"price\": 4537.1}, \"LowPrice\": {\"price\": 4100.0}}}, {\"id\": 3643469, \"timestamp\": \"2026-03-23T15:19:47.040Z\", \"contractId\": 3\n2026-03-23 15:19:47,223 [INFO] tradovate_api: RAW MD #4 keys=['quotes'] data={\"quotes\": [{\"id\": 3643469, \"timestamp\": \"2026-03-23T15:19:47.154Z\", \"contractId\": 3643469, \"entries\": {\"Bid\": {\"price\": 86.85, \"size\": 1}, \"Offer\": {\"price\": 86.87, \"size\": 3}, \"Trade\": {\"price\": 86.87, \"size\": 2}, \"OpeningPrice\": {\"price\": 100.51}, \"SettlementPrice\": {\"price\": 98.23}, \"TotalTradeVolume\": {\"size\": 518973}, \"OpenInterest\": {\"size\": 39465}, \"HighPrice\": {\"price\": 101.81}, \"LowPrice\": {\"price\": 84.36}}}]}\n2026-03-23 15:19:47,229 [INFO] tradovate_api: RAW MD #5 keys=['quotes'] data={\"quotes\": [{\"id\": 4327108, \"timestamp\": \"2026-03-23T15:19:47.155Z\", \"contractId\": 4327108, \"entries\": {\"Bid\": {\"price\": 6693.5, \"size\": 5}, \"Offer\": {\"price\": 6693.75, \"size\": 25}, \"Trade\": {\"price\": 6693.75, \"size\": 1}, \"OpeningPrice\": {\"price\": 6520.25}, \"SettlementPrice\": {\"price\": 6559.0}, \"TotalTradeVolume\": {\"size\": 1278593}, \"OpenInterest\": {\"size\": 158317}, \"HighPrice\": {\"price\": 6748.0}, \"LowPrice\": {\"price\": 6482.75}}}]}\n2026-03-23 15:19:52,104 [INFO] bot: Market data verified: 504 quotes received in 5s\n2026-03-23 15:19:52,104 [INFO] bot: Entering main loop...\n2026-03-23 15:19:54,446 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=774 d",
+    "journal_tail": "2026-03-23 15:19:46,595 [INFO] strategies: ORB 5-min range: high=6662.00 low=6643.75 size=18.25\n2026-03-23 15:19:46,595 [INFO] strategies: ORB 5-min BREAKOUT SHORT at 6640.75 (range_low=6643.75)\n2026-03-23 15:19:46,595 [INFO] strategies: ORB 15-min range: high=6674.00 low=6638.00 size=36.00\n2026-03-23 15:19:46,595 [INFO] bot: Warmed up MES with 671 candles | strategy=ORBStrategy\n2026-03-23 15:19:46,595 [INFO] bot:   ORB 5-min range: 6643.75 - 6662.00 (size=18.25) \u2014 already fired\n2026-03-23 15:19:46,595 [INFO] bot:   ORB 15-min range: 6638.00 - 6674.00 (size=36.00) \u2014 armed for breakout\n2026-03-23 15:19:46,753 [INFO] bot: Warmed up MGC with 671 candles | strategy=VWAPStrategy\n2026-03-23 15:19:46,753 [WARNING] bot: Warmup failed for MGC: 'VWAPStrategy' object has no attribute '_candle_count'\n2026-03-23 15:19:46,803 [INFO] bot: Warmed up MCL with 671 candles | strategy=VWAPStrategy\n2026-03-23 15:19:46,803 [WARNING] bot: Warmup failed for MCL: 'VWAPStrategy' object has no attribute '_candle_count'\n2026-03-23 15:19:46,976 [INFO] websocket: Websocket connected\n2026-03-23 15:19:46,977 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-23 15:19:47,100 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-23 15:19:47,100 [INFO] bot: Market data via WebSocket\n2026-03-23 15:19:47,102 [INFO] tradovate_api: Subscribed to quotes: MNQM6 (contractId=4327110)\n2026-03-23 15:19:47,102 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing\n2026-03-23 15:19:47,102 [INFO] tradovate_api: Subscribed to quotes: MESM6 (contractId=4327108)\n2026-03-23 15:19:47,102 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing\n2026-03-23 15:19:47,103 [INFO] tradovate_api: Subscribed to quotes: MGCJ6 (contractId=3924410)\n2026-03-23 15:19:47,103 [INFO] bot: Mapped contractId 3924410 -> MGCJ6 for quote routing\n2026-03-23 15:19:47,103 [INFO] tradovate_api: Subscribed to quotes: MCLK6 (contractId=3643469)\n2026-03-23 15:19:47,103 [INFO] bot: Mapped contractId 3643469",
+    "bot_log_tail": "2026-03-23 15:19:47,223 [INFO] tradovate_api: RAW MD #4 keys=['quotes'] data={\"quotes\": [{\"id\": 3643469, \"timestamp\": \"2026-03-23T15:19:47.154Z\", \"contractId\": 3643469, \"entries\": {\"Bid\": {\"price\": 86.85, \"size\": 1}, \"Offer\": {\"price\": 86.87, \"size\": 3}, \"Trade\": {\"price\": 86.87, \"size\": 2}, \"OpeningPrice\": {\"price\": 100.51}, \"SettlementPrice\": {\"price\": 98.23}, \"TotalTradeVolume\": {\"size\": 518973}, \"OpenInterest\": {\"size\": 39465}, \"HighPrice\": {\"price\": 101.81}, \"LowPrice\": {\"price\": 84.36}}}]}\n2026-03-23 15:19:47,229 [INFO] tradovate_api: RAW MD #5 keys=['quotes'] data={\"quotes\": [{\"id\": 4327108, \"timestamp\": \"2026-03-23T15:19:47.155Z\", \"contractId\": 4327108, \"entries\": {\"Bid\": {\"price\": 6693.5, \"size\": 5}, \"Offer\": {\"price\": 6693.75, \"size\": 25}, \"Trade\": {\"price\": 6693.75, \"size\": 1}, \"OpeningPrice\": {\"price\": 6520.25}, \"SettlementPrice\": {\"price\": 6559.0}, \"TotalTradeVolume\": {\"size\": 1278593}, \"OpenInterest\": {\"size\": 158317}, \"HighPrice\": {\"price\": 6748.0}, \"LowPrice\": {\"price\": 6482.75}}}]}\n2026-03-23 15:19:52,104 [INFO] bot: Market data verified: 504 quotes received in 5s\n2026-03-23 15:19:52,104 [INFO] bot: Entering main loop...\n2026-03-23 15:19:54,446 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=774 disp=804 stale=False ws=True\n2026-03-23 15:20:24,802 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=5089 disp=5243 stale=False ws=True\n2026-03-23 15:20:55,152 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=9354 disp=9673 stale=False ws=True\n2026-03-23 15:21:25,486 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=13618 disp=14165 stale=False ws=True\n2026-03-23 15:21:55,838 [INF",
     "cron_log_tail": "  Errors (1h): 0 | Warnings: 5\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 6s)\n  Balance: $56987.9\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 17% | Memory: 11.9%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Mar 23 15:25:04 UTC 2026] Status: bot_active=true, pid=436806\n[Mon Mar 23 15:25:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-23T15:26:29.015632+00:00",
-      "timestamp_et": "2026-03-23T11:26:29.015654-04:00",
+      "timestamp": "2026-03-23T15:27:29.707131+00:00",
+      "timestamp_et": "2026-03-23T11:27:29.707166-04:00",
       "balance": 56987.9,
       "equity": 56987.9,
       "day_pnl": 0.0,
@@ -92,8 +92,6 @@
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-23 15:19:47,103 [INFO] tradovate_api: Subscribed to quotes: MGCJ6 (contractId=3924410)",
-      "2026-03-23 15:19:47,103 [INFO] bot: Mapped contractId 3924410 -> MGCJ6 for quote routing",
       "2026-03-23 15:19:47,103 [INFO] tradovate_api: Subscribed to quotes: MCLK6 (contractId=3643469)",
       "2026-03-23 15:19:47,103 [INFO] bot: Mapped contractId 3643469 -> MCLK6 for quote routing",
       "2026-03-23 15:19:47,103 [INFO] bot: Verifying market data flow (waiting up to 90s for first quote)...",
@@ -121,7 +119,9 @@
       "2026-03-23 15:24:57,949 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=43588 disp=45477 stale=False ws=True",
       "2026-03-23 15:25:28,304 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=47651 disp=49660 stale=False ws=True",
       "2026-03-23 15:25:58,657 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=51255 disp=53411 stale=False ws=True",
-      "2026-03-23 15:26:29,014 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=55286 disp=57600 stale=False ws=True"
+      "2026-03-23 15:26:29,014 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=55286 disp=57600 stale=False ws=True",
+      "2026-03-23 15:26:59,369 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=59612 disp=62107 stale=False ws=True",
+      "2026-03-23 15:27:29,705 [INFO] bot: Status | balance=56987.90 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/40 | trades=0/16 | locked=False | md=MarketDataStream recv=63871 disp=66559 stale=False ws=True"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -142,7 +142,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 14760,
+    "ssh_output_len": 14918,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
