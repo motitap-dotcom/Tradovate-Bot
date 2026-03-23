@@ -549,7 +549,7 @@ def test_orb_cooldown():
 def test_orb_max_trades():
     from strategies import ORBStrategy
     strategy = ORBStrategy("MNQ")
-    assert strategy.max_trades == 2  # Default from config
+    assert strategy.max_trades == 3  # From config (raised for more trades)
 
 
 @test("VWAP: running VWAP calculation")

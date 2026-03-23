@@ -62,6 +62,10 @@ class _ORBWindow:
         self.breakout_fired: bool = False
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
+        # Re-arm: after breakout, if price returns inside range for N ticks,
+        # allow another breakout signal (failed breakout recovery)
+        self.rearm_ticks: int = 5  # set from config via ORBStrategy
+        self._ticks_back_in_range: int = 0
 
     def reset(self):
         self.range_high = None
@@ -70,6 +74,7 @@ class _ORBWindow:
         self.breakout_fired = False
         self.prices = []
         self._last_price = None
+        self._ticks_back_in_range = 0
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
@@ -81,6 +86,21 @@ class _ORBWindow:
         bot restart (warmup sets _last_price to the last historical close).
         """
         if self.breakout_fired:
+            # Re-arm: if price returns inside range for N consecutive ticks,
+            # allow another breakout (failed breakout → price came back)
+            if self.range_set and self.range_low <= price <= self.range_high:
+                self._ticks_back_in_range += 1
+                if self._ticks_back_in_range >= self.rearm_ticks:
+                    self.breakout_fired = False
+                    self._ticks_back_in_range = 0
+                    self._last_price = price  # set fresh baseline
+                    logger.info(
+                        "ORB %d-min RE-ARMED: price=%.2f back inside range [%.2f-%.2f] for %d ticks",
+                        self.window_minutes, price, self.range_low, self.range_high, self.rearm_ticks,
+                    )
+                    return None  # re-armed, wait for next breakout
+            else:
+                self._ticks_back_in_range = 0
             return None
 
         open_seconds = self.open_time.hour * 3600 + self.open_time.minute * 60
@@ -199,8 +219,10 @@ class ORBStrategy:
         self.windows: list[_ORBWindow] = [
             _ORBWindow(w, open_time) for w in windows
         ]
+        rearm_ticks = spec.get("orb_rearm_ticks", 0)
         for w in self.windows:
             w.breakout_buffer_pct = buf_pct
+            w.rearm_ticks = rearm_ticks
 
         # Trade state
         self.trades_taken: int = 0
@@ -344,7 +366,7 @@ class VWAPStrategy:
         self.max_per_direction: int = spec.get("max_vwap_trades_per_direction", 2)
         self.cooldown_minutes: int = spec.get("vwap_cooldown_minutes", 30)
         # Minimum time between ANY trades (regardless of direction) to prevent whipsaw
-        self.min_trade_gap_minutes: int = 3
+        self.min_trade_gap_minutes: int = 2  # lowered from 3 for more signals
 
         # VWAP calculation state
         self._cum_vol: float = 0.0
