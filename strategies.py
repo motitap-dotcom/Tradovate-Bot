@@ -141,13 +141,20 @@ class _ORBWindow:
             # Previous price was outside the range — not a fresh cross
             return None
 
-        if price > self.range_high:
+        # Proximity buffer: fire when price is within buffer% of range boundary
+        # This catches breakouts that are "almost there" — tight ranges often
+        # see price hover near the boundary before breaking out decisively.
+        buf_pct = getattr(self, "breakout_buffer_pct", 0.0)
+        range_width = self.range_high - self.range_low
+        buf = range_width * buf_pct
+
+        if price > self.range_high - buf:
             self.breakout_fired = True
-            logger.info("ORB %d-min BREAKOUT LONG at %.2f (range_high=%.2f)", self.window_minutes, price, self.range_high)
+            logger.info("ORB %d-min BREAKOUT LONG at %.2f (range_high=%.2f buf=%.2f)", self.window_minutes, price, self.range_high, buf)
             return "long"
-        if price < self.range_low:
+        if price < self.range_low + buf:
             self.breakout_fired = True
-            logger.info("ORB %d-min BREAKOUT SHORT at %.2f (range_low=%.2f)", self.window_minutes, price, self.range_low)
+            logger.info("ORB %d-min BREAKOUT SHORT at %.2f (range_low=%.2f buf=%.2f)", self.window_minutes, price, self.range_low, buf)
             return "short"
 
         return None
@@ -188,9 +195,12 @@ class ORBStrategy:
 
         # Create one _ORBWindow per configured window size
         windows = spec.get("orb_windows", [5])
+        buf_pct = spec.get("orb_breakout_buffer_pct", 0.0)
         self.windows: list[_ORBWindow] = [
             _ORBWindow(w, open_time) for w in windows
         ]
+        for w in self.windows:
+            w.breakout_buffer_pct = buf_pct
 
         # Trade state
         self.trades_taken: int = 0
