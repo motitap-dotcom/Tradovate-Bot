@@ -419,6 +419,15 @@ class VWAPStrategy:
             self._prev_price = price
             return None
 
+        # Periodic VWAP state logging for diagnostics
+        if self._candle_count % 200 == 0:
+            side = "above" if price >= self.vwap else "below"
+            logger.info(
+                "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d cum_vol=%.0f",
+                self.symbol, self.vwap, self._prev_price, price, side,
+                self._candle_count, self._cum_vol,
+            )
+
         # Don't signal until we have enough data to compute a meaningful VWAP
         if self._candle_count < self.MIN_CANDLES_FOR_SIGNAL:
             self._prev_price = price
