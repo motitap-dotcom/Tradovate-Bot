@@ -799,10 +799,11 @@ class TradovateBot:
             sig_entry["executed"] = f"orderId={result.get('orderId')}"
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
         else:
-            sig_entry["blocked"] = "order_placement_failed"
+            sig_entry["blocked"] = f"order_failed(contract={contract_name}, acct={self.api.account_id})"
             logger.error(
-                "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
+                "Order placement FAILED for %s %s %d (contract=%s, account_id=%s) — signal discarded",
                 signal.direction.value, signal.symbol, signal.qty,
+                contract_name, self.api.account_id,
             )
 
     # ─────────────────────────────────────────
