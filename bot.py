@@ -648,15 +648,23 @@ class TradovateBot:
         if signal is None:
             return
 
+        logger.info(
+            "SIGNAL GENERATED: %s %s | SL=%.4f TP=%.4f | %s",
+            signal.direction.value, signal.symbol,
+            signal.stop_loss, signal.take_profit, signal.reason,
+        )
+
         # Check time constraints — only trade within the configured window
         start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
+            logger.info("Signal blocked: outside trading window (%s)", current.strftime("%H:%M"))
             return
 
         # Check if we can trade
         ok, reason = self.risk.can_trade()
         if not ok:
+            logger.warning("Signal blocked by risk manager: %s", reason)
             return
 
         self._execute_signal(signal)
