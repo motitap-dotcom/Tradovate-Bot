@@ -117,7 +117,7 @@ ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
 
 # Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 16
+MAX_DAILY_TRADES = 24  # raised: more windows + re-arms = more opportunities
 
 # ─────────────────────────────────────────────
 # Contract Specifications
@@ -133,8 +133,9 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
-        "orb_cooldown_minutes": 15,
+        "max_orb_trades": 3,  # raised from 2: re-arms create more opportunities
+        "orb_cooldown_minutes": 10,  # lowered from 15: faster re-entry
+        "orb_rearm_ticks": 5,  # re-arm breakout after 5 ticks back inside range
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
@@ -149,8 +150,9 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
-        "orb_cooldown_minutes": 15,
+        "max_orb_trades": 3,  # raised from 2
+        "orb_cooldown_minutes": 10,  # lowered from 15
+        "orb_rearm_ticks": 5,
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
@@ -168,8 +170,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
-        "vwap_cooldown_minutes": 30,
+        "max_vwap_trades_per_direction": 3,  # raised from 2
+        "vwap_cooldown_minutes": 20,  # lowered from 30
         "max_qty": 10,  # cap per trade (= 1 mini GC equivalent)
     },
     "MCL": {
@@ -184,8 +186,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
-        "vwap_cooldown_minutes": 30,
+        "max_vwap_trades_per_direction": 3,  # raised from 2
+        "vwap_cooldown_minutes": 20,  # lowered from 30
         "max_qty": 10,  # cap per trade (= 1 mini CL equivalent)
     },
     # ─── Mini Contracts (disabled — too risky, use micros) ──
@@ -338,6 +340,14 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # Max risk per trade as % of daily loss budget
 # Lowered to 1.0% — tighter risk per trade, more trades allowed
 RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
+
+# ─────────────────────────────────────────────
+# Breakeven & Trailing Stop
+# ─────────────────────────────────────────────
+# After price moves this many R-multiples in our favor, move SL to breakeven
+BREAKEVEN_R_THRESHOLD = 1.0  # move SL to entry after +1R
+# After breakeven, trail SL this fraction of favorable movement
+TRAILING_STOP_STEP_R = 0.5  # move SL up every additional 0.5R
 
 # ─────────────────────────────────────────────
 # Logging

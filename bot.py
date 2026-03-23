@@ -629,6 +629,9 @@ class TradovateBot:
         self, symbol: str, price: float, high: float, low: float, volume: float = 0
     ):
         """Run price through the strategy and risk manager."""
+        # Manage open trade stops (breakeven + trailing) on every tick
+        self._manage_trade_stops(symbol, price)
+
         strategy = self.strategies.get(symbol)
         if strategy is None:
             return
@@ -759,7 +762,7 @@ class TradovateBot:
 
         if result:
             self._last_order_time = time.time()
-            self.risk.register_open(signal.qty)
+            self.risk.register_open(signal.qty, symbol=signal.symbol)
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
@@ -770,6 +773,8 @@ class TradovateBot:
                 stop_loss=signal.stop_loss,
                 take_profit=signal.take_profit,
             )
+            fill_price = result.get("fillPrice", 0) or (signal.entry_price or 0)
+            stop_distance = abs(fill_price - signal.stop_loss) if fill_price else signal.stop_loss
             self.trades_today.append(
                 {
                     "time": now_et().isoformat(),
@@ -780,7 +785,15 @@ class TradovateBot:
                     "target": signal.take_profit,
                     "reason": signal.reason,
                     "order_id": result.get("orderId"),
+                    "sl_order_id": result.get("slOrderId"),
+                    "tp_order_id": result.get("tpOrderId"),
+                    "fill_price": fill_price,
+                    "stop_distance": stop_distance,
                     "journal_id": trade_id,
+                    # Trailing stop state
+                    "breakeven_done": False,
+                    "current_sl": signal.stop_loss,
+                    "best_r": 0.0,  # highest R-multiple seen
                 }
             )
             sig_entry["executed"] = f"orderId={result.get('orderId')}"
@@ -791,6 +804,101 @@ class TradovateBot:
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
+
+    # ─────────────────────────────────────────
+    # Breakeven & Trailing Stop Management
+    # ─────────────────────────────────────────
+
+    def _manage_trade_stops(self, symbol: str, price: float):
+        """Check open trades for this symbol and move SL if needed.
+
+        Called on every price tick for the given symbol.
+        - After +1R: move SL to breakeven (entry price)
+        - After that: trail SL every additional 0.5R of favorable movement
+        """
+        if self.dry_run:
+            return
+
+        be_threshold = config.BREAKEVEN_R_THRESHOLD
+        trail_step = config.TRAILING_STOP_R_STEP
+
+        for trade in self.trades_today:
+            if trade.get("_closed"):
+                continue
+            if trade.get("symbol") != symbol:
+                continue
+
+            sl_order_id = trade.get("sl_order_id")
+            fill_price = trade.get("fill_price", 0)
+            stop_dist = trade.get("stop_distance", 0)
+
+            if not sl_order_id or not fill_price or stop_dist <= 0:
+                continue
+
+            # Calculate current R-multiple
+            direction = trade.get("direction")
+            if direction == "Buy":
+                current_r = (price - fill_price) / stop_dist
+            else:  # Sell
+                current_r = (fill_price - price) / stop_dist
+
+            # Track best R seen
+            if current_r > trade.get("best_r", 0):
+                trade["best_r"] = current_r
+
+            best_r = trade["best_r"]
+
+            # --- Breakeven ---
+            if not trade.get("breakeven_done") and best_r >= be_threshold:
+                # Move SL to entry price (breakeven)
+                new_sl = fill_price
+                result = self.api.modify_order(sl_order_id, new_sl)
+                if result:
+                    trade["breakeven_done"] = True
+                    trade["current_sl"] = new_sl
+                    logger.info(
+                        "BREAKEVEN: %s %s | SL moved to %.4f (entry) | R=%.2f",
+                        symbol, direction, new_sl, current_r,
+                    )
+                continue  # don't trail on the same tick we hit breakeven
+
+            # --- Trailing stop ---
+            if trade.get("breakeven_done") and best_r >= be_threshold + trail_step:
+                # Calculate where SL should be based on best_r
+                # Trail SL in discrete R-steps behind the peak
+                r_steps_above_be = int((best_r - be_threshold) / trail_step)
+                if r_steps_above_be <= 0:
+                    continue
+
+                # Move SL to (entry + r_steps * trail_step * stop_dist) for longs
+                trail_r = be_threshold + (r_steps_above_be - 1) * trail_step
+                if direction == "Buy":
+                    new_sl = fill_price + trail_r * stop_dist
+                else:
+                    new_sl = fill_price - trail_r * stop_dist
+
+                current_sl = trade.get("current_sl", 0)
+                # Only move SL in favorable direction
+                if direction == "Buy" and new_sl <= current_sl:
+                    continue
+                if direction == "Sell" and new_sl >= current_sl:
+                    continue
+
+                # Round to tick size
+                spec = config.CONTRACT_SPECS.get(symbol, {})
+                tick = spec.get("tick_size", 0.01)
+                if direction == "Buy":
+                    new_sl = round(new_sl / tick) * tick  # round to nearest tick
+                else:
+                    new_sl = round(new_sl / tick) * tick
+
+                result = self.api.modify_order(sl_order_id, new_sl)
+                if result:
+                    trade["current_sl"] = new_sl
+                    logger.info(
+                        "TRAILING: %s %s | SL moved to %.4f (+%.1fR) | best_r=%.2f current_r=%.2f",
+                        symbol, direction, new_sl, trail_r, best_r, current_r,
+                    )
 
     # ─────────────────────────────────────────
     # Main loop
@@ -821,12 +929,14 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                    # Record force-close exits in journal
+                    # Record force-close exits in journal + update risk manager
                     for t in self.trades_today:
                         if t.get("journal_id"):
                             self.journal.record_exit_by_symbol(
                                 t["symbol"], 0, 0, exit_reason="force_close"
                             )
+                        qty = t.get("qty", 1)
+                        self.risk.register_close(qty, symbol=t.get("symbol", ""))
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -1020,7 +1130,7 @@ class TradovateBot:
                     self.journal.record_exit_by_symbol(
                         sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(trade_info.get("qty", 1))
+                    self.risk.register_close(trade_info.get("qty", 1), symbol=sym)
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
 
