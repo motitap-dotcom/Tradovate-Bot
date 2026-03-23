@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot — v2.3 (VWAP fix)
+Tradovate Trading Bot — v2.1.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -102,9 +102,6 @@ class TradovateBot:
         # Contract rollover: check every 10 minutes (not every 30s loop)
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
-
-        # Diagnostic: count quotes per symbol to verify data flow
-        self._quote_counts: dict[str, int] = {}
 
     # ─────────────────────────────────────────
     # Lifecycle
@@ -462,20 +459,17 @@ class TradovateBot:
                         strategy.update_vwap(h, l, c, v or 0)
                         strategy._prev_price = c
                     else:
-                        # ORB: feed ALL candles through feed() so breakouts
-                        # are correctly detected during warmup.  This marks
-                        # breakout_fired=True for windows where the breakout
-                        # already happened, and keeps windows open where it hasn't.
+                        # ORB: feed candles to build the opening range
                         for window in getattr(strategy, "windows", []):
-                            direction = window.feed(c, h, l, candle_time.time())
-                            if direction and not window._warmup_breakout_direction:
-                                # Record the breakout for potential late entry
-                                window._warmup_breakout_direction = direction
-                                window._warmup_breakout_price = c
-                                logger.info(
-                                    "  ORB %d-min warmup: breakout %s detected at %.2f",
-                                    window.window_minutes, direction, c,
-                                )
+                            if not window.range_set:
+                                window.feed(c, h, l, candle_time.time())
+                            else:
+                                # Range is set — just track _last_price so
+                                # feed() can detect fresh crosses on live ticks.
+                                # Do NOT mark breakout_fired here: the fresh-cross
+                                # guard in feed() already prevents stale breakouts
+                                # (it requires _last_price inside the range).
+                                window._last_price = c
 
                     fed += 1
 
@@ -497,12 +491,7 @@ class TradovateBot:
                             w.range_high - w.range_low,
                         )
                 if hasattr(strategy, "vwap") and strategy.vwap:
-                    prev = getattr(strategy, "_prev_price", None)
-                    side = "above" if prev and prev > strategy.vwap else "below" if prev and prev < strategy.vwap else "at"
-                    logger.info(
-                        "  VWAP: %.4f | prev_price=%.4f (%s VWAP) | cum_vol=%.0f",
-                        strategy.vwap, prev or 0, side, strategy._cum_vol,
-                    )
+                    logger.info("  VWAP: %.4f", strategy.vwap)
 
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
@@ -547,37 +536,15 @@ class TradovateBot:
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
-        # ── Diagnostic: log first 3 raw quotes per symbol so we can
-        #    verify the data structure matches our field extraction. ──
-        count = self._quote_counts.get(symbol, 0) + 1
-        self._quote_counts[symbol] = count
-        if count <= 3:
-            # Trim to avoid giant log lines — keep top-level keys only
-            preview = {k: v for k, v in data.items() if k != "quotes"}
-            logger.info("RAW QUOTE #%d %s: %s", count, symbol, preview)
-
         # Extract price from quote data
         # Tradovate quote structure includes bid/ask/last
         price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
-            # Try alternative field names (Tradovate may use entries/Entries)
-            entries = data.get("entries") or data.get("Entries") or {}
-            price = (
-                entries.get("Trade", {}).get("price")
-                or entries.get("Bid", {}).get("price")
-            )
-            if price is None:
-                if count <= 5:
-                    logger.warning("QUOTE %s: could not extract price from keys: %s", symbol, list(data.keys()))
-                return
+            return
 
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
-
-        # Log first price received and then every 100th quote
-        if count == 1 or count % 100 == 0:
-            logger.info("QUOTE %s #%d: price=%.4f high=%.4f low=%.4f vol=%s", symbol, count, price, high, low, volume)
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -589,6 +556,11 @@ class TradovateBot:
         if strategy is None:
             return
 
+        # Check if we can trade
+        ok, reason = self.risk.can_trade()
+        if not ok:
+            return
+
         # Check time constraints — only trade within the configured window
         current = now_et()
         start = parse_time_et(config.TRADING_START_ET)
@@ -596,30 +568,19 @@ class TradovateBot:
         if current < start or current >= cutoff:
             return
 
-        # Always feed price to strategy (keeps ORB ranges / VWAP updated)
-        # even when trading is locked or max contracts reached.
+        # Feed price to strategy
         signal = None
         if hasattr(strategy, "on_price"):
             if hasattr(strategy, "update_vwap"):
                 # VWAP strategy — pass current timestamp for cooldown tracking
                 strategy._current_time = current
-                # WebSocket quotes arrive as individual ticks with volume=0
-                # (bid/ask updates carry no trade size).  Use minimum volume
-                # of 1 so VWAP keeps updating and the staleness check doesn't
-                # permanently block signals.
-                vwap_vol = max(volume, 1)
-                signal = strategy.on_price(price, high, low, vwap_vol)
+                signal = strategy.on_price(price, high, low, volume)
             else:
                 # ORB strategy
                 signal = strategy.on_price(price, current, high, low)
 
-        # Only execute if risk manager allows trading
         if signal is not None:
-            ok, reason = self.risk.can_trade()
-            if ok:
-                self._execute_signal(signal)
-            else:
-                logger.debug("Signal for %s suppressed: %s", symbol, reason)
+            self._execute_signal(signal)
 
     # ─────────────────────────────────────────
     # Order execution
@@ -1015,11 +976,6 @@ class TradovateBot:
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
                 ),
-                "quote_counts": dict(self._quote_counts),
-                "recent_signals": [
-                    {"time": t["time"], "symbol": t["symbol"], "direction": t["direction"], "reason": t["reason"]}
-                    for t in self.trades_today[-5:]
-                ],
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
