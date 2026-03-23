@@ -217,10 +217,14 @@ class TradovateBot:
             logger.warning("No contracts resolved — skipping order validation")
             return
 
-        test_symbol = next(iter(self.contract_map.values()))
-        logger.info("Validating order permissions with %s...", test_symbol)
+        first_sym = next(iter(self.contract_map))
+        test_symbol = self.contract_map[first_sym]
+        test_contract_id = self.contract_id_map.get(first_sym)
+        logger.info(
+            "Validating order permissions with %s (id=%s)...", test_symbol, test_contract_id
+        )
 
-        # Use a limit buy at $0.01 — will never fill, just tests the API path
+        # Use a limit buy at $0.25 — will never fill, just tests the API path
         payload = {
             "accountSpec": self.api.account_spec,
             "accountId": self.api.account_id,
@@ -232,6 +236,8 @@ class TradovateBot:
             "timeInForce": "Day",
             "isAutomated": True,
         }
+        if test_contract_id is not None:
+            payload["contractId"] = test_contract_id
         try:
             result = self.api._post("/order/placeorder", payload)
             if result and "orderId" in result:
@@ -818,7 +824,8 @@ class TradovateBot:
             )
             return
 
-        # Place bracket order via API
+        # Place bracket order via API (use contractId when available for reliability)
+        contract_id = self.contract_id_map.get(signal.symbol)
         result = self.api.place_bracket_order(
             symbol=contract_name,
             action=signal.direction.value,
@@ -827,6 +834,7 @@ class TradovateBot:
             stop_price=signal.stop_loss,
             take_profit_price=signal.take_profit,
             order_type="Market",
+            contract_id=contract_id,
         )
 
         if result:

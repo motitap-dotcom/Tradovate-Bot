@@ -737,6 +737,7 @@ class TradovateAPI:
         stop_price: float,
         take_profit_price: float,
         order_type: str = "Market",
+        contract_id: Optional[int] = None,
     ) -> Optional[dict]:
         """
         Place a bracket order: market/limit entry + OCO stop-loss & take-profit.
@@ -760,6 +761,9 @@ class TradovateAPI:
             "timeInForce": "Day",
             "isAutomated": True,
         }
+        # Use contractId for more reliable order routing (some prop firms prefer it)
+        if contract_id is not None:
+            entry_payload["contractId"] = contract_id
         if order_type == "Limit" and entry_price is not None:
             entry_payload["price"] = entry_price
 
@@ -850,6 +854,8 @@ class TradovateAPI:
                 "timeInForce": "GTC",
             },
         }
+        if contract_id is not None:
+            oco_payload["contractId"] = contract_id
 
         oco_result = self._post("/order/placeOCO", oco_payload)
         if not oco_result or "orderId" not in oco_result:
