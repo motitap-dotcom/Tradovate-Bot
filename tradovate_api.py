@@ -781,6 +781,10 @@ class TradovateAPI:
             entry_result = self._post("/order/placeorder", entry_payload)
             if not entry_result or "orderId" not in entry_result:
                 logger.error("Entry order retry also failed: %s", entry_result)
+                self._last_order_error = (
+                    f"entry_failed: resp={entry_result} "
+                    f"acctSpec={self.account_spec} acctId={self.account_id} sym={symbol}"
+                )
                 return None
             logger.info("Entry order succeeded on retry")
 
@@ -991,9 +995,9 @@ class TradovateAPI:
                 if self._re_authenticate():
                     return self._post(endpoint, payload, _retried=True)
             if resp.status_code != 200:
-                logger.error(
-                    "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
-                )
+                err_msg = f"HTTP {resp.status_code}: {resp.text[:500]}"
+                logger.error("POST %s %s", endpoint, err_msg)
+                self._last_order_error = err_msg
             resp.raise_for_status()
             try:
                 result = resp.json()
@@ -1003,6 +1007,7 @@ class TradovateAPI:
             logger.debug("POST %s -> %s", endpoint, result)
             return result
         except requests.RequestException as e:
+            self._last_order_error = f"exception: {e}"
             logger.error("POST %s failed: %s", endpoint, e)
             return None
 
