@@ -562,17 +562,36 @@ class TradovateBot:
                 #    fresh-cross guard blocks breakouts
                 # 2. breakout_fired may be True from warmup feed() which both
                 #    builds range AND detects breakout on the same call
+                spec = config.CONTRACT_SPECS.get(symbol, {})
+                max_range = spec.get("stop_loss_points", 25) * 2
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
-                        was_fired = w.breakout_fired
-                        w._last_price = None  # First real-time tick will set this
-                        w.breakout_fired = False  # Re-arm for real-time detection
-                        logger.info(
-                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) — armed for breakout%s",
-                            w.window_minutes, w.range_low, w.range_high,
-                            w.range_high - w.range_low,
-                            " (was fired during warmup, re-armed)" if was_fired else "",
-                        )
+                        range_size = w.range_high - w.range_low
+                        if range_size > max_range:
+                            # Range too wide for current conditions — reset so
+                            # late-start builder creates a tight range from live data
+                            logger.warning(
+                                "  ORB %d-min range %.2f-%.2f (size=%.2f) TOO WIDE (max=%.2f). "
+                                "Resetting for late-start rebuild from live ticks.",
+                                w.window_minutes, w.range_low, w.range_high,
+                                range_size, max_range,
+                            )
+                            w.range_set = False
+                            w.range_high = None
+                            w.range_low = None
+                            w.prices = []
+                            w._last_price = None
+                            w.breakout_fired = False
+                        else:
+                            was_fired = w.breakout_fired
+                            w._last_price = None
+                            w.breakout_fired = False
+                            logger.info(
+                                "  ORB %d-min range: %.2f - %.2f (size=%.2f) — armed for breakout%s",
+                                w.window_minutes, w.range_low, w.range_high,
+                                range_size,
+                                " (was fired during warmup, re-armed)" if was_fired else "",
+                            )
                 if hasattr(strategy, "vwap") and strategy.vwap:
                     # Save last warmup price BEFORE resetting, for diagnostics
                     last_warmup_price = strategy._prev_price
