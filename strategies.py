@@ -127,15 +127,27 @@ class _ORBWindow:
         prev = self._last_price
         self._last_price = price
 
+        # Log first tick after warmup reset (prev=None) for diagnostics
+        if prev is None:
+            above = price > self.range_high
+            below = price < self.range_low
+            logger.info(
+                "ORB %d-min FIRST TICK: price=%.2f range=[%.2f-%.2f] %s",
+                self.window_minutes, price, self.range_low, self.range_high,
+                "→ LONG breakout!" if above else ("→ SHORT breakout!" if below else "→ inside range"),
+            )
+
         if prev is not None and not (self.range_low <= prev <= self.range_high):
             # Previous price was outside the range — not a fresh cross
             return None
 
         if price > self.range_high:
             self.breakout_fired = True
+            logger.info("ORB %d-min BREAKOUT LONG at %.2f (range_high=%.2f)", self.window_minutes, price, self.range_high)
             return "long"
         if price < self.range_low:
             self.breakout_fired = True
+            logger.info("ORB %d-min BREAKOUT SHORT at %.2f (range_low=%.2f)", self.window_minutes, price, self.range_low)
             return "short"
 
         return None
