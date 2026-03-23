@@ -1222,15 +1222,23 @@ class MarketDataStream:
 
             # Subscription response — auto-learn contractId mapping
             req_id = item.get("i")
-            if req_id and req_id in self._pending_subscriptions and item.get("s") == 200:
+            if req_id and req_id in self._pending_subscriptions:
                 sym = self._pending_subscriptions.pop(req_id)
-                # Extract contractId from response body if available
-                body = item.get("d", {})
-                if isinstance(body, dict):
-                    cid = body.get("contractId")
-                    if cid is not None and cid not in self._contract_id_to_symbol:
-                        self._contract_id_to_symbol[cid] = sym
-                        logger.info("Auto-mapped contractId %s -> %s from subscription response", cid, sym)
+                status = item.get("s")
+                if status == 200:
+                    logger.info("Subscription confirmed for %s (status=200)", sym)
+                    # Extract contractId from response body if available
+                    body = item.get("d", {})
+                    if isinstance(body, dict):
+                        cid = body.get("contractId")
+                        if cid is not None and cid not in self._contract_id_to_symbol:
+                            self._contract_id_to_symbol[cid] = sym
+                            logger.info("Auto-mapped contractId %s -> %s from subscription response", cid, sym)
+                else:
+                    logger.error(
+                        "Subscription FAILED for %s (status=%s): %s",
+                        sym, status, item,
+                    )
                 continue
 
             # Quote data — dispatched by symbol from the "d" field

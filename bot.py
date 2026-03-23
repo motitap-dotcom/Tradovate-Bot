@@ -151,6 +151,8 @@ class TradovateBot:
             self.md_stream = self._start_market_data()
             if self.md_stream:
                 self._subscribe_market_data()
+                # Verify quotes actually flow within 90 seconds
+                self._verify_market_data()
 
         # Main loop
         self.running = True
@@ -521,6 +523,41 @@ class TradovateBot:
         poller.start()
         logger.info("Market data via REST polling (Yahoo Finance)")
         return poller
+
+    def _verify_market_data(self):
+        """Verify quotes are actually flowing after subscription.
+
+        WebSocket may connect and auth successfully but still not deliver quotes
+        (observed after systemd restart). If no quotes arrive within 90 seconds,
+        force switch to REST polling which uses Yahoo Finance (proven reliable).
+        """
+        if isinstance(self.md_stream, RestMarketDataPoller):
+            return  # REST poller doesn't need verification
+
+        logger.info("Verifying market data flow (waiting up to 90s for first quote)...")
+        for i in range(18):  # 18 × 5s = 90s
+            time.sleep(5)
+            quotes = getattr(self.md_stream, "_quotes_received", 0)
+            if quotes > 0:
+                logger.info("Market data verified: %d quotes received in %ds", quotes, (i + 1) * 5)
+                return
+
+        # No quotes after 90 seconds — WebSocket is broken, force REST fallback
+        logger.warning(
+            "WebSocket delivered 0 quotes in 90s despite successful auth+subscribe. "
+            "Forcing switch to REST polling (Yahoo Finance)."
+        )
+        try:
+            self.md_stream.stop()
+        except Exception:
+            pass
+
+        poller = RestMarketDataPoller()
+        poller._last_ts.update(self._warmup_last_ts)
+        poller.start()
+        self.md_stream = poller
+        self._subscribe_market_data()
+        logger.info("Switched to REST polling (Yahoo Finance) as fallback")
 
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
