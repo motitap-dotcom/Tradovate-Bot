@@ -486,7 +486,10 @@ class TradovateBot:
                 )
                 resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
                 if resp.status_code != 200:
-                    logger.warning("Warmup: Yahoo returned %d for %s", resp.status_code, yahoo_sym)
+                    logger.warning(
+                        "Warmup: Yahoo returned %d for %s — ORB will use late-start from live data",
+                        resp.status_code, yahoo_sym,
+                    )
                     continue
 
                 data = resp.json()
@@ -536,10 +539,16 @@ class TradovateBot:
                 if timestamps:
                     self._warmup_last_ts[contract_name] = timestamps[-1]
 
-                logger.info(
-                    "Warmed up %s with %d candles | strategy=%s",
-                    symbol, fed, type(strategy).__name__,
-                )
+                if fed > 0:
+                    logger.info(
+                        "Warmed up %s with %d candles | strategy=%s",
+                        symbol, fed, type(strategy).__name__,
+                    )
+                else:
+                    logger.warning(
+                        "Warmup: 0 candles for %s (%s) — ORB will use late-start from live data",
+                        symbol, yahoo_sym,
+                    )
 
                 # After warmup, reset ORB state so breakout detection can fire
                 # on real-time ticks. Without this:
@@ -573,7 +582,10 @@ class TradovateBot:
                     )
 
             except Exception as e:
-                logger.warning("Warmup failed for %s: %s", symbol, e)
+                logger.warning(
+                    "Warmup failed for %s: %s — ORB will use late-start from live data",
+                    symbol, e,
+                )
 
     # ─────────────────────────────────────────
     # Market data
