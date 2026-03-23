@@ -373,7 +373,9 @@ class VWAPStrategy:
     def update_vwap(self, high: float, low: float, close: float, volume: float):
         """Update the running VWAP with a new bar."""
         if volume <= 0:
-            self._vwap_stale_bars = getattr(self, "_vwap_stale_bars", 0) + 1
+            # Zero-volume ticks are normal for WebSocket bid/ask updates.
+            # Don't treat them as stale — only count consecutive zero-volume
+            # candles (periods), not individual ticks.
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
@@ -427,12 +429,23 @@ class VWAPStrategy:
         self.update_vwap(high, low, price, volume)
         self._candle_count = getattr(self, "_candle_count", 0) + 1
 
-        if self.vwap is None or self._prev_price is None:
+        if self.vwap is None:
+            self._prev_price = price
+            return None
+
+        # First tick after warmup: set prev_price and allow next tick to detect crossover.
+        if self._prev_price is None:
+            side = "above" if price >= self.vwap else "below"
+            dist = abs(price - self.vwap)
+            logger.info(
+                "VWAP %s FIRST TICK: price=%.4f vwap=%.4f (%s, dist=%.4f)",
+                self.symbol, price, self.vwap, side, dist,
+            )
             self._prev_price = price
             return None
 
         # Periodic VWAP state logging for diagnostics
-        if self._candle_count % 200 == 0:
+        if self._candle_count <= 5 or self._candle_count % 200 == 0:
             side = "above" if price >= self.vwap else "below"
             logger.info(
                 "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d cum_vol=%.0f",
@@ -445,11 +458,8 @@ class VWAPStrategy:
             self._prev_price = price
             return None
 
-        # Don't signal if VWAP is stale (too many zero-volume bars)
-        stale_bars = getattr(self, "_vwap_stale_bars", 0)
-        if stale_bars >= 3:
-            self._prev_price = price
-            return None
+        # Note: stale bar detection removed — zero-volume ticks are normal
+        # for WebSocket bid/ask updates and don't indicate stale data.
 
         # Cross-direction cooldown: prevent whipsaw (e.g. SHORT then LONG in seconds)
         if self.last_any_trade_time and self._current_time:
