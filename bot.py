@@ -653,6 +653,17 @@ class TradovateBot:
             signal.direction.value, signal.symbol,
             signal.stop_loss, signal.take_profit, signal.reason,
         )
+        # Persist signal to live_status for monitoring
+        if not hasattr(self, "_signals_log"):
+            self._signals_log = []
+        self._signals_log.append({
+            "time": current.isoformat(),
+            "symbol": signal.symbol,
+            "direction": signal.direction.value,
+            "reason": signal.reason,
+            "sl": signal.stop_loss,
+            "tp": signal.take_profit,
+        })
 
         # Check time constraints — only trade within the configured window
         start = parse_time_et(config.TRADING_START_ET)
@@ -1083,6 +1094,8 @@ class TradovateBot:
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
                 ),
+                "signals_today": getattr(self, "_signals_log", [])[-20:],
+                "trades_log": self.trades_today[-20:],
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
