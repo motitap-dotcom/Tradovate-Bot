@@ -146,6 +146,10 @@ class TradovateBot:
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
 
+        # Validate order placement permissions before entering main loop
+        if not self.dry_run:
+            self._validate_order_permissions()
+
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
             self.md_stream = self._start_market_data()
@@ -201,6 +205,59 @@ class TradovateBot:
                           config.ACTIVE_CHALLENGE["account_size"])
         except Exception as e:
             logger.error("Failed to fetch initial balance: %s", e)
+
+    def _validate_order_permissions(self):
+        """Validate that the account can place orders by doing a dry API check.
+
+        Places a far-out-of-money limit order and immediately cancels it.
+        This catches auth/permission issues early instead of during live trading.
+        """
+        # Pick the first resolved contract for validation
+        if not self.contract_map:
+            logger.warning("No contracts resolved — skipping order validation")
+            return
+
+        test_symbol = next(iter(self.contract_map.values()))
+        logger.info("Validating order permissions with %s...", test_symbol)
+
+        # Use a limit buy at $0.01 — will never fill, just tests the API path
+        payload = {
+            "accountSpec": self.api.account_spec,
+            "accountId": self.api.account_id,
+            "action": "Buy",
+            "symbol": test_symbol,
+            "orderQty": 1,
+            "orderType": "Limit",
+            "price": 0.25,  # trivially low — will not fill
+            "timeInForce": "Day",
+            "isAutomated": True,
+        }
+        try:
+            result = self.api._post("/order/placeorder", payload)
+            if result and "orderId" in result:
+                order_id = result["orderId"]
+                status = result.get("ordStatus", "?")
+                logger.info(
+                    "Order validation OK: orderId=%s status=%s — cancelling test order",
+                    order_id, status,
+                )
+                # Cancel immediately
+                self.api._post("/order/cancelorder", {"orderId": order_id})
+            elif result and result.get("ordStatus") == "Rejected":
+                reject = result.get("rejectReason", result.get("text", "unknown"))
+                logger.warning(
+                    "Order validation: test order REJECTED (%s). "
+                    "This may indicate account restrictions — live orders might fail!",
+                    reject,
+                )
+            else:
+                logger.warning(
+                    "Order validation: unexpected response: %s. "
+                    "Live orders may fail — check account permissions.",
+                    result,
+                )
+        except Exception as e:
+            logger.warning("Order validation failed with exception: %s", e)
 
     # ─────────────────────────────────────────
     # Contract resolution
