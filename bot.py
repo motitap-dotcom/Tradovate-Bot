@@ -503,12 +503,17 @@ class TradovateBot:
                             w.range_high - w.range_low,
                         )
                 if hasattr(strategy, "vwap") and strategy.vwap:
+                    # Save last warmup price BEFORE resetting, for diagnostics
+                    last_warmup_price = strategy._prev_price
+                    side = "above" if (last_warmup_price or 0) >= strategy.vwap else "below"
                     # Reset _prev_price to None so first real-time tick sets it,
                     # allowing crossover detection on the second tick.
                     strategy._prev_price = None
                     strategy._candle_count = max(strategy._candle_count, strategy.MIN_CANDLES_FOR_SIGNAL)
-                    side = "above" if (strategy._prev_price or 0) >= strategy.vwap else "below"
-                    logger.info("  VWAP: %.4f — armed for crossover", strategy.vwap)
+                    logger.info(
+                        "  VWAP: %.4f — armed for crossover (last warmup price=%.4f, %s)",
+                        strategy.vwap, last_warmup_price or 0, side,
+                    )
 
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
@@ -618,31 +623,33 @@ class TradovateBot:
         if strategy is None:
             return
 
-        # Check if we can trade
-        ok, reason = self.risk.can_trade()
-        if not ok:
+        current = now_et()
+
+        # Always feed price to strategy so it tracks state (crossovers, ranges).
+        # Trading gates only prevent order execution, not strategy updates.
+        signal = None
+        if hasattr(strategy, "on_price"):
+            if hasattr(strategy, "update_vwap"):
+                strategy._current_time = current
+                signal = strategy.on_price(price, high, low, volume)
+            else:
+                signal = strategy.on_price(price, current, high, low)
+
+        if signal is None:
             return
 
         # Check time constraints — only trade within the configured window
-        current = now_et()
         start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
             return
 
-        # Feed price to strategy
-        signal = None
-        if hasattr(strategy, "on_price"):
-            if hasattr(strategy, "update_vwap"):
-                # VWAP strategy — pass current timestamp for cooldown tracking
-                strategy._current_time = current
-                signal = strategy.on_price(price, high, low, volume)
-            else:
-                # ORB strategy
-                signal = strategy.on_price(price, current, high, low)
+        # Check if we can trade
+        ok, reason = self.risk.can_trade()
+        if not ok:
+            return
 
-        if signal is not None:
-            self._execute_signal(signal)
+        self._execute_signal(signal)
 
     # ─────────────────────────────────────────
     # Order execution
