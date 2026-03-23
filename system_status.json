@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-23T22:01:01Z",
+  "timestamp": "2026-03-23T23:01:03Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -20,12 +20,12 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "524604",
-    "uptime_since": "Mon 2026-03-23 21:05:27 UTC",
+    "bot_pid": "539303",
+    "uptime_since": "Mon 2026-03-23 22:05:35 UTC",
     "disk": "17%",
-    "memory": "924MB/7941MB (12%)",
+    "memory": "959MB/7941MB (12%)",
     "hostname": "vmi3096165",
-    "git_commit": "e4fca20 status: 2026-03-23 21:04 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "1d9d908 status: 2026-03-23 22:01 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
       "timestamp": "2026-03-23T20:58:56.097381+00:00",
       "timestamp_et": "2026-03-23T16:58:56.097401-04:00",
@@ -113,9 +113,9 @@
         }
       ]
     },
-    "journal_tail": "2026-03-23 21:05:29,878 [INFO] bot: Mapped contractId 3643469 -> MCLK6 for quote routing\n2026-03-23 21:05:29,878 [INFO] bot: Verifying market data flow (waiting up to 90s for first quote)...\n2026-03-23 21:05:29,992 [INFO] tradovate_api: Subscription confirmed for MNQM6 (status=200)\n2026-03-23 21:05:29,992 [INFO] tradovate_api: Subscription confirmed for MESM6 (status=200)\n2026-03-23 21:05:29,992 [INFO] tradovate_api: RAW MD #1 keys=['quotes'] data={\"quotes\": [{\"id\": 4327110, \"timestamp\": \"2026-03-23T21:00:00.177Z\", \"contractId\": 4327110, \"entries\": {\"Bid\": {\"price\": 24391.0, \"size\": 1}, \"Offer\": {\"price\": 24403.25, \"size\": 1}, \"Trade\": {\"price\": 24400.25, \"size\": 1}, \"OpeningPrice\": {\"price\": 23914.0}, \"SettlementPrice\": {\"price\": 24408.25}, \"TotalTradeVolume\": {\"size\": 2361541}, \"OpenInterest\": {\"size\": 85916}, \"HighPrice\": {\"price\": 24763.5}, \"LowPrice\": {\"price\": 23772.75}}}, {\"id\": 4327108, \"timestamp\": \"2026-03-23T21:00:00.137Z\", \"co\n2026-03-23 21:05:29,993 [INFO] bot: QUOTE MNQ #1: price=24400.2500 high=24763.5000 low=23772.7500 vol=1\n2026-03-23 21:05:29,993 [INFO] strategies: ORB 5-min: no warmup data \u2014 building range from live ticks\n2026-03-23 21:05:29,993 [INFO] strategies: ORB 15-min: no warmup data \u2014 building range from live ticks\n2026-03-23 21:05:29,993 [INFO] bot: QUOTE MES #1: price=6633.0000 high=6748.0000 low=6482.7500 vol=2\n2026-03-23 21:05:29,993 [INFO] strategies: ORB 5-min: no warmup data \u2014 building range from live ticks\n2026-03-23 21:05:29,993 [INFO] strategies: ORB 15-min: no warmup data \u2014 building range from live ticks\n2026-03-23 21:05:29,993 [INFO] tradovate_api: Subscription confirmed for MGCJ6 (status=200)\n2026-03-23 21:05:29,993 [INFO] tradovate_api: Subscription confirmed for MCLK6 (status=200)\n2026-03-23 21:05:29,993 [INFO] tradovate_api: RAW MD #2 keys=['quotes'] data={\"quotes\": [{\"id\": 3924410, \"timestamp\": \"2026-03-23T21:00:00.289Z\", \"contractId\": 3924410, \"entries\": {\"Bid\": {\"price\": 4407.2, \"size\": 1}, \"Offer\": {\"price\": 4417.3, \"si",
-    "bot_log_tail": "2026-03-23 21:05:35,668 [INFO] bot:   balance: 56979.0\n2026-03-23 21:05:35,668 [INFO] bot:   equity: 56979.0\n2026-03-23 21:05:35,668 [INFO] bot:   day_pnl: 0.0\n2026-03-23 21:05:35,668 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-23 21:05:35,668 [INFO] bot:   peak_balance: 56979.0\n2026-03-23 21:05:35,668 [INFO] bot:   drawdown_floor: 54479.0\n2026-03-23 21:05:35,668 [INFO] bot:   distance_to_floor: 2500.0\n2026-03-23 21:05:35,668 [INFO] bot:   daily_loss_limit: 1000\n2026-03-23 21:05:35,668 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-03-23 21:05:35,668 [INFO] bot:   daily_profit_cap: 2400\n2026-03-23 21:05:35,668 [INFO] bot:   daily_profit_remaining: 2400.0\n2026-03-23 21:05:35,668 [INFO] bot:   open_contracts: 0\n2026-03-23 21:05:35,668 [INFO] bot:   max_contracts: 36\n2026-03-23 21:05:35,668 [INFO] bot:   trades_today: 0\n2026-03-23 21:05:35,668 [INFO] bot:   max_daily_trades: 24\n2026-03-23 21:05:35,668 [INFO] bot:   locked: False\n2026-03-23 21:05:35,668 [INFO] bot:   lock_reason: \n2026-03-23 21:05:35,668 [INFO] bot:   balance_initialized: True\n2026-03-23 21:05:35,668 [INFO] bot: Bot stopped.\n2026-03-23 21:05:35,668 [INFO] bot: Session ended. Next trading session: 2026-03-24 09:25 ET (sleeping 979 minutes)",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 6\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 3667s)\n  Balance: $56979.0\n  Day P&L: $-50.099999999998545\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 17% | Memory: 12.1%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Mar 23 22:00:04 UTC 2026] Status: bot_active=true, pid=524604\n[Mon Mar 23 22:00:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-23 22:05:39,137 [INFO] bot: QUOTE MNQ #3: price=24385.0000 high=24418.5000 low=24384.0000 vol=2\n2026-03-23 22:05:39,137 [INFO] tradovate_api: RAW MD #5 keys=['quotes'] data={\"quotes\": [{\"id\": 4327108, \"timestamp\": \"2026-03-23T22:05:39.039Z\", \"contractId\": 4327108, \"entries\": {\"Bid\": {\"price\": 6625.75, \"size\": 4}, \"Offer\": {\"price\": 6626.0, \"size\": 7}, \"Trade\": {\"price\": 6626.0, \"size\": 1}, \"OpeningPrice\": {\"price\": 6633.25}, \"SettlementPrice\": {\"price\": 6634.75}, \"TotalTradeVolume\": {\"size\": 3301}, \"OpenInterest\": {\"size\": 158317}, \"HighPrice\": {\"price\": 6635.0}, \"LowPrice\": {\"price\": 6626.0}}}, {\"id\": 4327110, \"timestamp\": \"2026-03-23T22:05:39.033Z\", \"contractId\":\n2026-03-23 22:05:39,229 [INFO] bot: QUOTE MGC #3: price=4377.9000 high=4424.8000 low=4375.2000 vol=1\n2026-03-23 22:05:40,267 [INFO] bot: QUOTE MCL #2: price=89.3500 high=89.5300 low=88.4100 vol=1\n2026-03-23 22:05:40,443 [INFO] bot: QUOTE MCL #3: price=89.3400 high=89.5300 low=88.4100 vol=1\n2026-03-23 22:05:41,923 [INFO] strategies: ORB 5-min LATE-START range from 60 live ticks\n2026-03-23 22:05:41,923 [INFO] strategies: ORB 5-min range: high=24385.75 low=24383.75 size=2.00\n2026-03-23 22:05:41,923 [INFO] strategies: ORB 15-min LATE-START range from 60 live ticks\n2026-03-23 22:05:41,923 [INFO] strategies: ORB 15-min range: high=24385.75 low=24383.75 size=2.00\n2026-03-23 22:05:43,475 [INFO] strategies: ORB 5-min BREAKOUT SHORT at 24383.50 (range_low=24383.75 buf=0.00)\n2026-03-23 22:05:43,475 [INFO] strategies: ORB MNQ SHORT at 24383.50 | window=5m | trade 1/3 | SL=24385.75 TP=24379.00\n2026-03-23 22:05:43,475 [INFO] bot: SIGNAL GENERATED: Sell MNQ | SL=24385.7500 TP=24379.0000 | ORB-5m short breakout below 24383.75\n2026-03-23 22:05:43,475 [INFO] bot: Signal blocked: outside trading window (18:05)\n2026-03-23 22:05:43,755 [INFO] bot: QUOTE MNQ #100: price=24385.0000 high=24418.5000 low=24383.5000 vol=2\n2026-03-23 22:05:43,990 [INFO] bot: Market data verified: 245 quotes received in 5s\n2026-03-23 22:05:43",
+    "bot_log_tail": "2026-03-23 22:05:44,789 [INFO] bot:   balance: 56979.0\n2026-03-23 22:05:44,789 [INFO] bot:   equity: 56979.0\n2026-03-23 22:05:44,789 [INFO] bot:   day_pnl: 0.0\n2026-03-23 22:05:44,789 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-23 22:05:44,789 [INFO] bot:   peak_balance: 56979.0\n2026-03-23 22:05:44,789 [INFO] bot:   drawdown_floor: 54479.0\n2026-03-23 22:05:44,790 [INFO] bot:   distance_to_floor: 2500.0\n2026-03-23 22:05:44,790 [INFO] bot:   daily_loss_limit: 1000\n2026-03-23 22:05:44,790 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-03-23 22:05:44,790 [INFO] bot:   daily_profit_cap: 2400\n2026-03-23 22:05:44,790 [INFO] bot:   daily_profit_remaining: 2400.0\n2026-03-23 22:05:44,790 [INFO] bot:   open_contracts: 0\n2026-03-23 22:05:44,790 [INFO] bot:   max_contracts: 36\n2026-03-23 22:05:44,790 [INFO] bot:   trades_today: 0\n2026-03-23 22:05:44,790 [INFO] bot:   max_daily_trades: 24\n2026-03-23 22:05:44,790 [INFO] bot:   locked: False\n2026-03-23 22:05:44,790 [INFO] bot:   lock_reason: \n2026-03-23 22:05:44,790 [INFO] bot:   balance_initialized: True\n2026-03-23 22:05:44,790 [INFO] bot: Bot stopped.\n2026-03-23 22:05:44,790 [INFO] bot: Session ended. Next trading session: 2026-03-24 09:25 ET (sleeping 919 minutes)",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 7270s)\n  Balance: $56979.0\n  Day P&L: $-50.099999999998545\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL']\n  Disk: 17% | Memory: 12.4%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Mar 23 23:00:06 UTC 2026] Status: bot_active=true, pid=539303\n[Mon Mar 23 23:00:06 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -206,40 +206,40 @@
       ]
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-23T22:25:27.586000+00:00",
+    "token_expiry": "2026-03-23T23:25:36.369000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-23 21:05:34,879 [WARNING] bot: Force close time reached. Closing all positions.",
-      "2026-03-23 21:05:35,047 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-03-23 21:05:35,214 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
-      "2026-03-23 21:05:35,215 [INFO] bot: Shutting down bot...",
-      "2026-03-23 21:05:35,381 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-03-23 21:05:35,661 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-      "2026-03-23 21:05:35,664 [INFO] bot: ============================================================",
-      "2026-03-23 21:05:35,665 [INFO] bot: END OF DAY SUMMARY",
-      "2026-03-23 21:05:35,666 [INFO] bot: ============================================================",
-      "2026-03-23 21:05:35,667 [INFO] bot: Total trades: 0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   balance: 56979.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   equity: 56979.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   day_pnl: 0.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   unrealized_pnl: 0.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   peak_balance: 56979.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   drawdown_floor: 54479.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   distance_to_floor: 2500.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   daily_loss_limit: 1000",
-      "2026-03-23 21:05:35,668 [INFO] bot:   daily_loss_remaining: 1000.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   daily_profit_cap: 2400",
-      "2026-03-23 21:05:35,668 [INFO] bot:   daily_profit_remaining: 2400.0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   open_contracts: 0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   max_contracts: 36",
-      "2026-03-23 21:05:35,668 [INFO] bot:   trades_today: 0",
-      "2026-03-23 21:05:35,668 [INFO] bot:   max_daily_trades: 24",
-      "2026-03-23 21:05:35,668 [INFO] bot:   locked: False",
-      "2026-03-23 21:05:35,668 [INFO] bot:   lock_reason: ",
-      "2026-03-23 21:05:35,668 [INFO] bot:   balance_initialized: True",
-      "2026-03-23 21:05:35,668 [INFO] bot: Bot stopped.",
-      "2026-03-23 21:05:35,668 [INFO] bot: Session ended. Next trading session: 2026-03-24 09:25 ET (sleeping 979 minutes)"
+      "2026-03-23 22:05:44,057 [INFO] strategies: ORB 15-min range: high=6626.25 low=6625.50 size=0.75",
+      "2026-03-23 22:05:44,165 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-03-23 22:05:44,340 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
+      "2026-03-23 22:05:44,340 [INFO] bot: Shutting down bot...",
+      "2026-03-23 22:05:44,507 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-03-23 22:05:44,696 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+      "2026-03-23 22:05:44,789 [INFO] bot: ============================================================",
+      "2026-03-23 22:05:44,789 [INFO] bot: END OF DAY SUMMARY",
+      "2026-03-23 22:05:44,789 [INFO] bot: ============================================================",
+      "2026-03-23 22:05:44,789 [INFO] bot: Total trades: 0",
+      "2026-03-23 22:05:44,789 [INFO] bot:   balance: 56979.0",
+      "2026-03-23 22:05:44,789 [INFO] bot:   equity: 56979.0",
+      "2026-03-23 22:05:44,789 [INFO] bot:   day_pnl: 0.0",
+      "2026-03-23 22:05:44,789 [INFO] bot:   unrealized_pnl: 0.0",
+      "2026-03-23 22:05:44,789 [INFO] bot:   peak_balance: 56979.0",
+      "2026-03-23 22:05:44,789 [INFO] bot:   drawdown_floor: 54479.0",
+      "2026-03-23 22:05:44,790 [INFO] bot:   distance_to_floor: 2500.0",
+      "2026-03-23 22:05:44,790 [INFO] bot:   daily_loss_limit: 1000",
+      "2026-03-23 22:05:44,790 [INFO] bot:   daily_loss_remaining: 1000.0",
+      "2026-03-23 22:05:44,790 [INFO] bot:   daily_profit_cap: 2400",
+      "2026-03-23 22:05:44,790 [INFO] bot:   daily_profit_remaining: 2400.0",
+      "2026-03-23 22:05:44,790 [INFO] bot:   open_contracts: 0",
+      "2026-03-23 22:05:44,790 [INFO] bot:   max_contracts: 36",
+      "2026-03-23 22:05:44,790 [INFO] bot:   trades_today: 0",
+      "2026-03-23 22:05:44,790 [INFO] bot:   max_daily_trades: 24",
+      "2026-03-23 22:05:44,790 [INFO] bot:   locked: False",
+      "2026-03-23 22:05:44,790 [INFO] bot:   lock_reason: ",
+      "2026-03-23 22:05:44,790 [INFO] bot:   balance_initialized: True",
+      "2026-03-23 22:05:44,790 [INFO] bot: Bot stopped.",
+      "2026-03-23 22:05:44,790 [INFO] bot: Session ended. Next trading session: 2026-03-24 09:25 ET (sleeping 919 minutes)"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -249,83 +249,18 @@
       "total_pnl": 0,
       "trades_today": 0
     },
-    "trading_active": true,
+    "trading_active": false,
     "websocket_connected": true,
     "errors_in_log": [],
     "market_data_source": "websocket",
     "today_trades": [],
-    "today_fills": [
-      {
-        "id": 409583843677,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 1,
-        "price": 24378.0,
-        "timestamp": "2026-03-23T17:08:46.305Z"
-      },
-      {
-        "id": 409583843827,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 1,
-        "price": 24398.75,
-        "timestamp": "2026-03-23T20:09:15.784Z"
-      },
-      {
-        "id": 409583843839,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 1,
-        "price": 24398.75,
-        "timestamp": "2026-03-23T20:09:15.855Z"
-      },
-      {
-        "id": 409583843851,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 7,
-        "price": 24399.5,
-        "timestamp": "2026-03-23T20:09:15.994Z"
-      },
-      {
-        "id": 409583843815,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 9,
-        "price": 24397.5,
-        "timestamp": "2026-03-23T20:09:11.217Z"
-      },
-      {
-        "id": 409583843703,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 1,
-        "price": 24333.0,
-        "timestamp": "2026-03-23T17:16:31.993Z"
-      },
-      {
-        "id": 409583843663,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 1,
-        "price": 24351.5,
-        "timestamp": "2026-03-23T17:06:54.402Z"
-      },
-      {
-        "id": 409583843691,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 1,
-        "price": 24382.0,
-        "timestamp": "2026-03-23T17:13:39.225Z"
-      }
-    ]
+    "today_fills": []
   },
   "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 12861,
+    "ssh_output_len": 11783,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
