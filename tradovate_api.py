@@ -746,7 +746,8 @@ class TradovateAPI:
         blocks the placeOSO endpoint.
         """
         if self.account_id is None:
-            logger.error("Cannot place bracket order: account_id is None (auth may have failed)")
+            self._last_order_error = "account_id is None (auth failed)"
+            logger.error("Cannot place bracket order: %s", self._last_order_error)
             return None
         opposite_action = "Sell" if action == "Buy" else "Buy"
 
@@ -802,6 +803,7 @@ class TradovateAPI:
         # Check if order was rejected
         if entry_status == "Rejected":
             reject_reason = entry_result.get("rejectReason", entry_result.get("text", "unknown"))
+            self._last_order_error = f"REJECTED: {reject_reason} | full={entry_result}"
             logger.error("Entry order REJECTED: %s", reject_reason)
             return None
 
@@ -820,16 +822,18 @@ class TradovateAPI:
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
                 if detail_status == "Rejected":
+                    rej_reason = order_detail.get("rejectReason", "")
+                    rej_text = order_detail.get("text", "")
+                    self._last_order_error = f"REJECTED_ASYNC: {rej_reason} | {rej_text} | full={order_detail}"
                     logger.error(
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
-                        order_detail.get("rejectReason"),
-                        order_detail.get("text"),
-                        order_detail,
+                        rej_reason, rej_text, order_detail,
                     )
                     # Try commandReport for more details
                     try:
                         cmd_report = self._get(f"/commandReport/deps?masterid={entry_order_id}")
                         if cmd_report:
+                            self._last_order_error += f" | cmdReport={cmd_report}"
                             logger.error("CommandReport for rejected order: %s", cmd_report)
                     except Exception:
                         pass
@@ -869,6 +873,7 @@ class TradovateAPI:
             oco_result = self._post("/order/placeOCO", oco_payload)
 
         if not oco_result or "orderId" not in oco_result:
+            self._last_order_error = f"OCO_failed: resp={oco_result} | entry={entry_order_id}"
             logger.error("OCO retry also failed: %s", oco_result)
             # CRITICAL: Entry exists WITHOUT stop-loss protection.
             # Cancel the unprotected entry to avoid unlimited risk.
