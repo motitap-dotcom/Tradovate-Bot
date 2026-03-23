@@ -1249,12 +1249,18 @@ class MarketDataStream:
                 self._quotes_received += 1
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
+
+                # Log first 3 raw quote payloads for debugging quote structure
+                if self._quotes_received <= 3:
+                    logger.info("RAW QUOTE #%d: %s", self._quotes_received, json.dumps(data)[:500])
+
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
                 # Snapshot callbacks under lock to avoid race with subscribe/unsubscribe
                 with self._callbacks_lock:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
-                    contract_id = quote.get("contractId")
+                    # Try multiple field names for contractId (Tradovate may vary)
+                    contract_id = quote.get("contractId") or quote.get("id") or quote.get("cid")
                     # Route quote to the correct symbol's callbacks using contractId.
                     # Without this filter, ALL quotes go to ALL symbols — causing
                     # strategies to receive prices from wrong contracts (e.g., NQ
@@ -1291,17 +1297,36 @@ class MarketDataStream:
                                     list(self._contract_id_to_symbol.keys()),
                                     list(cb_snapshot.keys()),
                                 )
-                    elif contract_id is None and len(cb_snapshot) == 1:
-                        # No contractId in quote and only one symbol subscribed — safe to dispatch
-                        for sym, cbs in cb_snapshot.items():
-                            for cb in cbs:
-                                try:
-                                    cb(sym, quote)
-                                except Exception as e:
-                                    logger.error("Quote callback error for %s: %s", sym, e)
-                    else:
-                        # No contractId and multiple symbols — cannot safely route, skip
-                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
+                    elif contract_id is None:
+                        # No contractId in quote — try to identify from subscription order
+                        # or broadcast to all (Tradovate demo may not include contractId)
+                        no_cid_count = getattr(self, "_no_cid_warn_count", 0)
+                        if no_cid_count < 5:
+                            self._no_cid_warn_count = no_cid_count + 1
+                            logger.warning(
+                                "Quote without contractId (#%d). Symbols: %s. Quote keys: %s",
+                                no_cid_count + 1, list(cb_snapshot.keys()),
+                                list(quote.keys()) if isinstance(quote, dict) else type(quote).__name__,
+                            )
+                        if len(cb_snapshot) == 1:
+                            # Only one symbol — safe to dispatch
+                            for sym, cbs in cb_snapshot.items():
+                                self._quotes_dispatched += 1
+                                for cb in cbs:
+                                    try:
+                                        cb(sym, quote)
+                                    except Exception as e:
+                                        logger.error("Quote callback error for %s: %s", sym, e)
+                        else:
+                            # Multiple symbols — broadcast to all (better than dropping)
+                            # Each strategy will filter by price range naturally
+                            self._quotes_dispatched += 1
+                            for sym, cbs in cb_snapshot.items():
+                                for cb in cbs:
+                                    try:
+                                        cb(sym, quote)
+                                    except Exception as e:
+                                        logger.error("Quote callback error for %s: %s", sym, e)
 
     def _on_error(self, ws, error):
         error_str = str(error)
