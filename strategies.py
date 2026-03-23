@@ -119,9 +119,31 @@ class _ORBWindow:
                 self._last_price = price
                 return None
 
-            if elapsed >= self.window_minutes and self.prices:
-                self.range_high = max(self.prices)
-                self.range_low = min(self.prices)
+            if elapsed >= self.window_minutes:
+                if self.prices:
+                    # Normal path: build range from warmup data
+                    self.range_high = max(self.prices)
+                    self.range_low = min(self.prices)
+                else:
+                    # LATE START: warmup failed (Yahoo down?), build from live data
+                    if not hasattr(self, "_late_prices"):
+                        self._late_prices = []
+                        logger.info(
+                            "ORB %d-min: no warmup data — building range from live ticks",
+                            self.window_minutes,
+                        )
+                    self._late_prices.append(price)
+                    # Need at least 60 ticks (~1-2 min of data) to build range
+                    if len(self._late_prices) < 60:
+                        self._last_price = price
+                        return None
+                    self.range_high = max(self._late_prices)
+                    self.range_low = min(self._late_prices)
+                    logger.info(
+                        "ORB %d-min LATE-START range from %d live ticks",
+                        self.window_minutes, len(self._late_prices),
+                    )
+
                 range_size = self.range_high - self.range_low
                 # Validate range: must be positive and not absurdly wide
                 if range_size <= 0:
