@@ -12,7 +12,6 @@ stop-loss and take-profit prices, ready to be sent as a bracket order.
 """
 
 import logging
-import math
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from enum import Enum
@@ -63,9 +62,6 @@ class _ORBWindow:
         self.breakout_fired: bool = False
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
-        # Late-entry support: track breakout direction/price from warmup
-        self._warmup_breakout_direction: Optional[str] = None
-        self._warmup_breakout_price: Optional[float] = None
 
     def reset(self):
         self.range_high = None
@@ -74,8 +70,6 @@ class _ORBWindow:
         self.breakout_fired = False
         self.prices = []
         self._last_price = None
-        self._warmup_breakout_direction = None
-        self._warmup_breakout_price = None
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
@@ -134,12 +128,8 @@ class _ORBWindow:
         self._last_price = price
 
         if prev is not None and not (self.range_low <= prev <= self.range_high):
-            # Allow near-range prices (within 0.5% of range size) as "inside"
-            # This prevents missed signals when cooldown delays the check
-            range_size = self.range_high - self.range_low
-            tolerance = range_size * 0.005  # 0.5% of range
-            if not (self.range_low - tolerance <= prev <= self.range_high + tolerance):
-                return None
+            # Previous price was outside the range — not a fresh cross
+            return None
 
         if price > self.range_high:
             self.breakout_fired = True
@@ -222,35 +212,6 @@ class ORBStrategy:
         # Try each window (shorter windows fire earlier)
         for window in self.windows:
             direction = window.feed(price, high, low, current_time)
-
-            # Late-entry: if breakout was detected during warmup and this is
-            # the first live tick, check if price is still close to the breakout
-            # level (within 1× stop distance).  This allows the bot to enter
-            # after a restart without chasing runaway moves.
-            if direction is None and window._warmup_breakout_direction:
-                wb_dir = window._warmup_breakout_direction
-                wb_price = window._warmup_breakout_price
-                window._warmup_breakout_direction = None  # consume — try once only
-                window._warmup_breakout_price = None
-
-                max_chase = self.stop_points  # don't chase further than 1× stop
-                if wb_dir == "long" and price > window.range_high:
-                    chase_dist = price - wb_price
-                    if 0 <= chase_dist <= max_chase:
-                        direction = "long"
-                        logger.info(
-                            "ORB %s late-entry LONG: warmup breakout at %.2f, now %.2f (chase=%.2f <= %.2f)",
-                            self.symbol, wb_price, price, chase_dist, max_chase,
-                        )
-                elif wb_dir == "short" and price < window.range_low:
-                    chase_dist = wb_price - price
-                    if 0 <= chase_dist <= max_chase:
-                        direction = "short"
-                        logger.info(
-                            "ORB %s late-entry SHORT: warmup breakout at %.2f, now %.2f (chase=%.2f <= %.2f)",
-                            self.symbol, wb_price, price, chase_dist, max_chase,
-                        )
-
             if direction is None:
                 continue
 
@@ -346,20 +307,6 @@ class VWAPStrategy:
     a fresh move separated by at least vwap_cooldown_minutes.
     """
 
-    @staticmethod
-    def _round_to_tick(price: float, tick_size: float, direction: str = "nearest") -> float:
-        """Round a price to the nearest valid tick boundary.
-
-        For stop-losses, round in the protective direction (away from entry).
-        """
-        if tick_size <= 0:
-            return price
-        if direction == "up":
-            return math.ceil(price / tick_size) * tick_size
-        elif direction == "down":
-            return math.floor(price / tick_size) * tick_size
-        return round(price / tick_size) * tick_size
-
     def __init__(self, symbol: str):
         self.symbol = symbol
         spec = config.CONTRACT_SPECS.get(symbol)
@@ -369,7 +316,6 @@ class VWAPStrategy:
         self.tp_points: float = spec["take_profit_points"]
         self.rr_ratio: float = spec["risk_reward_ratio"]
         self.point_value: float = spec["point_value"]
-        self.tick_size: float = spec["tick_size"]
         self.confirmation_candles: int = spec.get("vwap_confirmation_candles", 1)
 
         # Multi-trade settings
@@ -411,20 +357,11 @@ class VWAPStrategy:
         self.last_any_trade_time = None
         self._candle_count = 0
         self._vwap_stale_bars = 0
-        self._last_vwap_update_time = None
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
-        """Update the running VWAP with a new bar/tick.
-
-        When called with volume=0 (e.g. WebSocket bid/ask ticks), the VWAP
-        value is unchanged but we do NOT count this as "stale" — the stale
-        counter is reserved for prolonged periods with zero trade volume
-        (tracked via time, not tick count).
-        """
+        """Update the running VWAP with a new bar."""
         if volume <= 0:
-            # Don't increment stale counter on every tick — tick-based
-            # feeds send many bid/ask updates with vol=0.  Staleness is
-            # checked via _last_vwap_update_time instead.
+            self._vwap_stale_bars = getattr(self, "_vwap_stale_bars", 0) + 1
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
@@ -444,7 +381,6 @@ class VWAPStrategy:
         if self._cum_vol > 0:
             self.vwap = self._cum_tp_vol / self._cum_vol
         self._vwap_stale_bars = 0  # Reset staleness counter
-        self._last_vwap_update_time = self._current_time  # Track freshness
 
     def _long_allowed(self) -> bool:
         """Check if a new long trade is allowed (count + cooldown)."""
@@ -483,20 +419,23 @@ class VWAPStrategy:
             self._prev_price = price
             return None
 
-        # Don't signal until we have enough data to compute a meaningful VWAP.
-        # Skip this check if VWAP was already initialized from warmup (cum_vol > 0)
-        # — the warmup data is sufficient, and skipping the first few ticks would
-        # consume the warmup→live crossover opportunity.
-        if self._cum_vol <= 0 and self._candle_count < self.MIN_CANDLES_FOR_SIGNAL:
+        # Periodic VWAP state logging for diagnostics
+        if self._candle_count % 200 == 0:
+            side = "above" if price >= self.vwap else "below"
+            logger.info(
+                "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d cum_vol=%.0f",
+                self.symbol, self.vwap, self._prev_price, price, side,
+                self._candle_count, self._cum_vol,
+            )
+
+        # Don't signal until we have enough data to compute a meaningful VWAP
+        if self._candle_count < self.MIN_CANDLES_FOR_SIGNAL:
             self._prev_price = price
             return None
 
-        # Don't signal if VWAP was never initialized (no volume data at all).
-        # Note: stale_bars check was removed — it incorrectly blocked signals
-        # on WebSocket tick feeds where bid/ask updates always have vol=0.
-        # The VWAP from warmup (historical candles) is valid for crossover
-        # detection even without live volume updates.
-        if self._cum_vol <= 0:
+        # Don't signal if VWAP is stale (too many zero-volume bars)
+        stale_bars = getattr(self, "_vwap_stale_bars", 0)
+        if stale_bars >= 3:
             self._prev_price = price
             return None
 
@@ -506,15 +445,6 @@ class VWAPStrategy:
             if gap < self.min_trade_gap_minutes:
                 self._prev_price = price
                 return None
-
-        # Diagnostic: log VWAP state periodically (every 200 ticks)
-        if self._candle_count % 200 == 0:
-            logger.info(
-                "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d cum_vol=%.0f",
-                self.symbol, self.vwap, self._prev_price, price,
-                "above" if price > self.vwap else "below" if price < self.vwap else "at",
-                self._candle_count, self._cum_vol,
-            )
 
         signal = None
 
@@ -527,8 +457,8 @@ class VWAPStrategy:
                 self._cross_above_count >= self.confirmation_candles
                 and self._long_allowed()
             ):
-                stop = self._round_to_tick(self.vwap - self.stop_points, self.tick_size, "down")
-                tp = self._round_to_tick(price + self.tp_points, self.tick_size, "up")
+                stop = self.vwap - self.stop_points
+                tp = price + self.tp_points
                 self.long_count += 1
                 self.last_long_time = self._current_time
                 self.last_any_trade_time = self._current_time
@@ -565,8 +495,8 @@ class VWAPStrategy:
                 self._cross_below_count >= self.confirmation_candles
                 and self._short_allowed()
             ):
-                stop = self._round_to_tick(self.vwap + self.stop_points, self.tick_size, "up")
-                tp = self._round_to_tick(price - self.tp_points, self.tick_size, "down")
+                stop = self.vwap + self.stop_points
+                tp = price - self.tp_points
                 self.short_count += 1
                 self.last_short_time = self._current_time
                 self.last_any_trade_time = self._current_time

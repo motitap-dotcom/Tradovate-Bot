@@ -546,6 +546,16 @@ class TradovateBot:
         low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
 
+        # Periodic quote logging: log every 100th quote per symbol for diagnostics
+        count_key = f"_quote_count_{symbol}"
+        count = getattr(self, count_key, 0) + 1
+        setattr(self, count_key, count)
+        if count <= 3 or count % 100 == 0:
+            logger.info(
+                "QUOTE %s #%d: price=%.4f high=%.4f low=%.4f vol=%s",
+                symbol, count, price, high, low, volume,
+            )
+
         self._process_price(symbol, price, high, low, volume)
 
     def _process_price(
@@ -772,12 +782,20 @@ class TradovateBot:
                     if is_stale or (fell_back and fell_back.is_set()):
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
                         logger.warning(
-                            "Market data stream unhealthy (%s). Restarting...", reason
+                            "Market data stream unhealthy (%s). Re-authenticating and restarting...", reason
                         )
                         try:
                             self.md_stream.stop()
                         except Exception:
                             pass
+                        # Force token refresh before restarting stream
+                        try:
+                            self.api.ensure_token_valid()
+                            if not self.api.md_access_token:
+                                logger.warning("No md_access_token after refresh, forcing full re-auth...")
+                                self.api._re_authenticate()
+                        except Exception as e:
+                            logger.warning("Token refresh failed during stream restart: %s", e)
                         self.md_stream = self._start_market_data()
                         if self.md_stream:
                             self._subscribe_market_data()
@@ -815,8 +833,18 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
+                # Market data diagnostics
+                md_info = ""
+                if self.md_stream:
+                    md_type = type(self.md_stream).__name__
+                    md_quotes = getattr(self.md_stream, "_quotes_received", "?")
+                    md_stale = getattr(self.md_stream, "data_stale", False)
+                    md_connected = getattr(self.md_stream, "_connected", None)
+                    ws_ok = md_connected.is_set() if md_connected else "?"
+                    md_info = f" | md={md_type} quotes={md_quotes} stale={md_stale} ws_ok={ws_ok}"
+
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -826,6 +854,7 @@ class TradovateBot:
                     status["max_daily_trades"],
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
+                    md_info,
                 )
 
                 # Write live status file for external monitoring
