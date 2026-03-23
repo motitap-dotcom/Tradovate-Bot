@@ -138,8 +138,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
-        "max_qty": 1,  # TEMP: 1 contract for trade verification test
-        "orb_breakout_buffer_pct": 0.30,  # TEMP: 30% proximity buffer for trade test
+        "max_qty": 10,  # cap per trade (= 1 mini NQ equivalent)
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -155,8 +154,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
-        "max_qty": 1,  # TEMP: 1 contract for trade verification test
-        "orb_breakout_buffer_pct": 0.30,  # TEMP: 30% proximity buffer for trade test
+        "max_qty": 10,  # cap per trade (= 1 mini ES equivalent)
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -172,7 +170,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 2,
         "vwap_cooldown_minutes": 30,
-        "max_qty": 1,  # TEMP: 1 contract for trade verification test
+        "max_qty": 10,  # cap per trade (= 1 mini GC equivalent)
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -188,7 +186,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 2,
         "vwap_cooldown_minutes": 30,
-        "max_qty": 1,  # TEMP: 1 contract for trade verification test
+        "max_qty": 10,  # cap per trade (= 1 mini CL equivalent)
     },
     # ─── Mini Contracts (disabled — too risky, use micros) ──
     "NQ": {
