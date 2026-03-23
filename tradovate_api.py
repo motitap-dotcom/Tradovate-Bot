@@ -771,8 +771,18 @@ class TradovateAPI:
 
         entry_result = self._post("/order/placeorder", entry_payload)
         if not entry_result or "orderId" not in entry_result:
-            logger.error("Entry order failed: %s", entry_result)
-            return None
+            logger.error(
+                "Entry order failed: response=%s | accountSpec=%s accountId=%s symbol=%s",
+                entry_result, self.account_spec, self.account_id, symbol,
+            )
+            # Retry once after brief delay (transient API failures)
+            time.sleep(2)
+            logger.info("Retrying entry order for %s...", symbol)
+            entry_result = self._post("/order/placeorder", entry_payload)
+            if not entry_result or "orderId" not in entry_result:
+                logger.error("Entry order retry also failed: %s", entry_result)
+                return None
+            logger.info("Entry order succeeded on retry")
 
         entry_order_id = entry_result["orderId"]
         entry_status = entry_result.get("ordStatus", "Unknown")
@@ -839,7 +849,17 @@ class TradovateAPI:
 
         oco_result = self._post("/order/placeOCO", oco_payload)
         if not oco_result or "orderId" not in oco_result:
-            logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
+            logger.error(
+                "OCO (SL/TP) order failed: %s | entry=%s symbol=%s",
+                oco_result, entry_order_id, symbol,
+            )
+            # Retry once
+            time.sleep(1)
+            logger.info("Retrying OCO order for entry %s...", entry_order_id)
+            oco_result = self._post("/order/placeOCO", oco_payload)
+
+        if not oco_result or "orderId" not in oco_result:
+            logger.error("OCO retry also failed: %s", oco_result)
             # CRITICAL: Entry exists WITHOUT stop-loss protection.
             # Cancel the unprotected entry to avoid unlimited risk.
             logger.critical(
