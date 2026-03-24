@@ -988,15 +988,28 @@ class TradovateAPI:
     def modify_order(self, order_id: int, new_stop_price: float) -> Optional[dict]:
         """Modify an existing stop order's price (for breakeven/trailing stop).
 
-        Uses the /order/modifyorder endpoint. Preserves OCO linkage.
+        Uses the /order/modifyorder endpoint. The API requires orderQty,
+        so we fetch the current order first to preserve it.
         Returns the updated order dict or None on failure.
         """
+        # Fetch current order to get required fields
+        current = self.get_order_detail(order_id)
+        if not current:
+            logger.error("Cannot modify order %s: failed to fetch current state", order_id)
+            return None
+        qty = current.get("orderQty") or current.get("qty") or current.get("filledQty")
+        if not qty:
+            logger.error("Cannot modify order %s: no orderQty found in %s", order_id, current)
+            return None
+
         payload = {
             "orderId": order_id,
+            "orderQty": qty,
+            "orderType": current.get("orderType", "Stop"),
             "stopPrice": new_stop_price,
             "isAutomated": True,
         }
-        logger.info("Modifying order %s → new stopPrice=%.4f", order_id, new_stop_price)
+        logger.info("Modifying order %s → new stopPrice=%.4f qty=%s", order_id, new_stop_price, qty)
         result = self._post("/order/modifyorder", payload)
         if result and "orderId" in result:
             logger.info("Order %s modified successfully: %s", order_id, result)
