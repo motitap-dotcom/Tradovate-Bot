@@ -983,16 +983,23 @@ class TradovateBot:
 
             # --- Breakeven ---
             if not trade.get("breakeven_done") and best_r >= be_threshold:
+                # Skip if we already failed too many times (avoid API spam)
+                if trade.get("_be_fail_count", 0) >= 3:
+                    continue
                 # Move SL to entry price (breakeven)
                 new_sl = fill_price
                 result = self.api.modify_order(sl_order_id, new_sl)
                 if result:
                     trade["breakeven_done"] = True
                     trade["current_sl"] = new_sl
+                    trade.pop("_be_fail_count", None)
                     logger.info(
                         "BREAKEVEN: %s %s | SL moved to %.4f (entry) | R=%.2f",
                         symbol, direction, new_sl, current_r,
                     )
+                else:
+                    trade["_be_fail_count"] = trade.get("_be_fail_count", 0) + 1
+                    logger.warning("BREAKEVEN failed for %s (attempt %d/3)", symbol, trade["_be_fail_count"])
                 continue  # don't trail on the same tick we hit breakeven
 
             # --- Trailing stop ---
