@@ -692,6 +692,75 @@ class TradovateAPI:
             logger.warning("Failed to get fills for order %s: %s", order_id, e)
             return []
 
+    def resolve_fill_price(self, order_id: int, max_wait: float = 8.0) -> float:
+        """Robustly resolve the actual fill price for an order.
+
+        Uses two data sources with exponential backoff:
+          1. /order/item → avgPrice (fast but may lag behind actual fill)
+          2. /fill/deps  → individual fills (reliable, weighted-average fallback)
+
+        Args:
+            order_id: The entry order ID.
+            max_wait: Maximum total seconds to spend polling. Use 0 for a
+                      single instant check (no retries).
+
+        Returns:
+            The fill price (float), or 0 if it could not be resolved.
+        """
+        delays = [0.5, 1.0, 2.0, 4.0]  # exponential backoff steps
+        elapsed = 0.0
+
+        for attempt in range(len(delays) + 1):
+            # --- Source 1: /order/item (avgPrice) ---
+            try:
+                detail = self._get(f"/order/item?id={order_id}")
+                if detail:
+                    avg = detail.get("avgPrice", 0)
+                    status = detail.get("ordStatus", "")
+                    if avg and avg > 0:
+                        logger.debug("resolve_fill_price(%s): avgPrice=%.4f status=%s attempt=%d",
+                                     order_id, avg, status, attempt)
+                        return avg
+                    # If status is Filled but avgPrice is 0, fall through to fills
+                    if status == "Rejected":
+                        return 0
+            except Exception:
+                pass
+
+            # --- Source 2: /fill/deps (individual fills) ---
+            try:
+                fills = self._get(f"/fill/deps?masterid={order_id}")
+                if isinstance(fills, list) and fills:
+                    # Compute volume-weighted average price
+                    total_qty = 0
+                    total_value = 0.0
+                    for f in fills:
+                        fqty = f.get("qty", 0)
+                        fprice = f.get("price", 0)
+                        if fqty and fprice:
+                            total_qty += fqty
+                            total_value += fqty * fprice
+                    if total_qty > 0:
+                        vwap = total_value / total_qty
+                        logger.debug("resolve_fill_price(%s): VWAP=%.4f from %d fills attempt=%d",
+                                     order_id, vwap, len(fills), attempt)
+                        return round(vwap, 6)
+            except Exception:
+                pass
+
+            # --- Wait before retry (respect max_wait) ---
+            if attempt < len(delays) and elapsed < max_wait:
+                wait = min(delays[attempt], max_wait - elapsed)
+                if wait <= 0:
+                    break
+                time.sleep(wait)
+                elapsed += wait
+            else:
+                break
+
+        logger.debug("resolve_fill_price(%s): could not resolve after %.1fs", order_id, elapsed)
+        return 0
+
     # ─────────────────────────────────────────
     # Contract lookup
     # ─────────────────────────────────────────
@@ -807,19 +876,19 @@ class TradovateAPI:
             logger.error("Entry order REJECTED: %s", reject_reason)
             return None
 
-        # For market orders, verify fill after brief delay
+        # For market orders, verify fill with robust polling
         fill_price = 0
         if order_type == "Market":
-            time.sleep(1)
+            # Quick rejection check first (0.5s)
+            time.sleep(0.5)
             order_detail = self._get(f"/order/item?id={entry_order_id}")
             if order_detail:
                 detail_status = order_detail.get("ordStatus", "Unknown")
-                filled_qty = order_detail.get("filledQty", 0)
-                avg_price = order_detail.get("avgPrice", 0)
-                fill_price = avg_price
                 logger.info(
-                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s | detail=%s",
-                    entry_order_id, detail_status, filled_qty, avg_price, order_detail,
+                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s",
+                    entry_order_id, detail_status,
+                    order_detail.get("filledQty", 0),
+                    order_detail.get("avgPrice", 0),
                 )
                 if detail_status == "Rejected":
                     rej_reason = order_detail.get("rejectReason", "")
@@ -829,7 +898,6 @@ class TradovateAPI:
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
                         rej_reason, rej_text, order_detail,
                     )
-                    # Try commandReport for more details
                     try:
                         cmd_report = self._get(f"/commandReport/deps?masterid={entry_order_id}")
                         if cmd_report:
@@ -838,6 +906,9 @@ class TradovateAPI:
                     except Exception:
                         pass
                     return None
+            # Resolve fill price with retries + /fill/deps fallback
+            fill_price = self.resolve_fill_price(entry_order_id, max_wait=8.0)
+            logger.info("Entry fill resolved: orderId=%s fill_price=%.4f", entry_order_id, fill_price)
 
         # --- Step 2: OCO stop-loss + take-profit ---
         oco_payload: dict[str, Any] = {

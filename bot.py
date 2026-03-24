@@ -882,17 +882,12 @@ class TradovateBot:
                 stop_loss=signal.stop_loss,
                 take_profit=signal.take_profit,
             )
-            fill_price = result.get("fillPrice", 0) or (signal.entry_price or 0)
-            # If fill_price is still 0, retry once after a brief delay (async fill)
-            if not fill_price and result.get("orderId"):
-                time.sleep(2)
-                try:
-                    detail = self.api.get_order_detail(result["orderId"])
-                    if detail and detail.get("avgPrice"):
-                        fill_price = detail["avgPrice"]
-                except Exception:
-                    pass
-            # Patch journal entry with actual fill price (market orders start with 0)
+            fill_price = result.get("fillPrice", 0)
+            # resolve_fill_price already retried in place_bracket_order;
+            # if still 0, the deferred patch in _sync_fills will keep trying
+            if not fill_price:
+                fill_price = signal.entry_price or 0
+            # Patch journal entry with actual fill price
             if fill_price and trade_id:
                 self.journal.patch_entry_price(signal.symbol, fill_price)
             stop_distance = abs(fill_price - signal.stop_loss) if fill_price else signal.stop_loss
@@ -1258,7 +1253,8 @@ class TradovateBot:
 
             self.risk.open_contracts = total_open
 
-            # Patch missing entry fill prices (deferred fill — runs for ALL trades, not just open)
+            # Patch missing entry fill prices (deferred fill — runs for ALL trades)
+            # Uses resolve_fill_price which checks /order/item AND /fill/deps
             for trade_info in self.trades_today:
                 if trade_info.get("fill_price") and trade_info["fill_price"] != 0:
                     continue
@@ -1266,14 +1262,12 @@ class TradovateBot:
                 if not order_id:
                     continue
                 try:
-                    detail = self.api.get_order_detail(order_id)
-                    if detail and detail.get("avgPrice"):
-                        avg = detail["avgPrice"]
+                    # max_wait=0: instant check only (no blocking the sync loop)
+                    avg = self.api.resolve_fill_price(order_id, max_wait=0)
+                    if avg:
                         trade_info["fill_price"] = avg
                         sym = trade_info.get("symbol", "")
                         journal_id = trade_info.get("journal_id", "")
-                        # Patch journal — works for open trades via patch_entry_price,
-                        # and for already-closed trades via direct update
                         if not trade_info.get("_closed"):
                             self.journal.patch_entry_price(sym, avg)
                         else:
@@ -1308,8 +1302,9 @@ class TradovateBot:
     def _resolve_exit_fill(self, trade_info: dict) -> tuple:
         """Resolve actual exit price and P&L for a closed trade.
 
-        Queries the SL and TP order fills from the API to determine which
-        bracket leg was hit, at what price, and computes the real P&L.
+        Uses resolve_fill_price (which checks /order/item + /fill/deps) for
+        both entry and exit orders.  This guarantees we get real fill prices
+        even when /order/item lags behind.
 
         Returns:
             (exit_price, pnl, exit_reason)
@@ -1320,6 +1315,7 @@ class TradovateBot:
         entry_price = trade_info.get("fill_price", 0)
         sl_order_id = trade_info.get("sl_order_id")
         tp_order_id = trade_info.get("tp_order_id")
+        entry_order_id = trade_info.get("order_id")
 
         spec = config.CONTRACT_SPECS.get(sym, {})
         point_value = spec.get("point_value", 1)
@@ -1327,53 +1323,66 @@ class TradovateBot:
         exit_price = 0.0
         exit_reason = "bracket_fill"
 
-        # Try TP order first, then SL order
+        # ── Resolve EXIT price ──
+        # Strategy: check TP order, then SL order using resolve_fill_price
+        # (which queries both /order/item AND /fill/deps with retries)
         for order_id, reason in [(tp_order_id, "take_profit"), (sl_order_id, "stop_loss")]:
             if not order_id:
                 continue
             try:
+                # First quick check: is this order filled?
                 detail = self.api.get_order_detail(order_id)
-                if detail and detail.get("ordStatus") == "Filled":
-                    avg = detail.get("avgPrice", 0)
-                    if avg:
-                        exit_price = avg
-                        exit_reason = reason
-                        break
+                if not detail:
+                    continue
+                status = detail.get("ordStatus", "")
+                if status not in ("Filled", "Completed"):
+                    continue
+                # Order is filled — get the real price
+                avg = self.api.resolve_fill_price(order_id, max_wait=3.0)
+                if avg:
+                    exit_price = avg
+                    exit_reason = reason
+                    logger.info("Exit fill resolved for %s: %s order %s → %.4f",
+                                sym, reason, order_id, avg)
+                    break
             except Exception as e:
-                logger.debug("Failed to check order %s: %s", order_id, e)
+                logger.debug("Failed to check exit order %s: %s", order_id, e)
 
-        # Fallback: query fills for the entry order to find exit fills
+        # Fallback: scan /fill/list for fills matching our contract (opposite action)
         if not exit_price:
-            entry_order_id = trade_info.get("order_id")
-            if entry_order_id:
-                try:
-                    fills = self.api.get_order_fills(entry_order_id)
-                    # Fills for the exit side (opposite direction)
-                    for fill in fills:
-                        fill_action = fill.get("action", "")
-                        if (direction == "Buy" and fill_action == "Sell") or \
-                           (direction == "Sell" and fill_action == "Buy"):
-                            exit_price = fill.get("price", 0)
-                            exit_reason = "bracket_fill"
+            try:
+                all_fills = self.api.get_fills()
+                opposite = "Sell" if direction == "Buy" else "Buy"
+                contract_id = None
+                if entry_order_id:
+                    try:
+                        entry_detail = self.api.get_order_detail(entry_order_id)
+                        if entry_detail:
+                            contract_id = entry_detail.get("contractId")
+                    except Exception:
+                        pass
+                # Find most recent matching fill
+                for fill in reversed(all_fills):
+                    if fill.get("action") == opposite and contract_id and fill.get("contractId") == contract_id:
+                        exit_price = fill.get("price", 0)
+                        exit_reason = "bracket_fill"
+                        if exit_price:
+                            logger.info("Exit fill from /fill/list for %s: %.4f", sym, exit_price)
                             break
-                except Exception as e:
-                    logger.debug("Failed to get fills for order %s: %s", entry_order_id, e)
+            except Exception as e:
+                logger.debug("Fallback fill scan failed for %s: %s", sym, e)
 
-        # If we still don't have entry_price, try to patch it from the entry order
-        if not entry_price:
-            entry_order_id = trade_info.get("order_id")
-            if entry_order_id:
-                try:
-                    detail = self.api.get_order_detail(entry_order_id)
-                    if detail:
-                        entry_price = detail.get("avgPrice", 0) or 0
-                        if entry_price:
-                            self.journal.patch_entry_price(sym, entry_price)
-                            trade_info["fill_price"] = entry_price
-                except Exception:
-                    pass
+        # ── Resolve ENTRY price (if still missing) ──
+        if not entry_price and entry_order_id:
+            entry_price = self.api.resolve_fill_price(entry_order_id, max_wait=3.0)
+            if entry_price:
+                trade_info["fill_price"] = entry_price
+                journal_id = trade_info.get("journal_id", "")
+                # Trade is about to be closed, so patch via closed-trade method
+                self.journal.patch_closed_entry_price(journal_id, entry_price)
+                logger.info("Entry fill resolved at exit time for %s: %.4f", sym, entry_price)
 
-        # Compute P&L
+        # ── Compute P&L ──
         pnl = 0.0
         if entry_price and exit_price:
             if direction == "Buy":
@@ -1384,9 +1393,14 @@ class TradovateBot:
 
         if not exit_price:
             logger.warning(
-                "Could not resolve exit fill for %s (sl_order=%s tp_order=%s). "
+                "Could not resolve exit fill for %s (sl=%s tp=%s entry=%s). "
                 "Recording with price=0, pnl=0.",
-                sym, sl_order_id, tp_order_id,
+                sym, sl_order_id, tp_order_id, entry_order_id,
+            )
+        elif not entry_price:
+            logger.warning(
+                "Exit resolved (%.4f) but entry still missing for %s. pnl=0.",
+                exit_price, sym,
             )
 
         return exit_price, pnl, exit_reason
