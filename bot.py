@@ -883,6 +883,15 @@ class TradovateBot:
                 take_profit=signal.take_profit,
             )
             fill_price = result.get("fillPrice", 0) or (signal.entry_price or 0)
+            # If fill_price is still 0, retry once after a brief delay (async fill)
+            if not fill_price and result.get("orderId"):
+                time.sleep(2)
+                try:
+                    detail = self.api.get_order_detail(result["orderId"])
+                    if detail and detail.get("avgPrice"):
+                        fill_price = detail["avgPrice"]
+                except Exception:
+                    pass
             # Patch journal entry with actual fill price (market orders start with 0)
             if fill_price and trade_id:
                 self.journal.patch_entry_price(signal.symbol, fill_price)
@@ -1249,10 +1258,8 @@ class TradovateBot:
 
             self.risk.open_contracts = total_open
 
-            # Patch missing entry fill prices for open trades (deferred fill)
+            # Patch missing entry fill prices (deferred fill — runs for ALL trades, not just open)
             for trade_info in self.trades_today:
-                if trade_info.get("_closed"):
-                    continue
                 if trade_info.get("fill_price") and trade_info["fill_price"] != 0:
                     continue
                 order_id = trade_info.get("order_id")
@@ -1264,7 +1271,13 @@ class TradovateBot:
                         avg = detail["avgPrice"]
                         trade_info["fill_price"] = avg
                         sym = trade_info.get("symbol", "")
-                        self.journal.patch_entry_price(sym, avg)
+                        journal_id = trade_info.get("journal_id", "")
+                        # Patch journal — works for open trades via patch_entry_price,
+                        # and for already-closed trades via direct update
+                        if not trade_info.get("_closed"):
+                            self.journal.patch_entry_price(sym, avg)
+                        else:
+                            self.journal.patch_closed_entry_price(journal_id, avg)
                         logger.info("Deferred fill patch for %s: entry_price=%.4f", sym, avg)
                 except Exception as e:
                     logger.debug("Deferred fill patch failed for order %s: %s", order_id, e)
