@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-24T19:09:36Z",
+  "timestamp": "2026-03-24T19:15:53Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,53 +11,34 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 57488.92,
+    "totalCashValue": 57662.32,
     "initialMargin": 0.0,
-    "netLiq": 57671.92
+    "netLiq": 57662.32
   },
-  "positions": [
-    {
-      "contractId": 3924410,
-      "netPos": 3,
-      "netPrice": 4398.9
-    }
-  ],
-  "orders": [
-    {
-      "id": 409583844884,
-      "action": "Sell",
-      "qty": null,
-      "status": "Working"
-    },
-    {
-      "id": 409583844883,
-      "action": "Sell",
-      "qty": null,
-      "status": "Working"
-    }
-  ],
+  "positions": [],
+  "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "830924",
-    "uptime_since": "Tue 2026-03-24 19:00:51 UTC",
+    "bot_pid": "833152",
+    "uptime_since": "Tue 2026-03-24 19:10:10 UTC",
     "disk": "17%",
-    "memory": "999MB/7941MB (13%)",
+    "memory": "998MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "93dbab8 Auto-merge claude/add-bot-calm-mode-JvVDe \u2192 main",
+    "git_commit": "6e40be9 status: 2026-03-24 19:09 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-03-24T19:09:08.969100+00:00",
-      "timestamp_et": "2026-03-24T15:09:08.969120-04:00",
-      "balance": 57602.92,
-      "equity": 57602.92,
-      "day_pnl": 677.6699999999983,
+      "timestamp": "2026-03-24T19:15:25.156027+00:00",
+      "timestamp_et": "2026-03-24T15:15:25.156045-04:00",
+      "balance": 57662.32,
+      "equity": 57662.32,
+      "day_pnl": 737.0699999999997,
       "unrealized_pnl": 0.0,
-      "peak_balance": 57602.92,
-      "drawdown_floor": 55102.92,
+      "peak_balance": 57662.32,
+      "drawdown_floor": 55162.32,
       "distance_to_floor": 2500.0,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 1722.3300000000017,
-      "open_contracts": 3,
+      "daily_profit_remaining": 1662.9300000000003,
+      "open_contracts": 0,
       "trades_today": 19,
       "locked": false,
       "lock_reason": "",
@@ -73,56 +54,27 @@
       ],
       "websocket_connected": true,
       "market_data_source": "websocket",
-      "signals_today": [
-        {
-          "time": "2026-03-24T15:03:37.138001-04:00",
-          "symbol": "MGC",
-          "direction": "Buy",
-          "reason": "VWAP long #3 at 4398.9000 (VWAP=4398.6043)",
-          "sl": 4393.604314264389,
-          "tp": 4408.9,
-          "executed": "orderId=409583844874"
-        }
-      ],
-      "trades_log": [
-        {
-          "time": "2026-03-24T15:03:38.495673-04:00",
-          "symbol": "MGC",
-          "direction": "Buy",
-          "qty": 3,
-          "stop": 4393.604314264389,
-          "target": 4408.9,
-          "reason": "VWAP long #3 at 4398.9000 (VWAP=4398.6043)",
-          "order_id": 409583844874,
-          "sl_order_id": 409583844883,
-          "tp_order_id": 409583844884,
-          "fill_price": 4398.9,
-          "stop_distance": 5.295685735610277,
-          "journal_id": "MGC_20260324_190338",
-          "breakeven_done": false,
-          "current_sl": 4393.604314264389,
-          "best_r": 0.7930984219396315
-        }
-      ]
+      "signals_today": [],
+      "trades_log": []
     },
-    "journal_tail": "2026-03-24 19:09:33,417 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:33,419 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000\n2026-03-24 19:09:33,582 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:33,582 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder\n2026-03-24 19:09:33,584 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:33,585 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000\n2026-03-24 19:09:33,747 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:33,747 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder\n2026-03-24 19:09:33,749 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:33,751 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000\n2026-03-24 19:09:33,921 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:33,921 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder\n2026-03-24 19:09:33,922 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:33,924 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000\n2026-03-24 19:09:34,099 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:34,099 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradov",
-    "bot_log_tail": "2026-03-24 19:09:34,835 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:34,835 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder\n2026-03-24 19:09:34,838 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:34,839 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000\n2026-03-24 19:09:35,004 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:35,004 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder\n2026-03-24 19:09:35,005 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:35,007 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000\n2026-03-24 19:09:35,176 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:35,176 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder\n2026-03-24 19:09:35,177 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:35,180 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000\n2026-03-24 19:09:35,337 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042\n2026-03-24 19:09:35,337 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder\n2026-03-24 19:09:35,340 [ERROR] tradovate_api: Failed to modify order 409583844883: None\n2026-03-24 19:09:35,342 [INFO] tradovate_api: Modifying order 4095838",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 1\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 28s)\n  Balance: $57533.92\n  Day P&L: $608.6699999999983\n  Trades today: 19\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SI']\n  Disk: 17% | Memory: 12.3%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Mar 24 19:05:04 UTC 2026] Status: bot_active=true, pid=830924\n[Tue Mar 24 19:05:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-24 19:15:04,972 [INFO] bot: QUOTE MNQ #10100: price=24313.2500 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:04,996 [INFO] bot: QUOTE MES #7600: price=6631.0000 high=6653.5000 low=6573.5000 vol=1\n2026-03-24 19:15:05,733 [INFO] bot: QUOTE MGC #2700: price=4404.9000 high=4450.7000 low=4306.0000 vol=1\n2026-03-24 19:15:06,027 [INFO] bot: QUOTE SI #1400: price=69.2900 high=70.1600 low=67.2950 vol=1\n2026-03-24 19:15:06,027 [INFO] strategies: VWAP SI state: vwap=68.9150 prev=69.2900 price=69.2900 side=above candles=1400 cum_vol=1400\n2026-03-24 19:15:07,392 [INFO] bot: QUOTE MNQ #10200: price=24313.7500 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:08,296 [INFO] strategies: VWAP MCL state: vwap=91.5482 prev=91.3900 price=91.3900 side=below candles=2000 cum_vol=318569\n2026-03-24 19:15:08,532 [INFO] bot: QUOTE MES #7700: price=6630.7500 high=6653.5000 low=6573.5000 vol=1\n2026-03-24 19:15:08,782 [INFO] bot: QUOTE MCL #2000: price=91.4000 high=93.3600 low=88.4100 vol=1\n2026-03-24 19:15:09,864 [INFO] bot: QUOTE MNQ #10300: price=24313.5000 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:11,531 [INFO] bot: QUOTE MES #7800: price=6631.2500 high=6653.5000 low=6573.5000 vol=3\n2026-03-24 19:15:12,246 [INFO] bot: QUOTE MNQ #10400: price=24316.2500 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:14,602 [INFO] bot: QUOTE MNQ #10500: price=24316.7500 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:15,095 [INFO] bot: QUOTE MES #7900: price=6631.7500 high=6653.5000 low=6573.5000 vol=1\n2026-03-24 19:15:16,968 [INFO] bot: QUOTE MNQ #10600: price=24314.2500 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:16,993 [INFO] strategies: VWAP MGC state: vwap=4398.5568 prev=4405.1000 price=4405.1000 side=above candles=2800 cum_vol=163234\n2026-03-24 19:15:17,183 [INFO] bot: QUOTE MGC #2800: price=4404.8000 high=4450.7000 low=4306.0000 vol=1\n2026-03-24 19:15:18,753 [INFO] bot: QUOTE MES #8000: price=6630.7500 high=6653.5000 low=6573.5000 vol=1\n2026-03-24 1",
+    "bot_log_tail": "2026-03-24 19:15:32,601 [INFO] bot: QUOTE MNQ #11200: price=24316.7500 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:33,941 [INFO] bot: QUOTE MES #8400: price=6631.0000 high=6653.5000 low=6573.5000 vol=2\n2026-03-24 19:15:35,402 [INFO] bot: QUOTE MNQ #11300: price=24315.0000 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:38,208 [INFO] bot: QUOTE MNQ #11400: price=24315.2500 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:38,312 [INFO] strategies: VWAP MGC state: vwap=4398.5429 prev=4404.2000 price=4404.2000 side=above candles=3000 cum_vol=163434\n2026-03-24 19:15:38,446 [INFO] bot: QUOTE MES #8500: price=6630.7500 high=6653.5000 low=6573.5000 vol=1\n2026-03-24 19:15:38,512 [INFO] bot: QUOTE MGC #3000: price=4404.2000 high=4450.7000 low=4306.0000 vol=1\n2026-03-24 19:15:40,852 [INFO] bot: QUOTE SI #1600: price=69.2900 high=70.1600 low=67.2950 vol=1\n2026-03-24 19:15:40,852 [INFO] strategies: VWAP SI state: vwap=68.9150 prev=69.2900 price=69.2900 side=above candles=1600 cum_vol=1600\n2026-03-24 19:15:40,882 [INFO] bot: QUOTE MNQ #11500: price=24317.0000 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:42,247 [INFO] bot: QUOTE MES #8600: price=6631.2500 high=6653.5000 low=6573.5000 vol=1\n2026-03-24 19:15:42,756 [INFO] strategies: VWAP MCL state: vwap=91.5479 prev=91.4300 price=91.4300 side=below candles=2200 cum_vol=318789\n2026-03-24 19:15:43,748 [INFO] bot: QUOTE MNQ #11600: price=24318.5000 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:44,616 [INFO] bot: QUOTE MCL #2200: price=91.4300 high=93.3600 low=88.4100 vol=1\n2026-03-24 19:15:46,036 [INFO] bot: QUOTE MNQ #11700: price=24318.5000 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:46,083 [INFO] bot: QUOTE MES #8700: price=6631.7500 high=6653.5000 low=6573.5000 vol=1\n2026-03-24 19:15:48,677 [INFO] bot: QUOTE MNQ #11800: price=24315.5000 high=24507.0000 low=24134.7500 vol=1\n2026-03-24 19:15:48,956 [INFO] bot: QUOTE MGC #3100: price=4404.8000 high=4450.7000 low=4306.0000 vol=1\n2026-03-",
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 8s)\n  Balance: $57662.32\n  Day P&L: $737.0699999999997\n  Trades today: 19\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SI']\n  Disk: 17% | Memory: 12.9%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Mar 24 19:15:03 UTC 2026] Status: bot_active=true, pid=833152\n[Tue Mar 24 19:15:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-24T19:09:08.969100+00:00",
-      "timestamp_et": "2026-03-24T15:09:08.969120-04:00",
-      "balance": 57602.92,
-      "equity": 57602.92,
-      "day_pnl": 677.6699999999983,
+      "timestamp": "2026-03-24T19:15:25.156027+00:00",
+      "timestamp_et": "2026-03-24T15:15:25.156045-04:00",
+      "balance": 57662.32,
+      "equity": 57662.32,
+      "day_pnl": 737.0699999999997,
       "unrealized_pnl": 0.0,
-      "peak_balance": 57602.92,
-      "drawdown_floor": 55102.92,
+      "peak_balance": 57662.32,
+      "drawdown_floor": 55162.32,
       "distance_to_floor": 2500.0,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 1722.3300000000017,
-      "open_contracts": 3,
+      "daily_profit_remaining": 1662.9300000000003,
+      "open_contracts": 0,
       "trades_today": 19,
       "locked": false,
       "lock_reason": "",
@@ -138,73 +90,44 @@
       ],
       "websocket_connected": true,
       "market_data_source": "websocket",
-      "signals_today": [
-        {
-          "time": "2026-03-24T15:03:37.138001-04:00",
-          "symbol": "MGC",
-          "direction": "Buy",
-          "reason": "VWAP long #3 at 4398.9000 (VWAP=4398.6043)",
-          "sl": 4393.604314264389,
-          "tp": 4408.9,
-          "executed": "orderId=409583844874"
-        }
-      ],
-      "trades_log": [
-        {
-          "time": "2026-03-24T15:03:38.495673-04:00",
-          "symbol": "MGC",
-          "direction": "Buy",
-          "qty": 3,
-          "stop": 4393.604314264389,
-          "target": 4408.9,
-          "reason": "VWAP long #3 at 4398.9000 (VWAP=4398.6043)",
-          "order_id": 409583844874,
-          "sl_order_id": 409583844883,
-          "tp_order_id": 409583844884,
-          "fill_price": 4398.9,
-          "stop_distance": 5.295685735610277,
-          "journal_id": "MGC_20260324_190338",
-          "breakeven_done": false,
-          "current_sl": 4393.604314264389,
-          "best_r": 0.7930984219396315
-        }
-      ]
+      "signals_today": [],
+      "trades_log": []
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-24T20:20:52.273000+00:00",
+    "token_expiry": "2026-03-24T20:30:11.207000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-24 19:09:34,468 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:34,471 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000",
-      "2026-03-24 19:09:34,655 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:34,656 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:34,658 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:34,660 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000",
-      "2026-03-24 19:09:34,835 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:34,835 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:34,838 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:34,839 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000",
-      "2026-03-24 19:09:35,004 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,004 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,005 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,007 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000",
-      "2026-03-24 19:09:35,176 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,176 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,177 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,180 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000",
-      "2026-03-24 19:09:35,337 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,337 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,340 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,342 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000",
-      "2026-03-24 19:09:35,520 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,520 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,522 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,522 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000",
-      "2026-03-24 19:09:35,693 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,693 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,695 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,696 [INFO] tradovate_api: Modifying order 409583844883 \u2192 new stopPrice=4398.9000"
+      "2026-03-24 19:15:22,234 [INFO] bot: QUOTE MES #8100: price=6631.5000 high=6653.5000 low=6573.5000 vol=1",
+      "2026-03-24 19:15:24,509 [INFO] bot: QUOTE MNQ #10900: price=24316.7500 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:25,155 [INFO] bot: Status | balance=57662.32 | day_pnl=737.07 | to_floor=2500.00 | contracts=0/13 | trades=19/24 | locked=False | md=MarketDataStream recv=24523 disp=25589 stale=False ws=True",
+      "2026-03-24 19:15:25,927 [INFO] bot: QUOTE MES #8200: price=6631.5000 high=6653.5000 low=6573.5000 vol=1",
+      "2026-03-24 19:15:27,027 [INFO] bot: QUOTE MNQ #11000: price=24316.7500 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:27,648 [INFO] bot: QUOTE SI #1500: price=69.2900 high=70.1600 low=67.2950 vol=1",
+      "2026-03-24 19:15:28,755 [INFO] bot: QUOTE MGC #2900: price=4405.2000 high=4450.7000 low=4306.0000 vol=1",
+      "2026-03-24 19:15:29,820 [INFO] bot: QUOTE MNQ #11100: price=24316.0000 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:30,316 [INFO] bot: QUOTE MES #8300: price=6631.5000 high=6653.5000 low=6573.5000 vol=1",
+      "2026-03-24 19:15:32,601 [INFO] bot: QUOTE MNQ #11200: price=24316.7500 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:33,941 [INFO] bot: QUOTE MES #8400: price=6631.0000 high=6653.5000 low=6573.5000 vol=2",
+      "2026-03-24 19:15:35,402 [INFO] bot: QUOTE MNQ #11300: price=24315.0000 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:38,208 [INFO] bot: QUOTE MNQ #11400: price=24315.2500 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:38,312 [INFO] strategies: VWAP MGC state: vwap=4398.5429 prev=4404.2000 price=4404.2000 side=above candles=3000 cum_vol=163434",
+      "2026-03-24 19:15:38,446 [INFO] bot: QUOTE MES #8500: price=6630.7500 high=6653.5000 low=6573.5000 vol=1",
+      "2026-03-24 19:15:38,512 [INFO] bot: QUOTE MGC #3000: price=4404.2000 high=4450.7000 low=4306.0000 vol=1",
+      "2026-03-24 19:15:40,852 [INFO] bot: QUOTE SI #1600: price=69.2900 high=70.1600 low=67.2950 vol=1",
+      "2026-03-24 19:15:40,852 [INFO] strategies: VWAP SI state: vwap=68.9150 prev=69.2900 price=69.2900 side=above candles=1600 cum_vol=1600",
+      "2026-03-24 19:15:40,882 [INFO] bot: QUOTE MNQ #11500: price=24317.0000 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:42,247 [INFO] bot: QUOTE MES #8600: price=6631.2500 high=6653.5000 low=6573.5000 vol=1",
+      "2026-03-24 19:15:42,756 [INFO] strategies: VWAP MCL state: vwap=91.5479 prev=91.4300 price=91.4300 side=below candles=2200 cum_vol=318789",
+      "2026-03-24 19:15:43,748 [INFO] bot: QUOTE MNQ #11600: price=24318.5000 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:44,616 [INFO] bot: QUOTE MCL #2200: price=91.4300 high=93.3600 low=88.4100 vol=1",
+      "2026-03-24 19:15:46,036 [INFO] bot: QUOTE MNQ #11700: price=24318.5000 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:46,083 [INFO] bot: QUOTE MES #8700: price=6631.7500 high=6653.5000 low=6573.5000 vol=1",
+      "2026-03-24 19:15:48,677 [INFO] bot: QUOTE MNQ #11800: price=24315.5000 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:48,956 [INFO] bot: QUOTE MGC #3100: price=4404.8000 high=4450.7000 low=4306.0000 vol=1",
+      "2026-03-24 19:15:49,841 [INFO] bot: QUOTE MES #8800: price=6631.0000 high=6653.5000 low=6573.5000 vol=1",
+      "2026-03-24 19:15:51,519 [INFO] bot: QUOTE MNQ #11900: price=24315.7500 high=24507.0000 low=24134.7500 vol=1",
+      "2026-03-24 19:15:53,032 [INFO] bot: QUOTE MES #8900: price=6630.5000 high=6653.5000 low=6573.5000 vol=1"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -212,50 +135,13 @@
       "losses": 0,
       "win_rate": 0,
       "total_pnl": 0,
-      "trades_today": 1
+      "trades_today": 0
     },
     "trading_active": true,
     "websocket_connected": true,
-    "errors_in_log": [
-      "2026-03-24 19:09:35,177 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,337 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,337 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,340 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,520 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,520 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,522 [ERROR] tradovate_api: Failed to modify order 409583844883: None",
-      "2026-03-24 19:09:35,693 [ERROR] tradovate_api: POST /order/modifyorder HTTP 400: Invalid JSON: missing required field \"orderQty\", offset: 0x00000042",
-      "2026-03-24 19:09:35,693 [ERROR] tradovate_api: POST /order/modifyorder failed: 400 Client Error: Bad Request for url: https://demo.tradovateapi.com/v1/order/modifyorder",
-      "2026-03-24 19:09:35,695 [ERROR] tradovate_api: Failed to modify order 409583844883: None"
-    ],
+    "errors_in_log": [],
     "market_data_source": "websocket",
-    "today_trades": [
-      {
-        "id": "MGC_20260324_190338",
-        "symbol": "MGC",
-        "direction": "Buy",
-        "entry_price": 4398.9,
-        "qty": 3,
-        "strategy": "VWAPStrategy",
-        "reason": "VWAP long #3 at 4398.9000 (VWAP=4398.6043)",
-        "stop_loss": 4393.604314264389,
-        "take_profit": 4408.9,
-        "entry_time": "2026-03-24T19:03:38.494219+00:00",
-        "entry_hour_et": 15,
-        "entry_day_of_week": "Tuesday",
-        "date": "2026-03-24",
-        "exit_price": null,
-        "pnl": null,
-        "exit_reason": null,
-        "exit_time": null,
-        "status": "open",
-        "r_multiple": null,
-        "duration_minutes": null,
-        "slippage_entry": null,
-        "mae_points": null,
-        "mfe_points": null
-      }
-    ],
+    "today_trades": [],
     "today_fills": [
       {
         "id": 409583844634,
@@ -264,6 +150,14 @@
         "qty": 3,
         "price": 4398.1,
         "timestamp": "2026-03-24T17:08:20.043Z"
+      },
+      {
+        "id": 409583844898,
+        "action": "Sell",
+        "contractId": 3924410,
+        "qty": 3,
+        "price": 4404.8,
+        "timestamp": "2026-03-24T19:10:10.491Z"
       },
       {
         "id": 409583844156,
@@ -791,7 +685,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 23716,
+    "ssh_output_len": 20138,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
