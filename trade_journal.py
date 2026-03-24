@@ -179,19 +179,19 @@ class TradeJournal:
         logger.warning("Journal: trade_id %s not found for exit", trade_id)
 
     def patch_entry_price(self, symbol: str, entry_price: float):
-        """Patch entry_price for the most recent trade on a symbol (fills market order price)."""
+        """Patch entry_price for the most recent open trade on a symbol (fills market order price).
+
+        Handles both None and 0 entry prices. Only patches open trades to avoid
+        corrupting already-closed trades.
+        """
+        if not entry_price:
+            return
         for trade in reversed(self.trades):
-            if trade["symbol"] == symbol and not trade.get("entry_price"):
+            if trade["symbol"] == symbol and trade["status"] == "open" \
+               and (not trade.get("entry_price") or trade["entry_price"] == 0):
                 trade["entry_price"] = entry_price
                 self._save()
-                logger.info("Journal: patched entry_price for %s → %.2f", trade["id"], entry_price)
-                return
-        # Also patch trades with entry_price=0
-        for trade in reversed(self.trades):
-            if trade["symbol"] == symbol and trade.get("entry_price") == 0:
-                trade["entry_price"] = entry_price
-                self._save()
-                logger.info("Journal: patched entry_price for %s → %.2f", trade["id"], entry_price)
+                logger.info("Journal: patched entry_price for %s → %.4f", trade["id"], entry_price)
                 return
 
     def record_exit_by_symbol(self, symbol: str, exit_price: float, pnl: float, exit_reason: str = "signal"):
