@@ -91,7 +91,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 4,               # 1 contract × 4 symbols = 4 max exposed
+        "max_contracts": 13,              # 4 symbols × 3 + SI × 1 = 13 max exposed
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -139,7 +139,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
-        "max_qty": 1,  # Calm mode: 1 contract per position
+        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -156,7 +156,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
-        "max_qty": 1,  # Calm mode: 1 contract per position
+        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -172,7 +172,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 3,  # raised from 2
         "vwap_cooldown_minutes": 20,  # lowered from 30
-        "max_qty": 1,  # Calm mode: 1 contract per position
+        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -188,7 +188,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 3,  # raised from 2
         "vwap_cooldown_minutes": 20,  # lowered from 30
-        "max_qty": 1,  # Calm mode: 1 contract per position
+        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
     },
     # ─── Mini Contracts (disabled — too risky, use micros) ──
     "NQ": {
@@ -258,13 +258,14 @@ CONTRACT_SPECS = {
         "tick_value": 25.00,
         "point_value": 5_000.00,
         "strategy": "VWAP",
-        "enabled": False,
+        "enabled": True,
         "stop_loss_points": 0.05,
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 1,
-        "vwap_cooldown_minutes": 60,
+        "max_vwap_trades_per_direction": 2,
+        "vwap_cooldown_minutes": 30,
+        "max_qty": 1,  # Silver: 1 contract only ($250 risk per trade)
     },
     "NG": {
         "name": "Henry Hub Natural Gas",
