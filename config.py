@@ -322,7 +322,7 @@ MONTH_CODE_REVERSE = {v: k for k, v in MONTH_CODES.items()}
 # ─────────────────────────────────────────────
 # Trading Session Times (Eastern Time)
 # ─────────────────────────────────────────────
-# US equity open for ORB calculation
+# US equity open for ORB calculation  # status-refresh 2026-03-24
 MARKET_OPEN_ET = "09:30"
 
 # Earliest time to place new trades (no trading before this)
