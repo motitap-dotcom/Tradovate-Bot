@@ -49,6 +49,7 @@ class RiskManager:
         self.day_pnl: float = 0.0
         self.unrealized_pnl: float = 0.0
         self._balance_initialized: bool = False  # True once set_initial_balance succeeds
+        self._day_start_restored: bool = False  # True if day_start_balance restored from saved state
 
         # Lock flag
         self.trading_locked: bool = False
@@ -78,13 +79,26 @@ class RiskManager:
         This corrects day_start_balance so that day_pnl is calculated
         relative to today's opening balance, not the original account_size.
         Can be called at startup or later (via _sync_balance fallback).
+
+        If day_start_balance was already restored from saved state (mid-day
+        restart), we keep the restored value to avoid false daily loss locks.
         """
         logger.info(
             "Setting initial balance from API: $%.2f (was $%.2f from config)",
             balance, self.day_start_balance,
         )
         self.current_balance = balance
-        self.day_start_balance = balance
+        # Only set day_start_balance if NOT already restored from saved state.
+        # On mid-day restart, _day_start_restored is True (set by restore),
+        # so we keep the real start-of-day balance instead of overwriting
+        # with the current balance (which includes today's P&L).
+        if not self._day_start_restored:
+            self.day_start_balance = balance
+        else:
+            logger.info(
+                "Keeping restored day_start_balance=$%.2f (not overwriting with current $%.2f)",
+                self.day_start_balance, balance,
+            )
         self._balance_initialized = True
         # Peak/floor must also reflect reality
         if balance > self.peak_balance:

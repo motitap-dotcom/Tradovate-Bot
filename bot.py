@@ -33,6 +33,7 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
+from bot_state import load_state, save_state, build_state, restore_risk, restore_strategies
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -133,6 +134,12 @@ class TradovateBot:
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
+        # Restore saved state from today (before API balance, so day_start_balance is preserved)
+        self._saved_state = load_state()
+        if self._saved_state:
+            restore_risk(self._saved_state, self.risk)
+            logger.info("Restored risk state from saved bot_state.json")
+
         # Fetch real balance from API to seed risk manager correctly
         if not self.dry_run:
             self._init_balance_from_api()
@@ -142,6 +149,12 @@ class TradovateBot:
 
         # Initialize strategies
         self._init_strategies()
+
+        # Restore strategy state (trade counts, cooldowns) after init
+        if self._saved_state:
+            restore_strategies(self._saved_state, self.strategies)
+            self.risk.trades_today = self._saved_state.get("trades_today_count", 0)
+            logger.info("Restored strategy state: trades_today=%d", self.risk.trades_today)
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
@@ -894,6 +907,8 @@ class TradovateBot:
             )
             sig_entry["executed"] = f"orderId={result.get('orderId')}"
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+            # Persist state after every trade so mid-day restarts don't lose context
+            self._persist_state()
         else:
             err_detail = getattr(self.api, "_last_order_error", "unknown")
             sig_entry["blocked"] = f"order_failed(contract={contract_name}, acct={self.api.account_id}): {err_detail}"
@@ -902,6 +917,19 @@ class TradovateBot:
                 signal.direction.value, signal.symbol, signal.qty,
                 contract_name, self.api.account_id, err_detail,
             )
+
+    def _persist_state(self):
+        """Save current bot state to disk for crash recovery."""
+        try:
+            state = build_state(
+                strategies=self.strategies,
+                trades_today_count=self.risk.trades_today,
+                trades_today_list=self.trades_today,
+                risk_manager=self.risk,
+            )
+            save_state(state)
+        except Exception as e:
+            logger.error("Failed to persist state: %s", e)
 
     # ─────────────────────────────────────────
     # Breakeven & Trailing Stop Management

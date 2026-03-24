@@ -148,6 +148,7 @@ def restore_risk(state: dict, risk_manager) -> bool:
     saved_day_start = risk_state.get("day_start_balance")
     if saved_day_start:
         risk_manager.day_start_balance = saved_day_start
+        risk_manager._day_start_restored = True
         logger.info("Restored day_start_balance: $%.2f", saved_day_start)
 
     return True
