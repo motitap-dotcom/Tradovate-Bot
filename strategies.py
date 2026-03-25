@@ -361,7 +361,11 @@ class VWAPStrategy:
     def update_vwap(self, high: float, low: float, close: float, volume: float):
         """Update the running VWAP with a new bar."""
         if volume <= 0:
-            self._vwap_stale_bars = getattr(self, "_vwap_stale_bars", 0) + 1
+            # Tick-level quotes from WebSocket never carry volume — this is
+            # expected and NOT an indication of stale data.  Only candle bars
+            # (from the REST poller) provide real volume.  Do NOT increment
+            # _vwap_stale_bars here; the staleness guard is meant for detecting
+            # when the entire data feed has died, not for individual ticks.
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:

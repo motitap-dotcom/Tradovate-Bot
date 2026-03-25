@@ -560,24 +560,25 @@ class TradovateBot:
     def _process_price(
         self, symbol: str, price: float, high: float, low: float, volume: float = 0
     ):
-        """Run price through the strategy and risk manager."""
+        """Run price through the strategy and risk manager.
+
+        IMPORTANT: Always feed price data to the strategy FIRST, even if
+        trading is locked.  Strategies need continuous data to build state
+        (ORB ranges, VWAP levels).  Only gate order execution, not data feed.
+        """
         strategy = self.strategies.get(symbol)
         if strategy is None:
             return
 
-        # Check if we can trade
-        ok, reason = self.risk.can_trade()
-        if not ok:
-            return
-
-        # Check time constraints — only trade within the configured window
+        # Check time constraints — only feed data within the trading window
         current = now_et()
         start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
             return
 
-        # Feed price to strategy
+        # Feed price to strategy FIRST — strategies need continuous data
+        # regardless of whether we can trade right now
         signal = None
         if hasattr(strategy, "on_price"):
             if hasattr(strategy, "update_vwap"):
@@ -588,7 +589,12 @@ class TradovateBot:
                 # ORB strategy
                 signal = strategy.on_price(price, current, high, low)
 
+        # Only execute if risk manager allows trading
         if signal is not None:
+            ok, reason = self.risk.can_trade()
+            if not ok:
+                logger.info("Signal for %s suppressed: %s", symbol, reason)
+                return
             self._execute_signal(signal)
 
     # ─────────────────────────────────────────
