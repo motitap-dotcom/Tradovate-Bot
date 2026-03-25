@@ -567,6 +567,13 @@ class TradovateBot:
         low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
 
+        # Log every quote so we can confirm data is flowing
+        contract_id = data.get("contractId", "?")
+        logger.info(
+            "QUOTE %s #%s: price=%.4f high=%.4f low=%.4f vol=%s",
+            symbol, contract_id, price, high, low, volume,
+        )
+
         self._process_price(symbol, price, high, low, volume)
 
     def _process_price(
