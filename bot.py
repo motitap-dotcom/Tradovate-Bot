@@ -493,7 +493,19 @@ class TradovateBot:
 
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
-                    if w.range_set:
+                    if w.range_set and not w.breakout_fired:
+                        # After mid-day restart: range is built from warmup but
+                        # _last_price is likely outside the range (market moved).
+                        # Reset _last_price to None so the first live tick can
+                        # trigger a breakout — otherwise the fresh-cross guard
+                        # would block ALL breakouts for the rest of the day.
+                        w._last_price = None
+                        logger.info(
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) — READY (waiting for live breakout)",
+                            w.window_minutes, w.range_low, w.range_high,
+                            w.range_high - w.range_low,
+                        )
+                    elif w.range_set:
                         logger.info(
                             "  ORB %d-min range: %.2f - %.2f (size=%.2f)",
                             w.window_minutes, w.range_low, w.range_high,
