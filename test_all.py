@@ -242,7 +242,9 @@ def test_place_bracket():
     entry_resp = {"orderId": 100}
     oco_resp = {"orderId": 200, "ocoId": 201}
 
-    with patch.object(api, "_post", side_effect=[entry_resp, oco_resp]) as mock_post:
+    with patch.object(api, "_post", side_effect=[entry_resp, oco_resp]) as mock_post, \
+         patch.object(api, "_get", return_value=None) as mock_get, \
+         patch.object(api, "_verify_oco_placed", return_value=True):
         result = api.place_bracket_order(
             symbol="NQH6",
             action="Buy",
@@ -257,7 +259,7 @@ def test_place_bracket():
         assert result["slOrderId"] == 200
         assert result["tpOrderId"] == 201
 
-        # Verify two calls: placeorder then placeOCO
+        # Verify two POST calls: placeorder then placeOCO
         assert mock_post.call_count == 2
         entry_call = mock_post.call_args_list[0]
         oco_call = mock_post.call_args_list[1]
@@ -2718,11 +2720,150 @@ def test_verify_order_protection_config_defaults():
     assert call_args.kwargs["take_profit_price"] == 24000.0 + 50, f"Expected TP at 24050, got {call_args.kwargs['take_profit_price']}"
 
 
+@test("API: _verify_oco_placed confirms Working orders")
+def test_verify_oco_placed():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+
+    # Case 1: SL order is Working
+    with patch.object(api, "_get", return_value={"ordStatus": "Working"}):
+        assert api._verify_oco_placed(500, 501) is True
+
+    # Case 2: Both orders are Cancelled/Filled
+    with patch.object(api, "_get", return_value={"ordStatus": "Cancelled"}):
+        assert api._verify_oco_placed(500, 501) is False
+
+    # Case 3: Both None
+    assert api._verify_oco_placed(None, None) is False
+
+
+@test("API: place_bracket_order retries OCO when verification fails")
+def test_bracket_oco_retry():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+    api.account_id = 1
+    api.account_spec = "DEMO"
+
+    entry_resp = {"orderId": 100}
+    oco_resp = {"orderId": 200, "ocoId": 201}
+    oco_retry_resp = {"orderId": 300, "ocoId": 301}
+
+    # _post: entry succeeds, first OCO succeeds, retry OCO succeeds
+    with patch.object(api, "_post", side_effect=[entry_resp, oco_resp, oco_retry_resp]) as mock_post, \
+         patch.object(api, "_get", return_value=None), \
+         patch.object(api, "_verify_oco_placed", side_effect=[False, True]):
+        result = api.place_bracket_order(
+            symbol="NQH6", action="Buy", qty=1,
+            entry_price=None, stop_price=21000, take_profit_price=21100,
+        )
+        assert result is not None
+        assert result["slOrderId"] == 300  # From retry
+        assert result["tpOrderId"] == 301
+
+
+@test("Bot: _verify_order_protection verifies re-placed OCO is Working")
+def test_verify_protection_verifies_oco():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot.api._verify_oco_placed.return_value = True
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    bot.api._verify_oco_placed.assert_called_once()
+    # Should NOT emergency close since verification passed
+    bot.api.place_market_order.assert_not_called()
+
+
+@test("Bot: _verify_order_protection emergency closes if verify fails after re-place")
+def test_verify_protection_closes_on_verify_fail():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot.api._verify_oco_placed.return_value = False  # Verification failed!
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    # Must emergency close since OCO verification failed
+    bot.api.place_market_order.assert_called_once_with("MNQH6", "Sell", 1)
+
+
+@test("Bot: watchdog thread starts and runs independently")
+def test_watchdog_starts():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.running = True
+    bot._watchdog_interval = 0.1  # Fast for testing
+    bot._start_order_watchdog()
+    assert bot._watchdog_thread is not None
+    assert bot._watchdog_thread.is_alive()
+    # Let it run one cycle
+    time.sleep(0.3)
+    # Verify it called get_positions (from _verify_order_protection)
+    assert bot.api.get_positions.called
+    bot.running = False
+    bot._watchdog_thread.join(timeout=2)
+
+
+@test("Bot: orphan alert count increments and resets correctly")
+def test_orphan_alert_count():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = []
+
+    # Orphan detected — count should increment
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot._verify_order_protection()
+    assert bot._orphan_alert_count == 1
+
+    # All protected — count should reset
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = [
+        {"id": 500, "ordStatus": "Working", "contractId": 100}
+    ]
+    bot._verify_order_protection()
+    assert bot._orphan_alert_count == 0
+
+
 test_get_working_orders()
+test_verify_oco_placed()
+test_bracket_oco_retry()
 test_verify_order_protection_replace()
 test_verify_order_protection_emergency_close()
 test_verify_order_protection_skip_protected()
 test_verify_order_protection_config_defaults()
+test_verify_protection_verifies_oco()
+test_verify_protection_closes_on_verify_fail()
+test_watchdog_starts()
+test_orphan_alert_count()
 
 
 # ─────────────────────────────────────────────

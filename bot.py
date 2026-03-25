@@ -19,6 +19,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -103,6 +104,11 @@ class TradovateBot:
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
 
+        # Order protection watchdog (independent thread)
+        self._watchdog_thread: threading.Thread = None
+        self._watchdog_interval: int = 60  # seconds between checks
+        self._orphan_alert_count: int = 0  # consecutive orphan detections
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -152,8 +158,11 @@ class TradovateBot:
             if self.md_stream:
                 self._subscribe_market_data()
 
-        # Main loop
+        # Start independent order-protection watchdog (Mechanism 2)
         self.running = True
+        self._start_order_watchdog()
+
+        # Main loop
         self._main_loop()
 
     def stop(self):
@@ -673,10 +682,16 @@ class TradovateBot:
                     "target": signal.take_profit,
                     "reason": signal.reason,
                     "order_id": result.get("orderId"),
+                    "sl_order_id": result.get("slOrderId"),
+                    "tp_order_id": result.get("tpOrderId"),
                     "journal_id": trade_id,
                 }
             )
-            logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+            logger.info(
+                "Order placed: entryId=%s slId=%s tpId=%s (journal: %s)",
+                result.get("orderId"), result.get("slOrderId"),
+                result.get("tpOrderId"), trade_id,
+            )
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
@@ -847,9 +862,48 @@ class TradovateBot:
 
         self.stop()
 
+    # ─────────────────────────────────────────
+    # Order protection watchdog (independent thread)
+    # ─────────────────────────────────────────
+
+    def _start_order_watchdog(self):
+        """Start the independent order-protection watchdog thread."""
+        if self.dry_run:
+            return
+        self._watchdog_thread = threading.Thread(
+            target=self._order_watchdog_loop,
+            name="order-watchdog",
+            daemon=True,
+        )
+        self._watchdog_thread.start()
+        logger.info("Order protection watchdog started (interval=%ds)", self._watchdog_interval)
+
+    def _order_watchdog_loop(self):
+        """
+        Independent watchdog that continuously verifies order protection.
+
+        This is the SECOND layer of defense (Mechanism 2).
+        Runs in its own thread, completely independent of the main loop.
+        If the main loop hangs, crashes, or gets delayed, this still runs.
+        """
+        while self.running:
+            try:
+                time.sleep(self._watchdog_interval)
+                if not self.running:
+                    break
+                self._verify_order_protection()
+            except Exception as e:
+                logger.error("Watchdog error: %s", e)
+                # Never let the watchdog die — it's our last line of defense
+                time.sleep(5)
+
     def _verify_order_protection(self):
         """
         Verify that every open position has active SL/TP orders.
+
+        DUAL MECHANISM — this method is called from TWO independent sources:
+          1. Main loop (_main_loop) — every ~30s cycle
+          2. Watchdog thread (_order_watchdog_loop) — every 60s independently
 
         If a position exists without any working orders (orphaned), this method
         will attempt to re-place the OCO using the SL/TP from the original signal.
@@ -860,6 +914,7 @@ class TradovateBot:
             positions = self.api.get_positions()
             open_positions = [p for p in positions if abs(p.get("netPos", 0)) > 0]
             if not open_positions:
+                self._orphan_alert_count = 0
                 return
 
             working_orders = self.api.get_working_orders()
@@ -871,6 +926,8 @@ class TradovateBot:
                 if cid is not None:
                     protected_contract_ids.add(cid)
 
+            orphan_found = False
+
             for pos in open_positions:
                 contract_id = pos.get("contractId")
                 net_pos = pos.get("netPos", 0)
@@ -879,17 +936,29 @@ class TradovateBot:
                     continue  # Position has working orders — OK
 
                 # Orphaned position detected!
+                orphan_found = True
+                self._orphan_alert_count += 1
                 net_price = pos.get("netPrice", 0)
                 qty = abs(net_pos)
                 close_action = "Sell" if net_pos > 0 else "Buy"
+
+                logger.critical(
+                    "!!! ORPHAN DETECTED (#%d) !!! contractId=%s netPos=%d — "
+                    "NO working SL/TP orders found! Attempting recovery...",
+                    self._orphan_alert_count, contract_id, net_pos,
+                )
 
                 # Resolve contract name
                 contract = self.api._get(f"/contract/item?id={contract_id}")
                 if not contract or not contract.get("name"):
                     logger.error(
-                        "ORPHAN GUARD: Cannot resolve contractId %s. Force closing via position list.",
+                        "ORPHAN GUARD: Cannot resolve contractId %s — EMERGENCY CLOSE via flatten!",
                         contract_id,
                     )
+                    # Last resort: try to flatten everything
+                    if self._orphan_alert_count >= 3:
+                        logger.critical("ORPHAN GUARD: 3+ consecutive orphan alerts — flattening ALL positions!")
+                        self.api.close_all_positions()
                     continue
                 contract_name = contract["name"]
 
@@ -918,7 +987,24 @@ class TradovateBot:
                         stop_price=original_sl,
                         take_profit_price=original_tp,
                     )
-                    if not result:
+                    if result:
+                        # Verify the re-placed OCO is actually working
+                        time.sleep(0.5)
+                        verified = self.api._verify_oco_placed(
+                            result.get("orderId"), result.get("ocoId")
+                        )
+                        if verified:
+                            logger.info(
+                                "ORPHAN GUARD: OCO re-placed AND VERIFIED for %s",
+                                contract_name,
+                            )
+                        else:
+                            logger.critical(
+                                "ORPHAN GUARD: OCO re-placed but VERIFICATION FAILED for %s — EMERGENCY CLOSE!",
+                                contract_name,
+                            )
+                            self.api.place_market_order(contract_name, close_action, qty)
+                    else:
                         # OCO re-placement failed — emergency close
                         logger.critical(
                             "ORPHAN GUARD: OCO re-placement FAILED for %s. EMERGENCY CLOSE!",
@@ -964,6 +1050,9 @@ class TradovateBot:
                             contract_name, net_pos,
                         )
                         self.api.place_market_order(contract_name, close_action, qty)
+
+            if not orphan_found:
+                self._orphan_alert_count = 0
 
         except Exception as e:
             logger.error("Order protection verification error: %s", e)
