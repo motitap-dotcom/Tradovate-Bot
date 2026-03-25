@@ -62,10 +62,6 @@ class _ORBWindow:
         self.breakout_fired: bool = False
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
-        # Re-arm: after breakout, if price returns inside range for N ticks,
-        # allow another breakout signal (failed breakout recovery)
-        self.rearm_ticks: int = 5  # set from config via ORBStrategy
-        self._ticks_back_in_range: int = 0
 
     def reset(self):
         self.range_high = None
@@ -74,7 +70,6 @@ class _ORBWindow:
         self.breakout_fired = False
         self.prices = []
         self._last_price = None
-        self._ticks_back_in_range = 0
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
@@ -86,21 +81,6 @@ class _ORBWindow:
         bot restart (warmup sets _last_price to the last historical close).
         """
         if self.breakout_fired:
-            # Re-arm: if price returns inside range for N consecutive ticks,
-            # allow another breakout (failed breakout → price came back)
-            if self.range_set and self.range_low <= price <= self.range_high:
-                self._ticks_back_in_range += 1
-                if self._ticks_back_in_range >= self.rearm_ticks:
-                    self.breakout_fired = False
-                    self._ticks_back_in_range = 0
-                    self._last_price = price  # set fresh baseline
-                    logger.info(
-                        "ORB %d-min RE-ARMED: price=%.2f back inside range [%.2f-%.2f] for %d ticks",
-                        self.window_minutes, price, self.range_low, self.range_high, self.rearm_ticks,
-                    )
-                    return None  # re-armed, wait for next breakout
-            else:
-                self._ticks_back_in_range = 0
             return None
 
         open_seconds = self.open_time.hour * 3600 + self.open_time.minute * 60
@@ -119,31 +99,9 @@ class _ORBWindow:
                 self._last_price = price
                 return None
 
-            if elapsed >= self.window_minutes:
-                if self.prices:
-                    # Normal path: build range from warmup data
-                    self.range_high = max(self.prices)
-                    self.range_low = min(self.prices)
-                else:
-                    # LATE START: warmup failed (Yahoo down?), build from live data
-                    if not hasattr(self, "_late_prices"):
-                        self._late_prices = []
-                        logger.info(
-                            "ORB %d-min: no warmup data — building range from live ticks",
-                            self.window_minutes,
-                        )
-                    self._late_prices.append(price)
-                    # Need at least 60 ticks (~1-2 min of data) to build range
-                    if len(self._late_prices) < 60:
-                        self._last_price = price
-                        return None
-                    self.range_high = max(self._late_prices)
-                    self.range_low = min(self._late_prices)
-                    logger.info(
-                        "ORB %d-min LATE-START range from %d live ticks",
-                        self.window_minutes, len(self._late_prices),
-                    )
-
+            if elapsed >= self.window_minutes and self.prices:
+                self.range_high = max(self.prices)
+                self.range_low = min(self.prices)
                 range_size = self.range_high - self.range_low
                 # Validate range: must be positive and not absurdly wide
                 if range_size <= 0:
@@ -169,34 +127,15 @@ class _ORBWindow:
         prev = self._last_price
         self._last_price = price
 
-        # Log first tick after warmup reset (prev=None) for diagnostics
-        if prev is None:
-            above = price > self.range_high
-            below = price < self.range_low
-            logger.info(
-                "ORB %d-min FIRST TICK: price=%.2f range=[%.2f-%.2f] %s",
-                self.window_minutes, price, self.range_low, self.range_high,
-                "→ LONG breakout!" if above else ("→ SHORT breakout!" if below else "→ inside range"),
-            )
-
         if prev is not None and not (self.range_low <= prev <= self.range_high):
             # Previous price was outside the range — not a fresh cross
             return None
 
-        # Proximity buffer: fire when price is within buffer% of range boundary
-        # This catches breakouts that are "almost there" — tight ranges often
-        # see price hover near the boundary before breaking out decisively.
-        buf_pct = getattr(self, "breakout_buffer_pct", 0.0)
-        range_width = self.range_high - self.range_low
-        buf = range_width * buf_pct
-
-        if price > self.range_high - buf:
+        if price > self.range_high:
             self.breakout_fired = True
-            logger.info("ORB %d-min BREAKOUT LONG at %.2f (range_high=%.2f buf=%.2f)", self.window_minutes, price, self.range_high, buf)
             return "long"
-        if price < self.range_low + buf:
+        if price < self.range_low:
             self.breakout_fired = True
-            logger.info("ORB %d-min BREAKOUT SHORT at %.2f (range_low=%.2f buf=%.2f)", self.window_minutes, price, self.range_low, buf)
             return "short"
 
         return None
@@ -237,14 +176,9 @@ class ORBStrategy:
 
         # Create one _ORBWindow per configured window size
         windows = spec.get("orb_windows", [5])
-        buf_pct = spec.get("orb_breakout_buffer_pct", 0.0)
         self.windows: list[_ORBWindow] = [
             _ORBWindow(w, open_time) for w in windows
         ]
-        rearm_ticks = spec.get("orb_rearm_ticks", 0)
-        for w in self.windows:
-            w.breakout_buffer_pct = buf_pct
-            w.rearm_ticks = rearm_ticks
 
         # Trade state
         self.trades_taken: int = 0
@@ -388,7 +322,7 @@ class VWAPStrategy:
         self.max_per_direction: int = spec.get("max_vwap_trades_per_direction", 2)
         self.cooldown_minutes: int = spec.get("vwap_cooldown_minutes", 30)
         # Minimum time between ANY trades (regardless of direction) to prevent whipsaw
-        self.min_trade_gap_minutes: int = 2  # lowered from 3 for more signals
+        self.min_trade_gap_minutes: int = 3
 
         # VWAP calculation state
         self._cum_vol: float = 0.0
@@ -427,9 +361,11 @@ class VWAPStrategy:
     def update_vwap(self, high: float, low: float, close: float, volume: float):
         """Update the running VWAP with a new bar."""
         if volume <= 0:
-            # Zero-volume ticks are normal for WebSocket bid/ask updates.
-            # Don't treat them as stale — only count consecutive zero-volume
-            # candles (periods), not individual ticks.
+            # Tick-level quotes from WebSocket never carry volume — this is
+            # expected and NOT an indication of stale data.  Only candle bars
+            # (from the REST poller) provide real volume.  Do NOT increment
+            # _vwap_stale_bars here; the staleness guard is meant for detecting
+            # when the entire data feed has died, not for individual ticks.
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
@@ -483,37 +419,20 @@ class VWAPStrategy:
         self.update_vwap(high, low, price, volume)
         self._candle_count = getattr(self, "_candle_count", 0) + 1
 
-        if self.vwap is None:
+        if self.vwap is None or self._prev_price is None:
             self._prev_price = price
             return None
-
-        # First tick after warmup: set prev_price and allow next tick to detect crossover.
-        if self._prev_price is None:
-            side = "above" if price >= self.vwap else "below"
-            dist = abs(price - self.vwap)
-            logger.info(
-                "VWAP %s FIRST TICK: price=%.4f vwap=%.4f (%s, dist=%.4f)",
-                self.symbol, price, self.vwap, side, dist,
-            )
-            self._prev_price = price
-            return None
-
-        # Periodic VWAP state logging for diagnostics
-        if self._candle_count <= 5 or self._candle_count % 200 == 0:
-            side = "above" if price >= self.vwap else "below"
-            logger.info(
-                "VWAP %s state: vwap=%.4f prev=%.4f price=%.4f side=%s candles=%d cum_vol=%.0f",
-                self.symbol, self.vwap, self._prev_price, price, side,
-                self._candle_count, self._cum_vol,
-            )
 
         # Don't signal until we have enough data to compute a meaningful VWAP
         if self._candle_count < self.MIN_CANDLES_FOR_SIGNAL:
             self._prev_price = price
             return None
 
-        # Note: stale bar detection removed — zero-volume ticks are normal
-        # for WebSocket bid/ask updates and don't indicate stale data.
+        # Don't signal if VWAP is stale (too many zero-volume bars)
+        stale_bars = getattr(self, "_vwap_stale_bars", 0)
+        if stale_bars >= 3:
+            self._prev_price = price
+            return None
 
         # Cross-direction cooldown: prevent whipsaw (e.g. SHORT then LONG in seconds)
         if self.last_any_trade_time and self._current_time:
