@@ -834,11 +834,68 @@ class TradovateAPI:
                 oco_result.get("orderId"), oco_result.get("ocoId"),
             )
 
-        return {
+        result = {
             "orderId": entry_order_id,
             "slOrderId": oco_result.get("orderId") if oco_result else None,
             "tpOrderId": oco_result.get("ocoId") if oco_result else None,
         }
+
+        # --- Step 3: Verify OCO orders are actually Working ---
+        time.sleep(0.5)
+        verified = self._verify_oco_placed(result.get("slOrderId"), result.get("tpOrderId"))
+        if not verified:
+            logger.critical(
+                "POST-PLACEMENT VERIFY FAILED: OCO orders not confirmed Working! "
+                "SL=%s TP=%s — retrying OCO placement...",
+                result.get("slOrderId"), result.get("tpOrderId"),
+            )
+            # Retry OCO placement once
+            oco_retry = self._post("/order/placeOCO", oco_payload)
+            if oco_retry and "orderId" in oco_retry:
+                result["slOrderId"] = oco_retry.get("orderId")
+                result["tpOrderId"] = oco_retry.get("ocoId")
+                logger.info(
+                    "OCO retry succeeded: SL=%s TP=%s",
+                    result["slOrderId"], result["tpOrderId"],
+                )
+            else:
+                logger.critical(
+                    "OCO retry ALSO FAILED! Cancelling unprotected entry %s",
+                    entry_order_id,
+                )
+                self._post("/order/cancelorder", {"orderId": entry_order_id})
+                # Also try to flatten via market order in case entry already filled
+                self.place_market_order(symbol, opposite_action, qty)
+                return None
+
+        return result
+
+    def _verify_oco_placed(
+        self, sl_order_id: Optional[int], tp_order_id: Optional[int]
+    ) -> bool:
+        """
+        Verify that SL and/or TP order IDs are in Working/Accepted status.
+
+        Returns True if at least one of them is confirmed working.
+        """
+        if sl_order_id is None and tp_order_id is None:
+            return False
+
+        for oid in [sl_order_id, tp_order_id]:
+            if oid is None:
+                continue
+            try:
+                detail = self._get(f"/order/item?id={oid}")
+                if detail and detail.get("ordStatus") in ("Working", "Accepted"):
+                    return True
+                logger.warning(
+                    "OCO order %s status=%s (expected Working)",
+                    oid, detail.get("ordStatus") if detail else "NOT_FOUND",
+                )
+            except Exception as e:
+                logger.warning("Failed to verify OCO order %s: %s", oid, e)
+
+        return False
 
     def place_market_order(
         self, symbol: str, action: str, qty: int

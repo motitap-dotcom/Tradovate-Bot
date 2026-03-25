@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot — v2.4.0 (resolve-fill-price)
+Tradovate Trading Bot — v2.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -19,6 +19,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -33,7 +34,6 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
-from bot_state import load_state, save_state, build_state, restore_risk, restore_strategies
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -104,6 +104,11 @@ class TradovateBot:
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
 
+        # Order protection watchdog (independent thread)
+        self._watchdog_thread: threading.Thread = None
+        self._watchdog_interval: int = 60  # seconds between checks
+        self._orphan_alert_count: int = 0  # consecutive orphan detections
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -134,12 +139,6 @@ class TradovateBot:
         else:
             logger.info("DRY RUN mode — no orders will be sent")
 
-        # Restore saved state from today (before API balance, so day_start_balance is preserved)
-        self._saved_state = load_state()
-        if self._saved_state:
-            restore_risk(self._saved_state, self.risk)
-            logger.info("Restored risk state from saved bot_state.json")
-
         # Fetch real balance from API to seed risk manager correctly
         if not self.dry_run:
             self._init_balance_from_api()
@@ -150,29 +149,20 @@ class TradovateBot:
         # Initialize strategies
         self._init_strategies()
 
-        # Restore strategy state (trade counts, cooldowns) after init
-        if self._saved_state:
-            restore_strategies(self._saved_state, self.strategies)
-            self.risk.trades_today = self._saved_state.get("trades_today_count", 0)
-            logger.info("Restored strategy state: trades_today=%d", self.risk.trades_today)
-
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
-
-        # Validate order placement permissions before entering main loop
-        if not self.dry_run:
-            self._validate_order_permissions()
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
             self.md_stream = self._start_market_data()
             if self.md_stream:
                 self._subscribe_market_data()
-                # Verify quotes actually flow within 90 seconds
-                self._verify_market_data()
+
+        # Start independent order-protection watchdog (Mechanism 2)
+        self.running = True
+        self._start_order_watchdog()
 
         # Main loop
-        self.running = True
         self._main_loop()
 
     def stop(self):
@@ -218,65 +208,6 @@ class TradovateBot:
                           config.ACTIVE_CHALLENGE["account_size"])
         except Exception as e:
             logger.error("Failed to fetch initial balance: %s", e)
-
-    def _validate_order_permissions(self):
-        """Validate that the account can place orders by doing a dry API check.
-
-        Places a far-out-of-money limit order and immediately cancels it.
-        This catches auth/permission issues early instead of during live trading.
-        """
-        # Pick the first resolved contract for validation
-        if not self.contract_map:
-            logger.warning("No contracts resolved — skipping order validation")
-            return
-
-        first_sym = next(iter(self.contract_map))
-        test_symbol = self.contract_map[first_sym]
-        test_contract_id = self.contract_id_map.get(first_sym)
-        logger.info(
-            "Validating order permissions with %s (id=%s)...", test_symbol, test_contract_id
-        )
-
-        # Use a limit buy at $0.25 — will never fill, just tests the API path
-        payload = {
-            "accountSpec": self.api.account_spec,
-            "accountId": self.api.account_id,
-            "action": "Buy",
-            "symbol": test_symbol,
-            "orderQty": 1,
-            "orderType": "Limit",
-            "price": 0.25,  # trivially low — will not fill
-            "timeInForce": "Day",
-            "isAutomated": True,
-        }
-        if test_contract_id is not None:
-            payload["contractId"] = test_contract_id
-        try:
-            result = self.api._post("/order/placeorder", payload)
-            if result and "orderId" in result:
-                order_id = result["orderId"]
-                status = result.get("ordStatus", "?")
-                logger.info(
-                    "Order validation OK: orderId=%s status=%s — cancelling test order",
-                    order_id, status,
-                )
-                # Cancel immediately
-                self.api._post("/order/cancelorder", {"orderId": order_id})
-            elif result and result.get("ordStatus") == "Rejected":
-                reject = result.get("rejectReason", result.get("text", "unknown"))
-                logger.warning(
-                    "Order validation: test order REJECTED (%s). "
-                    "This may indicate account restrictions — live orders might fail!",
-                    reject,
-                )
-            else:
-                logger.warning(
-                    "Order validation: unexpected response: %s. "
-                    "Live orders may fail — check account permissions.",
-                    result,
-                )
-        except Exception as e:
-            logger.warning("Order validation failed with exception: %s", e)
 
     # ─────────────────────────────────────────
     # Contract resolution
@@ -505,10 +436,7 @@ class TradovateBot:
                 )
                 resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
                 if resp.status_code != 200:
-                    logger.warning(
-                        "Warmup: Yahoo returned %d for %s — ORB will use late-start from live data",
-                        resp.status_code, yahoo_sym,
-                    )
+                    logger.warning("Warmup: Yahoo returned %d for %s", resp.status_code, yahoo_sym)
                     continue
 
                 data = resp.json()
@@ -558,72 +486,24 @@ class TradovateBot:
                 if timestamps:
                     self._warmup_last_ts[contract_name] = timestamps[-1]
 
-                if fed > 0:
-                    logger.info(
-                        "Warmed up %s with %d candles | strategy=%s",
-                        symbol, fed, type(strategy).__name__,
-                    )
-                else:
-                    logger.warning(
-                        "Warmup: 0 candles for %s (%s) — ORB will use late-start from live data",
-                        symbol, yahoo_sym,
-                    )
+                logger.info(
+                    "Warmed up %s with %d candles | strategy=%s",
+                    symbol, fed, type(strategy).__name__,
+                )
 
-                # After warmup, reset ORB state so breakout detection can fire
-                # on real-time ticks. Without this:
-                # 1. _last_price is the last historical close (outside range) →
-                #    fresh-cross guard blocks breakouts
-                # 2. breakout_fired may be True from warmup feed() which both
-                #    builds range AND detects breakout on the same call
-                spec = config.CONTRACT_SPECS.get(symbol, {})
-                max_range = spec.get("stop_loss_points", 25) * 2
+                # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
-                        range_size = w.range_high - w.range_low
-                        if range_size > max_range:
-                            # Range too wide for current conditions — reset so
-                            # late-start builder creates a tight range from live data
-                            logger.warning(
-                                "  ORB %d-min range %.2f-%.2f (size=%.2f) TOO WIDE (max=%.2f). "
-                                "Resetting for late-start rebuild from live ticks.",
-                                w.window_minutes, w.range_low, w.range_high,
-                                range_size, max_range,
-                            )
-                            w.range_set = False
-                            w.range_high = None
-                            w.range_low = None
-                            w.prices = []
-                            w._last_price = None
-                            w.breakout_fired = False
-                        else:
-                            was_fired = w.breakout_fired
-                            w._last_price = None
-                            w.breakout_fired = False
-                            logger.info(
-                                "  ORB %d-min range: %.2f - %.2f (size=%.2f) — armed for breakout%s",
-                                w.window_minutes, w.range_low, w.range_high,
-                                range_size,
-                                " (was fired during warmup, re-armed)" if was_fired else "",
-                            )
+                        logger.info(
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f)",
+                            w.window_minutes, w.range_low, w.range_high,
+                            w.range_high - w.range_low,
+                        )
                 if hasattr(strategy, "vwap") and strategy.vwap:
-                    # Save last warmup price BEFORE resetting, for diagnostics
-                    last_warmup_price = strategy._prev_price
-                    side = "above" if (last_warmup_price or 0) >= strategy.vwap else "below"
-                    # Reset _prev_price to None so first real-time tick sets it,
-                    # allowing crossover detection on the second tick.
-                    strategy._prev_price = None
-                    candle_count = getattr(strategy, "_candle_count", 0)
-                    strategy._candle_count = max(candle_count, strategy.MIN_CANDLES_FOR_SIGNAL)
-                    logger.info(
-                        "  VWAP: %.4f — armed for crossover (last warmup price=%.4f, %s)",
-                        strategy.vwap, last_warmup_price or 0, side,
-                    )
+                    logger.info("  VWAP: %.4f", strategy.vwap)
 
             except Exception as e:
-                logger.warning(
-                    "Warmup failed for %s: %s — ORB will use late-start from live data",
-                    symbol, e,
-                )
+                logger.warning("Warmup failed for %s: %s", symbol, e)
 
     # ─────────────────────────────────────────
     # Market data
@@ -651,41 +531,6 @@ class TradovateBot:
         logger.info("Market data via REST polling (Yahoo Finance)")
         return poller
 
-    def _verify_market_data(self):
-        """Verify quotes are actually flowing after subscription.
-
-        WebSocket may connect and auth successfully but still not deliver quotes
-        (observed after systemd restart). If no quotes arrive within 90 seconds,
-        force switch to REST polling which uses Yahoo Finance (proven reliable).
-        """
-        if isinstance(self.md_stream, RestMarketDataPoller):
-            return  # REST poller doesn't need verification
-
-        logger.info("Verifying market data flow (waiting up to 90s for first quote)...")
-        for i in range(18):  # 18 × 5s = 90s
-            time.sleep(5)
-            quotes = getattr(self.md_stream, "_quotes_received", 0)
-            if quotes > 0:
-                logger.info("Market data verified: %d quotes received in %ds", quotes, (i + 1) * 5)
-                return
-
-        # No quotes after 90 seconds — WebSocket is broken, force REST fallback
-        logger.warning(
-            "WebSocket delivered 0 quotes in 90s despite successful auth+subscribe. "
-            "Forcing switch to REST polling (Yahoo Finance)."
-        )
-        try:
-            self.md_stream.stop()
-        except Exception:
-            pass
-
-        poller = RestMarketDataPoller()
-        poller._last_ts.update(self._warmup_last_ts)
-        poller.start()
-        self.md_stream = poller
-        self._subscribe_market_data()
-        logger.info("Switched to REST polling (Yahoo Finance) as fallback")
-
     def _subscribe_market_data(self):
         """Subscribe to quotes for all active symbols."""
         for symbol, contract_name in self.contract_map.items():
@@ -700,35 +545,15 @@ class TradovateBot:
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
-        # Tradovate WS quote structure: {entries: {Trade: {price, size}, Bid: {price}, ...}}
-        entries = data.get("entries", {})
-        if entries:
-            # Standard Tradovate quote with entries dict
-            trade = entries.get("Trade", {})
-            bid = entries.get("Bid", {})
-            price = trade.get("price") or bid.get("price")
-            high = entries.get("HighPrice", {}).get("price", price) if price else None
-            low = entries.get("LowPrice", {}).get("price", price) if price else None
-            volume = trade.get("size", 0)
-        else:
-            # Fallback: flat structure (e.g. REST poller or legacy format)
-            price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
-            high = data.get("high", {}).get("price", price) if price else None
-            low = data.get("low", {}).get("price", price) if price else None
-            volume = data.get("trade", {}).get("size", 0)
-
+        # Extract price from quote data
+        # Tradovate quote structure includes bid/ask/last
+        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
             return
 
-        # Periodic quote logging: log every 100th quote per symbol for diagnostics
-        count_key = f"_quote_count_{symbol}"
-        count = getattr(self, count_key, 0) + 1
-        setattr(self, count_key, count)
-        if count <= 3 or count % 100 == 0:
-            logger.info(
-                "QUOTE %s #%d: price=%.4f high=%.4f low=%.4f vol=%s",
-                symbol, count, price, high, low, volume,
-            )
+        high = data.get("high", {}).get("price", price)
+        low = data.get("low", {}).get("price", price)
+        volume = data.get("trade", {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -736,61 +561,35 @@ class TradovateBot:
         self, symbol: str, price: float, high: float, low: float, volume: float = 0
     ):
         """Run price through the strategy and risk manager."""
-        # Manage open trade stops (breakeven + trailing) on every tick
-        self._manage_trade_stops(symbol, price)
-
         strategy = self.strategies.get(symbol)
         if strategy is None:
-            return
-
-        current = now_et()
-
-        # Always feed price to strategy so it tracks state (crossovers, ranges).
-        # Trading gates only prevent order execution, not strategy updates.
-        signal = None
-        if hasattr(strategy, "on_price"):
-            if hasattr(strategy, "update_vwap"):
-                strategy._current_time = current
-                signal = strategy.on_price(price, high, low, volume)
-            else:
-                signal = strategy.on_price(price, current, high, low)
-
-        if signal is None:
-            return
-
-        logger.info(
-            "SIGNAL GENERATED: %s %s | SL=%.4f TP=%.4f | %s",
-            signal.direction.value, signal.symbol,
-            signal.stop_loss, signal.take_profit, signal.reason,
-        )
-        # Persist signal to live_status for monitoring
-        if not hasattr(self, "_signals_log"):
-            self._signals_log = []
-        self._signals_log.append({
-            "time": current.isoformat(),
-            "symbol": signal.symbol,
-            "direction": signal.direction.value,
-            "reason": signal.reason,
-            "sl": signal.stop_loss,
-            "tp": signal.take_profit,
-        })
-
-        # Check time constraints — only trade within the configured window
-        start = parse_time_et(config.TRADING_START_ET)
-        cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
-        if current < start or current >= cutoff:
-            self._signals_log[-1]["blocked"] = f"outside trading window ({current.strftime('%H:%M')})"
-            logger.info("Signal blocked: outside trading window (%s)", current.strftime("%H:%M"))
             return
 
         # Check if we can trade
         ok, reason = self.risk.can_trade()
         if not ok:
-            self._signals_log[-1]["blocked"] = f"risk manager: {reason}"
-            logger.warning("Signal blocked by risk manager: %s", reason)
             return
 
-        self._execute_signal(signal)
+        # Check time constraints — only trade within the configured window
+        current = now_et()
+        start = parse_time_et(config.TRADING_START_ET)
+        cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
+        if current < start or current >= cutoff:
+            return
+
+        # Feed price to strategy
+        signal = None
+        if hasattr(strategy, "on_price"):
+            if hasattr(strategy, "update_vwap"):
+                # VWAP strategy — pass current timestamp for cooldown tracking
+                strategy._current_time = current
+                signal = strategy.on_price(price, high, low, volume)
+            else:
+                # ORB strategy
+                signal = strategy.on_price(price, current, high, low)
+
+        if signal is not None:
+            self._execute_signal(signal)
 
     # ─────────────────────────────────────────
     # Order execution
@@ -798,12 +597,9 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
-        sig_entry = self._signals_log[-1] if hasattr(self, "_signals_log") and self._signals_log else {}
-
         # Global cooldown: prevent rapid-fire orders across all symbols
         elapsed = time.time() - self._last_order_time
         if elapsed < self._min_order_gap_seconds:
-            sig_entry["blocked"] = f"cooldown ({int(self._min_order_gap_seconds - elapsed)}s left)"
             logger.info(
                 "Signal for %s deferred: global cooldown (%ds remaining)",
                 signal.symbol, int(self._min_order_gap_seconds - elapsed),
@@ -812,21 +608,18 @@ class TradovateBot:
 
         ok, reason = self.risk.can_trade()
         if not ok:
-            sig_entry["blocked"] = f"risk: {reason}"
             logger.warning("Signal rejected by risk manager: %s", reason)
             return
 
         # Calculate position size
         qty = self.risk.calculate_position_size(signal.symbol)
         if qty <= 0:
-            sig_entry["blocked"] = "position_size=0"
             logger.warning("Position size = 0 for %s. Signal skipped.", signal.symbol)
             return
         signal.qty = qty
 
         contract_name = self.contract_map.get(signal.symbol)
         if not contract_name:
-            sig_entry["blocked"] = "no_contract_mapping"
             logger.error("No contract mapping for %s", signal.symbol)
             return
 
@@ -841,7 +634,6 @@ class TradovateBot:
         )
 
         if self.dry_run:
-            sig_entry["blocked"] = "dry_run"
             logger.info("[DRY RUN] Order would be placed: %s", signal)
             self.trades_today.append(
                 {
@@ -856,8 +648,7 @@ class TradovateBot:
             )
             return
 
-        # Place bracket order via API (use contractId when available for reliability)
-        contract_id = self.contract_id_map.get(signal.symbol)
+        # Place bracket order via API
         result = self.api.place_bracket_order(
             symbol=contract_name,
             action=signal.direction.value,
@@ -866,12 +657,11 @@ class TradovateBot:
             stop_price=signal.stop_loss,
             take_profit_price=signal.take_profit,
             order_type="Market",
-            contract_id=contract_id,
         )
 
         if result:
             self._last_order_time = time.time()
-            self.risk.register_open(signal.qty, symbol=signal.symbol)
+            self.risk.register_open(signal.qty)
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
@@ -882,15 +672,6 @@ class TradovateBot:
                 stop_loss=signal.stop_loss,
                 take_profit=signal.take_profit,
             )
-            fill_price = result.get("fillPrice", 0)
-            # resolve_fill_price already retried in place_bracket_order;
-            # if still 0, the deferred patch in _sync_fills will keep trying
-            if not fill_price:
-                fill_price = signal.entry_price or 0
-            # Patch journal entry with actual fill price
-            if fill_price and trade_id:
-                self.journal.patch_entry_price(signal.symbol, fill_price)
-            stop_distance = abs(fill_price - signal.stop_loss) if fill_price else signal.stop_loss
             self.trades_today.append(
                 {
                     "time": now_et().isoformat(),
@@ -903,142 +684,19 @@ class TradovateBot:
                     "order_id": result.get("orderId"),
                     "sl_order_id": result.get("slOrderId"),
                     "tp_order_id": result.get("tpOrderId"),
-                    "fill_price": fill_price,
-                    "stop_distance": stop_distance,
                     "journal_id": trade_id,
-                    # Trailing stop state
-                    "breakeven_done": False,
-                    "current_sl": signal.stop_loss,
-                    "best_r": 0.0,  # highest R-multiple seen
                 }
             )
-            sig_entry["executed"] = f"orderId={result.get('orderId')}"
-            logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
-            # Persist state after every trade so mid-day restarts don't lose context
-            self._persist_state()
+            logger.info(
+                "Order placed: entryId=%s slId=%s tpId=%s (journal: %s)",
+                result.get("orderId"), result.get("slOrderId"),
+                result.get("tpOrderId"), trade_id,
+            )
         else:
-            err_detail = getattr(self.api, "_last_order_error", "unknown")
-            sig_entry["blocked"] = f"order_failed(contract={contract_name}, acct={self.api.account_id}): {err_detail}"
             logger.error(
-                "Order placement FAILED for %s %s %d (contract=%s, account_id=%s): %s",
+                "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
-                contract_name, self.api.account_id, err_detail,
             )
-
-    def _persist_state(self):
-        """Save current bot state to disk for crash recovery."""
-        try:
-            state = build_state(
-                strategies=self.strategies,
-                trades_today_count=self.risk.trades_today,
-                trades_today_list=self.trades_today,
-                risk_manager=self.risk,
-            )
-            save_state(state)
-        except Exception as e:
-            logger.error("Failed to persist state: %s", e)
-
-    # ─────────────────────────────────────────
-    # Breakeven & Trailing Stop Management
-    # ─────────────────────────────────────────
-
-    def _manage_trade_stops(self, symbol: str, price: float):
-        """Check open trades for this symbol and move SL if needed.
-
-        Called on every price tick for the given symbol.
-        - After +1R: move SL to breakeven (entry price)
-        - After that: trail SL every additional 0.5R of favorable movement
-        """
-        if self.dry_run:
-            return
-
-        be_threshold = config.BREAKEVEN_R_THRESHOLD
-        trail_step = config.TRAILING_STOP_STEP_R
-
-        for trade in self.trades_today:
-            if trade.get("_closed"):
-                continue
-            if trade.get("symbol") != symbol:
-                continue
-
-            sl_order_id = trade.get("sl_order_id")
-            fill_price = trade.get("fill_price", 0)
-            stop_dist = trade.get("stop_distance", 0)
-
-            if not sl_order_id or not fill_price or stop_dist <= 0:
-                continue
-
-            # Calculate current R-multiple
-            direction = trade.get("direction")
-            if direction == "Buy":
-                current_r = (price - fill_price) / stop_dist
-            else:  # Sell
-                current_r = (fill_price - price) / stop_dist
-
-            # Track best R seen
-            if current_r > trade.get("best_r", 0):
-                trade["best_r"] = current_r
-
-            best_r = trade["best_r"]
-
-            # --- Breakeven ---
-            if not trade.get("breakeven_done") and best_r >= be_threshold:
-                # Skip if we already failed too many times (avoid API spam)
-                if trade.get("_be_fail_count", 0) >= 3:
-                    continue
-                # Move SL to entry price (breakeven)
-                new_sl = fill_price
-                result = self.api.modify_order(sl_order_id, new_sl)
-                if result:
-                    trade["breakeven_done"] = True
-                    trade["current_sl"] = new_sl
-                    trade.pop("_be_fail_count", None)
-                    logger.info(
-                        "BREAKEVEN: %s %s | SL moved to %.4f (entry) | R=%.2f",
-                        symbol, direction, new_sl, current_r,
-                    )
-                else:
-                    trade["_be_fail_count"] = trade.get("_be_fail_count", 0) + 1
-                    logger.warning("BREAKEVEN failed for %s (attempt %d/3)", symbol, trade["_be_fail_count"])
-                continue  # don't trail on the same tick we hit breakeven
-
-            # --- Trailing stop ---
-            if trade.get("breakeven_done") and best_r >= be_threshold + trail_step:
-                # Calculate where SL should be based on best_r
-                # Trail SL in discrete R-steps behind the peak
-                r_steps_above_be = int((best_r - be_threshold) / trail_step)
-                if r_steps_above_be <= 0:
-                    continue
-
-                # Move SL to (entry + r_steps * trail_step * stop_dist) for longs
-                trail_r = be_threshold + (r_steps_above_be - 1) * trail_step
-                if direction == "Buy":
-                    new_sl = fill_price + trail_r * stop_dist
-                else:
-                    new_sl = fill_price - trail_r * stop_dist
-
-                current_sl = trade.get("current_sl", 0)
-                # Only move SL in favorable direction
-                if direction == "Buy" and new_sl <= current_sl:
-                    continue
-                if direction == "Sell" and new_sl >= current_sl:
-                    continue
-
-                # Round to tick size
-                spec = config.CONTRACT_SPECS.get(symbol, {})
-                tick = spec.get("tick_size", 0.01)
-                if direction == "Buy":
-                    new_sl = round(new_sl / tick) * tick  # round to nearest tick
-                else:
-                    new_sl = round(new_sl / tick) * tick
-
-                result = self.api.modify_order(sl_order_id, new_sl)
-                if result:
-                    trade["current_sl"] = new_sl
-                    logger.info(
-                        "TRAILING: %s %s | SL moved to %.4f (+%.1fR) | best_r=%.2f current_r=%.2f",
-                        symbol, direction, new_sl, trail_r, best_r, current_r,
-                    )
 
     # ─────────────────────────────────────────
     # Main loop
@@ -1069,16 +727,12 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                    # Record force-close exits in journal + update risk manager
+                    # Record force-close exits in journal
                     for t in self.trades_today:
-                        if t.get("journal_id") and not t.get("_closed"):
-                            exit_price, pnl, _ = self._resolve_exit_fill(t)
+                        if t.get("journal_id"):
                             self.journal.record_exit_by_symbol(
-                                t["symbol"], exit_price, pnl, exit_reason="force_close"
+                                t["symbol"], 0, 0, exit_reason="force_close"
                             )
-                            t["_closed"] = True
-                        qty = t.get("qty", 1)
-                        self.risk.register_close(qty, symbol=t.get("symbol", ""))
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -1134,20 +788,12 @@ class TradovateBot:
                     if is_stale or (fell_back and fell_back.is_set()):
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
                         logger.warning(
-                            "Market data stream unhealthy (%s). Re-authenticating and restarting...", reason
+                            "Market data stream unhealthy (%s). Restarting...", reason
                         )
                         try:
                             self.md_stream.stop()
                         except Exception:
                             pass
-                        # Force token refresh before restarting stream
-                        try:
-                            self.api.ensure_token_valid()
-                            if not self.api.md_access_token:
-                                logger.warning("No md_access_token after refresh, forcing full re-auth...")
-                                self.api._re_authenticate()
-                        except Exception as e:
-                            logger.warning("Token refresh failed during stream restart: %s", e)
                         self.md_stream = self._start_market_data()
                         if self.md_stream:
                             self._subscribe_market_data()
@@ -1185,19 +831,8 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
-                # Market data diagnostics
-                md_info = ""
-                if self.md_stream:
-                    md_type = type(self.md_stream).__name__
-                    md_quotes = getattr(self.md_stream, "_quotes_received", "?")
-                    md_dispatched = getattr(self.md_stream, "_quotes_dispatched", "?")
-                    md_stale = getattr(self.md_stream, "data_stale", False)
-                    md_connected = getattr(self.md_stream, "_connected", None)
-                    ws_ok = md_connected.is_set() if md_connected else "?"
-                    md_info = f" | md={md_type} recv={md_quotes} disp={md_dispatched} stale={md_stale} ws={ws_ok}"
-
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -1207,7 +842,6 @@ class TradovateBot:
                     status["max_daily_trades"],
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
-                    md_info,
                 )
 
                 # Write live status file for external monitoring
@@ -1228,9 +862,48 @@ class TradovateBot:
 
         self.stop()
 
+    # ─────────────────────────────────────────
+    # Order protection watchdog (independent thread)
+    # ─────────────────────────────────────────
+
+    def _start_order_watchdog(self):
+        """Start the independent order-protection watchdog thread."""
+        if self.dry_run:
+            return
+        self._watchdog_thread = threading.Thread(
+            target=self._order_watchdog_loop,
+            name="order-watchdog",
+            daemon=True,
+        )
+        self._watchdog_thread.start()
+        logger.info("Order protection watchdog started (interval=%ds)", self._watchdog_interval)
+
+    def _order_watchdog_loop(self):
+        """
+        Independent watchdog that continuously verifies order protection.
+
+        This is the SECOND layer of defense (Mechanism 2).
+        Runs in its own thread, completely independent of the main loop.
+        If the main loop hangs, crashes, or gets delayed, this still runs.
+        """
+        while self.running:
+            try:
+                time.sleep(self._watchdog_interval)
+                if not self.running:
+                    break
+                self._verify_order_protection()
+            except Exception as e:
+                logger.error("Watchdog error: %s", e)
+                # Never let the watchdog die — it's our last line of defense
+                time.sleep(5)
+
     def _verify_order_protection(self):
         """
         Verify that every open position has active SL/TP orders.
+
+        DUAL MECHANISM — this method is called from TWO independent sources:
+          1. Main loop (_main_loop) — every ~30s cycle
+          2. Watchdog thread (_order_watchdog_loop) — every 60s independently
 
         If a position exists without any working orders (orphaned), this method
         will attempt to re-place the OCO using the SL/TP from the original signal.
@@ -1241,6 +914,7 @@ class TradovateBot:
             positions = self.api.get_positions()
             open_positions = [p for p in positions if abs(p.get("netPos", 0)) > 0]
             if not open_positions:
+                self._orphan_alert_count = 0
                 return
 
             working_orders = self.api.get_working_orders()
@@ -1252,6 +926,8 @@ class TradovateBot:
                 if cid is not None:
                     protected_contract_ids.add(cid)
 
+            orphan_found = False
+
             for pos in open_positions:
                 contract_id = pos.get("contractId")
                 net_pos = pos.get("netPos", 0)
@@ -1260,17 +936,29 @@ class TradovateBot:
                     continue  # Position has working orders — OK
 
                 # Orphaned position detected!
+                orphan_found = True
+                self._orphan_alert_count += 1
                 net_price = pos.get("netPrice", 0)
                 qty = abs(net_pos)
                 close_action = "Sell" if net_pos > 0 else "Buy"
+
+                logger.critical(
+                    "!!! ORPHAN DETECTED (#%d) !!! contractId=%s netPos=%d — "
+                    "NO working SL/TP orders found! Attempting recovery...",
+                    self._orphan_alert_count, contract_id, net_pos,
+                )
 
                 # Resolve contract name
                 contract = self.api._get(f"/contract/item?id={contract_id}")
                 if not contract or not contract.get("name"):
                     logger.error(
-                        "ORPHAN GUARD: Cannot resolve contractId %s. Force closing via position list.",
+                        "ORPHAN GUARD: Cannot resolve contractId %s — EMERGENCY CLOSE via flatten!",
                         contract_id,
                     )
+                    # Last resort: try to flatten everything
+                    if self._orphan_alert_count >= 3:
+                        logger.critical("ORPHAN GUARD: 3+ consecutive orphan alerts — flattening ALL positions!")
+                        self.api.close_all_positions()
                     continue
                 contract_name = contract["name"]
 
@@ -1299,7 +987,24 @@ class TradovateBot:
                         stop_price=original_sl,
                         take_profit_price=original_tp,
                     )
-                    if not result:
+                    if result:
+                        # Verify the re-placed OCO is actually working
+                        time.sleep(0.5)
+                        verified = self.api._verify_oco_placed(
+                            result.get("orderId"), result.get("ocoId")
+                        )
+                        if verified:
+                            logger.info(
+                                "ORPHAN GUARD: OCO re-placed AND VERIFIED for %s",
+                                contract_name,
+                            )
+                        else:
+                            logger.critical(
+                                "ORPHAN GUARD: OCO re-placed but VERIFICATION FAILED for %s — EMERGENCY CLOSE!",
+                                contract_name,
+                            )
+                            self.api.place_market_order(contract_name, close_action, qty)
+                    else:
                         # OCO re-placement failed — emergency close
                         logger.critical(
                             "ORPHAN GUARD: OCO re-placement FAILED for %s. EMERGENCY CLOSE!",
@@ -1346,6 +1051,9 @@ class TradovateBot:
                         )
                         self.api.place_market_order(contract_name, close_action, qty)
 
+            if not orphan_found:
+                self._orphan_alert_count = 0
+
         except Exception as e:
             logger.error("Order protection verification error: %s", e)
 
@@ -1382,29 +1090,6 @@ class TradovateBot:
 
             self.risk.open_contracts = total_open
 
-            # Patch missing entry fill prices (deferred fill — runs for ALL trades)
-            # Uses resolve_fill_price which checks /order/item AND /fill/deps
-            for trade_info in self.trades_today:
-                if trade_info.get("fill_price") and trade_info["fill_price"] != 0:
-                    continue
-                order_id = trade_info.get("order_id")
-                if not order_id:
-                    continue
-                try:
-                    # max_wait=0: instant check only (no blocking the sync loop)
-                    avg = self.api.resolve_fill_price(order_id, max_wait=0)
-                    if avg:
-                        trade_info["fill_price"] = avg
-                        sym = trade_info.get("symbol", "")
-                        journal_id = trade_info.get("journal_id", "")
-                        if not trade_info.get("_closed"):
-                            self.journal.patch_entry_price(sym, avg)
-                        else:
-                            self.journal.patch_closed_entry_price(journal_id, avg)
-                        logger.info("Deferred fill patch for %s: entry_price=%.4f", sym, avg)
-                except Exception as e:
-                    logger.debug("Deferred fill patch failed for order %s: %s", order_id, e)
-
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
@@ -1414,125 +1099,15 @@ class TradovateBot:
 
                 if sym not in open_base_symbols:
                     # Position is flat for this symbol — trade was closed (by SL/TP/manual)
-                    exit_price, pnl, exit_reason = self._resolve_exit_fill(trade_info)
                     self.journal.record_exit_by_symbol(
-                        sym, exit_price, pnl, exit_reason=exit_reason
+                        sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(trade_info.get("qty", 1), symbol=sym)
+                    self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info(
-                        "Position closed for %s (flat): exit=%.4f pnl=%.2f reason=%s",
-                        sym, exit_price, pnl, exit_reason,
-                    )
+                    logger.info("Position closed for %s (flat)", sym)
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
-
-    def _resolve_exit_fill(self, trade_info: dict) -> tuple:
-        """Resolve actual exit price and P&L for a closed trade.
-
-        Uses resolve_fill_price (which checks /order/item + /fill/deps) for
-        both entry and exit orders.  This guarantees we get real fill prices
-        even when /order/item lags behind.
-
-        Returns:
-            (exit_price, pnl, exit_reason)
-        """
-        sym = trade_info.get("symbol", "")
-        qty = trade_info.get("qty", 1)
-        direction = trade_info.get("direction", "Buy")
-        entry_price = trade_info.get("fill_price", 0)
-        sl_order_id = trade_info.get("sl_order_id")
-        tp_order_id = trade_info.get("tp_order_id")
-        entry_order_id = trade_info.get("order_id")
-
-        spec = config.CONTRACT_SPECS.get(sym, {})
-        point_value = spec.get("point_value", 1)
-
-        exit_price = 0.0
-        exit_reason = "bracket_fill"
-
-        # ── Resolve EXIT price ──
-        # Strategy: check TP order, then SL order using resolve_fill_price
-        # (which queries both /order/item AND /fill/deps with retries)
-        for order_id, reason in [(tp_order_id, "take_profit"), (sl_order_id, "stop_loss")]:
-            if not order_id:
-                continue
-            try:
-                # First quick check: is this order filled?
-                detail = self.api.get_order_detail(order_id)
-                if not detail:
-                    continue
-                status = detail.get("ordStatus", "")
-                if status not in ("Filled", "Completed"):
-                    continue
-                # Order is filled — get the real price
-                avg = self.api.resolve_fill_price(order_id, max_wait=3.0)
-                if avg:
-                    exit_price = avg
-                    exit_reason = reason
-                    logger.info("Exit fill resolved for %s: %s order %s → %.4f",
-                                sym, reason, order_id, avg)
-                    break
-            except Exception as e:
-                logger.debug("Failed to check exit order %s: %s", order_id, e)
-
-        # Fallback: scan /fill/list for fills matching our contract (opposite action)
-        if not exit_price:
-            try:
-                all_fills = self.api.get_fills()
-                opposite = "Sell" if direction == "Buy" else "Buy"
-                contract_id = None
-                if entry_order_id:
-                    try:
-                        entry_detail = self.api.get_order_detail(entry_order_id)
-                        if entry_detail:
-                            contract_id = entry_detail.get("contractId")
-                    except Exception:
-                        pass
-                # Find most recent matching fill
-                for fill in reversed(all_fills):
-                    if fill.get("action") == opposite and contract_id and fill.get("contractId") == contract_id:
-                        exit_price = fill.get("price", 0)
-                        exit_reason = "bracket_fill"
-                        if exit_price:
-                            logger.info("Exit fill from /fill/list for %s: %.4f", sym, exit_price)
-                            break
-            except Exception as e:
-                logger.debug("Fallback fill scan failed for %s: %s", sym, e)
-
-        # ── Resolve ENTRY price (if still missing) ──
-        if not entry_price and entry_order_id:
-            entry_price = self.api.resolve_fill_price(entry_order_id, max_wait=3.0)
-            if entry_price:
-                trade_info["fill_price"] = entry_price
-                journal_id = trade_info.get("journal_id", "")
-                # Trade is about to be closed, so patch via closed-trade method
-                self.journal.patch_closed_entry_price(journal_id, entry_price)
-                logger.info("Entry fill resolved at exit time for %s: %.4f", sym, entry_price)
-
-        # ── Compute P&L ──
-        pnl = 0.0
-        if entry_price and exit_price:
-            if direction == "Buy":
-                pnl = (exit_price - entry_price) * qty * point_value
-            else:
-                pnl = (entry_price - exit_price) * qty * point_value
-            pnl = round(pnl, 2)
-
-        if not exit_price:
-            logger.warning(
-                "Could not resolve exit fill for %s (sl=%s tp=%s entry=%s). "
-                "Recording with price=0, pnl=0.",
-                sym, sl_order_id, tp_order_id, entry_order_id,
-            )
-        elif not entry_price:
-            logger.warning(
-                "Exit resolved (%.4f) but entry still missing for %s. pnl=0.",
-                exit_price, sym,
-            )
-
-        return exit_price, pnl, exit_reason
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
@@ -1612,8 +1187,6 @@ class TradovateBot:
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
                 ),
-                "signals_today": getattr(self, "_signals_log", [])[-20:],
-                "trades_log": self.trades_today[-20:],
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
