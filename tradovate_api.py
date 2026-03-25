@@ -859,6 +859,61 @@ class TradovateAPI:
         }
         return self._post("/order/placeorder", payload)
 
+    def get_working_orders(self) -> list[dict]:
+        """Return all orders with status Working or Accepted."""
+        orders = self._get("/order/list") or []
+        return [o for o in orders if o.get("ordStatus") in ("Working", "Accepted")]
+
+    def place_oco_for_position(
+        self,
+        symbol: str,
+        action: str,
+        qty: int,
+        stop_price: float,
+        take_profit_price: float,
+    ) -> Optional[dict]:
+        """
+        Place an OCO (stop-loss + take-profit) to protect an existing position.
+
+        Used by the orphan-position guard when SL/TP orders are missing.
+        """
+        if self.account_id is None:
+            logger.error("Cannot place OCO: account_id is None")
+            return None
+
+        oco_payload: dict[str, Any] = {
+            "accountSpec": self.account_spec,
+            "accountId": self.account_id,
+            "symbol": symbol,
+            "action": action,
+            "orderQty": qty,
+            "orderType": "Stop",
+            "stopPrice": stop_price,
+            "timeInForce": "GTC",
+            "isAutomated": True,
+            "other": {
+                "action": action,
+                "orderType": "Limit",
+                "price": take_profit_price,
+                "orderQty": qty,
+                "timeInForce": "GTC",
+            },
+        }
+
+        logger.info(
+            "Re-placing OCO for orphaned position: %s %d %s | SL=%.2f TP=%.2f",
+            action, qty, symbol, stop_price, take_profit_price,
+        )
+        result = self._post("/order/placeOCO", oco_payload)
+        if not result or "orderId" not in result:
+            logger.error("OCO re-placement FAILED: %s", result)
+            return None
+        logger.info(
+            "OCO re-placed: SL orderId=%s TP orderId=%s",
+            result.get("orderId"), result.get("ocoId"),
+        )
+        return result
+
     def cancel_all_orders(self) -> bool:
         """Cancel all working orders for the account."""
         orders = self._get("/order/list") or []
