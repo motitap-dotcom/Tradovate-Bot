@@ -59,6 +59,7 @@ def build_state(
     strategies: dict,
     trades_today_count: int,
     trades_today_list: list,
+    risk_manager=None,
 ) -> dict:
     """
     Build a state dict from current strategy instances.
@@ -68,6 +69,15 @@ def build_state(
         "trades_today_count": trades_today_count,
         "symbols": {},
     }
+
+    # Persist risk manager daily state so restarts don't reset day_pnl
+    if risk_manager is not None:
+        state["risk"] = {
+            "day_start_balance": risk_manager.day_start_balance,
+            "peak_balance": risk_manager.peak_balance,
+            "drawdown_floor": risk_manager.drawdown_floor,
+            "trades_today": risk_manager.trades_today,
+        }
 
     for symbol, strategy in strategies.items():
         sym_state = {"type": type(strategy).__name__}
@@ -109,6 +119,61 @@ def build_state(
         state["symbols"][symbol] = sym_state
 
     return state
+
+
+def restore_risk_state(state: dict, risk_manager) -> bool:
+    """
+    Restore risk manager daily state from persisted state.
+
+    This is CRITICAL: without this, every restart resets day_start_balance
+    to the current balance, making the risk manager forget previous losses.
+    FundedNext tracks the REAL daily P&L from the start of the day —
+    if the bot restarts mid-day and "forgets" earlier losses, it will
+    keep trading past the daily loss limit and trigger a breach.
+
+    Returns True if state was restored.
+    """
+    if not state or "risk" not in state:
+        return False
+
+    risk = state["risk"]
+    saved_day_start = risk.get("day_start_balance")
+    if saved_day_start is None:
+        return False
+
+    logger.info(
+        "Restoring risk state from saved state: day_start=$%.2f peak=$%.2f floor=$%.2f trades=%d",
+        saved_day_start,
+        risk.get("peak_balance", 0),
+        risk.get("drawdown_floor", 0),
+        risk.get("trades_today", 0),
+    )
+
+    risk_manager.day_start_balance = saved_day_start
+    risk_manager._balance_initialized = True
+
+    # Restore peak/floor if saved values are more conservative (higher peak = tighter floor)
+    saved_peak = risk.get("peak_balance")
+    if saved_peak and saved_peak > risk_manager.peak_balance:
+        risk_manager.peak_balance = saved_peak
+        risk_manager.drawdown_floor = saved_peak - risk_manager.max_trailing_drawdown
+
+    # Restore trade count
+    saved_trades = risk.get("trades_today")
+    if saved_trades and saved_trades > risk_manager.trades_today:
+        risk_manager.trades_today = saved_trades
+
+    # Recalculate day_pnl based on persisted day_start and current balance
+    risk_manager.day_pnl = risk_manager.current_balance - saved_day_start
+    logger.info(
+        "Risk state restored: day_start=$%.2f day_pnl=$%.2f peak=$%.2f floor=$%.2f trades=%d",
+        risk_manager.day_start_balance,
+        risk_manager.day_pnl,
+        risk_manager.peak_balance,
+        risk_manager.drawdown_floor,
+        risk_manager.trades_today,
+    )
+    return True
 
 
 def restore_strategies(state: dict, strategies: dict):
