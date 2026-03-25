@@ -821,22 +821,28 @@ class TradovateBot:
                     else:
                         logger.error("=== AUTO-RECOVERY: Re-authentication FAILED. Will retry next cycle. ===")
 
-                # Market data staleness check — restart stream if no data for 2+ minutes
+                # Market data staleness check — switch to REST if WebSocket sends no data
                 if not self.dry_run and self.md_stream:
                     is_stale = getattr(self.md_stream, "data_stale", False)
                     fell_back = getattr(self.md_stream, "fell_back", None)
                     if is_stale or (fell_back and fell_back.is_set()):
                         reason = "fell back to REST" if (fell_back and fell_back.is_set()) else "stale data"
                         logger.warning(
-                            "Market data stream unhealthy (%s). Restarting...", reason
+                            "Market data stream unhealthy (%s). Switching to REST polling (Yahoo Finance).",
+                            reason,
                         )
                         try:
                             self.md_stream.stop()
                         except Exception:
                             pass
-                        self.md_stream = self._start_market_data()
-                        if self.md_stream:
-                            self._subscribe_market_data()
+                        # Go DIRECTLY to REST polling — do NOT retry WebSocket
+                        # (it connects fine but sends no market data)
+                        poller = RestMarketDataPoller()
+                        poller._last_ts.update(self._warmup_last_ts)
+                        poller.start()
+                        self.md_stream = poller
+                        self._subscribe_market_data()
+                        logger.info("Switched to REST polling — data should flow now")
 
                 # Periodic WebSocket recovery: if currently on REST polling,
                 # try to upgrade back to WebSocket every 5 minutes
