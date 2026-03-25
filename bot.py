@@ -34,6 +34,7 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
+from bot_state import load_state, save_state, build_state, restore_strategies, restore_risk_state
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -148,6 +149,20 @@ class TradovateBot:
 
         # Initialize strategies
         self._init_strategies()
+
+        # Restore persisted state from previous run (same day)
+        saved_state = load_state()
+        if saved_state:
+            restore_strategies(saved_state, self.strategies)
+            if not self.dry_run:
+                restored = restore_risk_state(saved_state, self.risk)
+                if restored:
+                    logger.info(
+                        "Day start balance PRESERVED across restart: $%.2f (day_pnl=$%.2f)",
+                        self.risk.day_start_balance, self.risk.day_pnl,
+                    )
+                # Restore trades_today list
+                self.trades_today = saved_state.get("trades_today_list", [])
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
@@ -749,6 +764,8 @@ class TradovateBot:
                 result.get("orderId"), result.get("slOrderId"),
                 result.get("tpOrderId"), trade_id,
             )
+            # Persist state after every trade — so restarts don't forget losses
+            self._save_state()
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
@@ -809,6 +826,7 @@ class TradovateBot:
                         self._sync_balance()
                         self._sync_fills()
                         self._verify_order_protection()
+                        self._save_state()  # persist after every sync cycle
                         self._consecutive_api_failures = 0  # Reset on success
                     except Exception as e:
                         self._consecutive_api_failures += 1
@@ -1171,6 +1189,20 @@ class TradovateBot:
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
+
+    def _save_state(self):
+        """Persist bot state to disk for recovery across restarts."""
+        try:
+            state = build_state(
+                self.strategies,
+                len(self.trades_today),
+                self.trades_today,
+                risk_manager=self.risk,
+            )
+            state["trades_today_list"] = self.trades_today
+            save_state(state)
+        except Exception as e:
+            logger.warning("Failed to save state: %s", e)
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
