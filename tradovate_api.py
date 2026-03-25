@@ -1190,18 +1190,18 @@ class MarketDataStream:
     def data_stale(self) -> bool:
         """True if connected but no data received for DATA_TIMEOUT seconds,
         or if no quotes at all after NO_DATA_TIMEOUT since start."""
-        if not self._last_data_time:
-            return False  # Haven't started receiving yet
-        # Check 1: No data for DATA_TIMEOUT seconds (normal staleness)
-        if (time.time() - self._last_data_time) > self.DATA_TIMEOUT:
-            return True
-        # Check 2: Stream running but zero quotes received after NO_DATA_TIMEOUT
+        # Check 1: Stream running but ZERO quotes received — force fallback
         if self._quotes_received == 0 and self._start_time:
-            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
+            elapsed = time.time() - self._start_time
+            if elapsed > self.NO_DATA_TIMEOUT:
                 logger.warning(
                     "WebSocket has been running for %.0fs but received 0 quotes. Declaring stale.",
-                    time.time() - self._start_time,
+                    elapsed,
                 )
+                return True
+        # Check 2: Had data before but it stopped
+        if self._last_data_time:
+            if (time.time() - self._last_data_time) > self.DATA_TIMEOUT:
                 return True
         return False
 
