@@ -560,25 +560,42 @@ class TradovateBot:
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
-        # Extract price from quote data
-        # Tradovate quote structure includes bid/ask/last
-        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+        # Extract price from quote data.
+        # Tradovate sends two formats:
+        #   1. Flat: {"trade": {"price": X}, "bid": {"price": Y}, "high": {"price": Z}}
+        #   2. Entries: {"entries": {"Trade": {"price": X}, "Bid": {"price": Y},
+        #                            "HighPrice": {"price": Z}, "LowPrice": {"price": Z}}}
+        entries = data.get("entries", {})
+        if entries:
+            # entries-based format (observed in demo API)
+            price = (
+                entries.get("Trade", {}).get("price")
+                or entries.get("Bid", {}).get("price")
+                or entries.get("Offer", {}).get("price")
+            )
+        else:
+            # flat format
+            price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+
         if price is None:
-            # Data arrived but no usable price — log first few for diagnostics
             if not hasattr(self, "_null_price_logged"):
                 self._null_price_logged = 0
             if self._null_price_logged < 5:
                 self._null_price_logged += 1
-                keys = list(data.keys())[:10]
                 logger.warning(
-                    "QUOTE %s: price=None (raw keys: %s) — data not usable",
-                    symbol, keys,
+                    "QUOTE %s: price=None (keys: %s entries_keys: %s)",
+                    symbol, list(data.keys())[:6], list(entries.keys())[:6] if entries else "N/A",
                 )
             return
 
-        high = data.get("high", {}).get("price", price)
-        low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
+        if entries:
+            high = entries.get("HighPrice", {}).get("price", price)
+            low = entries.get("LowPrice", {}).get("price", price)
+            volume = entries.get("TotalTradeVolume", {}).get("size", 0)
+        else:
+            high = data.get("high", {}).get("price", price)
+            low = data.get("low", {}).get("price", price)
+            volume = data.get("trade", {}).get("size", 0)
 
         self._quote_count += 1
         # Log first 5 quotes per symbol, then every 10th to avoid spam
