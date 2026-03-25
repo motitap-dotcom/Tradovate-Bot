@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-25T08:58:16Z",
+  "timestamp": "2026-03-25T10:02:26Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -20,15 +20,15 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "1007053",
-    "uptime_since": "Wed 2026-03-25 07:40:21 UTC",
+    "bot_pid": "1029795",
+    "uptime_since": "Wed 2026-03-25 09:00:11 UTC",
     "disk": "17%",
-    "memory": "981MB/7941MB (12%)",
+    "memory": "983MB/7941MB (12%)",
     "hostname": "vmi3096165",
-    "git_commit": "69b6d9d status: 2026-03-25 07:36 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "4f2be9c status: 2026-03-25 08:58 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-03-25T08:58:10.112208+00:00",
-      "timestamp_et": "2026-03-25T04:58:10.112226-04:00",
+      "timestamp": "2026-03-25T10:02:20.495262+00:00",
+      "timestamp_et": "2026-03-25T06:02:20.495279-04:00",
       "balance": 57662.32,
       "equity": 57662.32,
       "day_pnl": 0.0,
@@ -56,43 +56,70 @@
       "market_data_source": "websocket",
       "signals_today": [
         {
-          "time": "2026-03-25T03:42:58.022491-04:00",
-          "symbol": "SI",
-          "direction": "Buy",
-          "reason": "VWAP long #1 at 73.0500 (VWAP=72.9551)",
-          "sl": 72.90509018036165,
-          "tp": 73.14999999999999,
-          "blocked": "outside trading window (03:42)"
-        },
-        {
-          "time": "2026-03-25T04:02:37.954632-04:00",
-          "symbol": "MGC",
-          "direction": "Buy",
-          "reason": "VWAP long #1 at 4547.5000 (VWAP=4547.3003)",
-          "sl": 4542.3003158706315,
-          "tp": 4557.5,
-          "blocked": "outside trading window (04:02)"
-        },
-        {
-          "time": "2026-03-25T04:05:22.795287-04:00",
+          "time": "2026-03-25T05:00:25.667381-04:00",
           "symbol": "MGC",
           "direction": "Sell",
-          "reason": "VWAP short #1 at 4546.4000 (VWAP=4546.4961)",
-          "sl": 4551.4960886564995,
-          "tp": 4536.4,
-          "blocked": "outside trading window (04:05)"
+          "reason": "VWAP short #1 at 4554.0000 (VWAP=4554.3338)",
+          "sl": 4559.333843322903,
+          "tp": 4544.0,
+          "blocked": "outside trading window (05:00)"
+        },
+        {
+          "time": "2026-03-25T05:24:58.963919-04:00",
+          "symbol": "MCL",
+          "direction": "Buy",
+          "reason": "VWAP long #1 at 88.0500 (VWAP=88.0458)",
+          "sl": 87.84575589013454,
+          "tp": 88.45,
+          "blocked": "outside trading window (05:24)"
+        },
+        {
+          "time": "2026-03-25T05:30:45.974134-04:00",
+          "symbol": "MCL",
+          "direction": "Sell",
+          "reason": "VWAP short #1 at 88.0400 (VWAP=88.0494)",
+          "sl": 88.24944749480744,
+          "tp": 87.64,
+          "blocked": "outside trading window (05:30)"
+        },
+        {
+          "time": "2026-03-25T05:44:10.750009-04:00",
+          "symbol": "MGC",
+          "direction": "Sell",
+          "reason": "VWAP short #2 at 4548.3000 (VWAP=4548.4504)",
+          "sl": 4553.450402911985,
+          "tp": 4538.3,
+          "blocked": "outside trading window (05:44)"
+        },
+        {
+          "time": "2026-03-25T05:54:51.428624-04:00",
+          "symbol": "MGC",
+          "direction": "Buy",
+          "reason": "VWAP long #1 at 4546.4000 (VWAP=4546.3209)",
+          "sl": 4541.320947006421,
+          "tp": 4556.4,
+          "blocked": "outside trading window (05:54)"
+        },
+        {
+          "time": "2026-03-25T05:58:49.077486-04:00",
+          "symbol": "MCL",
+          "direction": "Sell",
+          "reason": "VWAP short #2 at 87.9600 (VWAP=88.0748)",
+          "sl": 88.27477145157714,
+          "tp": 87.55999999999999,
+          "blocked": "outside trading window (05:58)"
         }
       ],
       "trades_log": []
     },
-    "journal_tail": "2026-03-25 08:57:04,693 [INFO] bot: QUOTE MES #78600: price=6656.5000 high=6681.7500 low=6634.2500 vol=3\n2026-03-25 08:57:07,345 [INFO] strategies: VWAP MGC state: vwap=4543.3341 prev=4559.1000 price=4559.1000 side=above candles=49000 cum_vol=72775\n2026-03-25 08:57:07,578 [INFO] bot: QUOTE MGC #49000: price=4558.9000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 08:57:09,393 [INFO] bot: Status | balance=57662.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/13 | trades=0/24 | locked=False | md=MarketDataStream recv=285732 disp=302536 stale=False ws=True\n2026-03-25 08:57:09,440 [INFO] bot: QUOTE MNQ #100000: price=24430.5000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:57:11,776 [INFO] bot: QUOTE MES #78700: price=6655.5000 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 08:57:11,851 [INFO] bot: QUOTE MCL #50100: price=87.7300 high=89.5700 low=86.6000 vol=1\n2026-03-25 08:57:13,380 [INFO] bot: QUOTE MNQ #100100: price=24430.5000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:57:18,013 [INFO] bot: QUOTE MES #78800: price=6655.2500 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 08:57:18,447 [INFO] bot: QUOTE MNQ #100200: price=24430.0000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:57:20,173 [INFO] bot: QUOTE MGC #49100: price=4560.6000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 08:57:20,579 [INFO] bot: QUOTE SI #24800: price=73.0500 high=73.1500 low=72.8000 vol=1\n2026-03-25 08:57:20,579 [INFO] strategies: VWAP SI state: vwap=72.9991 prev=73.0500 price=73.0500 side=above candles=24800 cum_vol=24800\n2026-03-25 08:57:23,231 [INFO] bot: QUOTE MES #78900: price=6655.5000 high=6681.7500 low=6634.2500 vol=2\n2026-03-25 08:57:23,507 [INFO] bot: QUOTE MNQ #100300: price=24431.2500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:57:27,765 [INFO] strategies: VWAP MCL state: vwap=88.1717 prev=87.6300 price=87.6300 side=below candles=50200 cum_vol=72255\n2026-03-25 08:57:28,500 [INFO] bot: QUOTE MCL #50200: price=87.6300 high=89.5700 low=86.6000 vol=1\n2026-03-25 ",
-    "bot_log_tail": "2026-03-25 08:57:50,738 [INFO] bot: QUOTE MNQ #100800: price=24426.7500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:57:51,071 [INFO] bot: QUOTE MES #79300: price=6654.5000 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 08:57:55,924 [INFO] strategies: VWAP MGC state: vwap=4543.3113 prev=4556.4000 price=4556.4000 side=above candles=49400 cum_vol=73234\n2026-03-25 08:57:56,257 [INFO] bot: QUOTE MNQ #100900: price=24426.0000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:57:56,270 [INFO] bot: QUOTE MGC #49400: price=4556.9000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 08:57:58,128 [INFO] bot: QUOTE MES #79400: price=6654.7500 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 08:58:00,149 [INFO] bot: QUOTE MNQ #101000: price=24429.7500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:58:02,365 [INFO] bot: QUOTE MES #79500: price=6656.0000 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 08:58:03,248 [INFO] strategies: VWAP MCL state: vwap=88.1710 prev=87.5700 price=87.5800 side=below candles=50400 cum_vol=72466\n2026-03-25 08:58:03,371 [INFO] bot: QUOTE MCL #50400: price=87.6000 high=89.5700 low=86.6000 vol=1\n2026-03-25 08:58:03,931 [INFO] bot: QUOTE MNQ #101100: price=24434.0000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 08:58:06,503 [INFO] bot: QUOTE MES #79600: price=6656.0000 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 08:58:08,549 [INFO] bot: QUOTE SI #25000: price=73.0500 high=73.1500 low=72.8000 vol=1\n2026-03-25 08:58:08,549 [INFO] strategies: VWAP SI state: vwap=72.9991 prev=73.0500 price=73.0500 side=above candles=25000 cum_vol=25000\n2026-03-25 08:58:08,986 [INFO] bot: QUOTE MNQ #101200: price=24434.2500 high=24534.7500 low=24320.2500 vol=3\n2026-03-25 08:58:09,204 [INFO] bot: QUOTE MGC #49500: price=4557.5000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 08:58:10,111 [INFO] bot: Status | balance=57662.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/13 | trades=0/24 | locked=False | md=MarketDataStream recv=288869 disp=305841 stale=False ws=True\n2",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 25s)\n  Balance: $57662.32\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SI']\n  Disk: 17% | Memory: 12.3%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 25 08:55:03 UTC 2026] Status: bot_active=true, pid=1007053\n[Wed Mar 25 08:55:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-25 10:01:40,141 [INFO] bot: QUOTE MNQ #64000: price=24471.7500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:01:41,135 [INFO] bot: QUOTE MES #52200: price=6663.7500 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 10:01:42,648 [INFO] bot: QUOTE MNQ #64100: price=24467.2500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:01:44,398 [INFO] bot: QUOTE MES #52300: price=6662.2500 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 10:01:44,606 [INFO] bot: QUOTE MGC #36300: price=4558.1000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 10:01:46,056 [INFO] bot: QUOTE MNQ #64200: price=24465.2500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:01:46,269 [INFO] strategies: VWAP MCL state: vwap=88.0632 prev=87.4000 price=87.4000 side=below candles=30400 cum_vol=76245\n2026-03-25 10:01:46,596 [INFO] bot: QUOTE MCL #30400: price=87.4200 high=89.5700 low=86.6000 vol=1\n2026-03-25 10:01:48,299 [INFO] bot: QUOTE MES #52400: price=6662.0000 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 10:01:49,563 [INFO] strategies: VWAP MGC state: vwap=4545.4776 prev=4558.3000 price=4558.3000 side=above candles=36400 cum_vol=72587\n2026-03-25 10:01:49,691 [INFO] bot: QUOTE SI #19900: price=73.0500 high=73.1500 low=72.8000 vol=1\n2026-03-25 10:01:49,912 [INFO] bot: QUOTE MGC #36400: price=4558.0000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 10:01:50,134 [INFO] bot: Status | balance=57662.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/13 | trades=0/24 | locked=False | md=MarketDataStream recv=192062 disp=203489 stale=False ws=True\n2026-03-25 10:01:50,283 [INFO] bot: QUOTE MNQ #64300: price=24465.2500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:01:53,615 [INFO] bot: QUOTE MES #52500: price=6663.2500 high=6681.7500 low=6634.2500 vol=3\n2026-03-25 10:01:53,654 [INFO] bot: QUOTE MCL #30500: price=87.3300 high=89.5700 low=86.6000 vol=1\n2026-03-25 10:01:54,422 [INFO] bot: QUOTE MNQ #64400: price=24469.0000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:01:58,077 [INFO] bot: QUOTE MN",
+    "bot_log_tail": "2026-03-25 10:02:08,674 [INFO] bot: QUOTE MES #52800: price=6663.5000 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 10:02:10,285 [INFO] strategies: VWAP MCL state: vwap=88.0619 prev=87.2100 price=87.2100 side=below candles=30800 cum_vol=76661\n2026-03-25 10:02:10,414 [INFO] bot: QUOTE MCL #30800: price=87.2000 high=89.5700 low=86.6000 vol=1\n2026-03-25 10:02:10,663 [INFO] bot: QUOTE MNQ #64800: price=24473.7500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:02:13,847 [INFO] bot: QUOTE MES #52900: price=6665.2500 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 10:02:14,289 [INFO] bot: QUOTE MNQ #64900: price=24476.7500 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:02:14,684 [INFO] bot: QUOTE MCL #30900: price=87.1000 high=89.5700 low=86.6000 vol=1\n2026-03-25 10:02:15,659 [INFO] bot: QUOTE MGC #36700: price=4559.2000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 10:02:17,834 [INFO] bot: QUOTE MES #53000: price=6666.7500 high=6681.7500 low=6634.2500 vol=1\n2026-03-25 10:02:18,058 [INFO] bot: QUOTE MNQ #65000: price=24483.5000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:02:18,846 [INFO] strategies: VWAP MCL state: vwap=88.0611 prev=87.0900 price=87.0900 side=below candles=31000 cum_vol=76865\n2026-03-25 10:02:19,364 [INFO] bot: QUOTE MCL #31000: price=87.0900 high=89.5700 low=86.6000 vol=1\n2026-03-25 10:02:20,494 [INFO] bot: Status | balance=57662.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/13 | trades=0/24 | locked=False | md=MarketDataStream recv=194499 disp=206056 stale=False ws=True\n2026-03-25 10:02:20,697 [INFO] bot: QUOTE SI #20100: price=73.0500 high=73.1500 low=72.8000 vol=1\n2026-03-25 10:02:20,819 [INFO] strategies: VWAP MGC state: vwap=4545.4423 prev=4559.3000 price=4559.3000 side=above candles=36800 cum_vol=73014\n2026-03-25 10:02:20,829 [INFO] bot: QUOTE MNQ #65100: price=24483.5000 high=24534.7500 low=24320.2500 vol=1\n2026-03-25 10:02:21,117 [INFO] bot: QUOTE MGC #36800: price=4559.3000 high=4601.6000 low=4458.2000 vol=1\n2026-03-25 10:02:22,",
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 17s)\n  Balance: $57662.32\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SI']\n  Disk: 17% | Memory: 12.4%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 25 10:00:05 UTC 2026] Status: bot_active=true, pid=1029795\n[Wed Mar 25 10:00:05 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-25T08:58:10.112208+00:00",
-      "timestamp_et": "2026-03-25T04:58:10.112226-04:00",
+      "timestamp": "2026-03-25T10:02:20.495262+00:00",
+      "timestamp_et": "2026-03-25T06:02:20.495279-04:00",
       "balance": 57662.32,
       "equity": 57662.32,
       "day_pnl": 0.0,
@@ -120,70 +147,97 @@
       "market_data_source": "websocket",
       "signals_today": [
         {
-          "time": "2026-03-25T03:42:58.022491-04:00",
-          "symbol": "SI",
-          "direction": "Buy",
-          "reason": "VWAP long #1 at 73.0500 (VWAP=72.9551)",
-          "sl": 72.90509018036165,
-          "tp": 73.14999999999999,
-          "blocked": "outside trading window (03:42)"
-        },
-        {
-          "time": "2026-03-25T04:02:37.954632-04:00",
-          "symbol": "MGC",
-          "direction": "Buy",
-          "reason": "VWAP long #1 at 4547.5000 (VWAP=4547.3003)",
-          "sl": 4542.3003158706315,
-          "tp": 4557.5,
-          "blocked": "outside trading window (04:02)"
-        },
-        {
-          "time": "2026-03-25T04:05:22.795287-04:00",
+          "time": "2026-03-25T05:00:25.667381-04:00",
           "symbol": "MGC",
           "direction": "Sell",
-          "reason": "VWAP short #1 at 4546.4000 (VWAP=4546.4961)",
-          "sl": 4551.4960886564995,
-          "tp": 4536.4,
-          "blocked": "outside trading window (04:05)"
+          "reason": "VWAP short #1 at 4554.0000 (VWAP=4554.3338)",
+          "sl": 4559.333843322903,
+          "tp": 4544.0,
+          "blocked": "outside trading window (05:00)"
+        },
+        {
+          "time": "2026-03-25T05:24:58.963919-04:00",
+          "symbol": "MCL",
+          "direction": "Buy",
+          "reason": "VWAP long #1 at 88.0500 (VWAP=88.0458)",
+          "sl": 87.84575589013454,
+          "tp": 88.45,
+          "blocked": "outside trading window (05:24)"
+        },
+        {
+          "time": "2026-03-25T05:30:45.974134-04:00",
+          "symbol": "MCL",
+          "direction": "Sell",
+          "reason": "VWAP short #1 at 88.0400 (VWAP=88.0494)",
+          "sl": 88.24944749480744,
+          "tp": 87.64,
+          "blocked": "outside trading window (05:30)"
+        },
+        {
+          "time": "2026-03-25T05:44:10.750009-04:00",
+          "symbol": "MGC",
+          "direction": "Sell",
+          "reason": "VWAP short #2 at 4548.3000 (VWAP=4548.4504)",
+          "sl": 4553.450402911985,
+          "tp": 4538.3,
+          "blocked": "outside trading window (05:44)"
+        },
+        {
+          "time": "2026-03-25T05:54:51.428624-04:00",
+          "symbol": "MGC",
+          "direction": "Buy",
+          "reason": "VWAP long #1 at 4546.4000 (VWAP=4546.3209)",
+          "sl": 4541.320947006421,
+          "tp": 4556.4,
+          "blocked": "outside trading window (05:54)"
+        },
+        {
+          "time": "2026-03-25T05:58:49.077486-04:00",
+          "symbol": "MCL",
+          "direction": "Sell",
+          "reason": "VWAP short #2 at 87.9600 (VWAP=88.0748)",
+          "sl": 88.27477145157714,
+          "tp": 87.55999999999999,
+          "blocked": "outside trading window (05:58)"
         }
       ],
       "trades_log": []
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-25T10:05:29.070000+00:00",
+    "token_expiry": "2026-03-25T10:20:12.331000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-25 08:57:34,286 [INFO] bot: QUOTE MGC #49200: price=4560.4000 high=4601.6000 low=4458.2000 vol=1",
-      "2026-03-25 08:57:35,378 [INFO] bot: QUOTE MNQ #100500: price=24426.5000 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:57:38,139 [INFO] bot: QUOTE MES #79100: price=6654.7500 high=6681.7500 low=6634.2500 vol=1",
-      "2026-03-25 08:57:39,756 [INFO] bot: Status | balance=57662.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/13 | trades=0/24 | locked=False | md=MarketDataStream recv=287247 disp=304129 stale=False ws=True",
-      "2026-03-25 08:57:40,871 [INFO] bot: QUOTE MNQ #100600: price=24426.7500 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:57:40,964 [INFO] bot: QUOTE SI #24900: price=73.0500 high=73.1500 low=72.8000 vol=1",
-      "2026-03-25 08:57:43,810 [INFO] bot: QUOTE MGC #49300: price=4558.8000 high=4601.6000 low=4458.2000 vol=1",
-      "2026-03-25 08:57:44,288 [INFO] bot: QUOTE MCL #50300: price=87.6000 high=89.5700 low=86.6000 vol=1",
-      "2026-03-25 08:57:45,107 [INFO] bot: QUOTE MES #79200: price=6655.0000 high=6681.7500 low=6634.2500 vol=1",
-      "2026-03-25 08:57:46,016 [INFO] bot: QUOTE MNQ #100700: price=24425.2500 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:57:50,738 [INFO] bot: QUOTE MNQ #100800: price=24426.7500 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:57:51,071 [INFO] bot: QUOTE MES #79300: price=6654.5000 high=6681.7500 low=6634.2500 vol=1",
-      "2026-03-25 08:57:55,924 [INFO] strategies: VWAP MGC state: vwap=4543.3113 prev=4556.4000 price=4556.4000 side=above candles=49400 cum_vol=73234",
-      "2026-03-25 08:57:56,257 [INFO] bot: QUOTE MNQ #100900: price=24426.0000 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:57:56,270 [INFO] bot: QUOTE MGC #49400: price=4556.9000 high=4601.6000 low=4458.2000 vol=1",
-      "2026-03-25 08:57:58,128 [INFO] bot: QUOTE MES #79400: price=6654.7500 high=6681.7500 low=6634.2500 vol=1",
-      "2026-03-25 08:58:00,149 [INFO] bot: QUOTE MNQ #101000: price=24429.7500 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:58:02,365 [INFO] bot: QUOTE MES #79500: price=6656.0000 high=6681.7500 low=6634.2500 vol=1",
-      "2026-03-25 08:58:03,248 [INFO] strategies: VWAP MCL state: vwap=88.1710 prev=87.5700 price=87.5800 side=below candles=50400 cum_vol=72466",
-      "2026-03-25 08:58:03,371 [INFO] bot: QUOTE MCL #50400: price=87.6000 high=89.5700 low=86.6000 vol=1",
-      "2026-03-25 08:58:03,931 [INFO] bot: QUOTE MNQ #101100: price=24434.0000 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:58:06,503 [INFO] bot: QUOTE MES #79600: price=6656.0000 high=6681.7500 low=6634.2500 vol=1",
-      "2026-03-25 08:58:08,549 [INFO] bot: QUOTE SI #25000: price=73.0500 high=73.1500 low=72.8000 vol=1",
-      "2026-03-25 08:58:08,549 [INFO] strategies: VWAP SI state: vwap=72.9991 prev=73.0500 price=73.0500 side=above candles=25000 cum_vol=25000",
-      "2026-03-25 08:58:08,986 [INFO] bot: QUOTE MNQ #101200: price=24434.2500 high=24534.7500 low=24320.2500 vol=3",
-      "2026-03-25 08:58:09,204 [INFO] bot: QUOTE MGC #49500: price=4557.5000 high=4601.6000 low=4458.2000 vol=1",
-      "2026-03-25 08:58:10,111 [INFO] bot: Status | balance=57662.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/13 | trades=0/24 | locked=False | md=MarketDataStream recv=288869 disp=305841 stale=False ws=True",
-      "2026-03-25 08:58:11,616 [INFO] bot: QUOTE MES #79700: price=6656.7500 high=6681.7500 low=6634.2500 vol=1",
-      "2026-03-25 08:58:12,881 [INFO] bot: QUOTE MNQ #101300: price=24436.5000 high=24534.7500 low=24320.2500 vol=1",
-      "2026-03-25 08:58:13,748 [INFO] bot: QUOTE MCL #50500: price=87.5400 high=89.5700 low=86.6000 vol=1"
+      "2026-03-25 10:01:59,697 [INFO] bot: QUOTE MCL #30600: price=87.2000 high=89.5700 low=86.6000 vol=1",
+      "2026-03-25 10:01:59,803 [INFO] bot: QUOTE MES #52600: price=6664.2500 high=6681.7500 low=6634.2500 vol=1",
+      "2026-03-25 10:02:02,279 [INFO] bot: QUOTE MNQ #64600: price=24474.7500 high=24534.7500 low=24320.2500 vol=1",
+      "2026-03-25 10:02:03,659 [INFO] bot: QUOTE MES #52700: price=6664.0000 high=6681.7500 low=6634.2500 vol=3",
+      "2026-03-25 10:02:04,695 [INFO] bot: QUOTE MCL #30700: price=87.2000 high=89.5700 low=86.6000 vol=1",
+      "2026-03-25 10:02:06,382 [INFO] bot: QUOTE MNQ #64700: price=24472.2500 high=24534.7500 low=24320.2500 vol=1",
+      "2026-03-25 10:02:07,357 [INFO] bot: QUOTE SI #20000: price=73.0500 high=73.1500 low=72.8000 vol=1",
+      "2026-03-25 10:02:07,357 [INFO] strategies: VWAP SI state: vwap=73.0000 prev=73.0500 price=73.0500 side=above candles=20000 cum_vol=20000",
+      "2026-03-25 10:02:07,386 [INFO] strategies: VWAP MGC state: vwap=4545.4608 prev=4558.1000 price=4558.1000 side=above candles=36600 cum_vol=72787",
+      "2026-03-25 10:02:07,499 [INFO] bot: QUOTE MGC #36600: price=4557.8000 high=4601.6000 low=4458.2000 vol=1",
+      "2026-03-25 10:02:08,674 [INFO] bot: QUOTE MES #52800: price=6663.5000 high=6681.7500 low=6634.2500 vol=1",
+      "2026-03-25 10:02:10,285 [INFO] strategies: VWAP MCL state: vwap=88.0619 prev=87.2100 price=87.2100 side=below candles=30800 cum_vol=76661",
+      "2026-03-25 10:02:10,414 [INFO] bot: QUOTE MCL #30800: price=87.2000 high=89.5700 low=86.6000 vol=1",
+      "2026-03-25 10:02:10,663 [INFO] bot: QUOTE MNQ #64800: price=24473.7500 high=24534.7500 low=24320.2500 vol=1",
+      "2026-03-25 10:02:13,847 [INFO] bot: QUOTE MES #52900: price=6665.2500 high=6681.7500 low=6634.2500 vol=1",
+      "2026-03-25 10:02:14,289 [INFO] bot: QUOTE MNQ #64900: price=24476.7500 high=24534.7500 low=24320.2500 vol=1",
+      "2026-03-25 10:02:14,684 [INFO] bot: QUOTE MCL #30900: price=87.1000 high=89.5700 low=86.6000 vol=1",
+      "2026-03-25 10:02:15,659 [INFO] bot: QUOTE MGC #36700: price=4559.2000 high=4601.6000 low=4458.2000 vol=1",
+      "2026-03-25 10:02:17,834 [INFO] bot: QUOTE MES #53000: price=6666.7500 high=6681.7500 low=6634.2500 vol=1",
+      "2026-03-25 10:02:18,058 [INFO] bot: QUOTE MNQ #65000: price=24483.5000 high=24534.7500 low=24320.2500 vol=1",
+      "2026-03-25 10:02:18,846 [INFO] strategies: VWAP MCL state: vwap=88.0611 prev=87.0900 price=87.0900 side=below candles=31000 cum_vol=76865",
+      "2026-03-25 10:02:19,364 [INFO] bot: QUOTE MCL #31000: price=87.0900 high=89.5700 low=86.6000 vol=1",
+      "2026-03-25 10:02:20,494 [INFO] bot: Status | balance=57662.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/13 | trades=0/24 | locked=False | md=MarketDataStream recv=194499 disp=206056 stale=False ws=True",
+      "2026-03-25 10:02:20,697 [INFO] bot: QUOTE SI #20100: price=73.0500 high=73.1500 low=72.8000 vol=1",
+      "2026-03-25 10:02:20,819 [INFO] strategies: VWAP MGC state: vwap=4545.4423 prev=4559.3000 price=4559.3000 side=above candles=36800 cum_vol=73014",
+      "2026-03-25 10:02:20,829 [INFO] bot: QUOTE MNQ #65100: price=24483.5000 high=24534.7500 low=24320.2500 vol=1",
+      "2026-03-25 10:02:21,117 [INFO] bot: QUOTE MGC #36800: price=4559.3000 high=4601.6000 low=4458.2000 vol=1",
+      "2026-03-25 10:02:22,545 [INFO] bot: QUOTE MES #53100: price=6666.5000 high=6681.7500 low=6634.2500 vol=1",
+      "2026-03-25 10:02:23,826 [INFO] bot: QUOTE MNQ #65200: price=24485.2500 high=24534.7500 low=24320.2500 vol=1",
+      "2026-03-25 10:02:24,824 [INFO] bot: QUOTE MCL #31100: price=87.0200 high=89.5700 low=86.6000 vol=1"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -204,7 +258,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 12777,
+    "ssh_output_len": 14041,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
