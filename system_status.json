@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-25T18:01:53Z",
+  "timestamp": "2026-03-25T18:40:38Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,47 +11,34 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 57162.67,
+    "totalCashValue": 56594.08,
     "initialMargin": 0.0,
-    "netLiq": 56862.67
+    "netLiq": 56594.08
   },
-  "positions": [
-    {
-      "contractId": 3643469,
-      "netPos": -3,
-      "netPrice": 89.4
-    }
-  ],
-  "orders": [
-    {
-      "id": 409583845389,
-      "action": "Buy",
-      "qty": null,
-      "status": "Working"
-    }
-  ],
+  "positions": [],
+  "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "1142249",
-    "uptime_since": "Wed 2026-03-25 16:50:07 UTC",
+    "bot_pid": "1160572",
+    "uptime_since": "Wed 2026-03-25 18:05:25 UTC",
     "disk": "17%",
-    "memory": "987MB/7941MB (12%)",
+    "memory": "997MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "27d9e8d Auto-merge claude/verify-trading-orders-nTtBM \u2192 main",
+    "git_commit": "deec1f9 status: 2026-03-25 18:01 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-03-25T18:01:50.017281+00:00",
-      "timestamp_et": "2026-03-25T14:01:50.017303-04:00",
-      "balance": 56862.67,
-      "equity": 56862.67,
-      "day_pnl": -573.8400000000038,
+      "timestamp": "2026-03-25T18:40:18.514565+00:00",
+      "timestamp_et": "2026-03-25T14:40:18.514586-04:00",
+      "balance": 56594.08,
+      "equity": 56594.08,
+      "day_pnl": -299.84999999999854,
       "unrealized_pnl": 0.0,
-      "peak_balance": 57493.66,
-      "drawdown_floor": 54993.66,
-      "distance_to_floor": 1869.0099999999948,
+      "peak_balance": 56990.98,
+      "drawdown_floor": 54490.98,
+      "distance_to_floor": 2103.0999999999985,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2973.840000000004,
-      "open_contracts": 3,
+      "daily_profit_remaining": 2699.8499999999985,
+      "open_contracts": 0,
       "trades_today": 3,
       "locked": false,
       "lock_reason": "",
@@ -68,24 +55,24 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-25 18:01:46,833 [INFO] bot: QUOTE MGC #3924410: price=4557.3000 high=4601.6000 low=4458.2000 vol=458998 (total=390680)\n2026-03-25 18:01:46,903 [INFO] bot: QUOTE MGC #3924410: price=4557.6000 high=4601.6000 low=4458.2000 vol=458999 (total=390690)\n2026-03-25 18:01:46,950 [INFO] bot: QUOTE MNQ #4327110: price=24422.2500 high=24540.0000 low=24287.2500 vol=1725471 (total=390700)\n2026-03-25 18:01:47,018 [INFO] bot: QUOTE MGC #3924410: price=4557.3000 high=4601.6000 low=4458.2000 vol=459007 (total=390710)\n2026-03-25 18:01:47,103 [INFO] bot: QUOTE MNQ #4327110: price=24423.0000 high=24540.0000 low=24287.2500 vol=1725472 (total=390720)\n2026-03-25 18:01:47,196 [INFO] bot: QUOTE MGC #3924410: price=4557.5000 high=4601.6000 low=4458.2000 vol=459008 (total=390730)\n2026-03-25 18:01:47,239 [INFO] bot: QUOTE MES #4327108: price=6654.2500 high=6684.7500 low=6616.5000 vol=1269079 (total=390740)\n2026-03-25 18:01:47,329 [INFO] bot: QUOTE SI #4332758: price=73.0450 high=73.1500 low=72.8000 vol=8 (total=390750)\n2026-03-25 18:01:47,436 [INFO] bot: QUOTE SI #4332758: price=73.0450 high=73.1500 low=72.8000 vol=8 (total=390760)\n2026-03-25 18:01:47,642 [INFO] bot: QUOTE MNQ #4327110: price=24422.7500 high=24540.0000 low=24287.2500 vol=1725477 (total=390770)\n2026-03-25 18:01:47,717 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269088 (total=390780)\n2026-03-25 18:01:47,857 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269088 (total=390790)\n2026-03-25 18:01:47,944 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269088 (total=390800)\n2026-03-25 18:01:48,019 [INFO] bot: QUOTE MNQ #4327110: price=24421.0000 high=24540.0000 low=24287.2500 vol=1725485 (total=390810)\n2026-03-25 18:01:48,140 [INFO] bot: QUOTE MES #4327108: price=6653.5000 high=6684.7500 low=6616.5000 vol=1269106 (total=390820)\n2026-03-25 18:01:48,263 [INFO] bot: QUOTE MES #4327108: price=6653.5000 high=6684.7500 low=6616.50",
-    "bot_log_tail": "2026-03-25 18:01:49,724 [INFO] bot: QUOTE MGC #3924410: price=4556.9000 high=4601.6000 low=4458.2000 vol=459040 (total=390980)\n2026-03-25 18:01:49,824 [INFO] bot: QUOTE MGC #3924410: price=4556.9000 high=4601.6000 low=4458.2000 vol=459040 (total=390990)\n2026-03-25 18:01:50,016 [INFO] bot: Status | balance=56862.67 | day_pnl=-573.84 | to_floor=1869.01 | contracts=3/13 | trades=3/24 | locked=False\n2026-03-25 18:01:50,037 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269112 (total=391000)\n2026-03-25 18:01:50,160 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269112 (total=391010)\n2026-03-25 18:01:50,303 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269114 (total=391020)\n2026-03-25 18:01:50,497 [INFO] bot: QUOTE MGC #3924410: price=4556.9000 high=4601.6000 low=4458.2000 vol=459040 (total=391030)\n2026-03-25 18:01:50,620 [INFO] bot: QUOTE MNQ #4327110: price=24422.0000 high=24540.0000 low=24287.2500 vol=1725521 (total=391040)\n2026-03-25 18:01:50,685 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269114 (total=391050)\n2026-03-25 18:01:50,747 [INFO] bot: QUOTE MGC #3924410: price=4557.7000 high=4601.6000 low=4458.2000 vol=459043 (total=391060)\n2026-03-25 18:01:51,035 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269116 (total=391070)\n2026-03-25 18:01:51,201 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269116 (total=391080)\n2026-03-25 18:01:51,395 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269116 (total=391090)\n2026-03-25 18:01:51,638 [INFO] bot: QUOTE MNQ #4327110: price=24422.2500 high=24540.0000 low=24287.2500 vol=1725530 (total=391100)\n2026-03-25 18:01:51,761 [INFO] bot: QUOTE MGC #3924410: price=4557.8000 high=4601.6000 low=4458.2000 vol=459049 (total=391110)\n2026-03-25 18:01:51,915 [INFO] bot: QUOTE MNQ #4327110: price=",
-    "cron_log_tail": "  Errors (1h): 2 | Warnings: 1\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 19s)\n  Balance: $56868.67\n  Day P&L: $-567.8400000000038\n  Trades today: 3\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SI']\n  Disk: 17% | Memory: 12.7%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 25 18:00:05 UTC 2026] Status: bot_active=true, pid=1142249\n[Wed Mar 25 18:00:05 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-25 18:40:30,547 [INFO] bot: QUOTE MES #4327108: price=6650.2500 high=6684.7500 low=6616.5000 vol=1302806 (total=160530)\n2026-03-25 18:40:30,645 [INFO] bot: QUOTE MNQ #4327110: price=24404.5000 high=24540.0000 low=24287.2500 vol=1779385 (total=160540)\n2026-03-25 18:40:30,738 [INFO] bot: QUOTE MNQ #4327110: price=24404.2500 high=24540.0000 low=24287.2500 vol=1779386 (total=160550)\n2026-03-25 18:40:30,908 [INFO] bot: QUOTE MNQ #4327110: price=24404.7500 high=24540.0000 low=24287.2500 vol=1779387 (total=160560)\n2026-03-25 18:40:31,013 [INFO] bot: QUOTE MGC #3924410: price=4547.0000 high=4601.6000 low=4458.2000 vol=469762 (total=160570)\n2026-03-25 18:40:31,078 [INFO] bot: QUOTE MGC #3924410: price=4546.9000 high=4601.6000 low=4458.2000 vol=469762 (total=160580)\n2026-03-25 18:40:31,208 [INFO] bot: QUOTE SI #4332758: price=73.0450 high=73.1500 low=72.8000 vol=8 (total=160590)\n2026-03-25 18:40:31,275 [INFO] bot: QUOTE MNQ #4327110: price=24403.5000 high=24540.0000 low=24287.2500 vol=1779407 (total=160600)\n2026-03-25 18:40:31,411 [INFO] bot: QUOTE MNQ #4327110: price=24403.5000 high=24540.0000 low=24287.2500 vol=1779414 (total=160610)\n2026-03-25 18:40:31,507 [INFO] bot: QUOTE MNQ #4327110: price=24403.2500 high=24540.0000 low=24287.2500 vol=1779415 (total=160620)\n2026-03-25 18:40:31,680 [INFO] bot: QUOTE MES #4327108: price=6650.0000 high=6684.7500 low=6616.5000 vol=1302822 (total=160630)\n2026-03-25 18:40:31,786 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302823 (total=160640)\n2026-03-25 18:40:31,968 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302824 (total=160650)\n2026-03-25 18:40:32,063 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302830 (total=160660)\n2026-03-25 18:40:32,199 [INFO] bot: QUOTE MNQ #4327110: price=24403.0000 high=24540.0000 low=24287.2500 vol=1779438 (total=160670)\n2026-03-25 18:40:32,324 [INFO] bot: QUOTE MNQ #4327110: price=24403.5000 h",
+    "bot_log_tail": "2026-03-25 18:40:35,021 [INFO] tradovate_api: Re-subscribed to: SILH6\n2026-03-25 18:40:35,156 [INFO] bot: QUOTE MNQ #4327110: price=24403.0000 high=24540.0000 low=24287.2500 vol=1779503 (total=160710)\n2026-03-25 18:40:35,214 [INFO] bot: QUOTE MGC #3924410: price=4546.3000 high=4601.6000 low=4458.2000 vol=469791 (total=160720)\n2026-03-25 18:40:35,285 [INFO] bot: QUOTE MNQ #4327110: price=24403.2500 high=24540.0000 low=24287.2500 vol=1779505 (total=160730)\n2026-03-25 18:40:35,407 [INFO] bot: QUOTE MNQ #4327110: price=24403.0000 high=24540.0000 low=24287.2500 vol=1779508 (total=160740)\n2026-03-25 18:40:35,614 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302851 (total=160750)\n2026-03-25 18:40:35,817 [INFO] bot: QUOTE MNQ #4327110: price=24403.7500 high=24540.0000 low=24287.2500 vol=1779511 (total=160760)\n2026-03-25 18:40:35,949 [INFO] bot: QUOTE MNQ #4327110: price=24403.7500 high=24540.0000 low=24287.2500 vol=1779511 (total=160770)\n2026-03-25 18:40:36,115 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302852 (total=160780)\n2026-03-25 18:40:36,245 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302852 (total=160790)\n2026-03-25 18:40:36,315 [INFO] bot: QUOTE MNQ #4327110: price=24404.0000 high=24540.0000 low=24287.2500 vol=1779512 (total=160800)\n2026-03-25 18:40:36,483 [INFO] bot: QUOTE MCL #3643469: price=90.0900 high=90.9500 low=86.4600 vol=360483 (total=160810)\n2026-03-25 18:40:36,640 [INFO] bot: QUOTE MNQ #4327110: price=24403.7500 high=24540.0000 low=24287.2500 vol=1779517 (total=160820)\n2026-03-25 18:40:36,745 [INFO] bot: QUOTE MNQ #4327110: price=24404.0000 high=24540.0000 low=24287.2500 vol=1779522 (total=160830)\n2026-03-25 18:40:36,839 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302857 (total=160840)\n2026-03-25 18:40:36,932 [INFO] bot: QUOTE MNQ #4327110: price=24403.5000 high=24540.0000 low=24287.2500 vol=1779529 (total",
+    "cron_log_tail": "  Errors (1h): 2 | Warnings: 1\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 15s)\n  Balance: $56594.08\n  Day P&L: $-299.84999999999854\n  Trades today: 3\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SI']\n  Disk: 17% | Memory: 12.6%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Mar 25 18:40:04 UTC 2026] Status: bot_active=true, pid=1160572\n[Wed Mar 25 18:40:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-25T18:01:50.017281+00:00",
-      "timestamp_et": "2026-03-25T14:01:50.017303-04:00",
-      "balance": 56862.67,
-      "equity": 56862.67,
-      "day_pnl": -573.8400000000038,
+      "timestamp": "2026-03-25T18:40:18.514565+00:00",
+      "timestamp_et": "2026-03-25T14:40:18.514586-04:00",
+      "balance": 56594.08,
+      "equity": 56594.08,
+      "day_pnl": -299.84999999999854,
       "unrealized_pnl": 0.0,
-      "peak_balance": 57493.66,
-      "drawdown_floor": 54993.66,
-      "distance_to_floor": 1869.0099999999948,
+      "peak_balance": 56990.98,
+      "drawdown_floor": 54490.98,
+      "distance_to_floor": 2103.0999999999985,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2973.840000000004,
-      "open_contracts": 3,
+      "daily_profit_remaining": 2699.8499999999985,
+      "open_contracts": 0,
       "trades_today": 3,
       "locked": false,
       "lock_reason": "",
@@ -103,43 +90,43 @@
       "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-25T19:15:09.481000+00:00",
+    "token_expiry": "2026-03-25T19:25:25.877000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-25 18:01:48,674 [INFO] bot: QUOTE MES #4327108: price=6653.5000 high=6684.7500 low=6616.5000 vol=1269108 (total=390880)",
-      "2026-03-25 18:01:48,842 [INFO] bot: QUOTE MCL #3643469: price=90.3800 high=90.9500 low=86.4600 vol=350378 (total=390890)",
-      "2026-03-25 18:01:48,908 [INFO] bot: QUOTE MGC #3924410: price=4556.5000 high=4601.6000 low=4458.2000 vol=459032 (total=390900)",
-      "2026-03-25 18:01:49,054 [INFO] bot: QUOTE MNQ #4327110: price=24421.7500 high=24540.0000 low=24287.2500 vol=1725510 (total=390910)",
-      "2026-03-25 18:01:49,175 [INFO] bot: QUOTE MES #4327108: price=6654.0000 high=6684.7500 low=6616.5000 vol=1269111 (total=390920)",
-      "2026-03-25 18:01:49,270 [INFO] bot: QUOTE MGC #3924410: price=4556.7000 high=4601.6000 low=4458.2000 vol=459034 (total=390930)",
-      "2026-03-25 18:01:49,353 [INFO] bot: QUOTE MGC #3924410: price=4556.7000 high=4601.6000 low=4458.2000 vol=459035 (total=390940)",
-      "2026-03-25 18:01:49,453 [INFO] bot: QUOTE MES #4327108: price=6654.0000 high=6684.7500 low=6616.5000 vol=1269111 (total=390950)",
-      "2026-03-25 18:01:49,568 [INFO] bot: QUOTE MCL #3643469: price=90.4000 high=90.9500 low=86.4600 vol=350382 (total=390960)",
-      "2026-03-25 18:01:49,656 [INFO] bot: QUOTE MES #4327108: price=6654.0000 high=6684.7500 low=6616.5000 vol=1269111 (total=390970)",
-      "2026-03-25 18:01:49,724 [INFO] bot: QUOTE MGC #3924410: price=4556.9000 high=4601.6000 low=4458.2000 vol=459040 (total=390980)",
-      "2026-03-25 18:01:49,824 [INFO] bot: QUOTE MGC #3924410: price=4556.9000 high=4601.6000 low=4458.2000 vol=459040 (total=390990)",
-      "2026-03-25 18:01:50,016 [INFO] bot: Status | balance=56862.67 | day_pnl=-573.84 | to_floor=1869.01 | contracts=3/13 | trades=3/24 | locked=False",
-      "2026-03-25 18:01:50,037 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269112 (total=391000)",
-      "2026-03-25 18:01:50,160 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269112 (total=391010)",
-      "2026-03-25 18:01:50,303 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269114 (total=391020)",
-      "2026-03-25 18:01:50,497 [INFO] bot: QUOTE MGC #3924410: price=4556.9000 high=4601.6000 low=4458.2000 vol=459040 (total=391030)",
-      "2026-03-25 18:01:50,620 [INFO] bot: QUOTE MNQ #4327110: price=24422.0000 high=24540.0000 low=24287.2500 vol=1725521 (total=391040)",
-      "2026-03-25 18:01:50,685 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269114 (total=391050)",
-      "2026-03-25 18:01:50,747 [INFO] bot: QUOTE MGC #3924410: price=4557.7000 high=4601.6000 low=4458.2000 vol=459043 (total=391060)",
-      "2026-03-25 18:01:51,035 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269116 (total=391070)",
-      "2026-03-25 18:01:51,201 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269116 (total=391080)",
-      "2026-03-25 18:01:51,395 [INFO] bot: QUOTE MES #4327108: price=6653.7500 high=6684.7500 low=6616.5000 vol=1269116 (total=391090)",
-      "2026-03-25 18:01:51,638 [INFO] bot: QUOTE MNQ #4327110: price=24422.2500 high=24540.0000 low=24287.2500 vol=1725530 (total=391100)",
-      "2026-03-25 18:01:51,761 [INFO] bot: QUOTE MGC #3924410: price=4557.8000 high=4601.6000 low=4458.2000 vol=459049 (total=391110)",
-      "2026-03-25 18:01:51,915 [INFO] bot: QUOTE MNQ #4327110: price=24422.5000 high=24540.0000 low=24287.2500 vol=1725540 (total=391120)",
-      "2026-03-25 18:01:51,999 [INFO] bot: QUOTE MNQ #4327110: price=24422.5000 high=24540.0000 low=24287.2500 vol=1725551 (total=391130)",
-      "2026-03-25 18:01:52,116 [INFO] bot: QUOTE MES #4327108: price=6654.0000 high=6684.7500 low=6616.5000 vol=1269121 (total=391140)",
-      "2026-03-25 18:01:52,190 [INFO] bot: QUOTE MES #4327108: price=6654.0000 high=6684.7500 low=6616.5000 vol=1269121 (total=391150)",
-      "2026-03-25 18:01:52,238 [INFO] bot: QUOTE MES #4327108: price=6654.2500 high=6684.7500 low=6616.5000 vol=1269126 (total=391160)"
+      "2026-03-25 18:40:32,738 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
+      "2026-03-25 18:40:34,739 [INFO] tradovate_api: Refreshed market data token for reconnection",
+      "2026-03-25 18:40:34,903 [INFO] websocket: Websocket connected",
+      "2026-03-25 18:40:34,904 [INFO] tradovate_api: Market data WebSocket connected",
+      "2026-03-25 18:40:35,020 [INFO] tradovate_api: Market data WebSocket authenticated",
+      "2026-03-25 18:40:35,020 [INFO] tradovate_api: Re-subscribed to: MNQM6",
+      "2026-03-25 18:40:35,020 [INFO] tradovate_api: Re-subscribed to: MESM6",
+      "2026-03-25 18:40:35,021 [INFO] tradovate_api: Re-subscribed to: MGCJ6",
+      "2026-03-25 18:40:35,021 [INFO] tradovate_api: Re-subscribed to: MCLK6",
+      "2026-03-25 18:40:35,021 [INFO] tradovate_api: Re-subscribed to: SILH6",
+      "2026-03-25 18:40:35,156 [INFO] bot: QUOTE MNQ #4327110: price=24403.0000 high=24540.0000 low=24287.2500 vol=1779503 (total=160710)",
+      "2026-03-25 18:40:35,214 [INFO] bot: QUOTE MGC #3924410: price=4546.3000 high=4601.6000 low=4458.2000 vol=469791 (total=160720)",
+      "2026-03-25 18:40:35,285 [INFO] bot: QUOTE MNQ #4327110: price=24403.2500 high=24540.0000 low=24287.2500 vol=1779505 (total=160730)",
+      "2026-03-25 18:40:35,407 [INFO] bot: QUOTE MNQ #4327110: price=24403.0000 high=24540.0000 low=24287.2500 vol=1779508 (total=160740)",
+      "2026-03-25 18:40:35,614 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302851 (total=160750)",
+      "2026-03-25 18:40:35,817 [INFO] bot: QUOTE MNQ #4327110: price=24403.7500 high=24540.0000 low=24287.2500 vol=1779511 (total=160760)",
+      "2026-03-25 18:40:35,949 [INFO] bot: QUOTE MNQ #4327110: price=24403.7500 high=24540.0000 low=24287.2500 vol=1779511 (total=160770)",
+      "2026-03-25 18:40:36,115 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302852 (total=160780)",
+      "2026-03-25 18:40:36,245 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302852 (total=160790)",
+      "2026-03-25 18:40:36,315 [INFO] bot: QUOTE MNQ #4327110: price=24404.0000 high=24540.0000 low=24287.2500 vol=1779512 (total=160800)",
+      "2026-03-25 18:40:36,483 [INFO] bot: QUOTE MCL #3643469: price=90.0900 high=90.9500 low=86.4600 vol=360483 (total=160810)",
+      "2026-03-25 18:40:36,640 [INFO] bot: QUOTE MNQ #4327110: price=24403.7500 high=24540.0000 low=24287.2500 vol=1779517 (total=160820)",
+      "2026-03-25 18:40:36,745 [INFO] bot: QUOTE MNQ #4327110: price=24404.0000 high=24540.0000 low=24287.2500 vol=1779522 (total=160830)",
+      "2026-03-25 18:40:36,839 [INFO] bot: QUOTE MES #4327108: price=6649.7500 high=6684.7500 low=6616.5000 vol=1302857 (total=160840)",
+      "2026-03-25 18:40:36,932 [INFO] bot: QUOTE MNQ #4327110: price=24403.5000 high=24540.0000 low=24287.2500 vol=1779529 (total=160850)",
+      "2026-03-25 18:40:36,987 [INFO] bot: QUOTE MNQ #4327110: price=24402.7500 high=24540.0000 low=24287.2500 vol=1779531 (total=160860)",
+      "2026-03-25 18:40:37,029 [INFO] bot: QUOTE MGC #3924410: price=4546.2000 high=4601.6000 low=4458.2000 vol=469809 (total=160870)",
+      "2026-03-25 18:40:37,287 [INFO] bot: QUOTE MES #4327108: price=6649.5000 high=6684.7500 low=6616.5000 vol=1302892 (total=160880)",
+      "2026-03-25 18:40:37,427 [INFO] bot: QUOTE MNQ #4327110: price=24402.0000 high=24540.0000 low=24287.2500 vol=1779553 (total=160890)",
+      "2026-03-25 18:40:37,562 [INFO] bot: QUOTE MES #4327108: price=6649.5000 high=6684.7500 low=6616.5000 vol=1302903 (total=160900)"
     ],
     "journal_summary": {
-      "total_trades": 2,
+      "total_trades": 3,
       "wins": 0,
       "losses": 0,
       "win_rate": 0.0,
@@ -159,80 +146,83 @@
     },
     "trading_active": true,
     "websocket_connected": true,
-    "errors_in_log": [],
+    "errors_in_log": [
+      "2026-03-25 18:40:32,738 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+      "2026-03-25 18:40:32,738 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye"
+    ],
     "market_data_source": "websocket",
     "today_trades": [
       {
-        "id": "MES_20260325_165011",
+        "id": "MES_20260325_180530",
         "symbol": "MES",
         "direction": "Sell",
         "entry_price": 0,
         "qty": 3,
         "strategy": "ORBStrategy",
         "reason": "ORB-5m short breakout below 6660.75",
-        "stop_loss": 6657.5,
-        "take_profit": 6639.5,
-        "entry_time": "2026-03-25T16:50:11.847028+00:00",
-        "entry_hour_et": 12,
+        "stop_loss": 6661.0,
+        "take_profit": 6643.0,
+        "entry_time": "2026-03-25T18:05:30.193322+00:00",
+        "entry_hour_et": 14,
         "entry_day_of_week": "Wednesday",
         "date": "2026-03-25",
         "exit_price": 0,
         "pnl": 0,
         "exit_reason": "bracket_fill",
-        "exit_time": "2026-03-25T16:55:19.925215+00:00",
+        "exit_time": "2026-03-25T18:18:21.259514+00:00",
         "status": "closed",
         "r_multiple": 0,
-        "duration_minutes": 5.13463645,
+        "duration_minutes": 12.8511032,
         "slippage_entry": null,
         "mae_points": null,
         "mfe_points": null
       },
       {
-        "id": "MES_20260325_170011",
+        "id": "MNQ_20260325_180751",
+        "symbol": "MNQ",
+        "direction": "Sell",
+        "entry_price": 0,
+        "qty": 3,
+        "strategy": "ORBStrategy",
+        "reason": "ORB-15m short breakout below 24426.00",
+        "stop_loss": 24450.5,
+        "take_profit": 24375.5,
+        "entry_time": "2026-03-25T18:07:51.445303+00:00",
+        "entry_hour_et": 14,
+        "entry_day_of_week": "Wednesday",
+        "date": "2026-03-25",
+        "exit_price": 0,
+        "pnl": 0,
+        "exit_reason": "bracket_fill",
+        "exit_time": "2026-03-25T18:18:21.258313+00:00",
+        "status": "closed",
+        "r_multiple": 0,
+        "duration_minutes": 10.4968835,
+        "slippage_entry": null,
+        "mae_points": null,
+        "mfe_points": null
+      },
+      {
+        "id": "MES_20260325_181530",
         "symbol": "MES",
         "direction": "Sell",
         "entry_price": 0,
         "qty": 3,
         "strategy": "ORBStrategy",
         "reason": "ORB-15m short breakout below 6660.75",
-        "stop_loss": 6659.25,
-        "take_profit": 6641.25,
-        "entry_time": "2026-03-25T17:00:11.860439+00:00",
-        "entry_hour_et": 13,
+        "stop_loss": 6661.25,
+        "take_profit": 6643.25,
+        "entry_time": "2026-03-25T18:15:30.212701+00:00",
+        "entry_hour_et": 14,
         "entry_day_of_week": "Wednesday",
         "date": "2026-03-25",
         "exit_price": 0,
         "pnl": 0,
         "exit_reason": "bracket_fill",
-        "exit_time": "2026-03-25T17:03:00.520632+00:00",
+        "exit_time": "2026-03-25T18:18:21.256040+00:00",
         "status": "closed",
         "r_multiple": 0,
-        "duration_minutes": 2.8110032166666667,
-        "slippage_entry": null,
-        "mae_points": null,
-        "mfe_points": null
-      },
-      {
-        "id": "MCL_20260325_175833",
-        "symbol": "MCL",
-        "direction": "Sell",
-        "entry_price": 0,
-        "qty": 3,
-        "strategy": "VWAPStrategy",
-        "reason": "VWAP short #1 at 89.2100 (VWAP=89.2244)",
-        "stop_loss": 89.42440927242117,
-        "take_profit": 88.80999999999999,
-        "entry_time": "2026-03-25T17:58:33.999381+00:00",
-        "entry_hour_et": 13,
-        "entry_day_of_week": "Wednesday",
-        "date": "2026-03-25",
-        "exit_price": null,
-        "pnl": null,
-        "exit_reason": null,
-        "exit_time": null,
-        "status": "open",
-        "r_multiple": null,
-        "duration_minutes": null,
+        "duration_minutes": 2.850722316666667,
         "slippage_entry": null,
         "mae_points": null,
         "mfe_points": null
@@ -240,20 +230,140 @@
     ],
     "today_fills": [
       {
-        "id": 409583845184,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 24339.75,
-        "timestamp": "2026-03-25T14:00:51.905Z"
-      },
-      {
         "id": 409583845318,
         "action": "Buy",
         "contractId": 4327108,
         "qty": 3,
         "price": 6657.25,
         "timestamp": "2026-03-25T16:55:10.926Z"
+      },
+      {
+        "id": 409583845355,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6659.25,
+        "timestamp": "2026-03-25T17:35:16.614Z"
+      },
+      {
+        "id": 409583845224,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6654.75,
+        "timestamp": "2026-03-25T16:45:25.523Z"
+      },
+      {
+        "id": 409583845192,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6640.0,
+        "timestamp": "2026-03-25T14:01:31.315Z"
+      },
+      {
+        "id": 409583845384,
+        "action": "Sell",
+        "contractId": 3643469,
+        "qty": 3,
+        "price": 89.4,
+        "timestamp": "2026-03-25T17:58:31.762Z"
+      },
+      {
+        "id": 409583845172,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 24336.5,
+        "timestamp": "2026-03-25T14:00:40.435Z"
+      },
+      {
+        "id": 409583845409,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6655.0,
+        "timestamp": "2026-03-25T18:05:28.092Z"
+      },
+      {
+        "id": 409583845430,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 24423.25,
+        "timestamp": "2026-03-25T18:07:49.334Z"
+      },
+      {
+        "id": 409583845091,
+        "action": "Sell",
+        "contractId": 3924410,
+        "qty": 3,
+        "price": 4543.9,
+        "timestamp": "2026-03-25T13:50:28.767Z"
+      },
+      {
+        "id": 409583845278,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6651.0,
+        "timestamp": "2026-03-25T16:50:06.219Z"
+      },
+      {
+        "id": 409583845332,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6653.25,
+        "timestamp": "2026-03-25T17:00:09.778Z"
+      },
+      {
+        "id": 409583845370,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6653.25,
+        "timestamp": "2026-03-25T17:52:36.776Z"
+      },
+      {
+        "id": 409583845120,
+        "action": "Buy",
+        "contractId": 3924410,
+        "qty": 3,
+        "price": 4549.6,
+        "timestamp": "2026-03-25T13:53:31.548Z"
+      },
+      {
+        "id": 409583845046,
+        "action": "Buy",
+        "contractId": 3643469,
+        "qty": 3,
+        "price": 88.13,
+        "timestamp": "2026-03-25T13:36:04.475Z"
+      },
+      {
+        "id": 409583845457,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 24451.0,
+        "timestamp": "2026-03-25T18:17:57.278Z"
+      },
+      {
+        "id": 409583845490,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 6,
+        "price": 6659.0,
+        "timestamp": "2026-03-25T18:17:57.624Z"
+      },
+      {
+        "id": 409583845184,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 24339.75,
+        "timestamp": "2026-03-25T14:00:51.905Z"
       },
       {
         "id": 409583845158,
@@ -288,14 +398,6 @@
         "timestamp": "2026-03-25T13:37:04.024Z"
       },
       {
-        "id": 409583845355,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6659.25,
-        "timestamp": "2026-03-25T17:35:16.614Z"
-      },
-      {
         "id": 409583845077,
         "action": "Sell",
         "contractId": 4327108,
@@ -312,12 +414,20 @@
         "timestamp": "2026-03-25T14:00:33.112Z"
       },
       {
-        "id": 409583845224,
+        "id": 409583845445,
         "action": "Sell",
         "contractId": 4327108,
         "qty": 3,
-        "price": 6654.75,
-        "timestamp": "2026-03-25T16:45:25.523Z"
+        "price": 6655.25,
+        "timestamp": "2026-03-25T18:15:28.112Z"
+      },
+      {
+        "id": 409583845400,
+        "action": "Buy",
+        "contractId": 3643469,
+        "qty": 3,
+        "price": 90.29,
+        "timestamp": "2026-03-25T18:05:24.940Z"
       },
       {
         "id": 409583845300,
@@ -326,46 +436,6 @@
         "qty": 3,
         "price": 6651.25,
         "timestamp": "2026-03-25T16:50:09.755Z"
-      },
-      {
-        "id": 409583845192,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6640.0,
-        "timestamp": "2026-03-25T14:01:31.315Z"
-      },
-      {
-        "id": 409583845384,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 3,
-        "price": 89.4,
-        "timestamp": "2026-03-25T17:58:31.762Z"
-      },
-      {
-        "id": 409583845172,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 24336.5,
-        "timestamp": "2026-03-25T14:00:40.435Z"
-      },
-      {
-        "id": 409583845091,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4543.9,
-        "timestamp": "2026-03-25T13:50:28.767Z"
-      },
-      {
-        "id": 409583845278,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6651.0,
-        "timestamp": "2026-03-25T16:50:06.219Z"
       },
       {
         "id": 409583845207,
@@ -384,22 +454,6 @@
         "timestamp": "2026-03-25T16:47:19.367Z"
       },
       {
-        "id": 409583845332,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6653.25,
-        "timestamp": "2026-03-25T17:00:09.778Z"
-      },
-      {
-        "id": 409583845344,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6658.25,
-        "timestamp": "2026-03-25T17:02:35.236Z"
-      },
-      {
         "id": 409583845129,
         "action": "Sell",
         "contractId": 3924410,
@@ -408,20 +462,12 @@
         "timestamp": "2026-03-25T13:55:36.449Z"
       },
       {
-        "id": 409583845370,
-        "action": "Sell",
+        "id": 409583845344,
+        "action": "Buy",
         "contractId": 4327108,
         "qty": 3,
-        "price": 6653.25,
-        "timestamp": "2026-03-25T17:52:36.776Z"
-      },
-      {
-        "id": 409583845120,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4549.6,
-        "timestamp": "2026-03-25T13:53:31.548Z"
+        "price": 6658.25,
+        "timestamp": "2026-03-25T17:02:35.236Z"
       },
       {
         "id": 409583845106,
@@ -440,14 +486,6 @@
         "timestamp": "2026-03-25T13:35:49.529Z"
       },
       {
-        "id": 409583845046,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 3,
-        "price": 88.13,
-        "timestamp": "2026-03-25T13:36:04.475Z"
-      },
-      {
         "id": 409583845021,
         "action": "Buy",
         "contractId": 3643469,
@@ -461,7 +499,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 17300,
+    "ssh_output_len": 17846,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
