@@ -1294,6 +1294,13 @@ class MarketDataStream:
             if "e" in item and item["e"] == "md" and "d" in item:
                 self._last_data_time = time.time()
                 self._quotes_received += 1
+                if self._quotes_received <= 3:
+                    logger.info(
+                        "MD DATA #%d: keys=%s contractId=%s",
+                        self._quotes_received,
+                        list(item["d"].keys())[:8] if isinstance(item["d"], dict) else type(item["d"]).__name__,
+                        item["d"].get("contractId") if isinstance(item["d"], dict) else "N/A",
+                    )
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]

@@ -555,24 +555,39 @@ class TradovateBot:
             if contract_id:
                 logger.info("Mapped contractId %s -> %s for quote routing", contract_id, contract_name)
 
+    _quote_count: int = 0
+    _quote_log_interval: int = 10  # log every Nth quote to avoid log spam
+
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
         # Extract price from quote data
         # Tradovate quote structure includes bid/ask/last
         price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
+            # Data arrived but no usable price — log first few for diagnostics
+            if not hasattr(self, "_null_price_logged"):
+                self._null_price_logged = 0
+            if self._null_price_logged < 5:
+                self._null_price_logged += 1
+                keys = list(data.keys())[:10]
+                logger.warning(
+                    "QUOTE %s: price=None (raw keys: %s) — data not usable",
+                    symbol, keys,
+                )
             return
 
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
 
-        # Log every quote so we can confirm data is flowing
-        contract_id = data.get("contractId", "?")
-        logger.info(
-            "QUOTE %s #%s: price=%.4f high=%.4f low=%.4f vol=%s",
-            symbol, contract_id, price, high, low, volume,
-        )
+        self._quote_count += 1
+        # Log first 5 quotes per symbol, then every 10th to avoid spam
+        if self._quote_count <= 5 or self._quote_count % self._quote_log_interval == 0:
+            contract_id = data.get("contractId", "?")
+            logger.info(
+                "QUOTE %s #%s: price=%.4f high=%.4f low=%.4f vol=%s (total=%d)",
+                symbol, contract_id, price, high, low, volume, self._quote_count,
+            )
 
         self._process_price(symbol, price, high, low, volume)
 
