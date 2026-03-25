@@ -2699,6 +2699,120 @@ test_tuner_mfe_targets()
 
 
 # ─────────────────────────────────────────────
+# 18. ORPHAN POSITION GUARD TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("18. ORPHAN POSITION GUARD TESTS")
+print("=" * 60)
+
+
+@test("API: get_working_orders filters by status")
+def test_get_working_orders():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+    all_orders = [
+        {"id": 1, "ordStatus": "Working", "contractId": 100},
+        {"id": 2, "ordStatus": "Filled", "contractId": 101},
+        {"id": 3, "ordStatus": "Accepted", "contractId": 102},
+        {"id": 4, "ordStatus": "Cancelled", "contractId": 100},
+    ]
+    with patch.object(api, "_get", return_value=all_orders):
+        result = api.get_working_orders()
+        assert len(result) == 2, f"Expected 2 working orders, got {len(result)}"
+        assert result[0]["id"] == 1
+        assert result[1]["id"] == 3
+
+
+@test("Bot: _verify_order_protection detects orphaned position and re-places OCO")
+def test_verify_order_protection_replace():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []  # No orders = orphaned!
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    bot.api.place_oco_for_position.assert_called_once_with(
+        symbol="MNQH6", action="Sell", qty=1,
+        stop_price=23975.0, take_profit_price=24050.0,
+    )
+
+
+@test("Bot: _verify_order_protection emergency close when OCO re-place fails")
+def test_verify_order_protection_emergency_close():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = None  # OCO failed!
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    bot.api.place_market_order.assert_called_once_with("MNQH6", "Sell", 1)
+
+
+@test("Bot: _verify_order_protection skips protected positions")
+def test_verify_order_protection_skip_protected():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = [
+        {"id": 500, "ordStatus": "Working", "contractId": 100}
+    ]
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = []
+    bot._verify_order_protection()
+    bot.api.place_oco_for_position.assert_not_called()
+    bot.api.place_market_order.assert_not_called()
+
+
+@test("Bot: _verify_order_protection uses config defaults when no trade data")
+def test_verify_order_protection_config_defaults():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 2, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = []  # No trade data available
+    bot._verify_order_protection()
+    # Should use config defaults: MNQ stop=25pts, tp=50pts
+    bot.api.place_oco_for_position.assert_called_once()
+    call_args = bot.api.place_oco_for_position.call_args
+    assert call_args.kwargs["stop_price"] == 24000.0 - 25, f"Expected SL at 23975, got {call_args.kwargs['stop_price']}"
+    assert call_args.kwargs["take_profit_price"] == 24000.0 + 50, f"Expected TP at 24050, got {call_args.kwargs['take_profit_price']}"
+
+
+test_get_working_orders()
+test_verify_order_protection_replace()
+test_verify_order_protection_emergency_close()
+test_verify_order_protection_skip_protected()
+test_verify_order_protection_config_defaults()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 

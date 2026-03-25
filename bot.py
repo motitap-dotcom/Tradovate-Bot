@@ -1097,6 +1097,7 @@ class TradovateBot:
                     try:
                         self._sync_balance()
                         self._sync_fills()
+                        self._verify_order_protection()
                         self._consecutive_api_failures = 0  # Reset on success
                     except Exception as e:
                         self._consecutive_api_failures += 1
@@ -1226,6 +1227,127 @@ class TradovateBot:
                 time.sleep(5)
 
         self.stop()
+
+    def _verify_order_protection(self):
+        """
+        Verify that every open position has active SL/TP orders.
+
+        If a position exists without any working orders (orphaned), this method
+        will attempt to re-place the OCO using the SL/TP from the original signal.
+        If the original SL/TP data is unavailable, the position is closed immediately
+        to prevent unlimited risk exposure.
+        """
+        try:
+            positions = self.api.get_positions()
+            open_positions = [p for p in positions if abs(p.get("netPos", 0)) > 0]
+            if not open_positions:
+                return
+
+            working_orders = self.api.get_working_orders()
+
+            # Build a set of contractIds that have working orders protecting them
+            protected_contract_ids: set[int] = set()
+            for order in working_orders:
+                cid = order.get("contractId")
+                if cid is not None:
+                    protected_contract_ids.add(cid)
+
+            for pos in open_positions:
+                contract_id = pos.get("contractId")
+                net_pos = pos.get("netPos", 0)
+
+                if contract_id in protected_contract_ids:
+                    continue  # Position has working orders — OK
+
+                # Orphaned position detected!
+                net_price = pos.get("netPrice", 0)
+                qty = abs(net_pos)
+                close_action = "Sell" if net_pos > 0 else "Buy"
+
+                # Resolve contract name
+                contract = self.api._get(f"/contract/item?id={contract_id}")
+                if not contract or not contract.get("name"):
+                    logger.error(
+                        "ORPHAN GUARD: Cannot resolve contractId %s. Force closing via position list.",
+                        contract_id,
+                    )
+                    continue
+                contract_name = contract["name"]
+
+                # Try to find original SL/TP from trades_today
+                base_symbol = self._contract_id_to_symbol.get(contract_id) if hasattr(self, "_contract_id_to_symbol") else None
+                original_sl = None
+                original_tp = None
+                if base_symbol:
+                    for t in self.trades_today:
+                        if t.get("symbol") == base_symbol and not t.get("_closed"):
+                            original_sl = t.get("stop")
+                            original_tp = t.get("target")
+                            break
+
+                if original_sl is not None and original_tp is not None:
+                    # Re-place OCO with original SL/TP
+                    logger.warning(
+                        "ORPHAN GUARD: Position %s %d (contractId=%s) has NO working orders! "
+                        "Re-placing OCO: SL=%.4f TP=%.4f",
+                        contract_name, net_pos, contract_id, original_sl, original_tp,
+                    )
+                    result = self.api.place_oco_for_position(
+                        symbol=contract_name,
+                        action=close_action,
+                        qty=qty,
+                        stop_price=original_sl,
+                        take_profit_price=original_tp,
+                    )
+                    if not result:
+                        # OCO re-placement failed — emergency close
+                        logger.critical(
+                            "ORPHAN GUARD: OCO re-placement FAILED for %s. EMERGENCY CLOSE!",
+                            contract_name,
+                        )
+                        self.api.place_market_order(contract_name, close_action, qty)
+                else:
+                    # No SL/TP data available — use config defaults as fallback
+                    spec = config.CONTRACT_SPECS.get(base_symbol) if base_symbol else None
+                    if spec and net_price > 0:
+                        sl_points = spec["stop_loss_points"]
+                        tp_points = spec["take_profit_points"]
+                        if net_pos > 0:  # Long position
+                            fallback_sl = net_price - sl_points
+                            fallback_tp = net_price + tp_points
+                        else:  # Short position
+                            fallback_sl = net_price + sl_points
+                            fallback_tp = net_price - tp_points
+
+                        logger.warning(
+                            "ORPHAN GUARD: Position %s %d has NO SL/TP orders and no original data. "
+                            "Using config defaults: SL=%.4f TP=%.4f (entry=%.4f)",
+                            contract_name, net_pos, fallback_sl, fallback_tp, net_price,
+                        )
+                        result = self.api.place_oco_for_position(
+                            symbol=contract_name,
+                            action=close_action,
+                            qty=qty,
+                            stop_price=fallback_sl,
+                            take_profit_price=fallback_tp,
+                        )
+                        if not result:
+                            logger.critical(
+                                "ORPHAN GUARD: Fallback OCO FAILED for %s. EMERGENCY CLOSE!",
+                                contract_name,
+                            )
+                            self.api.place_market_order(contract_name, close_action, qty)
+                    else:
+                        # No spec or entry price — emergency close
+                        logger.critical(
+                            "ORPHAN GUARD: Position %s %d has NO protection and NO fallback data. "
+                            "EMERGENCY CLOSE to prevent unlimited risk!",
+                            contract_name, net_pos,
+                        )
+                        self.api.place_market_order(contract_name, close_action, qty)
+
+        except Exception as e:
+            logger.error("Order protection verification error: %s", e)
 
     def _sync_fills(self):
         """Check positions and fills to close journal trades and update contract count."""

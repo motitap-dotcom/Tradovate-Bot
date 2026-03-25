@@ -675,92 +675,6 @@ class TradovateAPI:
         """List recent fills."""
         return self._get("/fill/list") or []
 
-    def get_order_detail(self, order_id: int) -> Optional[dict]:
-        """Get detailed info for a specific order (status, avgPrice, filledQty)."""
-        try:
-            return self._get(f"/order/item?id={order_id}")
-        except Exception as e:
-            logger.warning("Failed to get order detail for %s: %s", order_id, e)
-            return None
-
-    def get_order_fills(self, order_id: int) -> list[dict]:
-        """Get all fills for a specific order."""
-        try:
-            result = self._get(f"/fill/deps?masterid={order_id}")
-            return result if isinstance(result, list) else []
-        except Exception as e:
-            logger.warning("Failed to get fills for order %s: %s", order_id, e)
-            return []
-
-    def resolve_fill_price(self, order_id: int, max_wait: float = 8.0) -> float:
-        """Robustly resolve the actual fill price for an order.
-
-        Uses two data sources with exponential backoff:
-          1. /order/item → avgPrice (fast but may lag behind actual fill)
-          2. /fill/deps  → individual fills (reliable, weighted-average fallback)
-
-        Args:
-            order_id: The entry order ID.
-            max_wait: Maximum total seconds to spend polling. Use 0 for a
-                      single instant check (no retries).
-
-        Returns:
-            The fill price (float), or 0 if it could not be resolved.
-        """
-        delays = [0.5, 1.0, 2.0, 4.0]  # exponential backoff steps
-        elapsed = 0.0
-
-        for attempt in range(len(delays) + 1):
-            # --- Source 1: /order/item (avgPrice) ---
-            try:
-                detail = self._get(f"/order/item?id={order_id}")
-                if detail:
-                    avg = detail.get("avgPrice", 0)
-                    status = detail.get("ordStatus", "")
-                    if avg and avg > 0:
-                        logger.debug("resolve_fill_price(%s): avgPrice=%.4f status=%s attempt=%d",
-                                     order_id, avg, status, attempt)
-                        return avg
-                    # If status is Filled but avgPrice is 0, fall through to fills
-                    if status == "Rejected":
-                        return 0
-            except Exception:
-                pass
-
-            # --- Source 2: /fill/deps (individual fills) ---
-            try:
-                fills = self._get(f"/fill/deps?masterid={order_id}")
-                if isinstance(fills, list) and fills:
-                    # Compute volume-weighted average price
-                    total_qty = 0
-                    total_value = 0.0
-                    for f in fills:
-                        fqty = f.get("qty", 0)
-                        fprice = f.get("price", 0)
-                        if fqty and fprice:
-                            total_qty += fqty
-                            total_value += fqty * fprice
-                    if total_qty > 0:
-                        vwap = total_value / total_qty
-                        logger.debug("resolve_fill_price(%s): VWAP=%.4f from %d fills attempt=%d",
-                                     order_id, vwap, len(fills), attempt)
-                        return round(vwap, 6)
-            except Exception:
-                pass
-
-            # --- Wait before retry (respect max_wait) ---
-            if attempt < len(delays) and elapsed < max_wait:
-                wait = min(delays[attempt], max_wait - elapsed)
-                if wait <= 0:
-                    break
-                time.sleep(wait)
-                elapsed += wait
-            else:
-                break
-
-        logger.debug("resolve_fill_price(%s): could not resolve after %.1fs", order_id, elapsed)
-        return 0
-
     # ─────────────────────────────────────────
     # Contract lookup
     # ─────────────────────────────────────────
@@ -806,7 +720,6 @@ class TradovateAPI:
         stop_price: float,
         take_profit_price: float,
         order_type: str = "Market",
-        contract_id: Optional[int] = None,
     ) -> Optional[dict]:
         """
         Place a bracket order: market/limit entry + OCO stop-loss & take-profit.
@@ -815,8 +728,7 @@ class TradovateAPI:
         blocks the placeOSO endpoint.
         """
         if self.account_id is None:
-            self._last_order_error = "account_id is None (auth failed)"
-            logger.error("Cannot place bracket order: %s", self._last_order_error)
+            logger.error("Cannot place bracket order: account_id is None (auth may have failed)")
             return None
         opposite_action = "Sell" if action == "Buy" else "Buy"
 
@@ -831,9 +743,6 @@ class TradovateAPI:
             "timeInForce": "Day",
             "isAutomated": True,
         }
-        # Use contractId for more reliable order routing (some prop firms prefer it)
-        if contract_id is not None:
-            entry_payload["contractId"] = contract_id
         if order_type == "Limit" and entry_price is not None:
             entry_payload["price"] = entry_price
 
@@ -845,22 +754,8 @@ class TradovateAPI:
 
         entry_result = self._post("/order/placeorder", entry_payload)
         if not entry_result or "orderId" not in entry_result:
-            logger.error(
-                "Entry order failed: response=%s | accountSpec=%s accountId=%s symbol=%s",
-                entry_result, self.account_spec, self.account_id, symbol,
-            )
-            # Retry once after brief delay (transient API failures)
-            time.sleep(2)
-            logger.info("Retrying entry order for %s...", symbol)
-            entry_result = self._post("/order/placeorder", entry_payload)
-            if not entry_result or "orderId" not in entry_result:
-                logger.error("Entry order retry also failed: %s", entry_result)
-                self._last_order_error = (
-                    f"entry_failed: resp={entry_result} "
-                    f"acctSpec={self.account_spec} acctId={self.account_id} sym={symbol}"
-                )
-                return None
-            logger.info("Entry order succeeded on retry")
+            logger.error("Entry order failed: %s", entry_result)
+            return None
 
         entry_order_id = entry_result["orderId"]
         entry_status = entry_result.get("ordStatus", "Unknown")
@@ -872,43 +767,36 @@ class TradovateAPI:
         # Check if order was rejected
         if entry_status == "Rejected":
             reject_reason = entry_result.get("rejectReason", entry_result.get("text", "unknown"))
-            self._last_order_error = f"REJECTED: {reject_reason} | full={entry_result}"
             logger.error("Entry order REJECTED: %s", reject_reason)
             return None
 
-        # For market orders, verify fill with robust polling
-        fill_price = 0
+        # For market orders, verify fill after brief delay
         if order_type == "Market":
-            # Quick rejection check first (0.5s)
-            time.sleep(0.5)
+            time.sleep(1)
             order_detail = self._get(f"/order/item?id={entry_order_id}")
             if order_detail:
                 detail_status = order_detail.get("ordStatus", "Unknown")
+                filled_qty = order_detail.get("filledQty", 0)
+                avg_price = order_detail.get("avgPrice", 0)
                 logger.info(
-                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s",
-                    entry_order_id, detail_status,
-                    order_detail.get("filledQty", 0),
-                    order_detail.get("avgPrice", 0),
+                    "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s | detail=%s",
+                    entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
                 if detail_status == "Rejected":
-                    rej_reason = order_detail.get("rejectReason", "")
-                    rej_text = order_detail.get("text", "")
-                    self._last_order_error = f"REJECTED_ASYNC: {rej_reason} | {rej_text} | full={order_detail}"
                     logger.error(
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
-                        rej_reason, rej_text, order_detail,
+                        order_detail.get("rejectReason"),
+                        order_detail.get("text"),
+                        order_detail,
                     )
+                    # Try commandReport for more details
                     try:
                         cmd_report = self._get(f"/commandReport/deps?masterid={entry_order_id}")
                         if cmd_report:
-                            self._last_order_error += f" | cmdReport={cmd_report}"
                             logger.error("CommandReport for rejected order: %s", cmd_report)
                     except Exception:
                         pass
                     return None
-            # Resolve fill price with retries + /fill/deps fallback
-            fill_price = self.resolve_fill_price(entry_order_id, max_wait=8.0)
-            logger.info("Entry fill resolved: orderId=%s fill_price=%.4f", entry_order_id, fill_price)
 
         # --- Step 2: OCO stop-loss + take-profit ---
         oco_payload: dict[str, Any] = {
@@ -929,23 +817,10 @@ class TradovateAPI:
                 "timeInForce": "GTC",
             },
         }
-        if contract_id is not None:
-            oco_payload["contractId"] = contract_id
 
         oco_result = self._post("/order/placeOCO", oco_payload)
         if not oco_result or "orderId" not in oco_result:
-            logger.error(
-                "OCO (SL/TP) order failed: %s | entry=%s symbol=%s",
-                oco_result, entry_order_id, symbol,
-            )
-            # Retry once
-            time.sleep(1)
-            logger.info("Retrying OCO order for entry %s...", entry_order_id)
-            oco_result = self._post("/order/placeOCO", oco_payload)
-
-        if not oco_result or "orderId" not in oco_result:
-            self._last_order_error = f"OCO_failed: resp={oco_result} | entry={entry_order_id}"
-            logger.error("OCO retry also failed: %s", oco_result)
+            logger.error("OCO (SL/TP) order failed: %s | entry was %s", oco_result, entry_order_id)
             # CRITICAL: Entry exists WITHOUT stop-loss protection.
             # Cancel the unprotected entry to avoid unlimited risk.
             logger.critical(
@@ -963,7 +838,6 @@ class TradovateAPI:
             "orderId": entry_order_id,
             "slOrderId": oco_result.get("orderId") if oco_result else None,
             "tpOrderId": oco_result.get("ocoId") if oco_result else None,
-            "fillPrice": fill_price,
         }
 
     def place_market_order(
@@ -985,38 +859,60 @@ class TradovateAPI:
         }
         return self._post("/order/placeorder", payload)
 
-    def modify_order(self, order_id: int, new_stop_price: float) -> Optional[dict]:
-        """Modify an existing stop order's price (for breakeven/trailing stop).
+    def get_working_orders(self) -> list[dict]:
+        """Return all orders with status Working or Accepted."""
+        orders = self._get("/order/list") or []
+        return [o for o in orders if o.get("ordStatus") in ("Working", "Accepted")]
 
-        Uses the /order/modifyorder endpoint. The API requires orderQty,
-        so we fetch the current order first to preserve it.
-        Returns the updated order dict or None on failure.
+    def place_oco_for_position(
+        self,
+        symbol: str,
+        action: str,
+        qty: int,
+        stop_price: float,
+        take_profit_price: float,
+    ) -> Optional[dict]:
         """
-        # Fetch current order to get required fields
-        current = self.get_order_detail(order_id)
-        if not current:
-            logger.error("Cannot modify order %s: failed to fetch current state", order_id)
-            return None
-        qty = current.get("orderQty") or current.get("qty") or current.get("filledQty")
-        if not qty:
-            logger.error("Cannot modify order %s: no orderQty found in %s", order_id, current)
+        Place an OCO (stop-loss + take-profit) to protect an existing position.
+
+        Used by the orphan-position guard when SL/TP orders are missing.
+        """
+        if self.account_id is None:
+            logger.error("Cannot place OCO: account_id is None")
             return None
 
-        payload = {
-            "orderId": order_id,
+        oco_payload: dict[str, Any] = {
+            "accountSpec": self.account_spec,
+            "accountId": self.account_id,
+            "symbol": symbol,
+            "action": action,
             "orderQty": qty,
-            "orderType": current.get("orderType", "Stop"),
-            "stopPrice": new_stop_price,
+            "orderType": "Stop",
+            "stopPrice": stop_price,
+            "timeInForce": "GTC",
             "isAutomated": True,
+            "other": {
+                "action": action,
+                "orderType": "Limit",
+                "price": take_profit_price,
+                "orderQty": qty,
+                "timeInForce": "GTC",
+            },
         }
-        logger.info("Modifying order %s → new stopPrice=%.4f qty=%s", order_id, new_stop_price, qty)
-        result = self._post("/order/modifyorder", payload)
-        if result and "orderId" in result:
-            logger.info("Order %s modified successfully: %s", order_id, result)
-            return result
-        else:
-            logger.error("Failed to modify order %s: %s", order_id, result)
+
+        logger.info(
+            "Re-placing OCO for orphaned position: %s %d %s | SL=%.2f TP=%.2f",
+            action, qty, symbol, stop_price, take_profit_price,
+        )
+        result = self._post("/order/placeOCO", oco_payload)
+        if not result or "orderId" not in result:
+            logger.error("OCO re-placement FAILED: %s", result)
             return None
+        logger.info(
+            "OCO re-placed: SL orderId=%s TP orderId=%s",
+            result.get("orderId"), result.get("ocoId"),
+        )
+        return result
 
     def cancel_all_orders(self) -> bool:
         """Cancel all working orders for the account."""
@@ -1090,9 +986,9 @@ class TradovateAPI:
                 if self._re_authenticate():
                     return self._post(endpoint, payload, _retried=True)
             if resp.status_code != 200:
-                err_msg = f"HTTP {resp.status_code}: {resp.text[:500]}"
-                logger.error("POST %s %s", endpoint, err_msg)
-                self._last_order_error = err_msg
+                logger.error(
+                    "POST %s status=%d body=%s", endpoint, resp.status_code, resp.text[:500]
+                )
             resp.raise_for_status()
             try:
                 result = resp.json()
@@ -1102,7 +998,6 @@ class TradovateAPI:
             logger.debug("POST %s -> %s", endpoint, result)
             return result
         except requests.RequestException as e:
-            self._last_order_error = f"exception: {e}"
             logger.error("POST %s failed: %s", endpoint, e)
             return None
 
@@ -1143,8 +1038,7 @@ class MarketDataStream:
         self.md_token = md_access_token
         self._api = api  # Reference to API client for token refresh on 403
         self.ws: Optional[websocket.WebSocketApp] = None
-        # Start at 1 to avoid collision with hardcoded auth request_id=1
-        self._request_id = 1
+        self._request_id = 0
         self._callbacks: dict[str, list[Callable]] = {}
         # Maps contractId (int) → symbol name (str) for correct quote routing
         self._contract_id_to_symbol: dict[int, str] = {}
@@ -1159,10 +1053,8 @@ class MarketDataStream:
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
         self._quotes_received: int = 0  # Count of actual market data events received
-        self._quotes_dispatched: int = 0  # Count of quotes successfully routed to callbacks
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
-        self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
     def start(self):
@@ -1218,17 +1110,9 @@ class MarketDataStream:
     # No data for 2 minutes means the connection is stale
     DATA_TIMEOUT = 120
 
-    # SockJS application-level heartbeat interval (seconds).
-    # Tradovate's server closes idle connections after ~30s of silence at
-    # the application layer.  WebSocket-level pings don't count — the server
-    # expects SockJS frames.  Sending "[]" (empty SockJS message) every 10s
-    # keeps the connection alive reliably.
-    _HEARTBEAT_INTERVAL = 10
-
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
-        self._stop_heartbeat()
         # Cancel pending reconnect timer
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
@@ -1241,34 +1125,6 @@ class MarketDataStream:
         # Wait briefly for the thread to finish
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
-
-    def _start_heartbeat(self):
-        """Start sending periodic SockJS heartbeats ("[]") to keep alive."""
-        self._stop_heartbeat()
-
-        def _beat():
-            if not self._should_run or not self._connected.is_set():
-                return
-            if self.ws:
-                try:
-                    self.ws.send("[]")
-                except Exception:
-                    pass  # Connection lost — _on_close will handle reconnect
-            # Schedule next beat
-            if self._should_run:
-                self._heartbeat_timer = threading.Timer(self._HEARTBEAT_INTERVAL, _beat)
-                self._heartbeat_timer.daemon = True
-                self._heartbeat_timer.start()
-
-        self._heartbeat_timer = threading.Timer(self._HEARTBEAT_INTERVAL, _beat)
-        self._heartbeat_timer.daemon = True
-        self._heartbeat_timer.start()
-
-    def _stop_heartbeat(self):
-        """Cancel the periodic heartbeat timer."""
-        if self._heartbeat_timer:
-            self._heartbeat_timer.cancel()
-            self._heartbeat_timer = None
 
     # How long to wait for first quote before declaring stream dead
     NO_DATA_TIMEOUT = 60  # seconds
@@ -1351,7 +1207,6 @@ class MarketDataStream:
                 logger.info("Market data WebSocket authenticated")
                 self._reconnect_count = 0
                 self._connected.set()
-                self._start_heartbeat()
                 continue
 
             # Auth failure — trigger reconnect with fresh token
@@ -1367,23 +1222,15 @@ class MarketDataStream:
 
             # Subscription response — auto-learn contractId mapping
             req_id = item.get("i")
-            if req_id and req_id in self._pending_subscriptions:
+            if req_id and req_id in self._pending_subscriptions and item.get("s") == 200:
                 sym = self._pending_subscriptions.pop(req_id)
-                status = item.get("s")
-                if status == 200:
-                    logger.info("Subscription confirmed for %s (status=200)", sym)
-                    # Extract contractId from response body if available
-                    body = item.get("d", {})
-                    if isinstance(body, dict):
-                        cid = body.get("contractId")
-                        if cid is not None and cid not in self._contract_id_to_symbol:
-                            self._contract_id_to_symbol[cid] = sym
-                            logger.info("Auto-mapped contractId %s -> %s from subscription response", cid, sym)
-                else:
-                    logger.error(
-                        "Subscription FAILED for %s (status=%s): %s",
-                        sym, status, item,
-                    )
+                # Extract contractId from response body if available
+                body = item.get("d", {})
+                if isinstance(body, dict):
+                    cid = body.get("contractId")
+                    if cid is not None and cid not in self._contract_id_to_symbol:
+                        self._contract_id_to_symbol[cid] = sym
+                        logger.info("Auto-mapped contractId %s -> %s from subscription response", cid, sym)
                 continue
 
             # Quote data — dispatched by symbol from the "d" field
@@ -1392,84 +1239,39 @@ class MarketDataStream:
                 self._quotes_received += 1
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
-
-                # Log first 5 raw quote payloads for debugging quote structure
-                if self._quotes_received <= 5:
-                    logger.info("RAW MD #%d keys=%s data=%s", self._quotes_received,
-                                list(data.keys()) if isinstance(data, dict) else type(data).__name__,
-                                json.dumps(data)[:500])
-
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
-
-                # contractId may be at the data level (wrapping the quotes) rather than
-                # on individual quote entries. Check both locations.
-                data_contract_id = (data.get("contractId") or data.get("id")
-                                    ) if isinstance(data, dict) else None
-
                 # Snapshot callbacks under lock to avoid race with subscribe/unsubscribe
                 with self._callbacks_lock:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
-                    # Try contractId from quote first, fall back to data-level contractId
-                    contract_id = (quote.get("contractId") or quote.get("id") or quote.get("cid")
-                                   or data_contract_id)
+                    contract_id = quote.get("contractId")
                     # Route quote to the correct symbol's callbacks using contractId.
                     # Without this filter, ALL quotes go to ALL symbols — causing
                     # strategies to receive prices from wrong contracts (e.g., NQ
                     # prices fed to GC strategy), which breaks ORB ranges and VWAP.
                     target_sym = self._contract_id_to_symbol.get(contract_id)
                     if target_sym and target_sym in cb_snapshot:
-                        self._quotes_dispatched += 1
                         for cb in cb_snapshot[target_sym]:
                             try:
                                 cb(target_sym, quote)
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif contract_id is not None and not target_sym:
-                        # Unknown contractId — try auto-mapping if only one subscription
-                        # is waiting, otherwise log warning for diagnostics.
-                        if len(cb_snapshot) == 1:
-                            # Only one symbol subscribed — safe to assume this is it
-                            for sym, cbs in cb_snapshot.items():
-                                self._contract_id_to_symbol[contract_id] = sym
-                                logger.info("Auto-mapped unmapped contractId %s -> %s (single symbol)", contract_id, sym)
-                                for cb in cbs:
-                                    try:
-                                        cb(sym, quote)
-                                    except Exception as e:
-                                        logger.error("Quote callback error for %s: %s", sym, e)
-                        else:
-                            # Log first 10 unmapped IDs as WARNING for diagnostics
-                            unmapped_count = getattr(self, "_unmapped_warn_count", 0)
-                            if unmapped_count < 10:
-                                self._unmapped_warn_count = unmapped_count + 1
-                                logger.warning(
-                                    "Unmapped contractId %s — skipping. Known IDs: %s. Callbacks: %s",
-                                    contract_id,
-                                    list(self._contract_id_to_symbol.keys()),
-                                    list(cb_snapshot.keys()),
-                                )
-                    elif contract_id is None:
-                        # No contractId anywhere — log warning and skip
-                        # (broadcasting to all strategies would corrupt their state)
-                        no_cid_count = getattr(self, "_no_cid_warn_count", 0)
-                        if no_cid_count < 10:
-                            self._no_cid_warn_count = no_cid_count + 1
-                            logger.warning(
-                                "Quote without contractId (#%d). data_keys=%s quote_keys=%s. Skipping.",
-                                no_cid_count + 1,
-                                list(data.keys()) if isinstance(data, dict) else "?",
-                                list(quote.keys()) if isinstance(quote, dict) else "?",
-                            )
-                        if len(cb_snapshot) == 1:
-                            # Only one symbol — safe to dispatch
-                            for sym, cbs in cb_snapshot.items():
-                                self._quotes_dispatched += 1
-                                for cb in cbs:
-                                    try:
-                                        cb(sym, quote)
-                                    except Exception as e:
-                                        logger.error("Quote callback error for %s: %s", sym, e)
+                        # Unknown contractId with no mapping — try to auto-map from
+                        # subscription response.  Only dispatch to the single symbol
+                        # whose contract name matches, to avoid cross-contamination.
+                        logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
+                    elif contract_id is None and len(cb_snapshot) == 1:
+                        # No contractId in quote and only one symbol subscribed — safe to dispatch
+                        for sym, cbs in cb_snapshot.items():
+                            for cb in cbs:
+                                try:
+                                    cb(sym, quote)
+                                except Exception as e:
+                                    logger.error("Quote callback error for %s: %s", sym, e)
+                    else:
+                        # No contractId and multiple symbols — cannot safely route, skip
+                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
 
     def _on_error(self, ws, error):
         error_str = str(error)
@@ -1484,7 +1286,6 @@ class MarketDataStream:
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
-        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
         is_graceful = close_status_code == 1000
