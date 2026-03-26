@@ -341,3 +341,4 @@ RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
 # ─────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = os.getenv("LOG_FILE", "bot.log")
+# status check trigger: 2026-03-26T13:30Z
