@@ -116,7 +116,7 @@ ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
 
 # Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 50
+MAX_DAILY_TRADES = 100
 
 # ─────────────────────────────────────────────
 # Contract Specifications
@@ -134,12 +134,11 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 10,
-        "orb_cooldown_minutes": 5,
+        "max_orb_trades": 15,
+        "orb_cooldown_minutes": 15,
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
-        "max_qty": 2,
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -150,12 +149,11 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 10,
-        "orb_cooldown_minutes": 5,
+        "max_orb_trades": 15,
+        "orb_cooldown_minutes": 15,
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
-        "max_qty": 2,
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -169,9 +167,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 5,
-        "vwap_cooldown_minutes": 10,
-        "max_qty": 2,
+        "max_vwap_trades_per_direction": 8,
+        "vwap_cooldown_minutes": 30,
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -185,9 +182,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 5,
-        "vwap_cooldown_minutes": 10,
-        "max_qty": 2,
+        "max_vwap_trades_per_direction": 8,
+        "vwap_cooldown_minutes": 30,
     },
     # ─── Mini Contracts (disabled — switched to micros) ──────
     "NQ": {
@@ -199,7 +195,7 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": False,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
+        "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 25,
         "take_profit_points": 50,
@@ -214,7 +210,7 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": False,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
+        "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 6,
         "take_profit_points": 12,
@@ -232,7 +228,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
+        "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
     },
     "CL": {
@@ -247,7 +243,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
+        "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
     },
     "SI": {
@@ -257,14 +253,13 @@ CONTRACT_SPECS = {
         "tick_value": 25.00,
         "point_value": 5_000.00,
         "strategy": "VWAP",
-        "enabled": True,
+        "enabled": False,
         "stop_loss_points": 0.05,
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 5,
-        "vwap_cooldown_minutes": 10,
-        "max_qty": 1,
+        "max_vwap_trades_per_direction": 8,
+        "vwap_cooldown_minutes": 30,
     },
     "NG": {
         "name": "Henry Hub Natural Gas",
@@ -278,8 +273,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.060,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 1,
-        "vwap_cooldown_minutes": 60,
+        "max_vwap_trades_per_direction": 8,
+        "vwap_cooldown_minutes": 30,
     },
 }
 
