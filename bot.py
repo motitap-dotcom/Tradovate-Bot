@@ -463,6 +463,11 @@ class TradovateBot:
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
+                                # If feed() fired a breakout during warmup,
+                                # reset it — we don't want to consume breakouts
+                                # before live trading starts.
+                                if window.breakout_fired:
+                                    window.breakout_fired = False
                             else:
                                 # Range is set — just track _last_price so
                                 # feed() can detect fresh crosses on live ticks.
