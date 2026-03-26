@@ -336,6 +336,9 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # Lowered to 1.0% — tighter risk per trade, more trades allowed
 RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
 
+# Max contracts per single position (regardless of risk budget)
+MAX_CONTRACTS_PER_TRADE = 2
+
 # ─────────────────────────────────────────────
 # Logging
 # ─────────────────────────────────────────────

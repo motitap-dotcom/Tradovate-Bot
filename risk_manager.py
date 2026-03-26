@@ -289,10 +289,8 @@ class RiskManager:
 
         contracts = int(math.floor(trade_risk_budget / risk_per_contract))
 
-        # Cap at per-symbol max_qty if configured
-        max_qty = spec.get("max_qty")
-        if max_qty is not None:
-            contracts = min(contracts, max_qty)
+        # Cap at per-trade limit (user requested 2 contracts per position)
+        contracts = min(contracts, config.MAX_CONTRACTS_PER_TRADE)
 
         # Cap at available contract slots
         available = self.max_contracts - self.open_contracts
