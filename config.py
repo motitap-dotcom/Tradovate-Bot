@@ -139,6 +139,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
+        "max_qty": 2,
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -154,6 +155,7 @@ CONTRACT_SPECS = {
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
+        "max_qty": 2,
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -169,6 +171,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
+        "max_qty": 2,
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -184,6 +187,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
+        "max_qty": 2,
     },
     # ─── Mini Contracts (disabled — switched to micros) ──────
     "NQ": {
@@ -260,6 +264,7 @@ CONTRACT_SPECS = {
         "vwap_confirmation_candles": 1,
         "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
+        "max_qty": 2,
     },
     "NG": {
         "name": "Henry Hub Natural Gas",
