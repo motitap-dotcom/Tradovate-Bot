@@ -246,6 +246,21 @@ CONTRACT_SPECS = {
         "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
     },
+    "SIL": {
+        "name": "Micro Silver (COMEX)",
+        "exchange": "COMEX",
+        "tick_size": 0.005,
+        "tick_value": 5.00,
+        "point_value": 1_000.00,
+        "strategy": "VWAP",
+        "enabled": True,
+        "stop_loss_points": 0.05,
+        "take_profit_points": 0.10,
+        "risk_reward_ratio": 2.0,
+        "vwap_confirmation_candles": 1,
+        "max_vwap_trades_per_direction": 8,
+        "vwap_cooldown_minutes": 30,
+    },
     "SI": {
         "name": "Silver (COMEX)",
         "exchange": "COMEX",
@@ -268,7 +283,7 @@ CONTRACT_SPECS = {
         "tick_value": 10.00,
         "point_value": 10_000.00,
         "strategy": "VWAP",
-        "enabled": False,
+        "enabled": True,
         "stop_loss_points": 0.030,
         "take_profit_points": 0.060,
         "risk_reward_ratio": 2.0,
@@ -302,6 +317,7 @@ CONTRACT_LIQUID_MONTHS = {
     "CL": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
     "MCL": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
     # Silver: quarterly-ish (H=Mar, K=May, N=Jul, U=Sep, Z=Dec)
+    "SIL": ["H", "K", "N", "U", "Z"],
     "SI": ["H", "K", "N", "U", "Z"],
     # Natural Gas: every month
     "NG": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
