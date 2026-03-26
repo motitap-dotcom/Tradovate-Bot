@@ -425,8 +425,11 @@ class VWAPStrategy:
             return None
 
         # Don't signal if VWAP is stale (too many zero-volume bars)
+        # Threshold raised to 20: WebSocket tick data has many bid/ask updates
+        # between actual trades, each with volume=0. A threshold of 3 blocked
+        # signals almost permanently on low-frequency symbols.
         stale_bars = getattr(self, "_vwap_stale_bars", 0)
-        if stale_bars >= 3:
+        if stale_bars >= 20:
             self._prev_price = price
             return None
 
