@@ -355,3 +355,4 @@ TRAILING_STOP_STEP_R = 0.5  # move SL up every additional 0.5R
 # ─────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = os.getenv("LOG_FILE", "bot.log")
+# status check trigger: 2026-03-26T13:30Z
