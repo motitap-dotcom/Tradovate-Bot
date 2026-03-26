@@ -289,6 +289,9 @@ class RiskManager:
 
         contracts = int(math.floor(trade_risk_budget / risk_per_contract))
 
+        # Cap at per-trade limit (user requested 2 contracts per position)
+        contracts = min(contracts, config.MAX_CONTRACTS_PER_TRADE)
+
         # Cap at available contract slots
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
