@@ -190,8 +190,8 @@ class ORBStrategy:
     Window 1 (5-min): Fast, aggressive breakout — fires first.
     Window 2 (15-min): Wider range, stronger confirmation — fires later.
 
-    Each window can produce one breakout. Total trades capped at max_orb_trades.
-    A cooldown period separates consecutive trades.
+    Each window resets after firing, allowing repeated breakouts up to
+    max_orb_trades per day. A cooldown period separates consecutive trades.
     """
 
     def __init__(self, symbol: str):
