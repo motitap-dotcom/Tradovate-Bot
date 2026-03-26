@@ -1,9 +1,8 @@
 """
 Tradovate Bot Configuration
 ============================
-All settings for the multi-asset trading bot (v2.5 — micro contracts).
+All settings for the multi-asset trading bot.
 Put your API credentials in a .env file (never commit it).
-Build: 2026-03-24
 """
 
 import os
@@ -91,7 +90,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 13,              # 4 symbols × 3 + SI × 1 = 13 max exposed
+        "max_contracts": 10,              # micros (switched from minis for tighter risk)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -117,13 +116,15 @@ ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
 
 # Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 24  # raised: more windows + re-arms = more opportunities
+MAX_DAILY_TRADES = 16
 
 # ─────────────────────────────────────────────
 # Contract Specifications
 # ─────────────────────────────────────────────
 CONTRACT_SPECS = {
-    # ─── Micro Contracts (active — lower risk per trade) ──────
+    # ─── Micro Contracts (active) ──────────────────────────────
+    # Switched from minis to micros for tighter risk control.
+    # Point values are 1/10 of minis, allowing finer position sizing.
     "MNQ": {
         "name": "Micro E-mini Nasdaq-100",
         "exchange": "CME",
@@ -133,13 +134,11 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 3,  # raised from 2: re-arms create more opportunities
-        "orb_cooldown_minutes": 10,  # lowered from 15: faster re-entry
-        "orb_rearm_ticks": 5,  # re-arm breakout after 5 ticks back inside range
+        "max_orb_trades": 4,
+        "orb_cooldown_minutes": 5,
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
-        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -150,13 +149,11 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 3,  # raised from 2
-        "orb_cooldown_minutes": 10,  # lowered from 15
-        "orb_rearm_ticks": 5,
+        "max_orb_trades": 4,
+        "orb_cooldown_minutes": 5,
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
-        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -170,9 +167,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 3,  # raised from 2
-        "vwap_cooldown_minutes": 20,  # lowered from 30
-        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
+        "max_vwap_trades_per_direction": 3,
+        "vwap_cooldown_minutes": 10,
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -186,11 +182,10 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 3,  # raised from 2
-        "vwap_cooldown_minutes": 20,  # lowered from 30
-        "max_qty": 3,  # 3 per symbol × 4 symbols + 1 SI = 13 max
+        "max_vwap_trades_per_direction": 3,
+        "vwap_cooldown_minutes": 10,
     },
-    # ─── Mini Contracts (disabled — too risky, use micros) ──
+    # ─── Mini Contracts (disabled — switched to micros) ──────
     "NQ": {
         "name": "E-mini Nasdaq-100",
         "exchange": "CME",
@@ -258,14 +253,13 @@ CONTRACT_SPECS = {
         "tick_value": 25.00,
         "point_value": 5_000.00,
         "strategy": "VWAP",
-        "enabled": True,
+        "enabled": False,
         "stop_loss_points": 0.05,
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
-        "vwap_cooldown_minutes": 30,
-        "max_qty": 1,  # Silver: 1 contract only ($250 risk per trade)
+        "max_vwap_trades_per_direction": 1,
+        "vwap_cooldown_minutes": 60,
     },
     "NG": {
         "name": "Henry Hub Natural Gas",
@@ -323,7 +317,7 @@ MONTH_CODE_REVERSE = {v: k for k, v in MONTH_CODES.items()}
 # ─────────────────────────────────────────────
 # Trading Session Times (Eastern Time)
 # ─────────────────────────────────────────────
-# US equity open for ORB calculation  # status-refresh 2026-03-24
+# US equity open for ORB calculation
 MARKET_OPEN_ET = "09:30"
 
 # Earliest time to place new trades (no trading before this)
@@ -343,16 +337,7 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
 
 # ─────────────────────────────────────────────
-# Breakeven & Trailing Stop
-# ─────────────────────────────────────────────
-# After price moves this many R-multiples in our favor, move SL to breakeven
-BREAKEVEN_R_THRESHOLD = 1.0  # move SL to entry after +1R
-# After breakeven, trail SL this fraction of favorable movement
-TRAILING_STOP_STEP_R = 0.5  # move SL up every additional 0.5R
-
-# ─────────────────────────────────────────────
 # Logging
 # ─────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = os.getenv("LOG_FILE", "bot.log")
-# status check trigger: 2026-03-26T13:30Z
