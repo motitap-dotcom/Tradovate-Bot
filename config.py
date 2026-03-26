@@ -116,7 +116,7 @@ ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
 
 # Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 16
+MAX_DAILY_TRADES = 100
 
 # ─────────────────────────────────────────────
 # Contract Specifications
@@ -134,7 +134,7 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
+        "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 25,
         "take_profit_points": 50,
@@ -149,7 +149,7 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
+        "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 6,
         "take_profit_points": 12,
@@ -167,7 +167,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
+        "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
     },
     "MCL": {
@@ -182,7 +182,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
+        "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
     },
     # ─── Mini Contracts (disabled — switched to micros) ──────
@@ -195,7 +195,7 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": False,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
+        "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 25,
         "take_profit_points": 50,
@@ -210,7 +210,7 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": False,
         "orb_windows": [5, 15],
-        "max_orb_trades": 2,
+        "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
         "stop_loss_points": 6,
         "take_profit_points": 12,
@@ -228,7 +228,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
+        "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
     },
     "CL": {
@@ -243,7 +243,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 2,
+        "max_vwap_trades_per_direction": 8,
         "vwap_cooldown_minutes": 30,
     },
     "SI": {
@@ -258,8 +258,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 1,
-        "vwap_cooldown_minutes": 60,
+        "max_vwap_trades_per_direction": 8,
+        "vwap_cooldown_minutes": 30,
     },
     "NG": {
         "name": "Henry Hub Natural Gas",
@@ -273,8 +273,8 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.060,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 1,
-        "vwap_cooldown_minutes": 60,
+        "max_vwap_trades_per_direction": 8,
+        "vwap_cooldown_minutes": 30,
     },
 }
 
