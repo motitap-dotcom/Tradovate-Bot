@@ -258,7 +258,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 3,
+        "max_vwap_trades_per_direction": 1,
         "vwap_cooldown_minutes": 10,
     },
     "NG": {
