@@ -289,6 +289,10 @@ class RiskManager:
 
         contracts = int(math.floor(trade_risk_budget / risk_per_contract))
 
+        # Cap per-trade size to allow diversification across symbols
+        MAX_CONTRACTS_PER_TRADE = 3
+        contracts = min(contracts, MAX_CONTRACTS_PER_TRADE)
+
         # Cap at available contract slots
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
