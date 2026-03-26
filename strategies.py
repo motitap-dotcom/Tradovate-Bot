@@ -53,6 +53,10 @@ class TradeSignal:
 class _ORBWindow:
     """Tracks one opening range window and detects breakouts."""
 
+    # When the bot starts after the ORB window, build a range from this
+    # many minutes of live data instead of waiting until tomorrow.
+    LATE_START_WARMUP_MINUTES = 2
+
     def __init__(self, window_minutes: int, open_time: time):
         self.window_minutes = window_minutes
         self.open_time = open_time
@@ -62,6 +66,7 @@ class _ORBWindow:
         self.breakout_fired: bool = False
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
+        self._late_start_seconds: Optional[int] = None  # tracks late-start warmup
 
     def reset(self):
         self.range_high = None
@@ -70,6 +75,31 @@ class _ORBWindow:
         self.breakout_fired = False
         self.prices = []
         self._last_price = None
+        self._late_start_seconds = None
+
+    def _try_set_range(self, label: str) -> bool:
+        """Try to set the range from accumulated prices. Returns True if set."""
+        if not self.prices:
+            return False
+        self.range_high = max(self.prices)
+        self.range_low = min(self.prices)
+        range_size = self.range_high - self.range_low
+        if range_size <= 0:
+            logger.warning(
+                "ORB %d-min %s range invalid (size=%.2f). Skipping.",
+                self.window_minutes, label, range_size,
+            )
+            return False
+        self.range_set = True
+        logger.info(
+            "ORB %d-min %s range: high=%.2f low=%.2f size=%.2f",
+            self.window_minutes,
+            label,
+            self.range_high,
+            self.range_low,
+            range_size,
+        )
+        return True
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
@@ -94,31 +124,37 @@ class _ORBWindow:
         # Phase 1: Accumulate range
         if not self.range_set:
             if 0 <= elapsed < self.window_minutes:
+                # Normal: within the ORB window, collect prices
                 self.prices.append(high)
                 self.prices.append(low)
                 self._last_price = price
                 return None
 
             if elapsed >= self.window_minutes and self.prices:
-                self.range_high = max(self.prices)
-                self.range_low = min(self.prices)
-                range_size = self.range_high - self.range_low
-                # Validate range: must be positive and not absurdly wide
-                if range_size <= 0:
-                    logger.warning(
-                        "ORB %d-min range invalid (size=%.2f). Skipping.",
-                        self.window_minutes, range_size,
-                    )
-                    return None
-                self.range_set = True
-                logger.info(
-                    "ORB %d-min range: high=%.2f low=%.2f size=%.2f",
-                    self.window_minutes,
-                    self.range_high,
-                    self.range_low,
-                    range_size,
-                )
+                # Normal: ORB window just ended, set range
+                self._try_set_range("normal")
                 # Fall through to check breakout
+
+            elif elapsed >= self.window_minutes and not self.prices:
+                # Late start: bot restarted after the ORB window.
+                # Build a quick range from incoming data.
+                if self._late_start_seconds is None:
+                    self._late_start_seconds = current_seconds
+                    logger.info(
+                        "ORB %d-min: late start (%.0fm after open), "
+                        "building %d-min warmup range...",
+                        self.window_minutes, elapsed,
+                        self.LATE_START_WARMUP_MINUTES,
+                    )
+
+                self.prices.append(high)
+                self.prices.append(low)
+                self._last_price = price
+
+                warmup_elapsed = (current_seconds - self._late_start_seconds) / 60
+                if warmup_elapsed >= self.LATE_START_WARMUP_MINUTES and len(self.prices) >= 4:
+                    self._try_set_range("late-start")
+                return None
 
         if not self.range_set:
             return None
