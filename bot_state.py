@@ -136,13 +136,15 @@ def restore_strategies(state: dict, strategies: dict):
                 except (ValueError, TypeError):
                     pass
 
-            # Restore breakout_fired flags per window
+            # Restore range per window (but NOT breakout_fired —
+            # let warmup + live data decide when to fire breakouts)
             saved_windows = sym_state.get("windows", [])
             for i, w in enumerate(strategy.windows):
                 if i < len(saved_windows):
                     sw = saved_windows[i]
-                    if sw.get("breakout_fired"):
-                        w.breakout_fired = True
+                    # Do NOT restore breakout_fired — this was causing ORB
+                    # to never trade after restart because old state marked
+                    # breakouts as already consumed.
                     # Restore range if warmup didn't set it
                     if not w.range_set and sw.get("range_set"):
                         w.range_high = sw["range_high"]
