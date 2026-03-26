@@ -408,8 +408,8 @@ class TradovateBot:
         """
         Fetch today's 1-min candles from Yahoo Finance and feed them to
         strategies so they can build state (ORB ranges, VWAP levels) even
-        when the bot starts after market open.  Breakouts are NOT consumed
-        during warmup so they remain available for live trading.
+        when the bot starts after market open.  After warmup, ORB _last_price
+        is set to range midpoint so live breakouts fire immediately.
         """
         for symbol, contract_name in self.contract_map.items():
             root = contract_name[:-2] if len(contract_name) > 2 else contract_name
