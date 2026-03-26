@@ -470,14 +470,26 @@ class TradovateBot:
                                 if window.breakout_fired:
                                     window.breakout_fired = False
                             else:
-                                # Range is set — just track _last_price so
-                                # feed() can detect fresh crosses on live ticks.
-                                # Do NOT mark breakout_fired here: the fresh-cross
-                                # guard in feed() already prevents stale breakouts
-                                # (it requires _last_price inside the range).
+                                # Range is set — track _last_price.
                                 window._last_price = c
 
                     fed += 1
+
+                # After all candles are fed, fix _last_price for ORB windows
+                # so the fresh-cross guard doesn't block live breakouts.
+                # Set _last_price to range midpoint so the first live tick
+                # outside the range triggers a breakout.
+                if not hasattr(strategy, "update_vwap"):
+                    for window in getattr(strategy, "windows", []):
+                        if window.range_set and window.range_high and window.range_low:
+                            mid = (window.range_high + window.range_low) / 2
+                            window._last_price = mid
+                            logger.info(
+                                "  ORB %d-min: _last_price set to midpoint %.2f "
+                                "(range %.2f-%.2f) for fresh-cross detection",
+                                window.window_minutes, mid,
+                                window.range_low, window.range_high,
+                            )
 
                 # Remember last candle so REST poller skips replayed data
                 if timestamps:
