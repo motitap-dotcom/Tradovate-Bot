@@ -75,10 +75,11 @@ jobs:
               if ! git merge ${{ github.sha }} --no-edit \
                 -m "Auto-merge ${{ github.ref_name }} → ${{ env.DEPLOY_BRANCH }}" 2>/dev/null; then
                 echo "Merge had conflicts, resolving..."
-                # For auto-generated files, keep main's version (ours)
-                for f in system_status.json server_status.json; do
+                # For auto-generated and config files, keep main's version (ours)
+                # This prevents stale branches from overwriting current settings
+                for f in system_status.json server_status.json config.py; do
                   if git diff --name-only --diff-filter=U | grep -q "^${f}$"; then
-                    echo "  Resolving $f: keeping main's version"
+                    echo "  Resolving $f: keeping main's version (protected file)"
                     git checkout --ours "$f"
                     git add "$f"
                   fi
