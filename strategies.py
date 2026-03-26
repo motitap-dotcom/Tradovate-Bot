@@ -252,6 +252,13 @@ class ORBStrategy:
             if direction is None:
                 continue
 
+            # Reset window so it can fire again after cooldown.
+            # Build a new range from the next few minutes of data.
+            window.breakout_fired = False
+            window.range_set = False
+            window.prices = []
+            window._late_start_seconds = None
+
             # Build signal
             spec = config.CONTRACT_SPECS[self.symbol]
             min_stop = spec["tick_size"] * 2  # minimum 2 ticks stop distance
