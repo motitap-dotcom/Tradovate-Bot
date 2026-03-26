@@ -253,7 +253,7 @@ CONTRACT_SPECS = {
         "tick_value": 25.00,
         "point_value": 5_000.00,
         "strategy": "VWAP",
-        "enabled": False,
+        "enabled": True,
         "stop_loss_points": 0.05,
         "take_profit_points": 0.10,
         "risk_reward_ratio": 2.0,
