@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-27T18:11:55Z",
+  "timestamp": "2026-03-27T19:24:15Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,35 +11,35 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 56690.68,
+    "totalCashValue": 56371.78,
     "initialMargin": 0.0,
-    "netLiq": 56690.68
+    "netLiq": 56371.78
   },
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "1818243",
-    "uptime_since": "Fri 2026-03-27 17:05:27 UTC",
+    "bot_pid": "1834104",
+    "uptime_since": "Fri 2026-03-27 18:15:28 UTC",
     "disk": "18%",
-    "memory": "1079MB/7941MB (14%)",
+    "memory": "1039MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "93bf229 status: 2026-03-27 17:04 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "1ccbf7d status: 2026-03-27 18:11 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-03-27T18:11:52.209965+00:00",
-      "timestamp_et": "2026-03-27T14:11:52.209981-04:00",
-      "balance": 56690.68,
-      "equity": 56690.68,
-      "day_pnl": -168.09999999999854,
+      "timestamp": "2026-03-27T19:23:52.199673+00:00",
+      "timestamp_et": "2026-03-27T15:23:52.199726-04:00",
+      "balance": 56371.78,
+      "equity": 56371.78,
+      "day_pnl": -487.0,
       "unrealized_pnl": 0.0,
       "peak_balance": 57389.93,
       "drawdown_floor": 54889.93,
-      "distance_to_floor": 1800.75,
+      "distance_to_floor": 1481.8499999999985,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2568.0999999999985,
+      "daily_profit_remaining": 2887.0,
       "open_contracts": 0,
-      "trades_today": 18,
+      "trades_today": 20,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -57,25 +57,25 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-27 18:11:54,093 [INFO] bot: QUOTE MES #4327108: price=6422.7500 high=6568.5000 low=6419.2500 vol=1069388 (total=358830)\n2026-03-27 18:11:54,093 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,093 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,094 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,095 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,110 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,110 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,112 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,113 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,140 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,141 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,143 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,144 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,168 [INFO] bot: QUOTE MES #4327108: price=6422.7500 high=6568.5000 low=6419.2500 vol=1069391 (total=358840)\n2026-03-27 18:11:54,169 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,169 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,171 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,171 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,174 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,174 [WARNING] st",
-    "bot_log_tail": "2026-03-27 18:11:54,263 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,266 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,266 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,293 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,293 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,296 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,296 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,303 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,304 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,324 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,324 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,354 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,355 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,358 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,358 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,359 [INFO] bot: QUOTE MGC #3924410: price=4492.6000 high=4552.5000 low=4369.4000 vol=55526 (total=358860)\n2026-03-27 18:11:54,386 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,386 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,389 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 18:11:54,389 [WARNING] strategies: ORB 15-min normal r",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 15s)\n  Balance: $56690.68\n  Day P&L: $-168.09999999999854\n  Trades today: 18\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 14.8%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 27 18:10:04 UTC 2026] Status: bot_active=true, pid=1818243\n[Fri Mar 27 18:10:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-27 19:24:14,370 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,371 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,414 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,414 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,421 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,421 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,422 [INFO] bot: QUOTE MCL #3643469: price=99.4300 high=100.0600 low=92.0900 vol=298426 (total=385130)\n2026-03-27 19:24:14,440 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,441 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,443 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,443 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,455 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,455 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,457 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,457 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,504 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,505 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,523 [INFO] bot: QUOTE MNQ #4327110: price=23342.2500 high=23975.7500 low=23309.5000 vol=1761598 (total=385140)\n2026-03-27 19:24:14,523 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,523 [WARNING] strat",
+    "bot_log_tail": "2026-03-27 19:24:14,643 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,658 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,658 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,661 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,662 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,664 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,664 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,671 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,671 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,689 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,690 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,698 [INFO] bot: QUOTE MCL #3643469: price=99.4400 high=100.0600 low=92.0900 vol=298427 (total=385160)\n2026-03-27 19:24:14,720 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,721 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,731 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,731 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,732 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,732 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,734 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.\n2026-03-27 19:24:14,734 [WARNING] strategies: ORB 15-min normal range",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 22s)\n  Balance: $56371.78\n  Day P&L: $-487.0\n  Trades today: 20\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 14.9%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 27 19:20:08 UTC 2026] Status: bot_active=true, pid=1834104\n[Fri Mar 27 19:20:08 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-27T18:11:52.209965+00:00",
-      "timestamp_et": "2026-03-27T14:11:52.209981-04:00",
-      "balance": 56690.68,
-      "equity": 56690.68,
-      "day_pnl": -168.09999999999854,
+      "timestamp": "2026-03-27T19:23:52.199673+00:00",
+      "timestamp_et": "2026-03-27T15:23:52.199726-04:00",
+      "balance": 56371.78,
+      "equity": 56371.78,
+      "day_pnl": -487.0,
       "unrealized_pnl": 0.0,
       "peak_balance": 57389.93,
       "drawdown_floor": 54889.93,
-      "distance_to_floor": 1800.75,
+      "distance_to_floor": 1481.8499999999985,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2568.0999999999985,
+      "daily_profit_remaining": 2887.0,
       "open_contracts": 0,
-      "trades_today": 18,
+      "trades_today": 20,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -94,40 +94,40 @@
       "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-27T19:30:46.521000+00:00",
+    "token_expiry": "2026-03-27T20:40:45.996000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-27 18:11:54,293 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,293 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,296 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,296 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,303 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,304 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,324 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,324 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,354 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,355 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,358 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,358 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,359 [INFO] bot: QUOTE MGC #3924410: price=4492.6000 high=4552.5000 low=4369.4000 vol=55526 (total=358860)",
-      "2026-03-27 18:11:54,386 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,386 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,389 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,389 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,421 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,421 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,422 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,422 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,447 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,447 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,447 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,448 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,450 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,451 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,452 [INFO] bot: QUOTE MNQ #4327110: price=23342.0000 high=23975.7500 low=23327.0000 vol=1609252 (total=358870)",
-      "2026-03-27 18:11:54,453 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
-      "2026-03-27 18:11:54,453 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping."
+      "2026-03-27 19:24:14,689 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,690 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,698 [INFO] bot: QUOTE MCL #3643469: price=99.4400 high=100.0600 low=92.0900 vol=298427 (total=385160)",
+      "2026-03-27 19:24:14,720 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,721 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,731 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,731 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,732 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,732 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,734 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,734 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,749 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,750 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,781 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,781 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,792 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,792 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,801 [INFO] bot: QUOTE MES #4327108: price=6418.0000 high=6568.5000 low=6412.5000 vol=1185829 (total=385170)",
+      "2026-03-27 19:24:14,801 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,801 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,801 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,801 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,803 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,803 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,806 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,807 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,811 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,811 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,822 [WARNING] strategies: ORB 5-min normal range invalid (size=0.00). Skipping.",
+      "2026-03-27 19:24:14,823 [WARNING] strategies: ORB 15-min normal range invalid (size=0.00). Skipping."
     ],
     "journal_summary": {
       "total_trades": 2,
@@ -154,51 +154,51 @@
     "market_data_source": "websocket",
     "today_trades": [
       {
-        "id": "MNQ_20260327_170533",
+        "id": "MNQ_20260327_181533",
         "symbol": "MNQ",
         "direction": "Sell",
         "entry_price": 0,
         "qty": 3,
         "strategy": "ORBStrategy",
         "reason": "ORB-5m short breakout below 23556.75",
-        "stop_loss": 23488.0,
-        "take_profit": 23413.0,
-        "entry_time": "2026-03-27T17:05:33.461404+00:00",
-        "entry_hour_et": 13,
+        "stop_loss": 23376.0,
+        "take_profit": 23301.0,
+        "entry_time": "2026-03-27T18:15:33.779660+00:00",
+        "entry_hour_et": 14,
         "entry_day_of_week": "Friday",
         "date": "2026-03-27",
         "exit_price": 0,
         "pnl": 0,
         "exit_reason": "bracket_fill",
-        "exit_time": "2026-03-27T17:07:08.214755+00:00",
+        "exit_time": "2026-03-27T18:20:46.015700+00:00",
         "status": "closed",
         "r_multiple": 0,
-        "duration_minutes": 1.5792225166666667,
+        "duration_minutes": 5.203934,
         "slippage_entry": null,
         "mae_points": null,
         "mfe_points": null
       },
       {
-        "id": "MNQ_20260327_172033",
+        "id": "MNQ_20260327_183033",
         "symbol": "MNQ",
         "direction": "Sell",
         "entry_price": 0,
         "qty": 3,
         "strategy": "ORBStrategy",
         "reason": "ORB-15m short breakout below 23532.00",
-        "stop_loss": 23444.5,
-        "take_profit": 23369.5,
-        "entry_time": "2026-03-27T17:20:33.531601+00:00",
-        "entry_hour_et": 13,
+        "stop_loss": 23388.25,
+        "take_profit": 23313.25,
+        "entry_time": "2026-03-27T18:30:33.748633+00:00",
+        "entry_hour_et": 14,
         "entry_day_of_week": "Friday",
         "date": "2026-03-27",
         "exit_price": 0,
         "pnl": 0,
         "exit_reason": "bracket_fill",
-        "exit_time": "2026-03-27T17:42:53.377981+00:00",
+        "exit_time": "2026-03-27T18:43:33.828672+00:00",
         "status": "closed",
         "r_multiple": 0,
-        "duration_minutes": 22.330773,
+        "duration_minutes": 13.001333983333334,
         "slippage_entry": null,
         "mae_points": null,
         "mfe_points": null
@@ -214,12 +214,12 @@
         "timestamp": "2026-03-27T14:25:37.716Z"
       },
       {
-        "id": 409583846573,
-        "action": "Buy",
-        "contractId": 3924410,
+        "id": 409583846813,
+        "action": "Sell",
+        "contractId": 4327110,
         "qty": 3,
-        "price": 4422.4,
-        "timestamp": "2026-03-27T13:39:22.959Z"
+        "price": 23514.25,
+        "timestamp": "2026-03-27T15:00:23.469Z"
       },
       {
         "id": 409583846784,
@@ -236,22 +236,6 @@
         "qty": 3,
         "price": 6471.75,
         "timestamp": "2026-03-27T13:52:43.189Z"
-      },
-      {
-        "id": 409583846813,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23514.25,
-        "timestamp": "2026-03-27T15:00:23.469Z"
-      },
-      {
-        "id": 409583846533,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6471.75,
-        "timestamp": "2026-03-27T13:35:02.475Z"
       },
       {
         "id": 409583846489,
@@ -276,6 +260,150 @@
         "qty": 3,
         "price": 23510.25,
         "timestamp": "2026-03-27T13:55:07.949Z"
+      },
+      {
+        "id": 409583847013,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23362.5,
+        "timestamp": "2026-03-27T18:30:31.671Z"
+      },
+      {
+        "id": 409583846839,
+        "action": "Sell",
+        "contractId": 3271710,
+        "qty": 1,
+        "price": 3.042,
+        "timestamp": "2026-03-27T15:09:58.791Z"
+      },
+      {
+        "id": 409583846732,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23530.75,
+        "timestamp": "2026-03-27T14:21:44.718Z"
+      },
+      {
+        "id": 409583846717,
+        "action": "Sell",
+        "contractId": 3271710,
+        "qty": 1,
+        "price": 3.035,
+        "timestamp": "2026-03-27T14:13:10.841Z"
+      },
+      {
+        "id": 409583846961,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23419.5,
+        "timestamp": "2026-03-27T17:20:31.445Z"
+      },
+      {
+        "id": 409583846582,
+        "action": "Sell",
+        "contractId": 3924410,
+        "qty": 1,
+        "price": 4428.7,
+        "timestamp": "2026-03-27T13:45:33.830Z"
+      },
+      {
+        "id": 409583846590,
+        "action": "Sell",
+        "contractId": 3924410,
+        "qty": 2,
+        "price": 4428.7,
+        "timestamp": "2026-03-27T13:45:34.669Z"
+      },
+      {
+        "id": 409583846701,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23534.0,
+        "timestamp": "2026-03-27T14:12:16.337Z"
+      },
+      {
+        "id": 409583846935,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23462.5,
+        "timestamp": "2026-03-27T17:05:31.387Z"
+      },
+      {
+        "id": 409583846643,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6465.5,
+        "timestamp": "2026-03-27T13:55:07.594Z"
+      },
+      {
+        "id": 409583846770,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23481.5,
+        "timestamp": "2026-03-27T14:27:50.557Z"
+      },
+      {
+        "id": 409583846947,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23488.75,
+        "timestamp": "2026-03-27T17:06:57.075Z"
+      },
+      {
+        "id": 409583846562,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6477.75,
+        "timestamp": "2026-03-27T13:38:10.366Z"
+      },
+      {
+        "id": 409583846883,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23518.5,
+        "timestamp": "2026-03-27T15:23:40.627Z"
+      },
+      {
+        "id": 409583846747,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6466.25,
+        "timestamp": "2026-03-27T14:22:43.780Z"
+      },
+      {
+        "id": 409583846854,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23494.5,
+        "timestamp": "2026-03-27T15:15:23.498Z"
+      },
+      {
+        "id": 409583846573,
+        "action": "Buy",
+        "contractId": 3924410,
+        "qty": 3,
+        "price": 4422.4,
+        "timestamp": "2026-03-27T13:39:22.959Z"
+      },
+      {
+        "id": 409583846533,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 3,
+        "price": 6471.75,
+        "timestamp": "2026-03-27T13:35:02.475Z"
       },
       {
         "id": 409583846692,
@@ -318,20 +446,12 @@
         "timestamp": "2026-03-27T15:17:10.302Z"
       },
       {
-        "id": 409583846839,
-        "action": "Sell",
-        "contractId": 3271710,
-        "qty": 1,
-        "price": 3.042,
-        "timestamp": "2026-03-27T15:09:58.791Z"
-      },
-      {
-        "id": 409583846732,
-        "action": "Sell",
+        "id": 409583847025,
+        "action": "Buy",
         "contractId": 4327110,
         "qty": 3,
-        "price": 23530.75,
-        "timestamp": "2026-03-27T14:21:44.718Z"
+        "price": 23388.5,
+        "timestamp": "2026-03-27T18:43:30.627Z"
       },
       {
         "id": 409583846909,
@@ -358,6 +478,14 @@
         "timestamp": "2026-03-27T14:06:33.189Z"
       },
       {
+        "id": 409583846999,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23376.25,
+        "timestamp": "2026-03-27T18:20:41.286Z"
+      },
+      {
         "id": 409583846680,
         "action": "Sell",
         "contractId": 4327108,
@@ -366,68 +494,12 @@
         "timestamp": "2026-03-27T14:07:43.189Z"
       },
       {
-        "id": 409583846717,
-        "action": "Sell",
-        "contractId": 3271710,
-        "qty": 1,
-        "price": 3.035,
-        "timestamp": "2026-03-27T14:13:10.841Z"
-      },
-      {
-        "id": 409583846582,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 1,
-        "price": 4428.7,
-        "timestamp": "2026-03-27T13:45:33.830Z"
-      },
-      {
-        "id": 409583846590,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4428.7,
-        "timestamp": "2026-03-27T13:45:34.669Z"
-      },
-      {
-        "id": 409583846701,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23534.0,
-        "timestamp": "2026-03-27T14:12:16.337Z"
-      },
-      {
-        "id": 409583846961,
+        "id": 409583846987,
         "action": "Sell",
         "contractId": 4327110,
         "qty": 3,
-        "price": 23419.5,
-        "timestamp": "2026-03-27T17:20:31.445Z"
-      },
-      {
-        "id": 409583846935,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23462.5,
-        "timestamp": "2026-03-27T17:05:31.387Z"
-      },
-      {
-        "id": 409583846643,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6465.5,
-        "timestamp": "2026-03-27T13:55:07.594Z"
-      },
-      {
-        "id": 409583846770,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23481.5,
-        "timestamp": "2026-03-27T14:27:50.557Z"
+        "price": 23351.0,
+        "timestamp": "2026-03-27T18:15:31.663Z"
       },
       {
         "id": 409583846518,
@@ -438,30 +510,6 @@
         "timestamp": "2026-03-27T13:31:15.667Z"
       },
       {
-        "id": 409583846562,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6477.75,
-        "timestamp": "2026-03-27T13:38:10.366Z"
-      },
-      {
-        "id": 409583846947,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23488.75,
-        "timestamp": "2026-03-27T17:06:57.075Z"
-      },
-      {
-        "id": 409583846883,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23518.5,
-        "timestamp": "2026-03-27T15:23:40.627Z"
-      },
-      {
         "id": 409583846601,
         "action": "Sell",
         "contractId": 4327110,
@@ -470,28 +518,12 @@
         "timestamp": "2026-03-27T13:51:33.178Z"
       },
       {
-        "id": 409583846747,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6466.25,
-        "timestamp": "2026-03-27T14:22:43.780Z"
-      },
-      {
         "id": 409583846973,
         "action": "Buy",
         "contractId": 4327110,
         "qty": 3,
         "price": 23369.5,
         "timestamp": "2026-03-27T17:42:26.778Z"
-      },
-      {
-        "id": 409583846854,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23494.5,
-        "timestamp": "2026-03-27T15:15:23.498Z"
       },
       {
         "id": 409583846825,
@@ -507,7 +539,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 17333,
+    "ssh_output_len": 17813,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
