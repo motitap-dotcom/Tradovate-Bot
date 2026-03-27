@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-27T21:41:19Z",
+  "timestamp": "2026-03-27T22:39:12Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -20,12 +20,12 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "1870702",
-    "uptime_since": "Fri 2026-03-27 20:55:13 UTC",
+    "bot_pid": "1881888",
+    "uptime_since": "Fri 2026-03-27 21:45:27 UTC",
     "disk": "18%",
-    "memory": "1055MB/7941MB (13%)",
+    "memory": "1058MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "57ab384 status: 2026-03-27 20:52 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "d960993 status: 2026-03-27 21:41 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-03-27T20:58:56.372217+00:00",
       "timestamp_et": "2026-03-27T16:58:56.372237-04:00",
@@ -57,9 +57,9 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-27 20:59:26,909 [INFO] bot: QUOTE MNQ #4327110: price=23255.7500 high=23975.7500 low=23231.0000 vol=1926707 (total=10850)\n2026-03-27 20:59:27,046 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-27 20:59:27,155 [INFO] bot: ============================================================\n2026-03-27 20:59:27,155 [INFO] bot: END OF DAY SUMMARY\n2026-03-27 20:59:27,155 [INFO] bot: ============================================================\n2026-03-27 20:59:27,155 [INFO] bot: Total trades: 23\n2026-03-27 20:59:27,155 [INFO] bot:   balance: 57047.68\n2026-03-27 20:59:27,155 [INFO] bot:   equity: 57047.68\n2026-03-27 20:59:27,155 [INFO] bot:   day_pnl: 188.90000000000146\n2026-03-27 20:59:27,155 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-27 20:59:27,155 [INFO] bot:   peak_balance: 57389.93\n2026-03-27 20:59:27,155 [INFO] bot:   drawdown_floor: 54889.93\n2026-03-27 20:59:27,155 [INFO] bot:   distance_to_floor: 2157.75\n2026-03-27 20:59:27,155 [INFO] bot:   daily_loss_limit: 1000\n2026-03-27 20:59:27,155 [INFO] bot:   daily_loss_remaining: 1188.9000000000015\n2026-03-27 20:59:27,155 [INFO] bot:   daily_profit_cap: 2400\n2026-03-27 20:59:27,155 [INFO] bot:   daily_profit_remaining: 2211.0999999999985\n2026-03-27 20:59:27,156 [INFO] bot:   open_contracts: 0\n2026-03-27 20:59:27,156 [INFO] bot:   max_contracts: 10\n2026-03-27 20:59:27,156 [INFO] bot:   trades_today: 23\n2026-03-27 20:59:27,156 [INFO] bot:   max_daily_trades: 100\n2026-03-27 20:59:27,156 [INFO] bot:   locked: False\n2026-03-27 20:59:27,156 [INFO] bot:   lock_reason:\n2026-03-27 20:59:27,156 [INFO] bot:   balance_initialized: True\n2026-03-27 20:59:27,156 [INFO] bot: Trades:\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T09:30:12.382521-04:00 | Buy MGC 3 | SL=4413.4684 TP=4428.7000 | VWAP long #1 at 4418.7000 (VWAP=4418.4684)\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T09:35:04.566500-04:00 | Sell MES 3 | SL=6477.7500 TP=6459.7500 | ORB-5m short breakout below 6472.00\n2026-03-27 20:59:27,156 [INFO",
-    "bot_log_tail": "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:06:35.339064-04:00 | Sell MNQ 3 | SL=23534.0000 TP=23459.0000 | ORB-5m short breakout below 23556.75\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:07:45.308054-04:00 | Sell MES 3 | SL=6467.7500 TP=6449.7500 | ORB-5m short breakout below 6472.00\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:13:12.354261-04:00 | Sell NG 1 | SL=3.0774 TP=2.9750 | VWAP short #1 at 3.0350 (VWAP=3.0474)\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:21:46.898081-04:00 | Sell MNQ 3 | SL=23556.5000 TP=23481.5000 | ORB-15m short breakout below 23532.00\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:22:45.929772-04:00 | Sell MES 3 | SL=6472.0000 TP=6454.0000 | ORB-15m short breakout below 6466.25\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:38:12.394836-04:00 | Buy NG 1 | SL=3.0129 TP=3.1220 | VWAP long #1 at 3.0620 (VWAP=3.0429)\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:00:25.574822-04:00 | Sell MNQ 3 | SL=23539.5000 TP=23464.5000 | ORB-5m short breakout below 23556.75\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:10:00.964153-04:00 | Sell NG 1 | SL=3.0762 TP=2.9830 | VWAP short #2 at 3.0430 (VWAP=3.0462)\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:15:25.590211-04:00 | Sell MNQ 3 | SL=23518.2500 TP=23443.2500 | ORB-15m short breakout below 23532.00\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:17:12.473762-04:00 | Buy NG 1 | SL=3.0148 TP=3.1230 | VWAP long #2 at 3.0630 (VWAP=3.0448)\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T12:00:42.270815-04:00 | Sell MNQ 3 | SL=23571.2500 TP=23496.2500 | ORB-5m short breakout below 23556.75\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T13:05:33.462479-04:00 | Sell MNQ 3 | SL=23488.0000 TP=23413.0000 | ORB-5m short breakout below 23556.75\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T13:20:33.536038-04:00 | Sell MNQ 3 | SL=23444.5000 TP=23369.5000 | ORB-15m short breakout below 23532.00\n2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 2467s)\n  Balance: $57047.68\n  Day P&L: $188.90000000000146\n  Trades today: 23\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 15.0%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 27 21:40:04 UTC 2026] Status: bot_active=true, pid=1870702\n[Fri Mar 27 21:40:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-27 21:45:31,349 [INFO] tradovate_api: Cancelled 0 working orders\n2026-03-27 21:45:31,649 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-03-27 21:45:31,651 [INFO] bot: ============================================================\n2026-03-27 21:45:31,651 [INFO] bot: END OF DAY SUMMARY\n2026-03-27 21:45:31,651 [INFO] bot: ============================================================\n2026-03-27 21:45:31,651 [INFO] bot: Total trades: 23\n2026-03-27 21:45:31,651 [INFO] bot:   balance: 57047.68\n2026-03-27 21:45:31,651 [INFO] bot:   equity: 57047.68\n2026-03-27 21:45:31,651 [INFO] bot:   day_pnl: 188.90000000000146\n2026-03-27 21:45:31,651 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-27 21:45:31,651 [INFO] bot:   peak_balance: 57389.93\n2026-03-27 21:45:31,651 [INFO] bot:   drawdown_floor: 54889.93\n2026-03-27 21:45:31,651 [INFO] bot:   distance_to_floor: 2157.75\n2026-03-27 21:45:31,651 [INFO] bot:   daily_loss_limit: 1000\n2026-03-27 21:45:31,651 [INFO] bot:   daily_loss_remaining: 1188.9000000000015\n2026-03-27 21:45:31,652 [INFO] bot:   daily_profit_cap: 2400\n2026-03-27 21:45:31,652 [INFO] bot:   daily_profit_remaining: 2211.0999999999985\n2026-03-27 21:45:31,652 [INFO] bot:   open_contracts: 0\n2026-03-27 21:45:31,652 [INFO] bot:   max_contracts: 10\n2026-03-27 21:45:31,652 [INFO] bot:   trades_today: 23\n2026-03-27 21:45:31,652 [INFO] bot:   max_daily_trades: 100\n2026-03-27 21:45:31,652 [INFO] bot:   locked: False\n2026-03-27 21:45:31,652 [INFO] bot:   lock_reason:\n2026-03-27 21:45:31,652 [INFO] bot:   balance_initialized: True\n2026-03-27 21:45:31,652 [INFO] bot: Trades:\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:30:12.382521-04:00 | Buy MGC 3 | SL=4413.4684 TP=4428.7000 | VWAP long #1 at 4418.7000 (VWAP=4418.4684)\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:35:04.566500-04:00 | Sell MES 3 | SL=6477.7500 TP=6459.7500 | ORB-5m short breakout below 6472.00\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:35:48.297020-04:00 | Sell MGC 3 | ",
+    "bot_log_tail": "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:06:35.339064-04:00 | Sell MNQ 3 | SL=23534.0000 TP=23459.0000 | ORB-5m short breakout below 23556.75\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:07:45.308054-04:00 | Sell MES 3 | SL=6467.7500 TP=6449.7500 | ORB-5m short breakout below 6472.00\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:13:12.354261-04:00 | Sell NG 1 | SL=3.0774 TP=2.9750 | VWAP short #1 at 3.0350 (VWAP=3.0474)\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:21:46.898081-04:00 | Sell MNQ 3 | SL=23556.5000 TP=23481.5000 | ORB-15m short breakout below 23532.00\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:22:45.929772-04:00 | Sell MES 3 | SL=6472.0000 TP=6454.0000 | ORB-15m short breakout below 6466.25\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:38:12.394836-04:00 | Buy NG 1 | SL=3.0129 TP=3.1220 | VWAP long #1 at 3.0620 (VWAP=3.0429)\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:00:25.574822-04:00 | Sell MNQ 3 | SL=23539.5000 TP=23464.5000 | ORB-5m short breakout below 23556.75\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:10:00.964153-04:00 | Sell NG 1 | SL=3.0762 TP=2.9830 | VWAP short #2 at 3.0430 (VWAP=3.0462)\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:15:25.590211-04:00 | Sell MNQ 3 | SL=23518.2500 TP=23443.2500 | ORB-15m short breakout below 23532.00\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:17:12.473762-04:00 | Buy NG 1 | SL=3.0148 TP=3.1230 | VWAP long #2 at 3.0630 (VWAP=3.0448)\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T12:00:42.270815-04:00 | Sell MNQ 3 | SL=23571.2500 TP=23496.2500 | ORB-5m short breakout below 23556.75\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T13:05:33.462479-04:00 | Sell MNQ 3 | SL=23488.0000 TP=23413.0000 | ORB-5m short breakout below 23556.75\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T13:20:33.536038-04:00 | Sell MNQ 3 | SL=23444.5000 TP=23369.5000 | ORB-15m short breakout below 23532.00\n2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 5768s)\n  Balance: $57047.68\n  Day P&L: $188.90000000000146\n  Trades today: 23\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 14.9%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 27 22:35:04 UTC 2026] Status: bot_active=true, pid=1881888\n[Fri Mar 27 22:35:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -94,40 +94,40 @@
       "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-27T22:15:13.764000+00:00",
+    "token_expiry": "2026-03-27T23:05:28.049000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-27 20:59:27,156 [INFO] bot:   max_daily_trades: 100",
-      "2026-03-27 20:59:27,156 [INFO] bot:   locked: False",
-      "2026-03-27 20:59:27,156 [INFO] bot:   lock_reason: ",
-      "2026-03-27 20:59:27,156 [INFO] bot:   balance_initialized: True",
-      "2026-03-27 20:59:27,156 [INFO] bot: Trades:",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T09:30:12.382521-04:00 | Buy MGC 3 | SL=4413.4684 TP=4428.7000 | VWAP long #1 at 4418.7000 (VWAP=4418.4684)",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T09:35:04.566500-04:00 | Sell MES 3 | SL=6477.7500 TP=6459.7500 | ORB-5m short breakout below 6472.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T09:35:48.297020-04:00 | Sell MGC 3 | SL=4422.3765 TP=4406.4000 | VWAP short #1 at 4416.4000 (VWAP=4417.3765)",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T09:51:35.236435-04:00 | Sell MNQ 3 | SL=23580.0000 TP=23505.0000 | ORB-15m short breakout below 23556.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T09:52:45.273504-04:00 | Sell MES 3 | SL=6477.7500 TP=6459.7500 | ORB-15m short breakout below 6472.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:06:35.339064-04:00 | Sell MNQ 3 | SL=23534.0000 TP=23459.0000 | ORB-5m short breakout below 23556.75",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:07:45.308054-04:00 | Sell MES 3 | SL=6467.7500 TP=6449.7500 | ORB-5m short breakout below 6472.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:13:12.354261-04:00 | Sell NG 1 | SL=3.0774 TP=2.9750 | VWAP short #1 at 3.0350 (VWAP=3.0474)",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:21:46.898081-04:00 | Sell MNQ 3 | SL=23556.5000 TP=23481.5000 | ORB-15m short breakout below 23532.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:22:45.929772-04:00 | Sell MES 3 | SL=6472.0000 TP=6454.0000 | ORB-15m short breakout below 6466.25",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T10:38:12.394836-04:00 | Buy NG 1 | SL=3.0129 TP=3.1220 | VWAP long #1 at 3.0620 (VWAP=3.0429)",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:00:25.574822-04:00 | Sell MNQ 3 | SL=23539.5000 TP=23464.5000 | ORB-5m short breakout below 23556.75",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:10:00.964153-04:00 | Sell NG 1 | SL=3.0762 TP=2.9830 | VWAP short #2 at 3.0430 (VWAP=3.0462)",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:15:25.590211-04:00 | Sell MNQ 3 | SL=23518.2500 TP=23443.2500 | ORB-15m short breakout below 23532.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T11:17:12.473762-04:00 | Buy NG 1 | SL=3.0148 TP=3.1230 | VWAP long #2 at 3.0630 (VWAP=3.0448)",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T12:00:42.270815-04:00 | Sell MNQ 3 | SL=23571.2500 TP=23496.2500 | ORB-5m short breakout below 23556.75",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T13:05:33.462479-04:00 | Sell MNQ 3 | SL=23488.0000 TP=23413.0000 | ORB-5m short breakout below 23556.75",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T13:20:33.536038-04:00 | Sell MNQ 3 | SL=23444.5000 TP=23369.5000 | ORB-15m short breakout below 23532.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T14:15:33.780656-04:00 | Sell MNQ 3 | SL=23376.0000 TP=23301.0000 | ORB-5m short breakout below 23556.75",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T14:30:33.750317-04:00 | Sell MNQ 3 | SL=23388.2500 TP=23313.2500 | ORB-15m short breakout below 23532.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T15:25:30.138195-04:00 | Sell MNQ 3 | SL=23363.2500 TP=23288.2500 | ORB-5m short breakout below 23556.75",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T15:40:30.233516-04:00 | Sell MNQ 3 | SL=23351.2500 TP=23276.2500 | ORB-15m short breakout below 23532.00",
-      "2026-03-27 20:59:27,156 [INFO] bot:   2026-03-27T16:00:22.518804-04:00 | Sell MNQ 3 | SL=23332.5000 TP=23257.5000 | ORB-5m short breakout below 23556.75",
-      "2026-03-27 20:59:27,156 [INFO] bot: Bot stopped.",
-      "2026-03-27 20:59:27,156 [INFO] bot: Session ended. Next trading session: 2026-03-30 09:25 ET (sleeping 3866 minutes)"
+      "2026-03-27 21:45:31,652 [INFO] bot:   max_daily_trades: 100",
+      "2026-03-27 21:45:31,652 [INFO] bot:   locked: False",
+      "2026-03-27 21:45:31,652 [INFO] bot:   lock_reason: ",
+      "2026-03-27 21:45:31,652 [INFO] bot:   balance_initialized: True",
+      "2026-03-27 21:45:31,652 [INFO] bot: Trades:",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:30:12.382521-04:00 | Buy MGC 3 | SL=4413.4684 TP=4428.7000 | VWAP long #1 at 4418.7000 (VWAP=4418.4684)",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:35:04.566500-04:00 | Sell MES 3 | SL=6477.7500 TP=6459.7500 | ORB-5m short breakout below 6472.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:35:48.297020-04:00 | Sell MGC 3 | SL=4422.3765 TP=4406.4000 | VWAP short #1 at 4416.4000 (VWAP=4417.3765)",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:51:35.236435-04:00 | Sell MNQ 3 | SL=23580.0000 TP=23505.0000 | ORB-15m short breakout below 23556.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T09:52:45.273504-04:00 | Sell MES 3 | SL=6477.7500 TP=6459.7500 | ORB-15m short breakout below 6472.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:06:35.339064-04:00 | Sell MNQ 3 | SL=23534.0000 TP=23459.0000 | ORB-5m short breakout below 23556.75",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:07:45.308054-04:00 | Sell MES 3 | SL=6467.7500 TP=6449.7500 | ORB-5m short breakout below 6472.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:13:12.354261-04:00 | Sell NG 1 | SL=3.0774 TP=2.9750 | VWAP short #1 at 3.0350 (VWAP=3.0474)",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:21:46.898081-04:00 | Sell MNQ 3 | SL=23556.5000 TP=23481.5000 | ORB-15m short breakout below 23532.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:22:45.929772-04:00 | Sell MES 3 | SL=6472.0000 TP=6454.0000 | ORB-15m short breakout below 6466.25",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T10:38:12.394836-04:00 | Buy NG 1 | SL=3.0129 TP=3.1220 | VWAP long #1 at 3.0620 (VWAP=3.0429)",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:00:25.574822-04:00 | Sell MNQ 3 | SL=23539.5000 TP=23464.5000 | ORB-5m short breakout below 23556.75",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:10:00.964153-04:00 | Sell NG 1 | SL=3.0762 TP=2.9830 | VWAP short #2 at 3.0430 (VWAP=3.0462)",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:15:25.590211-04:00 | Sell MNQ 3 | SL=23518.2500 TP=23443.2500 | ORB-15m short breakout below 23532.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T11:17:12.473762-04:00 | Buy NG 1 | SL=3.0148 TP=3.1230 | VWAP long #2 at 3.0630 (VWAP=3.0448)",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T12:00:42.270815-04:00 | Sell MNQ 3 | SL=23571.2500 TP=23496.2500 | ORB-5m short breakout below 23556.75",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T13:05:33.462479-04:00 | Sell MNQ 3 | SL=23488.0000 TP=23413.0000 | ORB-5m short breakout below 23556.75",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T13:20:33.536038-04:00 | Sell MNQ 3 | SL=23444.5000 TP=23369.5000 | ORB-15m short breakout below 23532.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T14:15:33.780656-04:00 | Sell MNQ 3 | SL=23376.0000 TP=23301.0000 | ORB-5m short breakout below 23556.75",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T14:30:33.750317-04:00 | Sell MNQ 3 | SL=23388.2500 TP=23313.2500 | ORB-15m short breakout below 23532.00",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T15:25:30.138195-04:00 | Sell MNQ 3 | SL=23363.2500 TP=23288.2500 | ORB-5m short breakout below 23556.75",
+      "2026-03-27 21:45:31,652 [INFO] bot:   2026-03-27T15:40:30.233516-04:00 | Sell MNQ 3 | SL=23351.2500 TP=23276.2500 | ORB-15m short breakout below 23532.00",
+      "2026-03-27 21:45:31,653 [INFO] bot:   2026-03-27T16:00:22.518804-04:00 | Sell MNQ 3 | SL=23332.5000 TP=23257.5000 | ORB-5m short breakout below 23556.75",
+      "2026-03-27 21:45:31,653 [INFO] bot: Bot stopped.",
+      "2026-03-27 21:45:31,653 [INFO] bot: Session ended. Next trading session: 2026-03-30 09:25 ET (sleeping 3819 minutes)"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -142,390 +142,13 @@
     "errors_in_log": [],
     "market_data_source": "websocket",
     "today_trades": [],
-    "today_fills": [
-      {
-        "id": 409583846759,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6472.0,
-        "timestamp": "2026-03-27T14:25:37.716Z"
-      },
-      {
-        "id": 409583846813,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23514.25,
-        "timestamp": "2026-03-27T15:00:23.469Z"
-      },
-      {
-        "id": 409583846784,
-        "action": "Buy",
-        "contractId": 3271710,
-        "qty": 1,
-        "price": 3.062,
-        "timestamp": "2026-03-27T14:38:10.544Z"
-      },
-      {
-        "id": 409583846616,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6471.75,
-        "timestamp": "2026-03-27T13:52:43.189Z"
-      },
-      {
-        "id": 409583846489,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4413.4,
-        "timestamp": "2026-03-27T13:31:12.359Z"
-      },
-      {
-        "id": 409583846460,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4418.6,
-        "timestamp": "2026-03-27T13:30:10.245Z"
-      },
-      {
-        "id": 409583846654,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23510.25,
-        "timestamp": "2026-03-27T13:55:07.949Z"
-      },
-      {
-        "id": 409583847013,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23362.5,
-        "timestamp": "2026-03-27T18:30:31.671Z"
-      },
-      {
-        "id": 409583846839,
-        "action": "Sell",
-        "contractId": 3271710,
-        "qty": 1,
-        "price": 3.042,
-        "timestamp": "2026-03-27T15:09:58.791Z"
-      },
-      {
-        "id": 409583846732,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23530.75,
-        "timestamp": "2026-03-27T14:21:44.718Z"
-      },
-      {
-        "id": 409583846717,
-        "action": "Sell",
-        "contractId": 3271710,
-        "qty": 1,
-        "price": 3.035,
-        "timestamp": "2026-03-27T14:13:10.841Z"
-      },
-      {
-        "id": 409583846961,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23419.5,
-        "timestamp": "2026-03-27T17:20:31.445Z"
-      },
-      {
-        "id": 409583846582,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 1,
-        "price": 4428.7,
-        "timestamp": "2026-03-27T13:45:33.830Z"
-      },
-      {
-        "id": 409583846590,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4428.7,
-        "timestamp": "2026-03-27T13:45:34.669Z"
-      },
-      {
-        "id": 409583846701,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23534.0,
-        "timestamp": "2026-03-27T14:12:16.337Z"
-      },
-      {
-        "id": 409583847091,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23305.25,
-        "timestamp": "2026-03-27T20:00:20.449Z"
-      },
-      {
-        "id": 409583846935,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23462.5,
-        "timestamp": "2026-03-27T17:05:31.387Z"
-      },
-      {
-        "id": 409583846643,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6465.5,
-        "timestamp": "2026-03-27T13:55:07.594Z"
-      },
-      {
-        "id": 409583846770,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23481.5,
-        "timestamp": "2026-03-27T14:27:50.557Z"
-      },
-      {
-        "id": 409583846947,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23488.75,
-        "timestamp": "2026-03-27T17:06:57.075Z"
-      },
-      {
-        "id": 409583846562,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6477.75,
-        "timestamp": "2026-03-27T13:38:10.366Z"
-      },
-      {
-        "id": 409583846883,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23518.5,
-        "timestamp": "2026-03-27T15:23:40.627Z"
-      },
-      {
-        "id": 409583846747,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6466.25,
-        "timestamp": "2026-03-27T14:22:43.780Z"
-      },
-      {
-        "id": 409583846854,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23494.5,
-        "timestamp": "2026-03-27T15:15:23.498Z"
-      },
-      {
-        "id": 409583847039,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23338.0,
-        "timestamp": "2026-03-27T19:25:28.053Z"
-      },
-      {
-        "id": 409583847114,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23289.5,
-        "timestamp": "2026-03-27T20:10:01.263Z"
-      },
-      {
-        "id": 409583846573,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4422.4,
-        "timestamp": "2026-03-27T13:39:22.959Z"
-      },
-      {
-        "id": 409583847077,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23276.25,
-        "timestamp": "2026-03-27T19:51:32.685Z"
-      },
-      {
-        "id": 409583846533,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6471.75,
-        "timestamp": "2026-03-27T13:35:02.475Z"
-      },
-      {
-        "id": 409583846692,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6468.25,
-        "timestamp": "2026-03-27T14:12:16.335Z"
-      },
-      {
-        "id": 409583846921,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23496.25,
-        "timestamp": "2026-03-27T16:11:02.876Z"
-      },
-      {
-        "id": 409583846504,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4413.9,
-        "timestamp": "2026-03-27T13:31:14.663Z"
-      },
-      {
-        "id": 409583846548,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4415.6,
-        "timestamp": "2026-03-27T13:35:46.192Z"
-      },
-      {
-        "id": 409583846869,
-        "action": "Buy",
-        "contractId": 3271710,
-        "qty": 1,
-        "price": 3.066,
-        "timestamp": "2026-03-27T15:17:10.302Z"
-      },
-      {
-        "id": 409583847025,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23388.5,
-        "timestamp": "2026-03-27T18:43:30.627Z"
-      },
-      {
-        "id": 409583846909,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23545.75,
-        "timestamp": "2026-03-27T16:00:40.126Z"
-      },
-      {
-        "id": 409583846478,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4413.6,
-        "timestamp": "2026-03-27T13:31:12.080Z"
-      },
-      {
-        "id": 409583846665,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23509.25,
-        "timestamp": "2026-03-27T14:06:33.189Z"
-      },
-      {
-        "id": 409583846999,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23376.25,
-        "timestamp": "2026-03-27T18:20:41.286Z"
-      },
-      {
-        "id": 409583847054,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23326.25,
-        "timestamp": "2026-03-27T19:40:28.092Z"
-      },
-      {
-        "id": 409583846680,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 3,
-        "price": 6461.75,
-        "timestamp": "2026-03-27T14:07:43.189Z"
-      },
-      {
-        "id": 409583846987,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23351.0,
-        "timestamp": "2026-03-27T18:15:31.663Z"
-      },
-      {
-        "id": 409583846518,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 3,
-        "price": 4414.1,
-        "timestamp": "2026-03-27T13:31:15.667Z"
-      },
-      {
-        "id": 409583846601,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23555.5,
-        "timestamp": "2026-03-27T13:51:33.178Z"
-      },
-      {
-        "id": 409583847066,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23288.25,
-        "timestamp": "2026-03-27T19:46:04.644Z"
-      },
-      {
-        "id": 409583846973,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23369.5,
-        "timestamp": "2026-03-27T17:42:26.778Z"
-      },
-      {
-        "id": 409583846825,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 3,
-        "price": 23539.5,
-        "timestamp": "2026-03-27T15:04:25.306Z"
-      }
-    ]
+    "today_fills": []
   },
   "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 18102,
+    "ssh_output_len": 11932,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
