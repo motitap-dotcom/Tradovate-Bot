@@ -1,31 +1,21 @@
 {
-  "timestamp": "2026-03-26T23:37:39Z",
+  "timestamp": "2026-03-27T02:52:18Z",
   "api_reachable": true,
-  "authenticated": true,
-  "auth_method": "server_token",
-  "account": {
-    "name": "FNFTCHMOTITAPIRO67510",
-    "id": 39996695,
-    "active": true
-  },
-  "balance": {
-    "realizedPnl": null,
-    "unrealizedPnl": null,
-    "totalCashValue": 56858.78,
-    "initialMargin": 0.0,
-    "netLiq": 56858.78
-  },
+  "authenticated": false,
+  "auth_method": null,
+  "account": {},
+  "balance": {},
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "1556910",
-    "uptime_since": "Thu 2026-03-26 22:40:24 UTC",
+    "bot_pid": "1570224",
+    "uptime_since": "Thu 2026-03-26 23:40:28 UTC",
     "disk": "17%",
-    "memory": "997MB/7941MB (13%)",
+    "memory": "1001MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "6ba276a status: 2026-03-26 22:37 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "49b1d3f status: 2026-03-26 23:37 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-03-26T20:58:49.406224+00:00",
       "timestamp_et": "2026-03-26T16:58:49.406242-04:00",
@@ -57,9 +47,9 @@
       "websocket_connected": false,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-26 22:40:28,308 [INFO] bot:   balance: 56858.78\n2026-03-26 22:40:28,308 [INFO] bot:   equity: 56858.78\n2026-03-26 22:40:28,308 [INFO] bot:   day_pnl: 264.6999999999971\n2026-03-26 22:40:28,308 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-26 22:40:28,308 [INFO] bot:   peak_balance: 57010.13\n2026-03-26 22:40:28,308 [INFO] bot:   drawdown_floor: 54510.13\n2026-03-26 22:40:28,308 [INFO] bot:   distance_to_floor: 2348.6500000000015\n2026-03-26 22:40:28,308 [INFO] bot:   daily_loss_limit: 1000\n2026-03-26 22:40:28,308 [INFO] bot:   daily_loss_remaining: 1264.699999999997\n2026-03-26 22:40:28,308 [INFO] bot:   daily_profit_cap: 2400\n2026-03-26 22:40:28,309 [INFO] bot:   daily_profit_remaining: 2135.300000000003\n2026-03-26 22:40:28,309 [INFO] bot:   open_contracts: 0\n2026-03-26 22:40:28,309 [INFO] bot:   max_contracts: 10\n2026-03-26 22:40:28,309 [INFO] bot:   trades_today: 29\n2026-03-26 22:40:28,309 [INFO] bot:   max_daily_trades: 100\n2026-03-26 22:40:28,309 [INFO] bot:   locked: False\n2026-03-26 22:40:28,309 [INFO] bot:   lock_reason:\n2026-03-26 22:40:28,309 [INFO] bot:   balance_initialized: True\n2026-03-26 22:40:28,309 [INFO] bot: Trades:\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T09:39:57.526507-04:00 | Sell MNQ 3 | SL=24097.5000 TP=24022.5000 | ORB-5m short breakout below 24073.00\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T09:50:17.907582-04:00 | Buy MNQ 3 | SL=24151.2500 TP=24226.2500 | ORB-15m long breakout above 24156.25\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T09:54:27.334329-04:00 | Sell MCL 3 | SL=93.1039 TP=92.4900 | VWAP short #1 at 92.8900 (VWAP=92.9039)\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T09:59:51.765743-04:00 | Buy MCL 3 | SL=92.6919 TP=93.3000 | VWAP long #1 at 92.9000 (VWAP=92.8919)\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T10:32:37.415763-04:00 | Sell MCL 2 | SL=93.0052 TP=92.3900 | VWAP short #3 at 92.7900 (VWAP=92.8052)\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T10:34:29.753579-04:00 | Buy MGC 2 | SL=4465.18",
-    "bot_log_tail": "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:30:10.797497-04:00 | Sell MNQ 2 | SL=23978.0000 TP=23903.0000 | ORB-5m short breakout below 24088.50\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:44:38.082361-04:00 | Sell MES 2 | SL=6557.2500 TP=6539.2500 | ORB-5m short breakout below 6582.75\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:45:10.775798-04:00 | Sell MNQ 2 | SL=23951.5000 TP=23876.5000 | ORB-5m short breakout below 24088.50\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:59:38.151752-04:00 | Sell MES 2 | SL=6543.0000 TP=6525.0000 | ORB-15m short breakout below 6574.00\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:00:10.808045-04:00 | Sell MNQ 2 | SL=23893.5000 TP=23818.5000 | ORB-15m short breakout below 24064.00\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:14:38.116284-04:00 | Sell MES 2 | SL=6548.2500 TP=6530.2500 | ORB-5m short breakout below 6582.75\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:15:10.794755-04:00 | Sell MNQ 2 | SL=23899.5000 TP=23824.5000 | ORB-5m short breakout below 24088.50\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:29:38.200410-04:00 | Sell MES 3 | SL=6544.0000 TP=6526.0000 | ORB-5m short breakout below 6582.75\n2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:30:10.825063-04:00 | Sell MNQ 3 | SL=23881.2500 TP=23806.2500 | ORB-5m short breakout below 24088.50\n2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:44:38.210681-04:00 | Sell MES 3 | SL=6548.7500 TP=6530.7500 | ORB-5m short breakout below 6582.75\n2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:45:11.659421-04:00 | Sell MNQ 3 | SL=23882.2500 TP=23807.2500 | ORB-5m short breakout below 24088.50\n2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:49:18.009799-04:00 | Sell NG 1 | SL=3.0082 TP=2.9180 | VWAP short #1 at 2.9780 (VWAP=2.9782)\n2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:59:38.214725-04:00 | Sell MES 3 | SL=6551.7500 TP=6533.7500 | ORB-15m short breakout below 6579.75\n2026-03-26 22:40:28,310 [INFO] bot",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 9374s)\n  Balance: $56858.78\n  Day P&L: $264.6999999999971\n  Trades today: 29\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 17% | Memory: 14.0%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Mar 26 23:35:04 UTC 2026] Status: bot_active=true, pid=1556910\n[Thu Mar 26 23:35:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-26 23:40:32,293 [INFO] bot:   balance: 56858.78\n2026-03-26 23:40:32,293 [INFO] bot:   equity: 56858.78\n2026-03-26 23:40:32,293 [INFO] bot:   day_pnl: 264.6999999999971\n2026-03-26 23:40:32,293 [INFO] bot:   unrealized_pnl: 0.0\n2026-03-26 23:40:32,293 [INFO] bot:   peak_balance: 57010.13\n2026-03-26 23:40:32,293 [INFO] bot:   drawdown_floor: 54510.13\n2026-03-26 23:40:32,293 [INFO] bot:   distance_to_floor: 2348.6500000000015\n2026-03-26 23:40:32,294 [INFO] bot:   daily_loss_limit: 1000\n2026-03-26 23:40:32,294 [INFO] bot:   daily_loss_remaining: 1264.699999999997\n2026-03-26 23:40:32,294 [INFO] bot:   daily_profit_cap: 2400\n2026-03-26 23:40:32,294 [INFO] bot:   daily_profit_remaining: 2135.300000000003\n2026-03-26 23:40:32,294 [INFO] bot:   open_contracts: 0\n2026-03-26 23:40:32,294 [INFO] bot:   max_contracts: 10\n2026-03-26 23:40:32,294 [INFO] bot:   trades_today: 29\n2026-03-26 23:40:32,294 [INFO] bot:   max_daily_trades: 100\n2026-03-26 23:40:32,294 [INFO] bot:   locked: False\n2026-03-26 23:40:32,294 [INFO] bot:   lock_reason:\n2026-03-26 23:40:32,294 [INFO] bot:   balance_initialized: True\n2026-03-26 23:40:32,294 [INFO] bot: Trades:\n2026-03-26 23:40:32,294 [INFO] bot:   2026-03-26T09:39:57.526507-04:00 | Sell MNQ 3 | SL=24097.5000 TP=24022.5000 | ORB-5m short breakout below 24073.00\n2026-03-26 23:40:32,294 [INFO] bot:   2026-03-26T09:50:17.907582-04:00 | Buy MNQ 3 | SL=24151.2500 TP=24226.2500 | ORB-15m long breakout above 24156.25\n2026-03-26 23:40:32,294 [INFO] bot:   2026-03-26T09:54:27.334329-04:00 | Sell MCL 3 | SL=93.1039 TP=92.4900 | VWAP short #1 at 92.8900 (VWAP=92.9039)\n2026-03-26 23:40:32,294 [INFO] bot:   2026-03-26T09:59:51.765743-04:00 | Buy MCL 3 | SL=92.6919 TP=93.3000 | VWAP long #1 at 92.9000 (VWAP=92.8919)\n2026-03-26 23:40:32,294 [INFO] bot:   2026-03-26T10:32:37.415763-04:00 | Sell MCL 2 | SL=93.0052 TP=92.3900 | VWAP short #3 at 92.7900 (VWAP=92.8052)\n2026-03-26 23:40:32,294 [INFO] bot:   2026-03-26T10:34:29.753579-04:00 | Buy MGC 2 | SL=4465.18",
+    "bot_log_tail": "",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 21073s)\n  Balance: $56858.78\n  Day P&L: $264.6999999999971\n  Trades today: 29\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 17% | Memory: 12.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Mar 27 02:50:03 UTC 2026] Status: bot_active=true, pid=1570224\n[Fri Mar 27 02:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -93,41 +83,12 @@
       "websocket_connected": false,
       "market_data_source": "websocket"
     },
-    "token_status": "valid",
-    "token_expiry": "2026-03-27T00:00:25.072000+00:00",
+    "token_status": "expired",
+    "token_expiry": "2026-03-27T01:00:29.003000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T09:50:17.907582-04:00 | Buy MNQ 3 | SL=24151.2500 TP=24226.2500 | ORB-15m long breakout above 24156.25",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T09:54:27.334329-04:00 | Sell MCL 3 | SL=93.1039 TP=92.4900 | VWAP short #1 at 92.8900 (VWAP=92.9039)",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T09:59:51.765743-04:00 | Buy MCL 3 | SL=92.6919 TP=93.3000 | VWAP long #1 at 92.9000 (VWAP=92.8919)",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T10:32:37.415763-04:00 | Sell MCL 2 | SL=93.0052 TP=92.3900 | VWAP short #3 at 92.7900 (VWAP=92.8052)",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T10:34:29.753579-04:00 | Buy MGC 2 | SL=4465.1811 TP=4481.1000 | VWAP long #1 at 4471.1000 (VWAP=4470.1811)",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T10:37:03.802744-04:00 | Buy MCL 2 | SL=92.5480 TP=93.1500 | VWAP long #3 at 92.7500 (VWAP=92.7480)",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T10:40:48.022713-04:00 | Sell MGC 2 | SL=4477.6301 TP=4461.6000 | VWAP short #1 at 4471.6000 (VWAP=4472.6301)",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:14:37.998899-04:00 | Sell MES 2 | SL=6571.0000 TP=6553.0000 | ORB-5m short breakout below 6574.00",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:15:10.699153-04:00 | Sell MNQ 2 | SL=23992.0000 TP=23917.0000 | ORB-5m short breakout below 24073.00",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:29:38.017188-04:00 | Sell MES 2 | SL=6563.2500 TP=6545.2500 | ORB-5m short breakout below 6574.00",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:30:10.797497-04:00 | Sell MNQ 2 | SL=23978.0000 TP=23903.0000 | ORB-5m short breakout below 24088.50",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:44:38.082361-04:00 | Sell MES 2 | SL=6557.2500 TP=6539.2500 | ORB-5m short breakout below 6582.75",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:45:10.775798-04:00 | Sell MNQ 2 | SL=23951.5000 TP=23876.5000 | ORB-5m short breakout below 24088.50",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T13:59:38.151752-04:00 | Sell MES 2 | SL=6543.0000 TP=6525.0000 | ORB-15m short breakout below 6574.00",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:00:10.808045-04:00 | Sell MNQ 2 | SL=23893.5000 TP=23818.5000 | ORB-15m short breakout below 24064.00",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:14:38.116284-04:00 | Sell MES 2 | SL=6548.2500 TP=6530.2500 | ORB-5m short breakout below 6582.75",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:15:10.794755-04:00 | Sell MNQ 2 | SL=23899.5000 TP=23824.5000 | ORB-5m short breakout below 24088.50",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:29:38.200410-04:00 | Sell MES 3 | SL=6544.0000 TP=6526.0000 | ORB-5m short breakout below 6582.75",
-      "2026-03-26 22:40:28,309 [INFO] bot:   2026-03-26T14:30:10.825063-04:00 | Sell MNQ 3 | SL=23881.2500 TP=23806.2500 | ORB-5m short breakout below 24088.50",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:44:38.210681-04:00 | Sell MES 3 | SL=6548.7500 TP=6530.7500 | ORB-5m short breakout below 6582.75",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:45:11.659421-04:00 | Sell MNQ 3 | SL=23882.2500 TP=23807.2500 | ORB-5m short breakout below 24088.50",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:49:18.009799-04:00 | Sell NG 1 | SL=3.0082 TP=2.9180 | VWAP short #1 at 2.9780 (VWAP=2.9782)",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T14:59:38.214725-04:00 | Sell MES 3 | SL=6551.7500 TP=6533.7500 | ORB-15m short breakout below 6579.75",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T15:00:10.945148-04:00 | Sell MNQ 3 | SL=23905.7500 TP=23830.7500 | ORB-15m short breakout below 24064.00",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T15:40:32.780217-04:00 | Sell MNQ 3 | SL=23850.2500 TP=23775.2500 | ORB-5m short breakout below 24088.50",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T15:54:36.314366-04:00 | Sell NG 1 | SL=3.0045 TP=2.9140 | VWAP short #2 at 2.9740 (VWAP=2.9745)",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T15:55:32.823217-04:00 | Sell MNQ 3 | SL=23811.2500 TP=23736.2500 | ORB-15m short breakout below 24064.00",
-      "2026-03-26 22:40:28,310 [INFO] bot:   2026-03-26T16:01:05.815046-04:00 | Buy NG 1 | SL=2.9429 TP=3.0330 | VWAP long #1 at 2.9730 (VWAP=2.9729)",
-      "2026-03-26 22:40:28,310 [INFO] bot: Bot stopped.",
-      "2026-03-26 22:40:28,310 [INFO] bot: Session ended. Next trading session: 2026-03-27 09:25 ET (sleeping 885 minutes)"
+      ""
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -141,14 +102,15 @@
     "websocket_connected": false,
     "errors_in_log": [],
     "market_data_source": "websocket",
-    "today_trades": [],
-    "today_fills": []
+    "today_trades": []
   },
-  "errors": [],
+  "errors": [
+    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+  ],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 12418,
+    "ssh_output_len": 5914,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -157,5 +119,23 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
+  },
+  "last_known": {
+    "timestamp": "2026-03-26T23:37:39Z",
+    "auth_method": "server_token",
+    "account": {
+      "name": "FNFTCHMOTITAPIRO67510",
+      "id": 39996695,
+      "active": true
+    },
+    "balance": {
+      "realizedPnl": null,
+      "unrealizedPnl": null,
+      "totalCashValue": 56858.78,
+      "initialMargin": 0.0,
+      "netLiq": 56858.78
+    },
+    "positions": [],
+    "orders": []
   }
 }
