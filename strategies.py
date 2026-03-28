@@ -307,7 +307,7 @@ class ORBStrategy:
                 sig_dir = Direction.SHORT
                 reason = (
                     f"ORB-{window.window_minutes}m short breakout "
-                    f"below {window.range_low:.2f}"
+                    f"below {window.range_high:.2f}"
                 )
 
             self.trades_taken += 1

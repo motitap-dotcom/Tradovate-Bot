@@ -172,11 +172,16 @@ class RiskManager:
     # Rule checks
     # ─────────────────────────────────────────
 
+    # Safety buffer above the hard drawdown floor to prevent breaching it
+    _DRAWDOWN_BUFFER = 50.0  # $50 cushion — stop trading before hitting the exact floor
+
     def _check_drawdown(self, equity: float):
-        """Lock trading if equity breaches the trailing drawdown floor."""
-        if equity <= self.drawdown_floor:
+        """Lock trading if equity approaches the trailing drawdown floor."""
+        effective_floor = self.drawdown_floor + self._DRAWDOWN_BUFFER
+        if equity <= effective_floor:
             self._lock(
-                f"DRAWDOWN BREACH: equity {equity:.2f} <= floor {self.drawdown_floor:.2f}"
+                f"DRAWDOWN BREACH: equity {equity:.2f} <= floor {self.drawdown_floor:.2f} "
+                f"(+${self._DRAWDOWN_BUFFER:.0f} buffer)"
             )
 
     def _check_daily_loss(self):

@@ -89,7 +89,7 @@ CHALLENGE_SETTINGS = {
         "account_size": 50_000,
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
-        "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
+        "profit_target": 3_000,           # FundedNext Futures Challenge base profit target
         "max_contracts": 10,              # micros (switched from minis for tighter risk)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
@@ -112,11 +112,12 @@ if PROP_FIRM not in CHALLENGE_SETTINGS:
 ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 
 # Emergency brake: stop trading at this % of the daily loss limit
-# Lowered from 70% to 60% to compensate for increased trade frequency
-DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
+# Raised to 70% — 60% was too aggressive and locked prematurely on 3 occasions
+DAILY_LOSS_BRAKE_PCT = 0.70  # 70% — balanced between safety and opportunity
 
 # Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 100
+# Lowered from 100 to 40 — 7 symbols × ~5 trades/symbol is realistic daily max
+MAX_DAILY_TRADES = 40
 
 # ─────────────────────────────────────────────
 # Contract Specifications
