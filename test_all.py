@@ -1822,9 +1822,12 @@ def test_bot_execute_signal_dry_run():
 
     bot = TradovateBot(dry_run=True)
     bot.api = MagicMock()
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (True, "OK")
+    bot.risk.calculate_position_size.return_value = 1
     bot.contract_map = {"NQ": "NQH6"}
     bot.strategies = {"NQ": MagicMock()}
-    bot._last_order_time = 0  # No cooldown
+    bot._last_order_time = {}  # No cooldown
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1837,7 +1840,7 @@ def test_bot_execute_signal_dry_run():
     assert len(bot.trades_today) == 1
 
 
-@test("Bot: _execute_signal respects global cooldown")
+@test("Bot: _execute_signal respects per-symbol cooldown")
 def test_bot_execute_signal_cooldown():
     from bot import TradovateBot
     from strategies import TradeSignal, Direction
@@ -1849,7 +1852,7 @@ def test_bot_execute_signal_cooldown():
     bot.contract_map = {"NQ": "NQH6"}
 
     # Set last order to just now (within cooldown)
-    bot._last_order_time = time.time()
+    bot._last_order_time = {"NQ": time.time()}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1872,7 +1875,7 @@ def test_bot_execute_signal_risk_reject():
     bot.risk = MagicMock()
     bot.risk.can_trade.return_value = (False, "DRAWDOWN BREACH")
     bot.contract_map = {"NQ": "NQH6"}
-    bot._last_order_time = 0
+    bot._last_order_time = {}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1899,7 +1902,7 @@ def test_bot_execute_signal_success():
     bot.journal.record_entry.return_value = "NQ_20260301_103000"
     bot.contract_map = {"NQ": "NQH6"}
     bot.strategies = {"NQ": MagicMock()}
-    bot._last_order_time = 0
+    bot._last_order_time = {}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1924,7 +1927,7 @@ def test_bot_execute_signal_zero_qty():
     bot.risk.can_trade.return_value = (True, "OK")
     bot.risk.calculate_position_size.return_value = 0
     bot.contract_map = {"NQ": "NQH6"}
-    bot._last_order_time = 0
+    bot._last_order_time = {}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1959,7 +1962,7 @@ def test_bot_process_price():
     bot.risk.calculate_position_size.return_value = 1
     bot.journal = MagicMock()
     bot.journal.record_entry.return_value = "NQ_test"
-    bot._last_order_time = 0
+    bot._last_order_time = {}
     bot.api = MagicMock()
     bot.api.place_bracket_order.return_value = {"orderId": 999}
 

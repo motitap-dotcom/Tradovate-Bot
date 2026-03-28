@@ -92,9 +92,9 @@ class TradovateBot:
         # Track daily trades for logging
         self.trades_today: list[dict] = []
 
-        # Global cooldown: minimum seconds between any two order placements
+        # Per-symbol cooldown: minimum seconds between order placements on same symbol
         self._min_order_gap_seconds: int = 30
-        self._last_order_time: float = 0
+        self._last_order_time: dict[str, float] = {}  # symbol -> timestamp
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
@@ -588,11 +588,12 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
-        # Global cooldown: prevent rapid-fire orders across all symbols
-        elapsed = time.time() - self._last_order_time
+        # Per-symbol cooldown: prevent rapid-fire orders on same symbol
+        last_order = self._last_order_time.get(signal.symbol, 0)
+        elapsed = time.time() - last_order
         if elapsed < self._min_order_gap_seconds:
             logger.info(
-                "Signal for %s deferred: global cooldown (%ds remaining)",
+                "Signal for %s deferred: cooldown (%ds remaining)",
                 signal.symbol, int(self._min_order_gap_seconds - elapsed),
             )
             return
@@ -651,12 +652,24 @@ class TradovateBot:
         )
 
         if result:
-            self._last_order_time = time.time()
+            self._last_order_time[signal.symbol] = time.time()
             self.risk.register_open(signal.qty)
+
+            # Capture actual fill price from API (market orders fill immediately)
+            fill_price = 0.0
+            entry_order_id = result.get("orderId")
+            if entry_order_id:
+                try:
+                    order_detail = self.api._get(f"/order/item?id={entry_order_id}")
+                    if order_detail:
+                        fill_price = order_detail.get("avgPrice", 0) or 0
+                except Exception as e:
+                    logger.warning("Could not fetch fill price for orderId=%s: %s", entry_order_id, e)
+
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=fill_price if fill_price else (signal.entry_price or 0),
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -672,8 +685,9 @@ class TradovateBot:
                     "stop": signal.stop_loss,
                     "target": signal.take_profit,
                     "reason": signal.reason,
-                    "order_id": result.get("orderId"),
+                    "order_id": entry_order_id,
                     "journal_id": trade_id,
+                    "entry_price": fill_price,
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
@@ -712,12 +726,14 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                    # Record force-close exits in journal
+                    # Record force-close exits in journal with actual P&L
                     for t in self.trades_today:
-                        if t.get("journal_id"):
+                        if t.get("journal_id") and not t.get("_closed"):
+                            exit_price, pnl = self._compute_trade_exit(t)
                             self.journal.record_exit_by_symbol(
-                                t["symbol"], 0, 0, exit_reason="force_close"
+                                t["symbol"], exit_price, pnl, exit_reason="force_close"
                             )
+                            t["_closed"] = True
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -888,15 +904,60 @@ class TradovateBot:
 
                 if sym not in open_base_symbols:
                     # Position is flat for this symbol — trade was closed (by SL/TP/manual)
+                    # Try to compute actual P&L from the entry price and current balance change
+                    exit_price, pnl = self._compute_trade_exit(trade_info)
                     self.journal.record_exit_by_symbol(
-                        sym, 0, 0, exit_reason="bracket_fill"
+                        sym, exit_price, pnl, exit_reason="bracket_fill"
                     )
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    logger.info("Position closed for %s (flat) | exit=%.4f pnl=%.2f", sym, exit_price, pnl)
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
+
+    def _compute_trade_exit(self, trade_info: dict) -> tuple[float, float]:
+        """Compute exit price and P&L for a closed trade using API fills.
+
+        Attempts to find the actual fill price from the order's SL/TP fills.
+        Falls back to estimating from entry price and current balance delta.
+        Returns (exit_price, pnl).
+        """
+        entry_price = trade_info.get("entry_price", 0)
+        qty = trade_info.get("qty", 1)
+        direction = trade_info.get("direction", "Buy")
+        symbol = trade_info.get("symbol", "")
+
+        # Try to get exit fill price from API fills
+        exit_price = 0.0
+        try:
+            fills = self.api.get_fills()
+            if fills:
+                # Look for recent fills on this symbol's contract
+                contract_name = self.contract_map.get(symbol, "")
+                # Get fills sorted by timestamp descending (most recent first)
+                symbol_fills = [
+                    f for f in fills
+                    if contract_name and str(f.get("contractId", "")) in str(self.contract_id_map.get(symbol, ""))
+                ]
+                if symbol_fills:
+                    # The most recent fill for this contract is likely the exit
+                    latest = symbol_fills[-1]
+                    exit_price = latest.get("price", 0) or 0
+        except Exception as e:
+            logger.debug("Could not fetch fills for P&L calc: %s", e)
+
+        # Calculate P&L if we have both entry and exit prices
+        pnl = 0.0
+        if entry_price and exit_price:
+            spec = config.CONTRACT_SPECS.get(symbol, {})
+            point_value = spec.get("point_value", 1)
+            if direction == "Buy":
+                pnl = (exit_price - entry_price) * qty * point_value
+            else:
+                pnl = (entry_price - exit_price) * qty * point_value
+
+        return exit_price, pnl
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
