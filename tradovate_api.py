@@ -1140,12 +1140,11 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
-        # Send WebSocket-level pings every 10s to keep the TCP connection alive
+        # Send WebSocket-level pings every 15s to keep the TCP connection alive
         # through load balancers, NAT, and server idle timeouts.
-        # Previously 25s was not fast enough — server closes after ~30s of
-        # transport-level silence.
-        proxy_kwargs["ping_interval"] = 10
-        proxy_kwargs["ping_timeout"] = 10
+        # ping_interval MUST be > ping_timeout (websocket-client requirement).
+        proxy_kwargs["ping_interval"] = 15
+        proxy_kwargs["ping_timeout"] = 5
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
