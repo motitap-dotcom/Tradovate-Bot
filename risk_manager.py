@@ -172,16 +172,31 @@ class RiskManager:
     # Rule checks
     # ─────────────────────────────────────────
 
-    # Safety buffer above the hard drawdown floor to prevent breaching it
-    _DRAWDOWN_BUFFER = 50.0  # $50 cushion — stop trading before hitting the exact floor
+    # Drawdown warning thresholds (distance from floor)
+    _DRAWDOWN_WARN_500 = False  # Logged once per session
+    _DRAWDOWN_WARN_250 = False
 
     def _check_drawdown(self, equity: float):
-        """Lock trading if equity approaches the trailing drawdown floor."""
-        effective_floor = self.drawdown_floor + self._DRAWDOWN_BUFFER
-        if equity <= effective_floor:
+        """Lock trading if equity breaches the trailing drawdown floor."""
+        distance = equity - self.drawdown_floor
+
+        # Early warnings (log once per threshold per session)
+        if distance < 250 and not self._DRAWDOWN_WARN_250:
+            logger.critical(
+                "DRAWDOWN CRITICAL: only $%.0f from floor! equity=%.2f floor=%.2f",
+                distance, equity, self.drawdown_floor,
+            )
+            self._DRAWDOWN_WARN_250 = True
+        elif distance < 500 and not self._DRAWDOWN_WARN_500:
+            logger.warning(
+                "DRAWDOWN WARNING: $%.0f from floor. equity=%.2f floor=%.2f",
+                distance, equity, self.drawdown_floor,
+            )
+            self._DRAWDOWN_WARN_500 = True
+
+        if equity <= self.drawdown_floor:
             self._lock(
-                f"DRAWDOWN BREACH: equity {equity:.2f} <= floor {self.drawdown_floor:.2f} "
-                f"(+${self._DRAWDOWN_BUFFER:.0f} buffer)"
+                f"DRAWDOWN BREACH: equity {equity:.2f} <= floor {self.drawdown_floor:.2f}"
             )
 
     def _check_daily_loss(self):
@@ -293,10 +308,6 @@ class RiskManager:
             return 0
 
         contracts = int(math.floor(trade_risk_budget / risk_per_contract))
-
-        # Cap per-trade size to allow diversification across symbols
-        MAX_CONTRACTS_PER_TRADE = 3
-        contracts = min(contracts, MAX_CONTRACTS_PER_TRADE)
 
         # Cap at available contract slots
         available = self.max_contracts - self.open_contracts
