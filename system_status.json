@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-30T14:58:10Z",
+  "timestamp": "2026-03-30T15:10:03Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,30 +11,30 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 57254.98,
+    "totalCashValue": 57178.3,
     "initialMargin": 0.0,
-    "netLiq": 57254.98
+    "netLiq": 57178.3
   },
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "2766845",
-    "uptime_since": "Mon 2026-03-30 14:32:51 UTC",
+    "bot_pid": "2773812",
+    "uptime_since": "Mon 2026-03-30 14:59:36 UTC",
     "disk": "18%",
-    "memory": "1054MB/7941MB (13%)",
+    "memory": "1040MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "14760a3 Auto-merge claude/update-trading-bot-status-7piyO \u2192 main",
+    "git_commit": "2be6217 Auto-merge claude/update-trading-bot-status-7piyO \u2192 main",
     "live_status": {
-      "timestamp": "2026-03-30T14:58:09.602248+00:00",
-      "timestamp_et": "2026-03-30T10:58:09.602269-04:00",
-      "balance": 57254.98,
-      "equity": 57254.98,
+      "timestamp": "2026-03-30T15:09:59.188955+00:00",
+      "timestamp_et": "2026-03-30T11:09:59.188982-04:00",
+      "balance": 57178.3,
+      "equity": 57178.3,
       "day_pnl": 0.0,
       "unrealized_pnl": 0.0,
-      "peak_balance": 57254.98,
-      "drawdown_floor": 54754.98,
+      "peak_balance": 57178.3,
+      "drawdown_floor": 54678.3,
       "distance_to_floor": 2500.0,
       "daily_profit_cap": 2400,
       "daily_profit_remaining": 2400.0,
@@ -54,23 +54,23 @@
         "SI",
         "NG"
       ],
-      "websocket_connected": false,
-      "market_data_source": "rest"
+      "websocket_connected": true,
+      "market_data_source": "websocket"
     },
-    "journal_tail": "2026-03-30 14:48:04,358 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:48:35,027 [INFO] bot: Attempting to upgrade from REST polling back to WebSocket...\nException in thread Thread-5 (run_forever):\nTraceback (most recent call last):\n  File \"/usr/lib/python3.12/threading.py\", line 1073, in _bootstrap_inner\n    self.run()\n  File \"/usr/lib/python3.12/threading.py\", line 1010, in run\n    self._target(*self._args, **self._kwargs)\n  File \"/root/tradovate-bot/venv/lib/python3.12/site-packages/websocket/_app.py\", line 337, in run_forever\n    raise WebSocketException(\"Ensure ping_interval > ping_timeout\")\nwebsocket._exceptions.WebSocketException: Ensure ping_interval > ping_timeout\n2026-03-30 14:48:49,841 [INFO] tradovate_api: REST poller health: 444 candles dispatched, 5 symbols tracked, 180 polls\n2026-03-30 14:49:00,029 [INFO] bot: WebSocket still unavailable, staying on REST polling.\n2026-03-30 14:49:00,029 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:49:30,710 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:49:51,810 [INFO] tradovate_api: REST poller health: 469 candles dispatched, 5 symbols tracked, 192 polls\n2026-03-30 14:50:01,443 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:50:32,129 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:50:55,002 [INFO] tradovate_api: REST poller health: 499 candles dispatched, 5 symbols tracked, 204 polls\n2026-03-30 14:51:02,850 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:51:33,534 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00",
-    "bot_log_tail": "2026-03-30 14:51:58,195 [INFO] tradovate_api: REST poller health: 532 candles dispatched, 5 symbols tracked, 216 polls\n2026-03-30 14:52:04,231 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:52:34,905 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:53:00,869 [INFO] tradovate_api: REST poller health: 561 candles dispatched, 5 symbols tracked, 228 polls\n2026-03-30 14:53:05,700 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:53:36,470 [INFO] bot: Attempting to upgrade from REST polling back to WebSocket...\n2026-03-30 14:54:01,473 [INFO] bot: WebSocket still unavailable, staying on REST polling.\n2026-03-30 14:54:03,591 [INFO] tradovate_api: REST poller health: 593 candles dispatched, 5 symbols tracked, 240 polls\n2026-03-30 14:54:03,940 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:54:34,656 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:55:05,344 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:55:05,671 [INFO] tradovate_api: REST poller health: 621 candles dispatched, 5 symbols tracked, 252 polls\n2026-03-30 14:55:36,014 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:56:06,699 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 14:56:08,676 [INFO] tradovate_api: REST poller health: 657 candles dispatched, 5 symbols tracked, 264 polls\n2026-03-30 14:56:37,384 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 4\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 29s)\n  Balance: $57254.98\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.0%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Mar 30 14:55:04 UTC 2026] Status: bot_active=true, pid=2766845\n[Mon Mar 30 14:55:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-03-30 14:59:39,692 [INFO] bot: Mapped contractId 3643469 -> MCLK6 for quote routing\n2026-03-30 14:59:39,692 [INFO] tradovate_api: Subscribed to quotes: SILJ6 (contractId=4856056)\n2026-03-30 14:59:39,692 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-03-30 14:59:39,692 [INFO] tradovate_api: Subscribed to quotes: SILJ6 (contractId=4856056)\n2026-03-30 14:59:39,692 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-03-30 14:59:39,692 [INFO] tradovate_api: Subscribed to quotes: NGK6 (contractId=3271013)\n2026-03-30 14:59:39,692 [INFO] bot: Mapped contractId 3271013 -> NGK6 for quote routing\n2026-03-30 14:59:39,692 [INFO] bot: Entering main loop...\n2026-03-30 14:59:39,799 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-30 14:59:39,800 [INFO] tradovate_api: MD DATA #1: keys=['quotes'] contractId=None\n2026-03-30 14:59:39,801 [INFO] tradovate_api: MD DATA #2: keys=['quotes'] contractId=None\n2026-03-30 14:59:39,801 [INFO] tradovate_api: MD DATA #3: keys=['quotes'] contractId=None\n2026-03-30 14:59:43,590 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:00:14,302 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:00:44,991 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:01:15,663 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:01:46,354 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:02:17,071 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:02:47,731 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | c",
+    "bot_log_tail": "2026-03-30 15:05:47,293 [INFO] tradovate_api: Market data WebSocket connected\n2026-03-30 15:05:47,409 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-03-30 15:05:47,410 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: NGK6\n2026-03-30 15:05:47,526 [INFO] tradovate_api: MD DATA #1: keys=['quotes'] contractId=None\n2026-03-30 15:05:47,527 [INFO] tradovate_api: MD DATA #2: keys=['quotes'] contractId=None\n2026-03-30 15:05:47,528 [INFO] tradovate_api: MD DATA #3: keys=['quotes'] contractId=None\n2026-03-30 15:05:51,182 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:06:21,910 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:06:52,592 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:07:23,286 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:07:53,965 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:08:24,672 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:08:55,372 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:09:26,069 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-03-30 15:0",
+    "cron_log_tail": "  Signals today: 2\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 13s)\n  Balance: $57178.3\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.5%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Mar 30 15:05:03 UTC 2026] Status: bot_active=true, pid=2773812\n[Mon Mar 30 15:05:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat\n[Mon Mar 30 15:10:01 UTC 2026] Checking for updates on main..."
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-03-30T14:58:09.602248+00:00",
-      "timestamp_et": "2026-03-30T10:58:09.602269-04:00",
-      "balance": 57254.98,
-      "equity": 57254.98,
+      "timestamp": "2026-03-30T15:09:59.188955+00:00",
+      "timestamp_et": "2026-03-30T11:09:59.188982-04:00",
+      "balance": 57178.3,
+      "equity": 57178.3,
       "day_pnl": 0.0,
       "unrealized_pnl": 0.0,
-      "peak_balance": 57254.98,
-      "drawdown_floor": 54754.98,
+      "peak_balance": 57178.3,
+      "drawdown_floor": 54678.3,
       "distance_to_floor": 2500.0,
       "daily_profit_cap": 2400,
       "daily_profit_remaining": 2400.0,
@@ -90,44 +90,47 @@
         "SI",
         "NG"
       ],
-      "websocket_connected": false,
-      "market_data_source": "rest"
+      "websocket_connected": true,
+      "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-03-30T15:52:52.232000+00:00",
-    "recent_signals": [],
+    "token_expiry": "2026-03-30T16:19:37.277000+00:00",
+    "recent_signals": [
+      "2026-03-30 14:58:23,173 [INFO] bot: SIGNAL: Sell MCL 3 @ market | SL=101.6886 TP=100.9900 | VWAP short #1 at 101.3900 (VWAP=101.4886)",
+      "2026-03-30 14:58:30,994 [INFO] bot: SIGNAL: Buy MGC 3 @ market | SL=4563.7957 TP=4578.8999 | VWAP long #1 at 4568.8999 (VWAP=4568.7957)"
+    ],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-03-30 14:48:49,841 [INFO] tradovate_api: REST poller health: 444 candles dispatched, 5 symbols tracked, 180 polls",
-      "2026-03-30 14:49:00,029 [INFO] bot: WebSocket still unavailable, staying on REST polling.",
-      "2026-03-30 14:49:00,029 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:49:30,710 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:49:51,810 [INFO] tradovate_api: REST poller health: 469 candles dispatched, 5 symbols tracked, 192 polls",
-      "2026-03-30 14:50:01,443 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:50:32,129 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:50:55,002 [INFO] tradovate_api: REST poller health: 499 candles dispatched, 5 symbols tracked, 204 polls",
-      "2026-03-30 14:51:02,850 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:51:33,534 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:51:58,195 [INFO] tradovate_api: REST poller health: 532 candles dispatched, 5 symbols tracked, 216 polls",
-      "2026-03-30 14:52:04,231 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:52:34,905 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:53:00,869 [INFO] tradovate_api: REST poller health: 561 candles dispatched, 5 symbols tracked, 228 polls",
-      "2026-03-30 14:53:05,700 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:53:36,470 [INFO] bot: Attempting to upgrade from REST polling back to WebSocket...",
-      "2026-03-30 14:54:01,473 [INFO] bot: WebSocket still unavailable, staying on REST polling.",
-      "2026-03-30 14:54:03,591 [INFO] tradovate_api: REST poller health: 593 candles dispatched, 5 symbols tracked, 240 polls",
-      "2026-03-30 14:54:03,940 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:54:34,656 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:55:05,344 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:55:05,671 [INFO] tradovate_api: REST poller health: 621 candles dispatched, 5 symbols tracked, 252 polls",
-      "2026-03-30 14:55:36,014 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:56:06,699 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:56:08,676 [INFO] tradovate_api: REST poller health: 657 candles dispatched, 5 symbols tracked, 264 polls",
-      "2026-03-30 14:56:37,384 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:57:08,092 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:57:10,815 [INFO] tradovate_api: REST poller health: 680 candles dispatched, 5 symbols tracked, 276 polls",
-      "2026-03-30 14:57:38,838 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
-      "2026-03-30 14:58:09,601 [INFO] bot: Status | balance=57254.98 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False"
+      "2026-03-30 15:04:18,494 [ERROR] tradovate_api: POST /cashBalance/getcashbalancesnapshot failed: HTTPSConnectionPool(host='demo.tradovateapi.com', port=443): Read timed out. (read timeout=30)",
+      "2026-03-30 15:04:19,071 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:04:49,776 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:05:20,488 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:05:44,590 [ERROR] tradovate_api: Market data WebSocket error: ping/pong timed out",
+      "2026-03-30 15:05:44,591 [ERROR] websocket: ping/pong timed out - goodbye",
+      "2026-03-30 15:05:45,121 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+      "2026-03-30 15:05:45,121 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
+      "2026-03-30 15:05:47,122 [INFO] tradovate_api: Refreshed market data token for reconnection",
+      "2026-03-30 15:05:47,292 [INFO] websocket: Websocket connected",
+      "2026-03-30 15:05:47,293 [INFO] tradovate_api: Market data WebSocket connected",
+      "2026-03-30 15:05:47,409 [INFO] tradovate_api: Market data WebSocket authenticated",
+      "2026-03-30 15:05:47,410 [INFO] tradovate_api: Re-subscribed to: MNQM6",
+      "2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: MESM6",
+      "2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: MGCJ6",
+      "2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: MCLK6",
+      "2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: SILJ6",
+      "2026-03-30 15:05:47,411 [INFO] tradovate_api: Re-subscribed to: NGK6",
+      "2026-03-30 15:05:47,526 [INFO] tradovate_api: MD DATA #1: keys=['quotes'] contractId=None",
+      "2026-03-30 15:05:47,527 [INFO] tradovate_api: MD DATA #2: keys=['quotes'] contractId=None",
+      "2026-03-30 15:05:47,528 [INFO] tradovate_api: MD DATA #3: keys=['quotes'] contractId=None",
+      "2026-03-30 15:05:51,182 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:06:21,910 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:06:52,592 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:07:23,286 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:07:53,965 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:08:24,672 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:08:55,372 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:09:26,069 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False",
+      "2026-03-30 15:09:59,188 [INFO] bot: Status | balance=57178.30 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -138,18 +141,46 @@
       "trades_today": 0
     },
     "trading_active": true,
-    "websocket_connected": false,
-    "errors_in_log": [],
-    "market_data_source": "rest",
+    "websocket_connected": true,
+    "errors_in_log": [
+      "2026-03-30 15:04:18,494 [ERROR] tradovate_api: POST /cashBalance/getcashbalancesnapshot failed: HTTPSConnectionPool(host='demo.tradovateapi.com', port=443): Read timed out. (read timeout=30)",
+      "2026-03-30 15:05:44,590 [ERROR] tradovate_api: Market data WebSocket error: ping/pong timed out",
+      "2026-03-30 15:05:44,591 [ERROR] websocket: ping/pong timed out - goodbye"
+    ],
+    "market_data_source": "websocket",
     "today_trades": [],
     "today_fills": [
       {
-        "id": 409583847170,
+        "id": 409583847197,
         "action": "Sell",
-        "contractId": 4327110,
+        "contractId": 3643469,
         "qty": 3,
-        "price": 23354.0,
-        "timestamp": "2026-03-30T14:24:29.900Z"
+        "price": 101.89,
+        "timestamp": "2026-03-30T14:58:23.286Z"
+      },
+      {
+        "id": 409583847211,
+        "action": "Buy",
+        "contractId": 3924410,
+        "qty": 3,
+        "price": 4539.0,
+        "timestamp": "2026-03-30T14:58:31.230Z"
+      },
+      {
+        "id": 409583847243,
+        "action": "Buy",
+        "contractId": 3643469,
+        "qty": 3,
+        "price": 102.09,
+        "timestamp": "2026-03-30T14:59:36.580Z"
+      },
+      {
+        "id": 409583847232,
+        "action": "Sell",
+        "contractId": 3924410,
+        "qty": 3,
+        "price": 4538.8,
+        "timestamp": "2026-03-30T14:59:36.231Z"
       },
       {
         "id": 409583847183,
@@ -158,6 +189,14 @@
         "qty": 3,
         "price": 23318.5,
         "timestamp": "2026-03-30T14:28:56.616Z"
+      },
+      {
+        "id": 409583847170,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 3,
+        "price": 23354.0,
+        "timestamp": "2026-03-30T14:24:29.900Z"
       }
     ]
   },
@@ -165,7 +204,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 12062,
+    "ssh_output_len": 12614,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
