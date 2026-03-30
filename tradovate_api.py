@@ -1003,6 +1003,7 @@ class MarketDataStream:
         self._reconnect_timer: Optional[threading.Timer] = None
         self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
+        self._quotes_dispatched: int = 0  # Quotes actually routed to callbacks
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1010,6 +1011,7 @@ class MarketDataStream:
         self._last_data_time = time.time()  # Grace period before staleness check
         self._start_time = time.time()
         self._quotes_received = 0
+        self._quotes_dispatched = 0
         self._connect()
         self._connected.wait(timeout=15)
 
@@ -1091,6 +1093,14 @@ class MarketDataStream:
                 logger.warning(
                     "WebSocket has been running for %.0fs but received 0 quotes. Declaring stale.",
                     time.time() - self._start_time,
+                )
+                return True
+        # Check 3: Receiving data but nothing routed to callbacks (contractId mismatch)
+        if self._quotes_received > 10 and self._quotes_dispatched == 0 and self._start_time:
+            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
+                logger.warning(
+                    "WebSocket received %d quotes but dispatched 0. ContractId routing broken. Declaring stale.",
+                    self._quotes_received,
                 )
                 return True
         return False
@@ -1212,12 +1222,16 @@ class MarketDataStream:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
                     contract_id = quote.get("contractId")
+                    # Try data-level contractId if quote-level is missing
+                    if contract_id is None and isinstance(data, dict):
+                        contract_id = data.get("contractId")
                     # Route quote to the correct symbol's callbacks using contractId.
                     # Without this filter, ALL quotes go to ALL symbols — causing
                     # strategies to receive prices from wrong contracts (e.g., NQ
                     # prices fed to GC strategy), which breaks ORB ranges and VWAP.
                     target_sym = self._contract_id_to_symbol.get(contract_id)
                     if target_sym and target_sym in cb_snapshot:
+                        self._quotes_dispatched += 1
                         for cb in cb_snapshot[target_sym]:
                             try:
                                 cb(target_sym, quote)
@@ -1230,6 +1244,7 @@ class MarketDataStream:
                         logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
+                        self._quotes_dispatched += 1
                         for sym, cbs in cb_snapshot.items():
                             for cb in cbs:
                                 try:
@@ -1237,8 +1252,13 @@ class MarketDataStream:
                                 except Exception as e:
                                     logger.error("Quote callback error for %s: %s", sym, e)
                     else:
-                        # No contractId and multiple symbols — cannot safely route, skip
-                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
+                        # No contractId and multiple symbols — cannot safely route
+                        if self._quotes_received <= 5:
+                            logger.warning(
+                                "Quote without contractId (%d symbols). keys=%s sample=%s",
+                                len(cb_snapshot), list(quote.keys())[:10],
+                                {k: quote[k] for k in list(quote.keys())[:3]},
+                            )
 
     def _on_error(self, ws, error):
         error_str = str(error)
