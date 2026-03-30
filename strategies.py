@@ -127,9 +127,25 @@ class _ORBWindow:
         prev = self._last_price
         self._last_price = price
 
-        if prev is not None and not (self.range_low <= prev <= self.range_high):
-            # Previous price was outside the range — not a fresh cross
+        if prev is None:
+            # First tick after range set or warmup — allow if price is
+            # inside the range (sets up for breakout on next tick).
             return None
+
+        # If previous price was outside the range, allow breakout only if
+        # price crossed THROUGH the range (came back inside or crossed to
+        # the other side).  This prevents the window from being permanently
+        # stuck when a WS reconnect gap leaves _last_price outside.
+        if not (self.range_low <= prev <= self.range_high):
+            # Price returned inside the range — reset for fresh-cross next tick
+            if self.range_low <= price <= self.range_high:
+                return None
+            # Price still outside on the same side — not a fresh cross
+            if (prev > self.range_high and price > self.range_high) or \
+               (prev < self.range_low and price < self.range_low):
+                return None
+            # Price crossed from one side to the other through the range —
+            # treat as a valid breakout (momentum carried through)
 
         if price > self.range_high:
             self.breakout_fired = True
