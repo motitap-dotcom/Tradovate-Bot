@@ -134,6 +134,7 @@ CONTRACT_SPECS = {
         "point_value": 2.00,
         "strategy": "ORB",
         "enabled": True,
+        "max_qty": 2,
         "orb_windows": [5, 15],
         "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
@@ -150,6 +151,7 @@ CONTRACT_SPECS = {
         "point_value": 5.00,
         "strategy": "ORB",
         "enabled": True,
+        "max_qty": 2,
         "orb_windows": [5, 15],
         "max_orb_trades": 15,
         "orb_cooldown_minutes": 15,
@@ -166,6 +168,7 @@ CONTRACT_SPECS = {
         "point_value": 10.00,
         "strategy": "VWAP",
         "enabled": True,
+        "max_qty": 2,
         "stop_loss_points": 5.0,
         "take_profit_points": 10.0,
         "risk_reward_ratio": 2.0,
@@ -182,6 +185,7 @@ CONTRACT_SPECS = {
         "point_value": 100.00,
         "strategy": "VWAP",
         "enabled": True,
+        "max_qty": 2,
         "stop_loss_points": 0.20,
         "take_profit_points": 0.40,
         "risk_reward_ratio": 2.0,
@@ -354,9 +358,9 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # ─────────────────────────────────────────────
 # Position Sizing
 # ─────────────────────────────────────────────
-# Max risk per trade as % of daily loss budget
-# Lowered to 1.0% — tighter risk per trade, more trades allowed
-RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
+# Max risk per trade as % of account size
+# 0.5% of $50k = $250 budget per trade
+RISK_PER_TRADE_PCT = 0.005  # 0.5% of account per trade
 
 # Max contracts per single position (regardless of risk budget)
 MAX_CONTRACTS_PER_TRADE = 2

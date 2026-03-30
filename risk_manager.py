@@ -302,6 +302,11 @@ class RiskManager:
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
 
+        # Per-symbol hard cap (prevents over-sizing on low-risk-per-contract symbols)
+        max_qty = spec.get("max_qty")
+        if max_qty is not None:
+            contracts = min(contracts, max_qty)
+
         # At least 1 if we have budget, at most max_contracts
         contracts = max(contracts, 0)
 
