@@ -1110,11 +1110,15 @@ def main():
     # Only SIGINT/SIGTERM (from systemd stop) will break this loop.
     bot = None
     consecutive_crashes = 0
+    _crash_timestamps: list[float] = []
+    _MAX_CRASHES_IN_WINDOW = 5
+    _CRASH_WINDOW_SECONDS = 600  # 10 minutes
     while not _shutdown_requested:
         try:
             bot = TradovateBot(dry_run=args.dry_run)
             bot.start()
             consecutive_crashes = 0  # Successful session resets crash counter
+            _crash_timestamps.clear()
 
             if _shutdown_requested:
                 break
@@ -1135,6 +1139,20 @@ def main():
 
         except Exception as exc:
             consecutive_crashes += 1
+            _crash_timestamps.append(time.time())
+
+            # Crash loop detection: if 5+ crashes in 10 minutes, give up
+            recent = [t for t in _crash_timestamps if time.time() - t < _CRASH_WINDOW_SECONDS]
+            _crash_timestamps[:] = recent  # prune old entries
+            if len(recent) >= _MAX_CRASHES_IN_WINDOW:
+                logger.critical(
+                    "!!! CRASH LOOP DETECTED: %d crashes in %d seconds. "
+                    "Exiting to prevent infinite restart loop. "
+                    "Fix the issue and restart manually or via cron.",
+                    len(recent), _CRASH_WINDOW_SECONDS,
+                )
+                sys.exit(2)  # exit code 2 = crash loop (distinguishable from normal exit)
+
             restart_delay = min(30 * consecutive_crashes, 300)  # 30s, 60s, ... up to 5min
             logger.critical(
                 "!!! BOT CRASHED (attempt %d): %s. Restarting in %ds...",

@@ -172,8 +172,28 @@ class RiskManager:
     # Rule checks
     # ─────────────────────────────────────────
 
+    # Drawdown warning thresholds (distance from floor)
+    _DRAWDOWN_WARN_500 = False  # Logged once per session
+    _DRAWDOWN_WARN_250 = False
+
     def _check_drawdown(self, equity: float):
         """Lock trading if equity breaches the trailing drawdown floor."""
+        distance = equity - self.drawdown_floor
+
+        # Early warnings (log once per threshold per session)
+        if distance < 250 and not self._DRAWDOWN_WARN_250:
+            logger.critical(
+                "DRAWDOWN CRITICAL: only $%.0f from floor! equity=%.2f floor=%.2f",
+                distance, equity, self.drawdown_floor,
+            )
+            self._DRAWDOWN_WARN_250 = True
+        elif distance < 500 and not self._DRAWDOWN_WARN_500:
+            logger.warning(
+                "DRAWDOWN WARNING: $%.0f from floor. equity=%.2f floor=%.2f",
+                distance, equity, self.drawdown_floor,
+            )
+            self._DRAWDOWN_WARN_500 = True
+
         if equity <= self.drawdown_floor:
             self._lock(
                 f"DRAWDOWN BREACH: equity {equity:.2f} <= floor {self.drawdown_floor:.2f}"
