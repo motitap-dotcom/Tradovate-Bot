@@ -665,10 +665,11 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
+            actual_entry = result.get("avgPrice") or signal.entry_price or 0
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=actual_entry,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -901,6 +902,17 @@ class TradovateBot:
                         open_base_symbols.add(base_sym)
 
             self.risk.open_contracts = total_open
+
+            # Detect positions that just closed (SL/TP hit) → set strategy cooldown
+            if not hasattr(self, "_prev_open_symbols"):
+                self._prev_open_symbols = set()
+            just_closed = self._prev_open_symbols - open_base_symbols
+            for sym in just_closed:
+                strategy = self.strategies.get(sym)
+                if strategy and hasattr(strategy, "last_any_trade_time"):
+                    strategy.last_any_trade_time = now_et()
+                    logger.info("Position closed for %s — strategy cooldown set", sym)
+            self._prev_open_symbols = open_base_symbols.copy()
 
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:

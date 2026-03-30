@@ -451,6 +451,9 @@ class VWAPStrategy:
                 and self._long_allowed()
             ):
                 stop = self.vwap - self.stop_points
+                # Cap: SL never more than stop_points from entry price
+                # (REST polling delay can put entry far from VWAP)
+                stop = max(stop, price - self.stop_points)
                 tp = price + self.tp_points
                 self.long_count += 1
                 self.last_long_time = self._current_time
@@ -489,6 +492,8 @@ class VWAPStrategy:
                 and self._short_allowed()
             ):
                 stop = self.vwap + self.stop_points
+                # Cap: SL never more than stop_points from entry price
+                stop = min(stop, price + self.stop_points)
                 tp = price - self.tp_points
                 self.short_count += 1
                 self.last_short_time = self._current_time

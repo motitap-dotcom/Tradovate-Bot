@@ -771,6 +771,7 @@ class TradovateAPI:
             return None
 
         # For market orders, verify fill after brief delay
+        avg_fill_price = entry_price or 0  # default; overwritten by actual fill below
         if order_type == "Market":
             time.sleep(1)
             order_detail = self._get(f"/order/item?id={entry_order_id}")
@@ -778,6 +779,8 @@ class TradovateAPI:
                 detail_status = order_detail.get("ordStatus", "Unknown")
                 filled_qty = order_detail.get("filledQty", 0)
                 avg_price = order_detail.get("avgPrice", 0)
+                if avg_price:
+                    avg_fill_price = avg_price
                 logger.info(
                     "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s | detail=%s",
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
@@ -836,6 +839,7 @@ class TradovateAPI:
 
         return {
             "orderId": entry_order_id,
+            "avgPrice": avg_fill_price,
             "slOrderId": oco_result.get("orderId") if oco_result else None,
             "tpOrderId": oco_result.get("ocoId") if oco_result else None,
         }
