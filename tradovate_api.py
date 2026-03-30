@@ -834,68 +834,11 @@ class TradovateAPI:
                 oco_result.get("orderId"), oco_result.get("ocoId"),
             )
 
-        result = {
+        return {
             "orderId": entry_order_id,
             "slOrderId": oco_result.get("orderId") if oco_result else None,
             "tpOrderId": oco_result.get("ocoId") if oco_result else None,
         }
-
-        # --- Step 3: Verify OCO orders are actually Working ---
-        time.sleep(0.5)
-        verified = self._verify_oco_placed(result.get("slOrderId"), result.get("tpOrderId"))
-        if not verified:
-            logger.critical(
-                "POST-PLACEMENT VERIFY FAILED: OCO orders not confirmed Working! "
-                "SL=%s TP=%s — retrying OCO placement...",
-                result.get("slOrderId"), result.get("tpOrderId"),
-            )
-            # Retry OCO placement once
-            oco_retry = self._post("/order/placeOCO", oco_payload)
-            if oco_retry and "orderId" in oco_retry:
-                result["slOrderId"] = oco_retry.get("orderId")
-                result["tpOrderId"] = oco_retry.get("ocoId")
-                logger.info(
-                    "OCO retry succeeded: SL=%s TP=%s",
-                    result["slOrderId"], result["tpOrderId"],
-                )
-            else:
-                logger.critical(
-                    "OCO retry ALSO FAILED! Cancelling unprotected entry %s",
-                    entry_order_id,
-                )
-                self._post("/order/cancelorder", {"orderId": entry_order_id})
-                # Also try to flatten via market order in case entry already filled
-                self.place_market_order(symbol, opposite_action, qty)
-                return None
-
-        return result
-
-    def _verify_oco_placed(
-        self, sl_order_id: Optional[int], tp_order_id: Optional[int]
-    ) -> bool:
-        """
-        Verify that SL and/or TP order IDs are in Working/Accepted status.
-
-        Returns True if at least one of them is confirmed working.
-        """
-        if sl_order_id is None and tp_order_id is None:
-            return False
-
-        for oid in [sl_order_id, tp_order_id]:
-            if oid is None:
-                continue
-            try:
-                detail = self._get(f"/order/item?id={oid}")
-                if detail and detail.get("ordStatus") in ("Working", "Accepted"):
-                    return True
-                logger.warning(
-                    "OCO order %s status=%s (expected Working)",
-                    oid, detail.get("ordStatus") if detail else "NOT_FOUND",
-                )
-            except Exception as e:
-                logger.warning("Failed to verify OCO order %s: %s", oid, e)
-
-        return False
 
     def place_market_order(
         self, symbol: str, action: str, qty: int
@@ -915,61 +858,6 @@ class TradovateAPI:
             "isAutomated": True,
         }
         return self._post("/order/placeorder", payload)
-
-    def get_working_orders(self) -> list[dict]:
-        """Return all orders with status Working or Accepted."""
-        orders = self._get("/order/list") or []
-        return [o for o in orders if o.get("ordStatus") in ("Working", "Accepted")]
-
-    def place_oco_for_position(
-        self,
-        symbol: str,
-        action: str,
-        qty: int,
-        stop_price: float,
-        take_profit_price: float,
-    ) -> Optional[dict]:
-        """
-        Place an OCO (stop-loss + take-profit) to protect an existing position.
-
-        Used by the orphan-position guard when SL/TP orders are missing.
-        """
-        if self.account_id is None:
-            logger.error("Cannot place OCO: account_id is None")
-            return None
-
-        oco_payload: dict[str, Any] = {
-            "accountSpec": self.account_spec,
-            "accountId": self.account_id,
-            "symbol": symbol,
-            "action": action,
-            "orderQty": qty,
-            "orderType": "Stop",
-            "stopPrice": stop_price,
-            "timeInForce": "GTC",
-            "isAutomated": True,
-            "other": {
-                "action": action,
-                "orderType": "Limit",
-                "price": take_profit_price,
-                "orderQty": qty,
-                "timeInForce": "GTC",
-            },
-        }
-
-        logger.info(
-            "Re-placing OCO for orphaned position: %s %d %s | SL=%.2f TP=%.2f",
-            action, qty, symbol, stop_price, take_profit_price,
-        )
-        result = self._post("/order/placeOCO", oco_payload)
-        if not result or "orderId" not in result:
-            logger.error("OCO re-placement FAILED: %s", result)
-            return None
-        logger.info(
-            "OCO re-placed: SL orderId=%s TP orderId=%s",
-            result.get("orderId"), result.get("ocoId"),
-        )
-        return result
 
     def cancel_all_orders(self) -> bool:
         """Cancel all working orders for the account."""
@@ -1115,6 +1003,7 @@ class MarketDataStream:
         self._reconnect_timer: Optional[threading.Timer] = None
         self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
+        self._quotes_dispatched: int = 0  # Quotes actually routed to callbacks
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1122,6 +1011,7 @@ class MarketDataStream:
         self._last_data_time = time.time()  # Grace period before staleness check
         self._start_time = time.time()
         self._quotes_received = 0
+        self._quotes_dispatched = 0
         self._connect()
         self._connected.wait(timeout=15)
 
@@ -1192,18 +1082,26 @@ class MarketDataStream:
     def data_stale(self) -> bool:
         """True if connected but no data received for DATA_TIMEOUT seconds,
         or if no quotes at all after NO_DATA_TIMEOUT since start."""
-        # Check 1: Stream running but ZERO quotes received — force fallback
+        if not self._last_data_time:
+            return False  # Haven't started receiving yet
+        # Check 1: No data for DATA_TIMEOUT seconds (normal staleness)
+        if (time.time() - self._last_data_time) > self.DATA_TIMEOUT:
+            return True
+        # Check 2: Stream running but zero quotes received after NO_DATA_TIMEOUT
         if self._quotes_received == 0 and self._start_time:
-            elapsed = time.time() - self._start_time
-            if elapsed > self.NO_DATA_TIMEOUT:
+            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
                 logger.warning(
                     "WebSocket has been running for %.0fs but received 0 quotes. Declaring stale.",
-                    elapsed,
+                    time.time() - self._start_time,
                 )
                 return True
-        # Check 2: Had data before but it stopped
-        if self._last_data_time:
-            if (time.time() - self._last_data_time) > self.DATA_TIMEOUT:
+        # Check 3: Receiving data but nothing routed to callbacks (contractId mismatch)
+        if self._quotes_received > 10 and self._quotes_dispatched == 0 and self._start_time:
+            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
+                logger.warning(
+                    "WebSocket received %d quotes but dispatched 0. ContractId routing broken. Declaring stale.",
+                    self._quotes_received,
+                )
                 return True
         return False
 
@@ -1316,13 +1214,6 @@ class MarketDataStream:
             if "e" in item and item["e"] == "md" and "d" in item:
                 self._last_data_time = time.time()
                 self._quotes_received += 1
-                if self._quotes_received <= 3:
-                    logger.info(
-                        "MD DATA #%d: keys=%s contractId=%s",
-                        self._quotes_received,
-                        list(item["d"].keys())[:8] if isinstance(item["d"], dict) else type(item["d"]).__name__,
-                        item["d"].get("contractId") if isinstance(item["d"], dict) else "N/A",
-                    )
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
@@ -1331,12 +1222,16 @@ class MarketDataStream:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
                     contract_id = quote.get("contractId")
+                    # Try data-level contractId if quote-level is missing
+                    if contract_id is None and isinstance(data, dict):
+                        contract_id = data.get("contractId")
                     # Route quote to the correct symbol's callbacks using contractId.
                     # Without this filter, ALL quotes go to ALL symbols — causing
                     # strategies to receive prices from wrong contracts (e.g., NQ
                     # prices fed to GC strategy), which breaks ORB ranges and VWAP.
                     target_sym = self._contract_id_to_symbol.get(contract_id)
                     if target_sym and target_sym in cb_snapshot:
+                        self._quotes_dispatched += 1
                         for cb in cb_snapshot[target_sym]:
                             try:
                                 cb(target_sym, quote)
@@ -1349,6 +1244,7 @@ class MarketDataStream:
                         logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
+                        self._quotes_dispatched += 1
                         for sym, cbs in cb_snapshot.items():
                             for cb in cbs:
                                 try:
@@ -1356,8 +1252,13 @@ class MarketDataStream:
                                 except Exception as e:
                                     logger.error("Quote callback error for %s: %s", sym, e)
                     else:
-                        # No contractId and multiple symbols — cannot safely route, skip
-                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
+                        # No contractId and multiple symbols — cannot safely route
+                        if self._quotes_received <= 5:
+                            logger.warning(
+                                "Quote without contractId (%d symbols). keys=%s sample=%s",
+                                len(cb_snapshot), list(quote.keys())[:10],
+                                {k: quote[k] for k in list(quote.keys())[:3]},
+                            )
 
     def _on_error(self, ws, error):
         error_str = str(error)
