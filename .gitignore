@@ -42,6 +42,7 @@ live_status.json
 bot_state.json
 verify_report.json
 trade_journal.json
+bot_state.json
 learning_report.json
 learning_history.json
 tuner_log.json
