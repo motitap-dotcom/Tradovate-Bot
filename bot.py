@@ -501,20 +501,13 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _start_market_data(self):
-        """Try WebSocket first; fall back to REST polling if WS is unavailable."""
-        if self.api.md_access_token:
-            try:
-                ws = MarketDataStream(self.api.md_access_token, api=self.api)
-                ws.start()
-                # Give it a moment to connect
-                if ws._connected.wait(timeout=10):
-                    logger.info("Market data via WebSocket")
-                    return ws
-                logger.warning("WebSocket connection failed, falling back to REST polling")
-                ws.stop()
-            except Exception as e:
-                logger.warning("WebSocket init failed (%s), falling back to REST polling", e)
+        """Start REST polling for market data (primary).
 
+        WebSocket was unreliable (connects but delivers no quote data),
+        so REST polling via Yahoo Finance is now the default.
+        The periodic WS recovery check in the main loop can upgrade
+        back to WebSocket if it starts working.
+        """
         poller = RestMarketDataPoller()
         # Seed with warmup timestamps so poller skips already-processed candles
         poller._last_ts.update(self._warmup_last_ts)
