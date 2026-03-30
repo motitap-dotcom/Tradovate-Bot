@@ -341,6 +341,8 @@ class VWAPStrategy:
         self.last_short_time: Optional[datetime] = None
         self.last_any_trade_time: Optional[datetime] = None  # cross-direction cooldown
         self._current_time: Optional[datetime] = None  # set by bot on each tick
+        self._candle_count: int = 0
+        self._vwap_stale_bars: int = 0
 
     def reset(self):
         """Reset for a new trading day."""

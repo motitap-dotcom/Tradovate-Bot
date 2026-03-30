@@ -33,6 +33,7 @@ from tradovate_api import TradovateAPI, MarketDataStream, RestMarketDataPoller, 
 from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
+import bot_state
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -145,6 +146,13 @@ class TradovateBot:
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
+
+        # Restore trade counts and cooldowns from saved state (layered on top of warmup)
+        saved = bot_state.load_state()
+        if saved:
+            bot_state.restore_strategies(saved, self.strategies)
+            self.risk.trades_today = saved.get("trades_today_count", 0)
+            logger.info("Restored bot state: trades_today=%d", self.risk.trades_today)
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -458,17 +466,20 @@ class TradovateBot:
                         strategy._current_time = candle_time
                         strategy.update_vwap(h, l, c, v or 0)
                         strategy._prev_price = c
+                        strategy._candle_count = getattr(strategy, "_candle_count", 0) + 1
                     else:
                         # ORB: feed candles to build the opening range
                         for window in getattr(strategy, "windows", []):
                             if not window.range_set:
                                 window.feed(c, h, l, candle_time.time())
+                                # The candle that sets the range can also trigger
+                                # a breakout in the same feed() call. Reset it —
+                                # warmup must not fire breakouts, only build ranges.
+                                if window.breakout_fired:
+                                    window.breakout_fired = False
                             else:
                                 # Range is set — just track _last_price so
                                 # feed() can detect fresh crosses on live ticks.
-                                # Do NOT mark breakout_fired here: the fresh-cross
-                                # guard in feed() already prevents stale breakouts
-                                # (it requires _last_price inside the range).
                                 window._last_price = c
 
                     fed += 1
@@ -637,6 +648,7 @@ class TradovateBot:
                     "reason": signal.reason,
                 }
             )
+            self._save_bot_state()
             return
 
         # Place bracket order via API
@@ -677,11 +689,22 @@ class TradovateBot:
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
+            self._save_bot_state()
         else:
             logger.error(
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
+
+    def _save_bot_state(self):
+        """Persist strategy state to disk for restart recovery."""
+        try:
+            state = bot_state.build_state(
+                self.strategies, len(self.trades_today), self.trades_today
+            )
+            bot_state.save_state(state)
+        except Exception as e:
+            logger.warning("Failed to save bot state: %s", e)
 
     # ─────────────────────────────────────────
     # Main loop
