@@ -130,17 +130,28 @@ class _ORBWindow:
                 self._last_price = price
                 return None
 
-            if elapsed >= self.window_minutes and self.prices:
-                # Normal: ORB window just ended, set range
-                self._try_set_range("normal")
-                # Fall through to check breakout
+            if elapsed >= self.window_minutes:
+                if self._late_start_seconds is not None:
+                    # Late-start mode: still accumulating tick prices.
+                    # Append high AND low (not just close) for a wider range.
+                    self.prices.append(high)
+                    self.prices.append(low)
+                    self._last_price = price
 
-            elif elapsed >= self.window_minutes and not self.prices:
-                # Late start: bot restarted after the ORB window.
-                # Build a quick range from incoming tick prices.
-                # NOTE: use `price` (current tick), NOT `high`/`low` which
-                # are session extremes and would create an absurdly wide range.
-                if self._late_start_seconds is None:
+                    warmup_elapsed = (current_seconds - self._late_start_seconds) / 60
+                    if warmup_elapsed >= self.LATE_START_WARMUP_MINUTES and len(self.prices) >= 10:
+                        self._try_set_range("late-start")
+                    return None
+
+                elif self.prices:
+                    # Normal: ORB window just ended, set range from
+                    # accumulated prices collected during the window.
+                    self._try_set_range("normal")
+                    # Fall through to check breakout
+
+                else:
+                    # Late start: bot restarted after the ORB window.
+                    # Begin accumulating tick prices for a quick range.
                     self._late_start_seconds = current_seconds
                     logger.info(
                         "ORB %d-min: late start (%.0fm after open), "
@@ -148,14 +159,10 @@ class _ORBWindow:
                         self.window_minutes, elapsed,
                         self.LATE_START_WARMUP_MINUTES,
                     )
-
-                self.prices.append(price)
-                self._last_price = price
-
-                warmup_elapsed = (current_seconds - self._late_start_seconds) / 60
-                if warmup_elapsed >= self.LATE_START_WARMUP_MINUTES and len(self.prices) >= 10:
-                    self._try_set_range("late-start")
-                return None
+                    self.prices.append(high)
+                    self.prices.append(low)
+                    self._last_price = price
+                    return None
 
         if not self.range_set:
             return None
