@@ -512,14 +512,21 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _start_market_data(self):
-        """Try WebSocket first; fall back to REST polling if WS is unavailable."""
-        if self.api.md_access_token:
+        """Start market data stream.
+
+        REST polling (Yahoo Finance) is the default — Tradovate's WebSocket
+        connects and authenticates but does not deliver usable quote data
+        for micro contracts.  WebSocket can be forced via env var
+        FORCE_WS_MARKET_DATA=1 for debugging.
+        """
+        force_ws = os.environ.get("FORCE_WS_MARKET_DATA", "").strip() == "1"
+
+        if force_ws and self.api.md_access_token:
             try:
                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
                 ws.start()
-                # Give it a moment to connect
                 if ws._connected.wait(timeout=10):
-                    logger.info("Market data via WebSocket")
+                    logger.info("Market data via WebSocket (forced)")
                     return ws
                 logger.warning("WebSocket connection failed, falling back to REST polling")
                 ws.stop()
@@ -806,28 +813,10 @@ class TradovateBot:
                         if self.md_stream:
                             self._subscribe_market_data()
 
-                # Periodic WebSocket recovery: if currently on REST polling,
-                # try to upgrade back to WebSocket every 5 minutes
-                if not self.dry_run and self.md_stream and isinstance(self.md_stream, RestMarketDataPoller):
-                    if not hasattr(self, "_last_ws_retry"):
-                        self._last_ws_retry = time.time()
-                    if time.time() - self._last_ws_retry >= 300:  # 5 minutes
-                        self._last_ws_retry = time.time()
-                        if self.api.md_access_token or self.api._re_authenticate():
-                            logger.info("Attempting to upgrade from REST polling back to WebSocket...")
-                            try:
-                                ws = MarketDataStream(self.api.md_access_token, api=self.api)
-                                ws.start()
-                                if ws._connected.wait(timeout=10):
-                                    logger.info("WebSocket recovery succeeded! Switching from REST to WebSocket.")
-                                    self.md_stream.stop()
-                                    self.md_stream = ws
-                                    self._subscribe_market_data()
-                                else:
-                                    logger.info("WebSocket still unavailable, staying on REST polling.")
-                                    ws.stop()
-                            except Exception as e:
-                                logger.warning("WebSocket recovery attempt failed: %s", e)
+                # NOTE: WebSocket recovery disabled — Tradovate WS connects but
+                # does not deliver usable quote data for micro contracts.
+                # REST polling via Yahoo Finance is the reliable data source.
+                # To re-enable, set FORCE_WS_MARKET_DATA=1 in .env.
 
                 # Periodic contract rollover check (every 10 min)
                 if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
