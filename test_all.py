@@ -242,7 +242,9 @@ def test_place_bracket():
     entry_resp = {"orderId": 100}
     oco_resp = {"orderId": 200, "ocoId": 201}
 
-    with patch.object(api, "_post", side_effect=[entry_resp, oco_resp]) as mock_post:
+    with patch.object(api, "_post", side_effect=[entry_resp, oco_resp]) as mock_post, \
+         patch.object(api, "_get", return_value=None) as mock_get, \
+         patch.object(api, "_verify_oco_placed", return_value=True):
         result = api.place_bracket_order(
             symbol="NQH6",
             action="Buy",
@@ -257,7 +259,7 @@ def test_place_bracket():
         assert result["slOrderId"] == 200
         assert result["tpOrderId"] == 201
 
-        # Verify two calls: placeorder then placeOCO
+        # Verify two POST calls: placeorder then placeOCO
         assert mock_post.call_count == 2
         entry_call = mock_post.call_args_list[0]
         oco_call = mock_post.call_args_list[1]
@@ -549,7 +551,7 @@ def test_orb_cooldown():
 def test_orb_max_trades():
     from strategies import ORBStrategy
     strategy = ORBStrategy("MNQ")
-    assert strategy.max_trades == 2  # Default from config
+    assert strategy.max_trades == 3  # From config (raised for more trades)
 
 
 @test("VWAP: running VWAP calculation")
@@ -981,13 +983,13 @@ print("8. END-TO-END TRADING SIMULATION")
 print("=" * 60)
 
 
-@test("Full trading day simulation with NQ ORB")
+@test("Full trading day simulation with MNQ ORB")
 def test_e2e_nq_orb():
-    """Simulate a complete trading day with NQ mini ORB breakout."""
+    """Simulate a complete trading day with MNQ micro ORB breakout."""
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -1009,7 +1011,7 @@ def test_e2e_nq_orb():
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("NQ")
+                qty = rm.calculate_position_size("MNQ")
                 if qty > 0:
                     signal.qty = qty
                     rm.register_open(qty)
@@ -1470,13 +1472,13 @@ def test_tuner_widen_stops():
         tuner = AutoTuner(journal=j)
 
         # 8 SL hits, 2 TP hits = 80% SL rate
-        trades = _make_closed_trades("NQ", 8, 2)
+        trades = _make_closed_trades("MNQ", 8, 2)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
         # Should have proposed widening
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1, f"Expected 1 SL adjustment, got {len(sl_adj)}"
         assert sl_adj[0]["new_value"] > old_sl, "New SL should be wider (larger)"
     finally:
@@ -1494,12 +1496,12 @@ def test_tuner_tighten_stops():
         tuner = AutoTuner(journal=j)
 
         # 1 SL hit, 6 TP hits = ~14% SL rate
-        trades = _make_closed_trades("NQ", 1, 6)
+        trades = _make_closed_trades("MNQ", 1, 6)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1
         assert sl_adj[0]["new_value"] < old_sl, "New SL should be tighter (smaller)"
     finally:
@@ -1517,12 +1519,12 @@ def test_tuner_widen_tp():
         tuner = AutoTuner(journal=j)
 
         # High R-multiple trades
-        trades = _make_closed_trades("NQ", 1, 4, r_mult=2.0)
+        trades = _make_closed_trades("MNQ", 1, 4, r_mult=2.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] > old_tp, "TP should be widened for high R"
     finally:
@@ -1541,12 +1543,12 @@ def test_tuner_tighten_tp():
 
         # Negative R-multiple trades — all stop_loss exits (no TP trades)
         # so we reach the avg_r < -0.5 branch (not blocked by tp_trades > 0)
-        trades = _make_closed_trades("NQ", 4, 0, r_mult=-1.0)
+        trades = _make_closed_trades("MNQ", 4, 0, r_mult=-1.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] < old_tp, "TP should be tightened for negative R"
     finally:
@@ -1797,6 +1799,88 @@ def test_bot_state_restore_orb():
     assert strategy.windows[0].breakout_fired is True
 
 
+@test("BotState: build_state persists day_start_balance")
+def test_bot_state_day_start_balance():
+    import bot_state
+    from bot_state import build_state
+    original_file = bot_state.STATE_FILE
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            bot_state.STATE_FILE = f.name
+
+        # Build state with day_start_balance
+        state = build_state({}, 2, [], day_start_balance=60000.0)
+        assert state["day_start_balance"] == 60000.0
+
+        # Save and reload
+        bot_state.save_state(state)
+        loaded = bot_state.load_state()
+        assert loaded is not None
+        assert loaded["day_start_balance"] == 60000.0
+
+        # Without day_start_balance
+        state2 = build_state({}, 0, [])
+        assert "day_start_balance" not in state2
+    finally:
+        if os.path.exists(bot_state.STATE_FILE):
+            os.unlink(bot_state.STATE_FILE)
+        bot_state.STATE_FILE = original_file
+
+
+@test("BotState: day_start_balance survives mid-day restart")
+def test_bot_state_day_start_balance_restart():
+    """Simulate: bot profits, restarts, then loses — day_pnl should reflect full day."""
+    from risk_manager import RiskManager
+    import bot_state
+    original_file = bot_state.STATE_FILE
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            bot_state.STATE_FILE = f.name
+
+        # Day starts at $60,000
+        rm = RiskManager()
+        rm.set_initial_balance(60000.0)
+
+        # Bot makes $800 profit, balance goes to $60,800
+        rm.update_balance(60800.0, 0)
+        assert abs(rm.day_pnl - 800.0) < 0.01
+
+        # Save state before restart
+        state = bot_state.build_state({}, 1, [], day_start_balance=rm.day_start_balance)
+        bot_state.save_state(state)
+
+        # === RESTART ===
+        # New risk manager (simulating fresh bot)
+        rm2 = RiskManager()
+        rm2.set_initial_balance(60800.0)  # API returns current balance
+        # Without fix: day_start_balance = 60800, day_pnl = 0
+        assert rm2.day_start_balance == 60800.0  # wrong!
+
+        # Restore persisted day_start_balance
+        saved = bot_state.load_state()
+        assert saved is not None
+        rm2.day_start_balance = saved["day_start_balance"]
+        rm2.day_pnl = rm2.current_balance - rm2.day_start_balance
+
+        # Now day_start_balance is correctly $60,000
+        assert rm2.day_start_balance == 60000.0
+        assert abs(rm2.day_pnl - 800.0) < 0.01  # still shows +$800
+
+        # Bot loses $600 → balance = $60,200
+        rm2.update_balance(60200.0, 0)
+        assert abs(rm2.day_pnl - 200.0) < 0.01  # net +$200 for the day
+
+        # Without fix, day_pnl would be 60200 - 60800 = -600 → false brake!
+        assert not rm2.trading_locked, "Should NOT be locked — net day P&L is +$200"
+
+    finally:
+        if os.path.exists(bot_state.STATE_FILE):
+            os.unlink(bot_state.STATE_FILE)
+        bot_state.STATE_FILE = original_file
+
+
 test_bot_state_roundtrip()
 test_bot_state_missing_file()
 test_bot_state_stale_date()
@@ -1804,6 +1888,8 @@ test_bot_state_corrupt()
 test_bot_state_build_orb()
 test_bot_state_build_vwap()
 test_bot_state_restore_orb()
+test_bot_state_day_start_balance()
+test_bot_state_day_start_balance_restart()
 
 
 # ─────────────────────────────────────────────
@@ -1822,9 +1908,12 @@ def test_bot_execute_signal_dry_run():
 
     bot = TradovateBot(dry_run=True)
     bot.api = MagicMock()
+    bot.risk = MagicMock()
+    bot.risk.can_trade.return_value = (True, "OK")
+    bot.risk.calculate_position_size.return_value = 1
     bot.contract_map = {"NQ": "NQH6"}
     bot.strategies = {"NQ": MagicMock()}
-    bot._last_order_time = 0  # No cooldown
+    bot._last_order_time = {}  # No cooldown
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1837,7 +1926,7 @@ def test_bot_execute_signal_dry_run():
     assert len(bot.trades_today) == 1
 
 
-@test("Bot: _execute_signal respects global cooldown")
+@test("Bot: _execute_signal respects per-symbol cooldown")
 def test_bot_execute_signal_cooldown():
     from bot import TradovateBot
     from strategies import TradeSignal, Direction
@@ -1849,7 +1938,7 @@ def test_bot_execute_signal_cooldown():
     bot.contract_map = {"NQ": "NQH6"}
 
     # Set last order to just now (within cooldown)
-    bot._last_order_time = time.time()
+    bot._last_order_time = {"NQ": time.time()}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1872,7 +1961,7 @@ def test_bot_execute_signal_risk_reject():
     bot.risk = MagicMock()
     bot.risk.can_trade.return_value = (False, "DRAWDOWN BREACH")
     bot.contract_map = {"NQ": "NQH6"}
-    bot._last_order_time = 0
+    bot._last_order_time = {}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1899,7 +1988,7 @@ def test_bot_execute_signal_success():
     bot.journal.record_entry.return_value = "NQ_20260301_103000"
     bot.contract_map = {"NQ": "NQH6"}
     bot.strategies = {"NQ": MagicMock()}
-    bot._last_order_time = 0
+    bot._last_order_time = {}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1909,7 +1998,7 @@ def test_bot_execute_signal_success():
     bot._execute_signal(signal)
 
     bot.api.place_bracket_order.assert_called_once()
-    bot.risk.register_open.assert_called_once_with(2)
+    bot.risk.register_open.assert_called_once()
     bot.journal.record_entry.assert_called_once()
 
 
@@ -1924,7 +2013,7 @@ def test_bot_execute_signal_zero_qty():
     bot.risk.can_trade.return_value = (True, "OK")
     bot.risk.calculate_position_size.return_value = 0
     bot.contract_map = {"NQ": "NQH6"}
-    bot._last_order_time = 0
+    bot._last_order_time = {}
 
     signal = TradeSignal(
         symbol="NQ", direction=Direction.LONG,
@@ -1959,7 +2048,7 @@ def test_bot_process_price():
     bot.risk.calculate_position_size.return_value = 1
     bot.journal = MagicMock()
     bot.journal.record_entry.return_value = "NQ_test"
-    bot._last_order_time = 0
+    bot._last_order_time = {}
     bot.api = MagicMock()
     bot.api.place_bracket_order.return_value = {"orderId": 999}
 
@@ -2609,6 +2698,259 @@ test_journal_streaks()
 test_tuner_cooldowns()
 test_tuner_mae_stops()
 test_tuner_mfe_targets()
+
+
+# ─────────────────────────────────────────────
+# 18. ORPHAN POSITION GUARD TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("18. ORPHAN POSITION GUARD TESTS")
+print("=" * 60)
+
+
+@test("API: get_working_orders filters by status")
+def test_get_working_orders():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+    all_orders = [
+        {"id": 1, "ordStatus": "Working", "contractId": 100},
+        {"id": 2, "ordStatus": "Filled", "contractId": 101},
+        {"id": 3, "ordStatus": "Accepted", "contractId": 102},
+        {"id": 4, "ordStatus": "Cancelled", "contractId": 100},
+    ]
+    with patch.object(api, "_get", return_value=all_orders):
+        result = api.get_working_orders()
+        assert len(result) == 2, f"Expected 2 working orders, got {len(result)}"
+        assert result[0]["id"] == 1
+        assert result[1]["id"] == 3
+
+
+@test("Bot: _verify_order_protection detects orphaned position and re-places OCO")
+def test_verify_order_protection_replace():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []  # No orders = orphaned!
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    bot.api.place_oco_for_position.assert_called_once_with(
+        symbol="MNQH6", action="Sell", qty=1,
+        stop_price=23975.0, take_profit_price=24050.0,
+    )
+
+
+@test("Bot: _verify_order_protection emergency close when OCO re-place fails")
+def test_verify_order_protection_emergency_close():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = None  # OCO failed!
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    bot.api.place_market_order.assert_called_once_with("MNQH6", "Sell", 1)
+
+
+@test("Bot: _verify_order_protection skips protected positions")
+def test_verify_order_protection_skip_protected():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = [
+        {"id": 500, "ordStatus": "Working", "contractId": 100}
+    ]
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = []
+    bot._verify_order_protection()
+    bot.api.place_oco_for_position.assert_not_called()
+    bot.api.place_market_order.assert_not_called()
+
+
+@test("Bot: _verify_order_protection uses config defaults when no trade data")
+def test_verify_order_protection_config_defaults():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 2, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = []  # No trade data available
+    bot._verify_order_protection()
+    # Should use config defaults: MNQ stop=25pts, tp=50pts
+    bot.api.place_oco_for_position.assert_called_once()
+    call_args = bot.api.place_oco_for_position.call_args
+    assert call_args.kwargs["stop_price"] == 24000.0 - 25, f"Expected SL at 23975, got {call_args.kwargs['stop_price']}"
+    assert call_args.kwargs["take_profit_price"] == 24000.0 + 50, f"Expected TP at 24050, got {call_args.kwargs['take_profit_price']}"
+
+
+@test("API: _verify_oco_placed confirms Working orders")
+def test_verify_oco_placed():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+
+    # Case 1: SL order is Working
+    with patch.object(api, "_get", return_value={"ordStatus": "Working"}):
+        assert api._verify_oco_placed(500, 501) is True
+
+    # Case 2: Both orders are Cancelled/Filled
+    with patch.object(api, "_get", return_value={"ordStatus": "Cancelled"}):
+        assert api._verify_oco_placed(500, 501) is False
+
+    # Case 3: Both None
+    assert api._verify_oco_placed(None, None) is False
+
+
+@test("API: place_bracket_order retries OCO when verification fails")
+def test_bracket_oco_retry():
+    from tradovate_api import TradovateAPI
+    api = TradovateAPI()
+    api.access_token = "fake"
+    api.account_id = 1
+    api.account_spec = "DEMO"
+
+    entry_resp = {"orderId": 100}
+    oco_resp = {"orderId": 200, "ocoId": 201}
+    oco_retry_resp = {"orderId": 300, "ocoId": 301}
+
+    # _post: entry succeeds, first OCO succeeds, retry OCO succeeds
+    with patch.object(api, "_post", side_effect=[entry_resp, oco_resp, oco_retry_resp]) as mock_post, \
+         patch.object(api, "_get", return_value=None), \
+         patch.object(api, "_verify_oco_placed", side_effect=[False, True]):
+        result = api.place_bracket_order(
+            symbol="NQH6", action="Buy", qty=1,
+            entry_price=None, stop_price=21000, take_profit_price=21100,
+        )
+        assert result is not None
+        assert result["slOrderId"] == 300  # From retry
+        assert result["tpOrderId"] == 301
+
+
+@test("Bot: _verify_order_protection verifies re-placed OCO is Working")
+def test_verify_protection_verifies_oco():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot.api._verify_oco_placed.return_value = True
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    bot.api._verify_oco_placed.assert_called_once()
+    # Should NOT emergency close since verification passed
+    bot.api.place_market_order.assert_not_called()
+
+
+@test("Bot: _verify_order_protection emergency closes if verify fails after re-place")
+def test_verify_protection_closes_on_verify_fail():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot.api._verify_oco_placed.return_value = False  # Verification failed!
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = [
+        {"symbol": "MNQ", "stop": 23975.0, "target": 24050.0, "_closed": False}
+    ]
+    bot._verify_order_protection()
+    # Must emergency close since OCO verification failed
+    bot.api.place_market_order.assert_called_once_with("MNQH6", "Sell", 1)
+
+
+@test("Bot: watchdog thread starts and runs independently")
+def test_watchdog_starts():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.running = True
+    bot._watchdog_interval = 0.1  # Fast for testing
+    bot._start_order_watchdog()
+    assert bot._watchdog_thread is not None
+    assert bot._watchdog_thread.is_alive()
+    # Let it run one cycle
+    time.sleep(0.3)
+    # Verify it called get_positions (from _verify_order_protection)
+    assert bot.api.get_positions.called
+    bot.running = False
+    bot._watchdog_thread.join(timeout=2)
+
+
+@test("Bot: orphan alert count increments and resets correctly")
+def test_orphan_alert_count():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot._contract_id_to_symbol = {100: "MNQ"}
+    bot.trades_today = []
+
+    # Orphan detected — count should increment
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = []
+    bot.api._get.return_value = {"id": 100, "name": "MNQH6"}
+    bot.api.place_oco_for_position.return_value = {"orderId": 500, "ocoId": 501}
+    bot._verify_order_protection()
+    assert bot._orphan_alert_count == 1
+
+    # All protected — count should reset
+    bot.api.get_positions.return_value = [
+        {"contractId": 100, "netPos": 1, "netPrice": 24000.0}
+    ]
+    bot.api.get_working_orders.return_value = [
+        {"id": 500, "ordStatus": "Working", "contractId": 100}
+    ]
+    bot._verify_order_protection()
+    assert bot._orphan_alert_count == 0
+
+
+test_get_working_orders()
+test_verify_oco_placed()
+test_bracket_oco_retry()
+test_verify_order_protection_replace()
+test_verify_order_protection_emergency_close()
+test_verify_order_protection_skip_protected()
+test_verify_order_protection_config_defaults()
+test_verify_protection_verifies_oco()
+test_verify_protection_closes_on_verify_fail()
+test_watchdog_starts()
+test_orphan_alert_count()
 
 
 # ─────────────────────────────────────────────

@@ -136,6 +136,12 @@ class TradeJournal:
         exit_reason: str = "signal",
     ):
         """Record a trade exit."""
+        if exit_price == 0 and pnl == 0:
+            logger.warning(
+                "Journal: recording exit for %s with exit_price=0 AND pnl=0 — "
+                "fill data may be missing. Check _sync_fills() logic.",
+                trade_id,
+            )
         for trade in reversed(self.trades):
             if trade["id"] == trade_id and trade["status"] == "open":
                 trade["exit_price"] = exit_price
@@ -171,6 +177,56 @@ class TradeJournal:
                 return
 
         logger.warning("Journal: trade_id %s not found for exit", trade_id)
+
+    def patch_entry_price(self, symbol: str, entry_price: float):
+        """Patch entry_price for the most recent open trade on a symbol (fills market order price).
+
+        Handles both None and 0 entry prices. Only patches open trades to avoid
+        corrupting already-closed trades.
+        """
+        if not entry_price:
+            return
+        for trade in reversed(self.trades):
+            if trade["symbol"] == symbol and trade["status"] == "open" \
+               and (not trade.get("entry_price") or trade["entry_price"] == 0):
+                trade["entry_price"] = entry_price
+                self._save()
+                logger.info("Journal: patched entry_price for %s → %.4f", trade["id"], entry_price)
+                return
+
+    def patch_closed_entry_price(self, trade_id: str, entry_price: float):
+        """Patch entry_price for an already-closed trade and recalculate P&L.
+
+        Used when the deferred fill patch discovers the entry fill price after
+        the trade has already been closed by _sync_fills.
+        """
+        if not entry_price:
+            return
+        for trade in reversed(self.trades):
+            if trade["id"] == trade_id and (not trade.get("entry_price") or trade["entry_price"] == 0):
+                trade["entry_price"] = entry_price
+                # Recalculate P&L if we have both entry and exit prices
+                if trade.get("exit_price") and trade["exit_price"] != 0:
+                    qty = trade.get("qty", 1)
+                    spec = config.CONTRACT_SPECS.get(trade["symbol"], {})
+                    pv = spec.get("point_value", 1)
+                    if trade["direction"] == "Buy":
+                        trade["pnl"] = round((trade["exit_price"] - entry_price) * qty * pv, 2)
+                    else:
+                        trade["pnl"] = round((entry_price - trade["exit_price"]) * qty * pv, 2)
+                    # Recalculate R-multiple
+                    if trade.get("stop_loss"):
+                        risk = abs(entry_price - trade["stop_loss"]) * qty * pv
+                        trade["r_multiple"] = trade["pnl"] / risk if risk else 0
+                    result = "WIN" if trade["pnl"] > 0 else "LOSS" if trade["pnl"] < 0 else "FLAT"
+                    logger.info(
+                        "Journal: patched closed trade %s entry=%.4f exit=%.4f pnl=%.2f (%s)",
+                        trade_id, entry_price, trade["exit_price"], trade["pnl"], result,
+                    )
+                else:
+                    logger.info("Journal: patched closed trade %s entry=%.4f (no exit price yet)", trade_id, entry_price)
+                self._save()
+                return
 
     def record_exit_by_symbol(self, symbol: str, exit_price: float, pnl: float, exit_reason: str = "signal"):
         """Record exit for the most recent open trade on a symbol."""

@@ -172,8 +172,28 @@ class RiskManager:
     # Rule checks
     # ─────────────────────────────────────────
 
+    # Drawdown warning thresholds (distance from floor)
+    _DRAWDOWN_WARN_500 = False  # Logged once per session
+    _DRAWDOWN_WARN_250 = False
+
     def _check_drawdown(self, equity: float):
         """Lock trading if equity breaches the trailing drawdown floor."""
+        distance = equity - self.drawdown_floor
+
+        # Early warnings (log once per threshold per session)
+        if distance < 250 and not self._DRAWDOWN_WARN_250:
+            logger.critical(
+                "DRAWDOWN CRITICAL: only $%.0f from floor! equity=%.2f floor=%.2f",
+                distance, equity, self.drawdown_floor,
+            )
+            self._DRAWDOWN_WARN_250 = True
+        elif distance < 500 and not self._DRAWDOWN_WARN_500:
+            logger.warning(
+                "DRAWDOWN WARNING: $%.0f from floor. equity=%.2f floor=%.2f",
+                distance, equity, self.drawdown_floor,
+            )
+            self._DRAWDOWN_WARN_500 = True
+
         if equity <= self.drawdown_floor:
             self._lock(
                 f"DRAWDOWN BREACH: equity {equity:.2f} <= floor {self.drawdown_floor:.2f}"
@@ -292,6 +312,11 @@ class RiskManager:
         # Cap at available contract slots
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
+
+        # Per-symbol hard cap (prevents over-sizing on low-risk-per-contract symbols)
+        max_qty = spec.get("max_qty")
+        if max_qty is not None:
+            contracts = min(contracts, max_qty)
 
         # At least 1 if we have budget, at most max_contracts
         contracts = max(contracts, 0)

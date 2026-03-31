@@ -1,0 +1,282 @@
+name: Morning Trading Check
+
+# Runs at market open and verifies the bot is healthy AND trading.
+# Phase 1 (09:45 ET): Health check — process, auth, balance, data
+# Phase 2 (10:15 ET): Trading check — signals generated, no errors
+# Phase 3 (11:00 ET): Final check — confirm actual trades executed
+# Creates a GitHub issue if any check fails.
+
+on:
+  schedule:
+    # 09:45 ET = 13:45 UTC (Phase 1 — bot should be running and warmed up)
+    - cron: '45 13 * * 1-5'
+    # 10:15 ET = 14:15 UTC (Phase 2 — bot should have generated signals)
+    - cron: '15 14 * * 1-5'
+    # 11:00 ET = 15:00 UTC (Phase 3 — confirm trades or flag concern)
+    - cron: '0 15 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  BOT_DIR: /root/tradovate-bot
+
+jobs:
+  trading-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Determine check phase
+        id: phase
+        run: |
+          HOUR_UTC=$(date -u +%H)
+          MIN_UTC=$(date -u +%M)
+          # 13:xx = Phase 1, 14:xx = Phase 2, 15:xx+ = Phase 3
+          if [ "$HOUR_UTC" -le 13 ]; then
+            echo "phase=1" >> $GITHUB_OUTPUT
+            echo "phase_name=Health Check (09:45 ET)" >> $GITHUB_OUTPUT
+          elif [ "$HOUR_UTC" -le 14 ]; then
+            echo "phase=2" >> $GITHUB_OUTPUT
+            echo "phase_name=Signal Check (10:15 ET)" >> $GITHUB_OUTPUT
+          else
+            echo "phase=3" >> $GITHUB_OUTPUT
+            echo "phase_name=Trading Check (11:00 ET)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: SSH health & trading check
+        if: vars.SERVER_HOST != '' || secrets.VPS_HOST != ''
+        id: check
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.SERVER_HOST || secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || vars.SERVER_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY || secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            #!/bin/bash
+            set -euo pipefail
+            BOT_DIR="${{ env.BOT_DIR }}"
+            PHASE="${{ steps.phase.outputs.phase }}"
+
+            echo "=== Morning Trading Check — Phase $PHASE ==="
+            echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+
+            FAILURES=""
+            WARNINGS=""
+
+            # ── Check 1: Bot process ──
+            SERVICE="tradovate-bot"
+            if systemctl is-active --quiet "$SERVICE"; then
+              echo "[PASS] Bot process: RUNNING"
+              UPTIME=$(systemctl show "$SERVICE" --property=ActiveEnterTimestamp --value)
+              echo "  Uptime since: $UPTIME"
+            else
+              echo "[FAIL] Bot process: DOWN"
+              FAILURES="${FAILURES}Bot process is DOWN\n"
+              # Auto-restart
+              echo "  Attempting restart..."
+              systemctl restart "$SERVICE"
+              sleep 5
+              if systemctl is-active --quiet "$SERVICE"; then
+                echo "  Restart: SUCCESS"
+                WARNINGS="${WARNINGS}Bot was down and auto-restarted\n"
+              else
+                echo "  Restart: FAILED"
+                FAILURES="${FAILURES}Auto-restart FAILED\n"
+              fi
+            fi
+
+            # ── Check 2: Live status file freshness ──
+            LIVE_STATUS="$BOT_DIR/live_status.json"
+            if [ -f "$LIVE_STATUS" ]; then
+              AGE=$(($(date +%s) - $(stat -c %Y "$LIVE_STATUS")))
+              if [ "$AGE" -lt 120 ]; then
+                echo "[PASS] Live status: fresh (${AGE}s old)"
+              else
+                echo "[WARN] Live status: stale (${AGE}s old)"
+                WARNINGS="${WARNINGS}Live status is ${AGE}s old\n"
+              fi
+
+              # Parse live_status.json
+              BALANCE=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('balance', 0))" 2>/dev/null || echo "0")
+              LOCKED=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('locked', False))" 2>/dev/null || echo "Unknown")
+              INITIALIZED=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('balance_initialized', False))" 2>/dev/null || echo "Unknown")
+              TRADES=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('trades_today', 0))" 2>/dev/null || echo "0")
+              DAY_PNL=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('day_pnl', 0))" 2>/dev/null || echo "0")
+              SYMBOLS=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(','.join(d.get('active_symbols', [])))" 2>/dev/null || echo "")
+              DATA_SRC=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('market_data_source', 'unknown'))" 2>/dev/null || echo "unknown")
+
+              # ── Check 3: Balance initialized ──
+              if [ "$INITIALIZED" = "True" ]; then
+                echo "[PASS] Balance initialized: $BALANCE"
+              else
+                echo "[FAIL] Balance NOT initialized"
+                FAILURES="${FAILURES}Balance not initialized — day_pnl will be wrong\n"
+              fi
+
+              # ── Check 4: Not locked ──
+              if [ "$LOCKED" = "False" ]; then
+                echo "[PASS] Trading: not locked"
+              else
+                LOCK_REASON=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('lock_reason', 'unknown'))" 2>/dev/null || echo "unknown")
+                echo "[FAIL] Trading LOCKED: $LOCK_REASON"
+                FAILURES="${FAILURES}Trading locked: $LOCK_REASON\n"
+              fi
+
+              # ── Check 5: Active symbols ──
+              if echo "$SYMBOLS" | grep -q "MNQ" && echo "$SYMBOLS" | grep -q "MGC"; then
+                echo "[PASS] Active symbols: $SYMBOLS"
+              else
+                echo "[WARN] Unexpected symbols: $SYMBOLS"
+                WARNINGS="${WARNINGS}Expected MNQ,MGC in symbols but got: $SYMBOLS\n"
+              fi
+
+              # ── Check 6: Market data ──
+              echo "[INFO] Market data source: $DATA_SRC"
+
+            else
+              echo "[FAIL] Live status file not found"
+              FAILURES="${FAILURES}live_status.json not found\n"
+            fi
+
+            # ── Check 7: Recent log errors ──
+            RECENT_ERRORS=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "\[ERROR\]" || echo "0")
+            if [ "$RECENT_ERRORS" -eq 0 ]; then
+              echo "[PASS] Log errors (30min): 0"
+            else
+              echo "[WARN] Log errors (30min): $RECENT_ERRORS"
+              WARNINGS="${WARNINGS}${RECENT_ERRORS} errors in last 30 minutes\n"
+              # Show last few errors
+              journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep "\[ERROR\]" | tail -3
+            fi
+
+            # ── Check 8: Recent signals (Phase 2+) ──
+            if [ "$PHASE" -ge 2 ]; then
+              SIGNALS=$(journalctl -u tradovate-bot --since "60 min ago" --no-pager 2>/dev/null | grep -c "SIGNAL:" || echo "0")
+              if [ "$SIGNALS" -gt 0 ]; then
+                echo "[PASS] Signals in last hour: $SIGNALS"
+              else
+                echo "[WARN] No signals in last hour"
+                WARNINGS="${WARNINGS}No signals generated in 60+ minutes since open\n"
+              fi
+            fi
+
+            # ── Check 9: Actual trades (Phase 3) ──
+            if [ "$PHASE" -ge 3 ]; then
+              if [ "$TRADES" -gt 0 ]; then
+                echo "[PASS] Trades today: $TRADES (P&L: $DAY_PNL)"
+              else
+                echo "[WARN] No trades yet (90+ min since open)"
+                WARNINGS="${WARNINGS}No trades executed 90+ minutes after market open\n"
+              fi
+            fi
+
+            # ── Check 10: Token valid ──
+            TOKEN_FILE="$BOT_DIR/.tradovate_token.json"
+            if [ -f "$TOKEN_FILE" ]; then
+              TOKEN_AGE=$(($(date +%s) - $(stat -c %Y "$TOKEN_FILE")))
+              if [ "$TOKEN_AGE" -lt 5400 ]; then
+                echo "[PASS] Token: fresh (${TOKEN_AGE}s old)"
+              else
+                echo "[WARN] Token: old (${TOKEN_AGE}s)"
+                WARNINGS="${WARNINGS}Token is ${TOKEN_AGE}s old (>90min)\n"
+              fi
+            fi
+
+            echo ""
+            echo "================================"
+
+            # ── Verdict ──
+            if [ -n "$FAILURES" ]; then
+              echo "VERDICT: FAILED"
+              echo "Failures:"
+              echo -e "$FAILURES"
+              if [ -n "$WARNINGS" ]; then
+                echo "Warnings:"
+                echo -e "$WARNINGS"
+              fi
+              exit 1
+            elif [ -n "$WARNINGS" ]; then
+              echo "VERDICT: WARNING"
+              echo "Warnings:"
+              echo -e "$WARNINGS"
+              # Exit 0 — warnings don't block, but we log them
+            else
+              echo "VERDICT: HEALTHY"
+            fi
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const phase = '${{ steps.phase.outputs.phase_name }}';
+            const today = new Date().toISOString().split('T')[0];
+            const title = `BOT ALERT: Morning check failed — ${phase} (${today})`;
+
+            // Check if an alert issue already exists for today
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'bot-alert',
+              per_page: 5,
+            });
+            const todayIssue = existing.data.find(i => i.title.includes(today));
+            if (todayIssue) {
+              // Add comment to existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: todayIssue.number,
+                body: `## ${phase}\n\nCheck failed. See [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.`,
+              });
+              console.log(`Updated existing issue #${todayIssue.number}`);
+            } else {
+              // Create new issue
+              try {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: title,
+                  body: `## Morning Trading Check Failed\n\n**Phase:** ${phase}\n**Date:** ${today}\n\nSee [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.\n\nThis issue was created automatically by the morning trading check workflow.`,
+                  labels: ['bot-alert'],
+                });
+              } catch (e) {
+                // Label might not exist — create without it
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: title,
+                  body: `## Morning Trading Check Failed\n\n**Phase:** ${phase}\n**Date:** ${today}\n\nSee [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.\n\nThis issue was created automatically by the morning trading check workflow.`,
+                });
+              }
+            }
+
+      - name: Summary
+        if: always()
+        run: |
+          PHASE="${{ steps.phase.outputs.phase }}"
+          PHASE_NAME="${{ steps.phase.outputs.phase_name }}"
+          echo "## Morning Trading Check — $PHASE_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "### Result: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Result: FAILED — GitHub Issue created" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Phase | Time (ET) | Checks |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 1 — Health | 09:45 | Process, auth, balance, locked, symbols |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2 — Signals | 10:15 | All Phase 1 + signal generation |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3 — Trading | 11:00 | All Phase 2 + actual trades executed |" >> $GITHUB_STEP_SUMMARY

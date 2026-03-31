@@ -55,6 +55,17 @@ fi
 # Auto-detect repo from git remote
 GITHUB_REPO="${GITHUB_REPO:-$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')}"
 
+# ── 0d. Ensure git remote uses HTTPS (SSH protocol may fail without deploy key) ──
+CURRENT_URL=$(git remote get-url origin 2>/dev/null || echo "")
+if echo "$CURRENT_URL" | grep -q "git@github.com"; then
+    HTTPS_URL="https://github.com/${GITHUB_REPO}.git"
+    echo "[$(date)] Switching remote from SSH to HTTPS: $HTTPS_URL"
+    git remote set-url origin "$HTTPS_URL"
+elif [ -n "${GH_PAT:-}" ] && ! echo "$CURRENT_URL" | grep -q "x-access-token"; then
+    # If PAT is available and not already embedded, use authenticated HTTPS
+    git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPO}.git"
+fi
+
 # ── 1. Pull latest code ──
 echo "[$(date)] Checking for updates on $BRANCH..."
 if git fetch origin "$BRANCH" 2>/dev/null; then
@@ -100,18 +111,38 @@ if [ -f "$PYTHON" ] && ! "$PYTHON" -c "import playwright" 2>/dev/null; then
 fi
 
 # ── 1c. Auto-heal: restart bot if it's not running ──
+# Circuit breaker: track restart attempts to detect crash loops
+RESTART_LOG="$BOT_DIR/.restart_history"
 if ! systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
-    echo "[$(date)] Bot is DOWN — attempting auto-restart..."
-    systemctl restart "$SERVICE" 2>/dev/null
-    sleep 5
-    if systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
-        echo "[$(date)] Auto-restart SUCCEEDED."
+    # Record this restart attempt
+    echo "$(date +%s)" >> "$RESTART_LOG" 2>/dev/null || true
+
+    # Count restarts in last 30 minutes (6 cron cycles)
+    RECENT_RESTARTS=0
+    CUTOFF=$(($(date +%s) - 1800))
+    if [ -f "$RESTART_LOG" ]; then
+        RECENT_RESTARTS=$(awk -v cutoff="$CUTOFF" '$1 > cutoff' "$RESTART_LOG" 2>/dev/null | wc -l)
+        # Prune old entries (keep last 30 min only)
+        awk -v cutoff="$CUTOFF" '$1 > cutoff' "$RESTART_LOG" > "${RESTART_LOG}.tmp" 2>/dev/null && \
+            mv "${RESTART_LOG}.tmp" "$RESTART_LOG" 2>/dev/null || true
+    fi
+
+    if [ "$RECENT_RESTARTS" -ge 5 ]; then
+        echo "[$(date)] CRASH LOOP DETECTED: $RECENT_RESTARTS restarts in 30 min. Skipping restart."
+        echo "[$(date)] Fix the issue manually, then: rm $RESTART_LOG && systemctl restart $SERVICE"
     else
-        echo "[$(date)] systemctl restart FAILED. Falling back to keep_alive.sh..."
-        if [ -f "$BOT_DIR/keep_alive.sh" ] && ! pgrep -f "keep_alive.sh" > /dev/null 2>&1; then
-            cd "$BOT_DIR"
-            nohup bash keep_alive.sh >> /var/log/tradovate-keepalive.log 2>&1 &
-            echo "[$(date)] keep_alive.sh launched as fallback (PID=$!)"
+        echo "[$(date)] Bot is DOWN (restart #$RECENT_RESTARTS in 30min) — attempting auto-restart..."
+        systemctl restart "$SERVICE" 2>/dev/null
+        sleep 5
+        if systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
+            echo "[$(date)] Auto-restart SUCCEEDED."
+        else
+            echo "[$(date)] systemctl restart FAILED. Falling back to keep_alive.sh..."
+            if [ -f "$BOT_DIR/keep_alive.sh" ] && ! pgrep -f "keep_alive.sh" > /dev/null 2>&1; then
+                cd "$BOT_DIR"
+                nohup bash keep_alive.sh >> /var/log/tradovate-keepalive.log 2>&1 &
+                echo "[$(date)] keep_alive.sh launched as fallback (PID=$!)"
+            fi
         fi
     fi
 fi

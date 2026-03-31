@@ -672,10 +672,11 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
+            actual_entry = result.get("avgPrice") or signal.entry_price or 0
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=actual_entry,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -891,6 +892,17 @@ class TradovateBot:
 
             self.risk.open_contracts = total_open
 
+            # Detect positions that just closed (SL/TP hit) → set strategy cooldown
+            if not hasattr(self, "_prev_open_symbols"):
+                self._prev_open_symbols = set()
+            just_closed = self._prev_open_symbols - open_base_symbols
+            for sym in just_closed:
+                strategy = self.strategies.get(sym)
+                if strategy and hasattr(strategy, "last_any_trade_time"):
+                    strategy.last_any_trade_time = now_et()
+                    logger.info("Position closed for %s — strategy cooldown set", sym)
+            self._prev_open_symbols = open_base_symbols.copy()
+
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
@@ -1087,11 +1099,15 @@ def main():
     # Only SIGINT/SIGTERM (from systemd stop) will break this loop.
     bot = None
     consecutive_crashes = 0
+    _crash_timestamps: list[float] = []
+    _MAX_CRASHES_IN_WINDOW = 5
+    _CRASH_WINDOW_SECONDS = 600  # 10 minutes
     while not _shutdown_requested:
         try:
             bot = TradovateBot(dry_run=args.dry_run)
             bot.start()
             consecutive_crashes = 0  # Successful session resets crash counter
+            _crash_timestamps.clear()
 
             if _shutdown_requested:
                 break
@@ -1112,6 +1128,20 @@ def main():
 
         except Exception as exc:
             consecutive_crashes += 1
+            _crash_timestamps.append(time.time())
+
+            # Crash loop detection: if 5+ crashes in 10 minutes, give up
+            recent = [t for t in _crash_timestamps if time.time() - t < _CRASH_WINDOW_SECONDS]
+            _crash_timestamps[:] = recent  # prune old entries
+            if len(recent) >= _MAX_CRASHES_IN_WINDOW:
+                logger.critical(
+                    "!!! CRASH LOOP DETECTED: %d crashes in %d seconds. "
+                    "Exiting to prevent infinite restart loop. "
+                    "Fix the issue and restart manually or via cron.",
+                    len(recent), _CRASH_WINDOW_SECONDS,
+                )
+                sys.exit(2)  # exit code 2 = crash loop (distinguishable from normal exit)
+
             restart_delay = min(30 * consecutive_crashes, 300)  # 30s, 60s, ... up to 5min
             logger.critical(
                 "!!! BOT CRASHED (attempt %d): %s. Restarting in %ds...",

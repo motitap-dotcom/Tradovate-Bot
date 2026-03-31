@@ -108,8 +108,50 @@ jobs:
             echo "--- Service status ---"
             if systemctl is-active --quiet "$SERVICE"; then
               echo "SERVICE: RUNNING (PID $(systemctl show "$SERVICE" --property=MainPID --value))"
-              # Show first log lines to verify auth works
-              sleep 10
+              # Wait for bot to complete startup (auth + contract resolution + warmup)
+              echo "Waiting 45s for bot startup to complete..."
+              sleep 45
+              echo ""
+              echo "--- Post-startup verification ---"
+
+              # Check if bot is still running after 45s
+              if ! systemctl is-active --quiet "$SERVICE"; then
+                echo "DEPLOY FAILED: Bot crashed during startup!"
+                journalctl -u "$SERVICE" --no-pager -n 30
+                exit 1
+              fi
+
+              # Scan logs for fatal errors
+              BOOT_LOGS=$(journalctl -u "$SERVICE" --since "60 sec ago" --no-pager 2>/dev/null || echo "")
+              FATAL_ERRORS=""
+              for pattern in "Authentication failed after" "ImportError" "SyntaxError" "ModuleNotFoundError" "FATAL" "sys.exit"; do
+                if echo "$BOOT_LOGS" | grep -qi "$pattern"; then
+                  FATAL_ERRORS="${FATAL_ERRORS}Found: $pattern\n"
+                fi
+              done
+
+              if [ -n "$FATAL_ERRORS" ]; then
+                echo "DEPLOY WARNING: Errors detected in startup logs:"
+                echo -e "$FATAL_ERRORS"
+                echo ""
+                echo "--- Full boot logs ---"
+                echo "$BOOT_LOGS"
+                # Don't exit 1 — bot may have recovered. But flag it clearly.
+              fi
+
+              # Verify key startup milestones in logs
+              if echo "$BOOT_LOGS" | grep -q "Authenticated successfully\|DRY RUN mode"; then
+                echo "AUTH: OK"
+              else
+                echo "AUTH: NOT CONFIRMED (may still be authenticating)"
+              fi
+
+              if echo "$BOOT_LOGS" | grep -q "Entering main loop"; then
+                echo "MAIN LOOP: STARTED"
+              else
+                echo "MAIN LOOP: NOT REACHED YET"
+              fi
+
               echo ""
               echo "--- Recent bot logs ---"
               journalctl -u "$SERVICE" --no-pager -n 20 | tail -20
