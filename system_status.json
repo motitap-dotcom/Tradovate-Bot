@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-01T16:32:11Z",
+  "timestamp": "2026-04-01T17:53:55Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,66 +11,35 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 56616.64,
+    "totalCashValue": 56521.1,
     "initialMargin": 0.0,
-    "netLiq": 56531.64
+    "netLiq": 56521.1
   },
-  "positions": [
-    {
-      "contractId": 4327108,
-      "netPos": 2,
-      "netPrice": 6647.0
-    }
-  ],
-  "orders": [
-    {
-      "id": 409583848093,
-      "action": "Sell",
-      "qty": null,
-      "status": "Working"
-    },
-    {
-      "id": 409583848078,
-      "action": "Sell",
-      "qty": null,
-      "status": "Working"
-    },
-    {
-      "id": 409583848039,
-      "action": "Buy",
-      "qty": null,
-      "status": "Working"
-    },
-    {
-      "id": 409583848092,
-      "action": "Sell",
-      "qty": null,
-      "status": "Working"
-    }
-  ],
+  "positions": [],
+  "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "3447187",
-    "uptime_since": "Wed 2026-04-01 15:15:09 UTC",
+    "bot_pid": "3464924",
+    "uptime_since": "Wed 2026-04-01 16:35:35 UTC",
     "disk": "18%",
-    "memory": "1061MB/7941MB (13%)",
+    "memory": "1059MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "c6e5876 status: 2026-04-01 15:11 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "3e91e73 status: 2026-04-01 16:32 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-04-01T16:31:59.343471+00:00",
-      "timestamp_et": "2026-04-01T12:31:59.343494-04:00",
-      "balance": 56516.64,
-      "equity": 56516.64,
-      "day_pnl": -149.62000000000262,
+      "timestamp": "2026-04-01T17:53:45.663253+00:00",
+      "timestamp_et": "2026-04-01T13:53:45.663272-04:00",
+      "balance": 56521.1,
+      "equity": 56521.1,
+      "day_pnl": -48.63999999999942,
       "unrealized_pnl": 0.0,
-      "peak_balance": 56797.34,
-      "drawdown_floor": 54297.34,
-      "distance_to_floor": 2219.300000000003,
+      "peak_balance": 56588.26,
+      "drawdown_floor": 54088.26,
+      "distance_to_floor": 2432.8399999999965,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2549.6200000000026,
-      "open_contracts": 2,
-      "trades_today": 15,
+      "daily_profit_remaining": 2448.6399999999994,
+      "open_contracts": 0,
+      "trades_today": 9,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -88,25 +57,25 @@
       "websocket_connected": false,
       "market_data_source": "rest"
     },
-    "journal_tail": "2026-04-01 16:18:59,739 [INFO] tradovate_api: REST poller health: 2446 candles dispatched, 5 symbols tracked, 732 polls\n2026-04-01 16:19:04,847 [INFO] strategies: ORB MES LONG at 6648.25 | window=5m | trade 9/15 | SL=6642.25 TP=6660.25\n2026-04-01 16:19:04,847 [INFO] risk_manager: Position size for MES: 2 contracts | budget=250.00 | risk/contract=30.00\n2026-04-01 16:19:04,847 [INFO] bot: SIGNAL: Buy MES 2 @ market | SL=6642.2500 TP=6660.2500 | ORB-5m long breakout above 6647.00\n2026-04-01 16:19:04,847 [INFO] tradovate_api: Placing bracket Buy 2 MESM6 @ Market | SL=6642.25 TP=6660.25 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Buy', 'symbol': 'MESM6', 'orderQty': 2, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}\n2026-04-01 16:19:05,019 [INFO] tradovate_api: Entry order placed: orderId=409583848113 status=Unknown | full_response={'orderId': 409583848113}\n2026-04-01 16:19:06,183 [INFO] tradovate_api: Entry order check: orderId=409583848113 status=Filled filled=0 avgPrice=0 | detail={'id': 409583848113, 'accountId': 39996695, 'contractId': 4327108, 'timestamp': '2026-04-01T16:19:04.956Z', 'action': 'Buy', 'ordStatus': 'Filled', 'executionProviderId': 12, 'archived': False, 'external': False, 'admin': False}\n2026-04-01 16:19:06,353 [INFO] tradovate_api: OCO placed: SL orderId=409583848122 TP orderId=409583848123\n2026-04-01 16:19:06,355 [INFO] trade_journal: Journal: ENTRY MES_20260401_161906 Buy MES @ 0.00 x2 (ORB-5m long breakout above 6647.00)\n2026-04-01 16:19:06,356 [INFO] bot: Order placed: orderId=409583848113 (journal: MES_20260401_161906)\n2026-04-01 16:19:09,430 [INFO] bot: Status | balance=56752.94 | day_pnl=86.68 | to_floor=2455.60 | contracts=6/10 | trades=15/40 | locked=False\n2026-04-01 16:19:40,144 [INFO] bot: Status | balance=56730.44 | day_pnl=64.18 | to_floor=2433.10 | contracts=6/10 | trades=15/40 | locked=False\n2026-04-01 16:20:03,357 [INFO] tradovate_api: REST poller health: 2476 candles dispatc",
-    "bot_log_tail": "2026-04-01 16:25:17,916 [INFO] bot: Status | balance=56611.04 | day_pnl=-55.22 | to_floor=2313.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:25:48,597 [INFO] bot: Status | balance=56616.04 | day_pnl=-50.22 | to_floor=2318.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:26:15,902 [INFO] tradovate_api: REST poller health: 2657 candles dispatched, 5 symbols tracked, 816 polls\n2026-04-01 16:26:19,268 [INFO] bot: Status | balance=56616.04 | day_pnl=-50.22 | to_floor=2318.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:26:49,960 [INFO] bot: Status | balance=56606.04 | day_pnl=-60.22 | to_floor=2308.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:27:17,748 [INFO] tradovate_api: REST poller health: 2682 candles dispatched, 5 symbols tracked, 828 polls\n2026-04-01 16:27:23,058 [INFO] bot: Status | balance=56591.04 | day_pnl=-75.22 | to_floor=2293.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:27:53,752 [INFO] bot: Status | balance=56626.04 | day_pnl=-40.22 | to_floor=2328.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:28:20,185 [INFO] tradovate_api: REST poller health: 2716 candles dispatched, 5 symbols tracked, 840 polls\n2026-04-01 16:28:24,437 [INFO] bot: Status | balance=56636.04 | day_pnl=-30.22 | to_floor=2338.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:28:55,148 [INFO] bot: Status | balance=56591.04 | day_pnl=-75.22 | to_floor=2293.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:29:22,435 [INFO] tradovate_api: REST poller health: 2746 candles dispatched, 5 symbols tracked, 852 polls\n2026-04-01 16:29:25,862 [INFO] bot: Status | balance=56571.04 | day_pnl=-95.22 | to_floor=2273.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:29:56,523 [INFO] bot: Status | balance=56556.04 | day_pnl=-110.22 | to_floor=2258.70 | contracts=4/10 | trades=15/40 | locked=False\n2026-04-01 16:30:25,339 [INFO] tradovate_api: REST poller health: 277",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 2\n  Signals today: 3\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 6s)\n  Balance: $56556.04\n  Day P&L: $-110.22000000000116\n  Trades today: 15\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.2%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr  1 16:30:03 UTC 2026] Status: bot_active=true, pid=3447187\n[Wed Apr  1 16:30:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-04-01 17:37:51,723 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:38:18,107 [INFO] tradovate_api: REST poller health: 1766 candles dispatched, 5 symbols tracked, 720 polls\n2026-04-01 17:38:22,404 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:38:53,067 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:39:21,367 [INFO] tradovate_api: REST poller health: 1797 candles dispatched, 5 symbols tracked, 732 polls\n2026-04-01 17:39:23,761 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:39:54,437 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:40:25,134 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:40:25,825 [INFO] tradovate_api: REST poller health: 1825 candles dispatched, 5 symbols tracked, 744 polls\n2026-04-01 17:40:55,135 [INFO] tradovate_api: Token expiring in 880s. Renewing...\n2026-04-01 17:40:55,318 [INFO] tradovate_api: Token renewed via demo.tradovateapi.com. Expires: 2026-04-01 19:00:55.256000+00:00\n2026-04-01 17:40:56,017 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:41:26,685 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:41:29,820 [INFO] tradovate_api: REST poller health: 1856 candles dispatched, 5 symbols tracked, 756 polls\n2026-04-01 17:41:57,359 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17",
+    "bot_log_tail": "2026-04-01 17:47:04,360 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:47:37,531 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:47:59,215 [INFO] tradovate_api: REST poller health: 2035 candles dispatched, 5 symbols tracked, 828 polls\n2026-04-01 17:48:08,203 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:48:38,878 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:49:02,332 [INFO] tradovate_api: REST poller health: 2064 candles dispatched, 5 symbols tracked, 840 polls\n2026-04-01 17:49:09,598 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:49:40,304 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:50:04,917 [INFO] tradovate_api: REST poller health: 2094 candles dispatched, 5 symbols tracked, 852 polls\n2026-04-01 17:50:10,962 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:50:41,631 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:51:07,433 [INFO] tradovate_api: REST poller health: 2123 candles dispatched, 5 symbols tracked, 864 polls\n2026-04-01 17:51:12,294 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:51:42,944 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False\n2026-04-01 17:52:09,909 [INFO] tradovate_api: REST poller health: 2154 candles d",
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 5\n  Signals today: 2\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 23s)\n  Balance: $56521.1\n  Day P&L: $-48.63999999999942\n  Trades today: 9\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.2%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr  1 17:50:03 UTC 2026] Status: bot_active=true, pid=3464924\n[Wed Apr  1 17:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-01T16:31:59.343471+00:00",
-      "timestamp_et": "2026-04-01T12:31:59.343494-04:00",
-      "balance": 56516.64,
-      "equity": 56516.64,
-      "day_pnl": -149.62000000000262,
+      "timestamp": "2026-04-01T17:53:45.663253+00:00",
+      "timestamp_et": "2026-04-01T13:53:45.663272-04:00",
+      "balance": 56521.1,
+      "equity": 56521.1,
+      "day_pnl": -48.63999999999942,
       "unrealized_pnl": 0.0,
-      "peak_balance": 56797.34,
-      "drawdown_floor": 54297.34,
-      "distance_to_floor": 2219.300000000003,
+      "peak_balance": 56588.26,
+      "drawdown_floor": 54088.26,
+      "distance_to_floor": 2432.8399999999965,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2549.6200000000026,
-      "open_contracts": 2,
-      "trades_today": 15,
+      "daily_profit_remaining": 2448.6399999999994,
+      "open_contracts": 0,
+      "trades_today": 9,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -125,47 +94,46 @@
       "market_data_source": "rest"
     },
     "token_status": "valid",
-    "token_expiry": "2026-04-01T17:40:10.253000+00:00",
+    "token_expiry": "2026-04-01T19:00:55.256000+00:00",
     "recent_signals": [
-      "2026-04-01 15:47:13,329 [INFO] bot: SIGNAL: Buy MES 2 @ market | SL=6635.7500 TP=6650.7500 | ORB-5m long breakout above 6640.00",
-      "2026-04-01 16:03:14,038 [INFO] bot: SIGNAL: Buy MES 2 @ market | SL=6637.7500 TP=6655.7500 | ORB-15m long breakout above 6642.25",
-      "2026-04-01 16:19:04,847 [INFO] bot: SIGNAL: Buy MES 2 @ market | SL=6642.2500 TP=6660.2500 | ORB-5m long breakout above 6647.00"
+      "2026-04-01 17:18:06,503 [INFO] bot: SIGNAL: Sell MCL 2 @ market | SL=99.4400 TP=98.8400 | VWAP short #4 at 99.2400 (VWAP=99.3168)",
+      "2026-04-01 17:22:09,169 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=99.1500 TP=99.7500 | VWAP long #5 at 99.3500 (VWAP=99.3168)"
     ],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-04-01 16:22:07,722 [INFO] tradovate_api: REST poller health: 2536 candles dispatched, 5 symbols tracked, 768 polls",
-      "2026-04-01 16:22:13,821 [INFO] bot: Status | balance=56677.94 | day_pnl=11.68 | to_floor=2380.60 | contracts=6/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:22:44,506 [INFO] bot: Status | balance=56655.44 | day_pnl=-10.82 | to_floor=2358.10 | contracts=6/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:23:09,763 [INFO] tradovate_api: REST poller health: 2568 candles dispatched, 5 symbols tracked, 780 polls",
-      "2026-04-01 16:23:15,176 [INFO] bot: Status | balance=56670.44 | day_pnl=4.18 | to_floor=2373.10 | contracts=6/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:23:45,844 [INFO] bot: Status | balance=56677.94 | day_pnl=11.68 | to_floor=2380.60 | contracts=6/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:24:11,820 [INFO] tradovate_api: REST poller health: 2597 candles dispatched, 5 symbols tracked, 792 polls",
-      "2026-04-01 16:24:16,544 [INFO] bot: Status | balance=56677.94 | day_pnl=11.68 | to_floor=2380.60 | contracts=6/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:24:47,225 [INFO] bot: Status | balance=56640.44 | day_pnl=-25.82 | to_floor=2343.10 | contracts=6/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:25:13,892 [INFO] tradovate_api: REST poller health: 2629 candles dispatched, 5 symbols tracked, 804 polls",
-      "2026-04-01 16:25:17,916 [INFO] bot: Status | balance=56611.04 | day_pnl=-55.22 | to_floor=2313.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:25:48,597 [INFO] bot: Status | balance=56616.04 | day_pnl=-50.22 | to_floor=2318.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:26:15,902 [INFO] tradovate_api: REST poller health: 2657 candles dispatched, 5 symbols tracked, 816 polls",
-      "2026-04-01 16:26:19,268 [INFO] bot: Status | balance=56616.04 | day_pnl=-50.22 | to_floor=2318.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:26:49,960 [INFO] bot: Status | balance=56606.04 | day_pnl=-60.22 | to_floor=2308.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:27:17,748 [INFO] tradovate_api: REST poller health: 2682 candles dispatched, 5 symbols tracked, 828 polls",
-      "2026-04-01 16:27:23,058 [INFO] bot: Status | balance=56591.04 | day_pnl=-75.22 | to_floor=2293.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:27:53,752 [INFO] bot: Status | balance=56626.04 | day_pnl=-40.22 | to_floor=2328.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:28:20,185 [INFO] tradovate_api: REST poller health: 2716 candles dispatched, 5 symbols tracked, 840 polls",
-      "2026-04-01 16:28:24,437 [INFO] bot: Status | balance=56636.04 | day_pnl=-30.22 | to_floor=2338.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:28:55,148 [INFO] bot: Status | balance=56591.04 | day_pnl=-75.22 | to_floor=2293.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:29:22,435 [INFO] tradovate_api: REST poller health: 2746 candles dispatched, 5 symbols tracked, 852 polls",
-      "2026-04-01 16:29:25,862 [INFO] bot: Status | balance=56571.04 | day_pnl=-95.22 | to_floor=2273.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:29:56,523 [INFO] bot: Status | balance=56556.04 | day_pnl=-110.22 | to_floor=2258.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:30:25,339 [INFO] tradovate_api: REST poller health: 2776 candles dispatched, 5 symbols tracked, 864 polls",
-      "2026-04-01 16:30:27,205 [INFO] bot: Status | balance=56576.04 | day_pnl=-90.22 | to_floor=2278.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:30:57,913 [INFO] bot: Status | balance=56571.04 | day_pnl=-95.22 | to_floor=2273.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:31:27,702 [INFO] tradovate_api: REST poller health: 2805 candles dispatched, 5 symbols tracked, 876 polls",
-      "2026-04-01 16:31:28,620 [INFO] bot: Status | balance=56566.04 | day_pnl=-100.22 | to_floor=2268.70 | contracts=4/10 | trades=15/40 | locked=False",
-      "2026-04-01 16:31:59,341 [INFO] bot: Status | balance=56516.64 | day_pnl=-149.62 | to_floor=2219.30 | contracts=2/10 | trades=15/40 | locked=False"
+      "2026-04-01 17:44:00,064 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:44:30,726 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:44:40,446 [INFO] tradovate_api: REST poller health: 1947 candles dispatched, 5 symbols tracked, 792 polls",
+      "2026-04-01 17:45:01,407 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:45:32,200 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:45:43,876 [INFO] tradovate_api: REST poller health: 1975 candles dispatched, 5 symbols tracked, 804 polls",
+      "2026-04-01 17:46:02,916 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:46:33,654 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:46:45,715 [WARNING] tradovate_api: Yahoo chart request failed for NQ=F: HTTPSConnectionPool(host='query1.finance.yahoo.com', port=443): Read timed out. (read timeout=10)",
+      "2026-04-01 17:46:56,584 [INFO] tradovate_api: REST poller health: 2005 candles dispatched, 5 symbols tracked, 816 polls",
+      "2026-04-01 17:47:04,360 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:47:37,531 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:47:59,215 [INFO] tradovate_api: REST poller health: 2035 candles dispatched, 5 symbols tracked, 828 polls",
+      "2026-04-01 17:48:08,203 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:48:38,878 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:49:02,332 [INFO] tradovate_api: REST poller health: 2064 candles dispatched, 5 symbols tracked, 840 polls",
+      "2026-04-01 17:49:09,598 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:49:40,304 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:50:04,917 [INFO] tradovate_api: REST poller health: 2094 candles dispatched, 5 symbols tracked, 852 polls",
+      "2026-04-01 17:50:10,962 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:50:41,631 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:51:07,433 [INFO] tradovate_api: REST poller health: 2123 candles dispatched, 5 symbols tracked, 864 polls",
+      "2026-04-01 17:51:12,294 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:51:42,944 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:52:09,909 [INFO] tradovate_api: REST poller health: 2154 candles dispatched, 5 symbols tracked, 876 polls",
+      "2026-04-01 17:52:13,624 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:52:44,296 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:53:12,541 [INFO] tradovate_api: REST poller health: 2182 candles dispatched, 5 symbols tracked, 888 polls",
+      "2026-04-01 17:53:14,978 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False",
+      "2026-04-01 17:53:45,662 [INFO] bot: Status | balance=56521.10 | day_pnl=-48.64 | to_floor=2432.84 | contracts=0/10 | trades=9/40 | locked=False"
     ],
     "journal_summary": {
-      "total_trades": 3,
+      "total_trades": 5,
       "wins": 0,
       "losses": 0,
       "win_rate": 0.0,
@@ -181,7 +149,7 @@
       "effective_target": 3000,
       "base_target": 3000,
       "consistency_adjusted": false,
-      "trades_today": 6
+      "trades_today": 9
     },
     "trading_active": true,
     "websocket_connected": false,
@@ -337,25 +305,84 @@
         "slippage_entry": null,
         "mae_points": null,
         "mfe_points": null
+      },
+      {
+        "id": "MES_20260401_163511",
+        "symbol": "MES",
+        "direction": "Sell",
+        "entry_price": 0,
+        "qty": 2,
+        "strategy": "ORBStrategy",
+        "reason": "ORB-15m short breakout below 6647.00",
+        "stop_loss": 6647.0,
+        "take_profit": 6632.0,
+        "entry_time": "2026-04-01T16:35:11.567635+00:00",
+        "entry_hour_et": 12,
+        "entry_day_of_week": "Wednesday",
+        "date": "2026-04-01",
+        "exit_price": null,
+        "pnl": null,
+        "exit_reason": null,
+        "exit_time": null,
+        "status": "open",
+        "r_multiple": null,
+        "duration_minutes": null,
+        "slippage_entry": null,
+        "mae_points": null,
+        "mfe_points": null
+      },
+      {
+        "id": "MCL_20260401_171808",
+        "symbol": "MCL",
+        "direction": "Sell",
+        "entry_price": 0,
+        "qty": 2,
+        "strategy": "VWAPStrategy",
+        "reason": "VWAP short #4 at 99.2400 (VWAP=99.3168)",
+        "stop_loss": 99.43999786376953,
+        "take_profit": 98.83999786376953,
+        "entry_time": "2026-04-01T17:18:08.043713+00:00",
+        "entry_hour_et": 13,
+        "entry_day_of_week": "Wednesday",
+        "date": "2026-04-01",
+        "exit_price": 0,
+        "pnl": 0,
+        "exit_reason": "bracket_fill",
+        "exit_time": "2026-04-01T17:18:20.804915+00:00",
+        "status": "closed",
+        "r_multiple": 0,
+        "duration_minutes": 0.2126867,
+        "slippage_entry": null,
+        "mae_points": null,
+        "mfe_points": null
+      },
+      {
+        "id": "MCL_20260401_172210",
+        "symbol": "MCL",
+        "direction": "Buy",
+        "entry_price": 0,
+        "qty": 2,
+        "strategy": "VWAPStrategy",
+        "reason": "VWAP long #5 at 99.3500 (VWAP=99.3168)",
+        "stop_loss": 99.14999847412109,
+        "take_profit": 99.7499984741211,
+        "entry_time": "2026-04-01T17:22:10.708157+00:00",
+        "entry_hour_et": 13,
+        "entry_day_of_week": "Wednesday",
+        "date": "2026-04-01",
+        "exit_price": 0,
+        "pnl": 0,
+        "exit_reason": "bracket_fill",
+        "exit_time": "2026-04-01T17:32:11.804516+00:00",
+        "status": "closed",
+        "r_multiple": 0,
+        "duration_minutes": 10.01827265,
+        "slippage_entry": null,
+        "mae_points": null,
+        "mfe_points": null
       }
     ],
     "today_fills": [
-      {
-        "id": 409583848139,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6637.75,
-        "timestamp": "2026-04-01T16:31:37.026Z"
-      },
-      {
-        "id": 409583847761,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 98.59,
-        "timestamp": "2026-04-01T13:53:07.384Z"
-      },
       {
         "id": 409583847695,
         "action": "Buy",
@@ -373,20 +400,12 @@
         "timestamp": "2026-04-01T15:47:13.435Z"
       },
       {
-        "id": 409583848010,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 4,
-        "price": 99.2,
-        "timestamp": "2026-04-01T15:15:08.789Z"
-      },
-      {
-        "id": 409583847863,
-        "action": "Sell",
-        "contractId": 4327108,
+        "id": 409583847964,
+        "action": "Buy",
+        "contractId": 4327110,
         "qty": 2,
-        "price": 6616.5,
-        "timestamp": "2026-04-01T14:33:27.907Z"
+        "price": 24270.75,
+        "timestamp": "2026-04-01T15:04:20.197Z"
       },
       {
         "id": 409583847901,
@@ -397,12 +416,12 @@
         "timestamp": "2026-04-01T14:48:10.781Z"
       },
       {
-        "id": 409583848116,
-        "action": "Buy",
+        "id": 409583848128,
+        "action": "Sell",
         "contractId": 4327108,
         "qty": 2,
-        "price": 6647.0,
-        "timestamp": "2026-04-01T16:19:04.960Z"
+        "price": 6642.25,
+        "timestamp": "2026-04-01T16:24:58.388Z"
       },
       {
         "id": 409583847708,
@@ -413,20 +432,12 @@
         "timestamp": "2026-04-01T13:37:01.464Z"
       },
       {
-        "id": 409583848021,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24269.75,
-        "timestamp": "2026-04-01T15:15:09.141Z"
-      },
-      {
-        "id": 409583848128,
-        "action": "Sell",
+        "id": 409583848069,
+        "action": "Buy",
         "contractId": 4327108,
         "qty": 2,
-        "price": 6642.25,
-        "timestamp": "2026-04-01T16:24:58.388Z"
+        "price": 6628.5,
+        "timestamp": "2026-04-01T15:30:56.366Z"
       },
       {
         "id": 409583847916,
@@ -445,38 +456,6 @@
         "timestamp": "2026-04-01T14:32:32.332Z"
       },
       {
-        "id": 409583847749,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6609.25,
-        "timestamp": "2026-04-01T13:52:06.639Z"
-      },
-      {
-        "id": 409583848047,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 99.17,
-        "timestamp": "2026-04-01T15:19:02.697Z"
-      },
-      {
-        "id": 409583848032,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6633.5,
-        "timestamp": "2026-04-01T15:15:28.126Z"
-      },
-      {
-        "id": 409583847964,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24270.75,
-        "timestamp": "2026-04-01T15:04:20.197Z"
-      },
-      {
         "id": 409583848057,
         "action": "Buy",
         "contractId": 3643469,
@@ -485,12 +464,12 @@
         "timestamp": "2026-04-01T15:19:19.984Z"
       },
       {
-        "id": 409583847874,
+        "id": 409583848188,
         "action": "Sell",
-        "contractId": 4327110,
+        "contractId": 3643469,
         "qty": 2,
-        "price": 24160.5,
-        "timestamp": "2026-04-01T14:33:49.877Z"
+        "price": 99.44,
+        "timestamp": "2026-04-01T17:18:06.630Z"
       },
       {
         "id": 409583847788,
@@ -501,12 +480,12 @@
         "timestamp": "2026-04-01T13:55:21.853Z"
       },
       {
-        "id": 409583847888,
+        "id": 409583848198,
         "action": "Buy",
         "contractId": 3643469,
         "qty": 2,
-        "price": 98.97,
-        "timestamp": "2026-04-01T14:45:02.387Z"
+        "price": 99.44,
+        "timestamp": "2026-04-01T17:18:08.194Z"
       },
       {
         "id": 409583847810,
@@ -525,30 +504,6 @@
         "timestamp": "2026-04-01T14:59:07.160Z"
       },
       {
-        "id": 409583847825,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24200.75,
-        "timestamp": "2026-04-01T14:31:07.575Z"
-      },
-      {
-        "id": 409583848101,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6646.5,
-        "timestamp": "2026-04-01T16:03:14.152Z"
-      },
-      {
-        "id": 409583848069,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6628.5,
-        "timestamp": "2026-04-01T15:30:56.366Z"
-      },
-      {
         "id": 409583847734,
         "action": "Sell",
         "contractId": 3643469,
@@ -557,28 +512,12 @@
         "timestamp": "2026-04-01T13:48:15.244Z"
       },
       {
-        "id": 409583847720,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6620.0,
-        "timestamp": "2026-04-01T13:37:02.820Z"
-      },
-      {
         "id": 409583847837,
         "action": "Sell",
         "contractId": 4327110,
         "qty": 2,
         "price": 24214.25,
         "timestamp": "2026-04-01T14:31:26.467Z"
-      },
-      {
-        "id": 409583847935,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24263.25,
-        "timestamp": "2026-04-01T14:57:15.207Z"
       },
       {
         "id": 409583847999,
@@ -597,20 +536,164 @@
         "timestamp": "2026-04-01T14:00:42.458Z"
       },
       {
-        "id": 409583847928,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 98.75,
-        "timestamp": "2026-04-01T14:50:07.474Z"
-      },
-      {
         "id": 409583847777,
         "action": "Sell",
         "contractId": 4327108,
         "qty": 2,
         "price": 6605.0,
         "timestamp": "2026-04-01T13:55:21.500Z"
+      },
+      {
+        "id": 409583847761,
+        "action": "Buy",
+        "contractId": 3643469,
+        "qty": 2,
+        "price": 98.59,
+        "timestamp": "2026-04-01T13:53:07.384Z"
+      },
+      {
+        "id": 409583848153,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6642.5,
+        "timestamp": "2026-04-01T16:35:10.143Z"
+      },
+      {
+        "id": 409583848010,
+        "action": "Sell",
+        "contractId": 3643469,
+        "qty": 4,
+        "price": 99.2,
+        "timestamp": "2026-04-01T15:15:08.789Z"
+      },
+      {
+        "id": 409583847863,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6616.5,
+        "timestamp": "2026-04-01T14:33:27.907Z"
+      },
+      {
+        "id": 409583848116,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6647.0,
+        "timestamp": "2026-04-01T16:19:04.960Z"
+      },
+      {
+        "id": 409583848047,
+        "action": "Sell",
+        "contractId": 3643469,
+        "qty": 2,
+        "price": 99.17,
+        "timestamp": "2026-04-01T15:19:02.697Z"
+      },
+      {
+        "id": 409583848021,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 2,
+        "price": 24269.75,
+        "timestamp": "2026-04-01T15:15:09.141Z"
+      },
+      {
+        "id": 409583848210,
+        "action": "Buy",
+        "contractId": 3643469,
+        "qty": 2,
+        "price": 99.37,
+        "timestamp": "2026-04-01T17:22:09.296Z"
+      },
+      {
+        "id": 409583847749,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6609.25,
+        "timestamp": "2026-04-01T13:52:06.639Z"
+      },
+      {
+        "id": 409583848032,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6633.5,
+        "timestamp": "2026-04-01T15:15:28.126Z"
+      },
+      {
+        "id": 409583847874,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 2,
+        "price": 24160.5,
+        "timestamp": "2026-04-01T14:33:49.877Z"
+      },
+      {
+        "id": 409583847888,
+        "action": "Buy",
+        "contractId": 3643469,
+        "qty": 2,
+        "price": 98.97,
+        "timestamp": "2026-04-01T14:45:02.387Z"
+      },
+      {
+        "id": 409583848220,
+        "action": "Sell",
+        "contractId": 3643469,
+        "qty": 2,
+        "price": 99.15,
+        "timestamp": "2026-04-01T17:31:41.645Z"
+      },
+      {
+        "id": 409583847825,
+        "action": "Buy",
+        "contractId": 4327110,
+        "qty": 2,
+        "price": 24200.75,
+        "timestamp": "2026-04-01T14:31:07.575Z"
+      },
+      {
+        "id": 409583848101,
+        "action": "Buy",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6646.5,
+        "timestamp": "2026-04-01T16:03:14.152Z"
+      },
+      {
+        "id": 409583847720,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6620.0,
+        "timestamp": "2026-04-01T13:37:02.820Z"
+      },
+      {
+        "id": 409583848139,
+        "action": "Sell",
+        "contractId": 4327108,
+        "qty": 2,
+        "price": 6637.75,
+        "timestamp": "2026-04-01T16:31:37.026Z"
+      },
+      {
+        "id": 409583847935,
+        "action": "Sell",
+        "contractId": 4327110,
+        "qty": 2,
+        "price": 24263.25,
+        "timestamp": "2026-04-01T14:57:15.207Z"
+      },
+      {
+        "id": 409583847928,
+        "action": "Buy",
+        "contractId": 3643469,
+        "qty": 2,
+        "price": 98.75,
+        "timestamp": "2026-04-01T14:50:07.474Z"
       }
     ]
   },
@@ -618,7 +701,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 20585,
+    "ssh_output_len": 22912,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
