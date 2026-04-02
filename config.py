@@ -113,7 +113,7 @@ ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 
 # Emergency brake: stop trading at this % of the daily loss limit
 # Raised to 70% — 60% was too aggressive and locked prematurely on 3 occasions
-DAILY_LOSS_BRAKE_PCT = 0.70  # 70% — balanced between safety and opportunity
+DAILY_LOSS_BRAKE_PCT = 0.50  # 50% — stop at $500 loss to preserve capital
 
 # Hard cap: max total trades per day across all symbols (safety net)
 # Lowered from 100 to 40 — 7 symbols × ~5 trades/symbol is realistic daily max
@@ -136,12 +136,11 @@ CONTRACT_SPECS = {
         "enabled": True,
         "max_qty": 2,
         "orb_windows": [5, 15],
-        "max_orb_trades": 15,
-        "orb_cooldown_minutes": 15,
+        "max_orb_trades": 4,
+        "orb_cooldown_minutes": 30,
         "stop_loss_points": 25,
         "take_profit_points": 50,
         "risk_reward_ratio": 2.0,
-        "max_qty": 2,
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -153,12 +152,11 @@ CONTRACT_SPECS = {
         "enabled": True,
         "max_qty": 2,
         "orb_windows": [5, 15],
-        "max_orb_trades": 15,
-        "orb_cooldown_minutes": 15,
+        "max_orb_trades": 4,
+        "orb_cooldown_minutes": 30,
         "stop_loss_points": 6,
         "take_profit_points": 12,
         "risk_reward_ratio": 2.0,
-        "max_qty": 2,
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",

@@ -263,6 +263,18 @@ class RiskManager:
                 f"Daily trade cap reached: {self.trades_today}/{self.max_daily_trades}"
             )
 
+        # Safety net: if distance to drawdown floor is dangerously low,
+        # stop trading even if daily loss check didn't fire (e.g. after restart).
+        # This survives restarts because drawdown_floor is based on peak balance.
+        equity = self.current_balance + self.unrealized_pnl
+        distance = equity - self.drawdown_floor
+        if distance < 500:
+            self._lock(
+                f"DRAWDOWN SAFETY: only ${distance:.0f} from floor "
+                f"(equity={equity:.0f}, floor={self.drawdown_floor:.0f})"
+            )
+            return False, f"Too close to drawdown floor: ${distance:.0f} remaining"
+
         return True, "OK"
 
     def calculate_position_size(self, symbol: str) -> int:

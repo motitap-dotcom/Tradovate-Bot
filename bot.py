@@ -94,7 +94,7 @@ class TradovateBot:
         self.trades_today: list[dict] = []
 
         # Global cooldown: minimum seconds between any two order placements
-        self._min_order_gap_seconds: int = 30
+        self._min_order_gap_seconds: int = 60
         self._last_order_time: float = 0
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
@@ -631,6 +631,34 @@ class TradovateBot:
         if not contract_name:
             logger.error("No contract mapping for %s", signal.symbol)
             return
+
+        # ── Hard SL safety cap ──
+        # Strategies should already cap stop distance, but as a safety net
+        # we enforce the max from config here before sending to the API.
+        spec = config.CONTRACT_SPECS.get(signal.symbol, {})
+        max_stop_pts = spec.get("stop_loss_points", 25)
+        if signal.direction == Direction.LONG:
+            max_sl = signal.entry_price - max_stop_pts if signal.entry_price else signal.stop_loss
+            if signal.stop_loss < max_sl:
+                logger.warning(
+                    "SL safety cap: %s LONG SL %.2f too far from entry, capping to %.2f (max %s pts)",
+                    signal.symbol, signal.stop_loss, max_sl, max_stop_pts,
+                )
+                signal.stop_loss = max_sl
+        else:
+            # For market orders, entry_price is None — estimate from SL + stop distance
+            # The SL should never be more than max_stop_pts above the expected entry
+            if signal.stop_loss > 0 and signal.take_profit > 0:
+                # Estimate entry from midpoint between SL and TP direction
+                estimated_entry = (signal.stop_loss + signal.take_profit) / 2
+                max_sl = estimated_entry + max_stop_pts
+                if signal.stop_loss > max_sl:
+                    capped_sl = estimated_entry + max_stop_pts
+                    logger.warning(
+                        "SL safety cap: %s SHORT SL %.2f too far (est entry %.2f), capping to %.2f (max %s pts)",
+                        signal.symbol, signal.stop_loss, estimated_entry, capped_sl, max_stop_pts,
+                    )
+                    signal.stop_loss = capped_sl
 
         logger.info(
             "SIGNAL: %s %s %d @ market | SL=%.4f TP=%.4f | %s",

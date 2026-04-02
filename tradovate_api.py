@@ -785,6 +785,27 @@ class TradovateAPI:
                     "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s | detail=%s",
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
+                # avgPrice on /order/item is often 0. Try /fill/list to get real price.
+                if not avg_fill_price or avg_fill_price == 0:
+                    try:
+                        fills = self._get(f"/fill/list?orderId={entry_order_id}")
+                        if fills and isinstance(fills, list):
+                            total_qty = 0
+                            total_cost = 0.0
+                            for f in fills:
+                                fq = f.get("qty", 0)
+                                fp = f.get("price", 0)
+                                if fq and fp:
+                                    total_qty += fq
+                                    total_cost += fq * fp
+                            if total_qty > 0:
+                                avg_fill_price = total_cost / total_qty
+                                logger.info(
+                                    "Fill price from /fill/list: %.4f (%d fills, %d qty)",
+                                    avg_fill_price, len(fills), total_qty,
+                                )
+                    except Exception as e:
+                        logger.warning("Could not fetch fills for entry price: %s", e)
                 if detail_status == "Rejected":
                     logger.error(
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
