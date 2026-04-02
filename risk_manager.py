@@ -204,6 +204,14 @@ class RiskManager:
         if self.daily_loss_limit is None:
             return
 
+        # Hard limit — absolute stop at 100%
+        if self.day_pnl <= -self.daily_loss_limit:
+            self._lock(
+                f"DAILY LOSS LIMIT BREACHED: day P&L ${self.day_pnl:.2f} "
+                f"exceeded limit (-${self.daily_loss_limit:.2f})"
+            )
+            return
+
         # Emergency brake at configured % of daily loss limit
         brake_threshold = -self.daily_loss_limit * self.brake_pct
         if self.day_pnl <= brake_threshold:
