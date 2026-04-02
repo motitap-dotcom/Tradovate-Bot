@@ -350,7 +350,7 @@ class ORBStrategy:
             return TradeSignal(
                 symbol=self.symbol,
                 direction=sig_dir,
-                entry_price=None,
+                entry_price=price,  # expected entry for journal (order is still Market)
                 stop_loss=stop,
                 take_profit=tp,
                 qty=0,  # set by risk manager
@@ -546,7 +546,7 @@ class VWAPStrategy:
                 signal = TradeSignal(
                     symbol=self.symbol,
                     direction=Direction.LONG,
-                    entry_price=None,
+                    entry_price=price,
                     stop_loss=stop,
                     take_profit=tp,
                     qty=0,
@@ -586,7 +586,7 @@ class VWAPStrategy:
                 signal = TradeSignal(
                     symbol=self.symbol,
                     direction=Direction.SHORT,
-                    entry_price=None,
+                    entry_price=price,
                     stop_loss=stop,
                     take_profit=tp,
                     qty=0,
