@@ -264,10 +264,10 @@ WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/contents/sys
 ## חוזים פעילים
 | חוזה | אסטרטגיה | Stop | TP | $/pt | כמות |
 |-------|----------|------|-----|------|------|
-| **NQ** (E-mini Nasdaq) | ORB | 25pt | 50pt | $20 | 1 |
-| **ES** (E-mini S&P) | ORB | 6pt | 12pt | $50 | 1 |
-| **GC** (Gold) | VWAP | 5pt | 10pt | $100 | 1 |
-| **CL** (Crude Oil) | VWAP | 0.20pt | 0.40pt | $1000 | 2 |
+| **MNQ** (Micro Nasdaq) | ORB | 25pt | 50pt | $2 | 2 |
+| **MES** (Micro S&P) | ORB | 6pt | 12pt | $5 | 2 |
+| **MGC** (Micro Gold) | VWAP | 5pt | 10pt | $10 | 2 |
+| **MCL** (Micro Crude Oil) | VWAP | 0.20pt | 0.40pt | $100 | 2 |
 
 ---
 
