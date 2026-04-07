@@ -258,7 +258,7 @@ WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/contents/sys
 - **Daily loss limit**: $1,000
 - **Daily profit cap**: $2,400 (כלל עקביות — מקסימום 40% מהרווח המצטבר ביום אחד)
 - **Profit target**: $3,000
-- **Max contracts**: 10 (מיני בלבד — FundedNext דוחה מיקרו)
+- **Max contracts**: 10 לכל טרייד (מיני ומיקרו — שניהם מותרים)
 - **סגירת פוזיציות**: עד 16:59 ET
 
 ## חוזים פעילים
