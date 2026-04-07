@@ -152,6 +152,15 @@ class TradovateBot:
         if saved:
             bot_state.restore_strategies(saved, self.strategies)
             self.risk.trades_today = saved.get("trades_today_count", 0)
+            # Restore day_start_balance so day_pnl doesn't reset on restart
+            saved_day_start = saved.get("day_start_balance")
+            if saved_day_start is not None and self.risk._balance_initialized:
+                self.risk.day_start_balance = saved_day_start
+                self.risk.day_pnl = self.risk.current_balance - saved_day_start
+                logger.info(
+                    "Restored day_start_balance=$%.2f from state → day_pnl=$%.2f",
+                    saved_day_start, self.risk.day_pnl,
+                )
             logger.info("Restored bot state: trades_today=%d", self.risk.trades_today)
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
@@ -213,7 +222,15 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _resolve_contracts(self):
-        """Find the front-month contract for each enabled symbol."""
+        """Find the front-month contract for each enabled symbol.
+
+        Retries up to 3 times per symbol on API failure.
+        Falls back to cached contract_map from bot_state.json if all retries fail.
+        """
+        # Load cached contract map for fallback
+        cached = bot_state.load_state() or {}
+        cached_contracts = cached.get("contract_map", {})
+
         for symbol, spec in config.CONTRACT_SPECS.items():
             if not spec["enabled"]:
                 logger.info("Skipping %s (disabled)", symbol)
@@ -225,7 +242,21 @@ class TradovateBot:
                 logger.info("Dry run: %s -> %s", symbol, self.contract_map[symbol])
                 continue
 
-            contract = self.api.suggest_contract(symbol)
+            # Retry up to 3 times with short backoff
+            contract = None
+            for attempt in range(3):
+                contract = self.api.suggest_contract(symbol)
+                if contract:
+                    break
+                if attempt < 2:
+                    import time
+                    wait = 2 * (attempt + 1)
+                    logger.warning(
+                        "suggest_contract(%s) failed (attempt %d/3), retrying in %ds...",
+                        symbol, attempt + 1, wait,
+                    )
+                    time.sleep(wait)
+
             if contract:
                 contract_name = contract.get("name", symbol)
                 self.contract_map[symbol] = contract_name
@@ -238,9 +269,17 @@ class TradovateBot:
                     contract_name,
                     contract_id,
                 )
+            elif symbol in cached_contracts:
+                # Fallback: use cached contract from previous session
+                self.contract_map[symbol] = cached_contracts[symbol]
+                logger.warning(
+                    "Could not resolve %s from API — using cached contract: %s",
+                    symbol, cached_contracts[symbol],
+                )
             else:
                 logger.warning(
-                    "Could not resolve front-month for %s. Skipping.", symbol
+                    "Could not resolve front-month for %s (no cache available). Skipping.",
+                    symbol,
                 )
 
     # ─────────────────────────────────────────
@@ -702,6 +741,10 @@ class TradovateBot:
             state = bot_state.build_state(
                 self.strategies, len(self.trades_today), self.trades_today
             )
+            # Save contract map for fallback on restart
+            state["contract_map"] = dict(self.contract_map)
+            # Save day_start_balance so day_pnl survives restarts
+            state["day_start_balance"] = self.risk.day_start_balance
             bot_state.save_state(state)
         except Exception as e:
             logger.warning("Failed to save bot state: %s", e)
