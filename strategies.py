@@ -60,6 +60,7 @@ class _ORBWindow:
         self.range_low: Optional[float] = None
         self.range_set: bool = False
         self.breakout_fired: bool = False
+        self.fire_count: int = 0  # how many times this window has fired
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
 
@@ -68,17 +69,26 @@ class _ORBWindow:
         self.range_low = None
         self.range_set = False
         self.breakout_fired = False
+        self.fire_count = 0
         self.prices = []
         self._last_price = None
+
+    def allow_reentry(self):
+        """Reset breakout_fired so this window can fire again on the next fresh cross.
+
+        Called by ORBStrategy after its cooldown has elapsed, enabling
+        re-entry trades from the same range level (re-test breakouts).
+        """
+        if self.breakout_fired:
+            self.breakout_fired = False
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
         Feed a price. Returns 'long', 'short', or None.
-        Only fires once per window.
 
-        Requires a fresh cross: the previous price must have been inside the
-        range for a breakout to fire.  This prevents stale breakouts after a
-        bot restart (warmup sets _last_price to the last historical close).
+        After firing, the window blocks until allow_reentry() is called
+        (by the parent strategy after cooldown).  A fresh cross from inside
+        the range is still required to prevent stale breakouts.
         """
         if self.breakout_fired:
             return None
@@ -202,10 +212,18 @@ class ORBStrategy:
             return None
 
         # Cooldown check
+        cooldown_elapsed = True
         if self.last_trade_time is not None:
             elapsed = (timestamp - self.last_trade_time).total_seconds() / 60
             if elapsed < self.cooldown_minutes:
-                return None
+                cooldown_elapsed = False
+            else:
+                # Cooldown passed — allow windows to fire again (re-entry)
+                for w in self.windows:
+                    w.allow_reentry()
+
+        if not cooldown_elapsed:
+            return None
 
         current_time = timestamp.time()
 
@@ -268,15 +286,17 @@ class ORBStrategy:
 
             self.trades_taken += 1
             self.last_trade_time = timestamp
+            window.fire_count += 1
 
             logger.info(
-                "ORB %s %s at %.2f | window=%dm | trade %d/%d | SL=%.2f TP=%.2f",
+                "ORB %s %s at %.2f | window=%dm | trade %d/%d | fire#%d | SL=%.2f TP=%.2f",
                 self.symbol,
                 direction.upper(),
                 price,
                 window.window_minutes,
                 self.trades_taken,
                 self.max_trades,
+                window.fire_count,
                 stop,
                 tp,
             )
