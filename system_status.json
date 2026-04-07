@@ -1,31 +1,21 @@
 {
-  "timestamp": "2026-04-07T00:00:38Z",
+  "timestamp": "2026-04-07T03:38:22Z",
   "api_reachable": true,
-  "authenticated": true,
-  "auth_method": "server_token",
-  "account": {
-    "name": "FNFTCHMOTITAPIRO67510",
-    "id": 39996695,
-    "active": true
-  },
-  "balance": {
-    "realizedPnl": null,
-    "unrealizedPnl": null,
-    "totalCashValue": 55423.38,
-    "initialMargin": 0.0,
-    "netLiq": 55423.38
-  },
+  "authenticated": false,
+  "auth_method": null,
+  "account": {},
+  "balance": {},
   "positions": [],
   "orders": [],
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "993006",
-    "uptime_since": "Mon 2026-04-06 23:10:25 UTC",
+    "bot_pid": "1006550",
+    "uptime_since": "Tue 2026-04-07 00:05:30 UTC",
     "disk": "18%",
-    "memory": "1086MB/7941MB (14%)",
+    "memory": "1068MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "dc5f179 status: 2026-04-06 23:05 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "1ac5884 status: 2026-04-07 00:00 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-04-06T20:58:47.350598+00:00",
       "timestamp_et": "2026-04-06T16:58:47.350618-04:00",
@@ -57,9 +47,9 @@
       "websocket_connected": false,
       "market_data_source": "rest"
     },
-    "journal_tail": "2026-04-06 23:10:29,351 [INFO] bot_state: Restored VWAP state for SIL: longs=0, shorts=0\n2026-04-06 23:10:29,351 [INFO] bot_state: Restored VWAP state for SI: longs=0, shorts=0\n2026-04-06 23:10:29,351 [INFO] bot_state: Restored VWAP state for NG: longs=0, shorts=0\n2026-04-06 23:10:29,351 [INFO] bot: Restored bot state: trades_today=1\n2026-04-06 23:10:29,352 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-04-06 23:10:29,353 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-04-06 23:10:29,353 [INFO] tradovate_api: Subscribed to REST quotes: MNQM6 -> NQ=F\n2026-04-06 23:10:29,353 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing\n2026-04-06 23:10:29,353 [INFO] tradovate_api: Subscribed to REST quotes: MESM6 -> ES=F\n2026-04-06 23:10:29,353 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing\n2026-04-06 23:10:29,353 [INFO] tradovate_api: Subscribed to REST quotes: MGCJ6 -> GC=F\n2026-04-06 23:10:29,353 [INFO] bot: Mapped contractId 3924410 -> MGCJ6 for quote routing\n2026-04-06 23:10:29,353 [INFO] tradovate_api: Subscribed to REST quotes: MCLK6 -> CL=F\n2026-04-06 23:10:29,353 [INFO] bot: Mapped contractId 3643469 -> MCLK6 for quote routing\n2026-04-06 23:10:29,353 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-06 23:10:29,353 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-06 23:10:29,353 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-06 23:10:29,353 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-06 23:10:29,353 [INFO] tradovate_api: Subscribed to REST quotes: NGK6 -> NG=F\n2026-04-06 23:10:29,353 [INFO] bot: Mapped contractId 3271013 -> NGK6 for quote routing\n2026-04-06 23:10:29,353 [INFO] bot: Entering main loop...\n2026-04-06 23:10:29,353 [WARNING] bot: Force close time reached. Closing all positions.\n2026-04-06 23:10:29,522 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-06 23:10:29,699 [INF",
-    "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 10877s)\n  Balance: $55423.38\n  Day P&L: $0.0\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.5%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr  7 00:00:05 UTC 2026] Status: bot_active=true, pid=993006\n[Tue Apr  7 00:00:05 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-04-07 00:05:32,906 [INFO] bot:   VWAP: 111.7913\n2026-04-07 00:05:33,004 [INFO] bot: Warmed up NG with 1119 candles | strategy=VWAPStrategy\n2026-04-07 00:05:33,005 [INFO] bot:   VWAP: 2.8237\n2026-04-07 00:05:33,008 [INFO] bot_state: Bot state is from 2026-04-06 (not today). Starting fresh.\n2026-04-07 00:05:33,009 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-04-07 00:05:33,009 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-04-07 00:05:33,009 [INFO] tradovate_api: Subscribed to REST quotes: MNQM6 -> NQ=F\n2026-04-07 00:05:33,009 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing\n2026-04-07 00:05:33,009 [INFO] tradovate_api: Subscribed to REST quotes: MESM6 -> ES=F\n2026-04-07 00:05:33,009 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing\n2026-04-07 00:05:33,009 [INFO] tradovate_api: Subscribed to REST quotes: MGCJ6 -> GC=F\n2026-04-07 00:05:33,009 [INFO] bot: Mapped contractId 3924410 -> MGCJ6 for quote routing\n2026-04-07 00:05:33,009 [INFO] tradovate_api: Subscribed to REST quotes: MCLK6 -> CL=F\n2026-04-07 00:05:33,009 [INFO] bot: Mapped contractId 3643469 -> MCLK6 for quote routing\n2026-04-07 00:05:33,010 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-07 00:05:33,010 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-07 00:05:33,010 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-07 00:05:33,010 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-07 00:05:33,010 [INFO] tradovate_api: Subscribed to REST quotes: NGK6 -> NG=F\n2026-04-07 00:05:33,010 [INFO] bot: Mapped contractId 3271013 -> NGK6 for quote routing\n2026-04-07 00:05:33,010 [INFO] bot: Entering main loop...\n2026-04-07 00:05:33,010 [WARNING] bot: Force close time reached. Closing all positions.\n2026-04-07 00:05:33,209 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-07 00:05:33,373 [INFO] auto_tuner: Auto-tuner: only 0 trades ",
+    "bot_log_tail": "2026-04-07 00:05:33,708 [INFO] bot:   balance: 55423.38\n2026-04-07 00:05:33,708 [INFO] bot:   equity: 55423.38\n2026-04-07 00:05:33,708 [INFO] bot:   day_pnl: 0.0\n2026-04-07 00:05:33,708 [INFO] bot:   unrealized_pnl: 0.0\n2026-04-07 00:05:33,708 [INFO] bot:   peak_balance: 55423.38\n2026-04-07 00:05:33,708 [INFO] bot:   drawdown_floor: 52923.38\n2026-04-07 00:05:33,708 [INFO] bot:   distance_to_floor: 2500.0\n2026-04-07 00:05:33,708 [INFO] bot:   daily_loss_limit: 1000\n2026-04-07 00:05:33,708 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-04-07 00:05:33,708 [INFO] bot:   daily_profit_cap: 2400\n2026-04-07 00:05:33,708 [INFO] bot:   daily_profit_remaining: 2400.0\n2026-04-07 00:05:33,708 [INFO] bot:   open_contracts: 0\n2026-04-07 00:05:33,708 [INFO] bot:   max_contracts: 10\n2026-04-07 00:05:33,708 [INFO] bot:   trades_today: 0\n2026-04-07 00:05:33,708 [INFO] bot:   max_daily_trades: 40\n2026-04-07 00:05:33,708 [INFO] bot:   locked: False\n2026-04-07 00:05:33,708 [INFO] bot:   lock_reason: \n2026-04-07 00:05:33,708 [INFO] bot:   balance_initialized: True\n2026-04-07 00:05:33,708 [INFO] bot: Bot stopped.\n2026-04-07 00:05:33,708 [INFO] bot: Session ended. Next trading session: 2026-04-07 09:25 ET (sleeping 799 minutes)",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 23775s)\n  Balance: $55423.38\n  Day P&L: $0.0\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.3%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr  7 03:35:02 UTC 2026] Status: bot_active=true, pid=1006550\n[Tue Apr  7 03:35:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -93,12 +83,41 @@
       "websocket_connected": false,
       "market_data_source": "rest"
     },
-    "token_status": "valid",
-    "token_expiry": "2026-04-07T00:30:26.565000+00:00",
+    "token_status": "expired",
+    "token_expiry": "2026-04-07T01:25:30.923000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      ""
+      "2026-04-07 00:05:33,010 [INFO] bot: Entering main loop...",
+      "2026-04-07 00:05:33,010 [WARNING] bot: Force close time reached. Closing all positions.",
+      "2026-04-07 00:05:33,209 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-04-07 00:05:33,373 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
+      "2026-04-07 00:05:33,373 [INFO] bot: Shutting down bot...",
+      "2026-04-07 00:05:33,543 [INFO] tradovate_api: Cancelled 0 working orders",
+      "2026-04-07 00:05:33,707 [INFO] bot: ============================================================",
+      "2026-04-07 00:05:33,707 [INFO] bot: END OF DAY SUMMARY",
+      "2026-04-07 00:05:33,707 [INFO] bot: ============================================================",
+      "2026-04-07 00:05:33,707 [INFO] bot: Total trades: 0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   balance: 55423.38",
+      "2026-04-07 00:05:33,708 [INFO] bot:   equity: 55423.38",
+      "2026-04-07 00:05:33,708 [INFO] bot:   day_pnl: 0.0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   unrealized_pnl: 0.0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   peak_balance: 55423.38",
+      "2026-04-07 00:05:33,708 [INFO] bot:   drawdown_floor: 52923.38",
+      "2026-04-07 00:05:33,708 [INFO] bot:   distance_to_floor: 2500.0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   daily_loss_limit: 1000",
+      "2026-04-07 00:05:33,708 [INFO] bot:   daily_loss_remaining: 1000.0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   daily_profit_cap: 2400",
+      "2026-04-07 00:05:33,708 [INFO] bot:   daily_profit_remaining: 2400.0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   open_contracts: 0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   max_contracts: 10",
+      "2026-04-07 00:05:33,708 [INFO] bot:   trades_today: 0",
+      "2026-04-07 00:05:33,708 [INFO] bot:   max_daily_trades: 40",
+      "2026-04-07 00:05:33,708 [INFO] bot:   locked: False",
+      "2026-04-07 00:05:33,708 [INFO] bot:   lock_reason: ",
+      "2026-04-07 00:05:33,708 [INFO] bot:   balance_initialized: True",
+      "2026-04-07 00:05:33,708 [INFO] bot: Bot stopped.",
+      "2026-04-07 00:05:33,708 [INFO] bot: Session ended. Next trading session: 2026-04-07 09:25 ET (sleeping 799 minutes)"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -112,14 +131,15 @@
     "websocket_connected": false,
     "errors_in_log": [],
     "market_data_source": "rest",
-    "today_trades": [],
-    "today_fills": []
+    "today_trades": []
   },
-  "errors": [],
+  "errors": [
+    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+  ],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 5815,
+    "ssh_output_len": 9100,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -128,5 +148,23 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
+  },
+  "last_known": {
+    "timestamp": "2026-04-07T00:00:38Z",
+    "auth_method": "server_token",
+    "account": {
+      "name": "FNFTCHMOTITAPIRO67510",
+      "id": 39996695,
+      "active": true
+    },
+    "balance": {
+      "realizedPnl": null,
+      "unrealizedPnl": null,
+      "totalCashValue": 55423.38,
+      "initialMargin": 0.0,
+      "netLiq": 55423.38
+    },
+    "positions": [],
+    "orders": []
   }
 }
