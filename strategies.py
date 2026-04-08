@@ -361,9 +361,14 @@ class VWAPStrategy:
         self._vwap_stale_bars = 0
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
-        """Update the running VWAP with a new bar."""
+        """Update the running VWAP with a new bar.
+
+        Zero-volume ticks (e.g. bid/ask WebSocket updates) are skipped
+        for VWAP calculation but do NOT increment the stale counter.
+        The stale counter is only meaningful for REST candle gaps where
+        an entire bar has no volume, not for individual WebSocket ticks.
+        """
         if volume <= 0:
-            self._vwap_stale_bars = getattr(self, "_vwap_stale_bars", 0) + 1
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
