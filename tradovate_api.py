@@ -1,7 +1,7 @@
 """
 Tradovate API Client
 =====================
-REST + WebSocket wrapper for Tradovate.
+REST + WebSocket wrapper for Tradovate (with mdAccessToken diagnostics).
 Handles authentication, order placement (bracket orders),
 account info, positions, and market data subscriptions.
 
