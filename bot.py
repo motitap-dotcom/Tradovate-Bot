@@ -1003,6 +1003,7 @@ class TradovateBot:
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
                 ),
+                "md_access_token": "present" if self.api.md_access_token else "MISSING",
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
