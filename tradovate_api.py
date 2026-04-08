@@ -174,6 +174,14 @@ class TradovateAPI:
         self.user_id = data.get("userId")
         self.account_spec = data.get("name")
 
+        # Diagnostic: log whether mdAccessToken was provided
+        auth_keys = [k for k in data.keys() if k != "accessToken"]
+        logger.info(
+            "Auth response keys (excluding accessToken): %s | mdAccessToken=%s",
+            auth_keys,
+            "present" if self.md_access_token else "MISSING",
+        )
+
         if data.get("expirationTime"):
             self.token_expiry = datetime.fromisoformat(
                 data["expirationTime"].replace("Z", "+00:00")
@@ -573,7 +581,12 @@ class TradovateAPI:
                     self.token_expiry = datetime.fromisoformat(
                         data["expirationTime"].replace("Z", "+00:00")
                     )
-                logger.info("Token renewed via %s. Expires: %s", url.split("/")[2], self.token_expiry)
+                renewal_keys = list(data.keys())
+                logger.info(
+                    "Token renewed via %s. Expires: %s | renewal keys: %s | mdAccessToken=%s",
+                    url.split("/")[2], self.token_expiry, renewal_keys,
+                    "present" if data.get("mdAccessToken") else "MISSING",
+                )
                 self._save_token()
                 return True
             except requests.RequestException as e:

@@ -513,6 +513,10 @@ class TradovateBot:
 
     def _start_market_data(self):
         """Try WebSocket first; fall back to REST polling if WS is unavailable."""
+        logger.info(
+            "Market data init: md_access_token=%s",
+            "present" if self.api.md_access_token else "MISSING — WebSocket will be skipped",
+        )
         if self.api.md_access_token:
             try:
                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
