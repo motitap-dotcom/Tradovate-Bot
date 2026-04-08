@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-07T23:08:24Z",
+  "timestamp": "2026-04-08T00:04:04Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -20,12 +20,12 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "1317588",
-    "uptime_since": "Tue 2026-04-07 22:10:08 UTC",
+    "bot_pid": "1331859",
+    "uptime_since": "Tue 2026-04-07 23:10:12 UTC",
     "disk": "18%",
-    "memory": "1068MB/7941MB (13%)",
+    "memory": "1049MB/7941MB (13%)",
     "hostname": "vmi3096165",
-    "git_commit": "27a669b status: 2026-04-07 22:05 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "8861b28 status: 2026-04-07 23:08 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-04-07T20:58:34.165964+00:00",
       "timestamp_et": "2026-04-07T16:58:34.165986-04:00",
@@ -57,9 +57,9 @@
       "websocket_connected": false,
       "market_data_source": "rest"
     },
-    "journal_tail": "2026-04-07 22:10:11,339 [INFO] bot_state: Restored VWAP state for SI: longs=0, shorts=0\n2026-04-07 22:10:11,339 [INFO] bot_state: Restored VWAP state for NG: longs=0, shorts=0\n2026-04-07 22:10:11,340 [INFO] bot: Restored day_start_balance=$55008.88 from state \u2192 day_pnl=$-404.78\n2026-04-07 22:10:11,340 [INFO] bot: Restored bot state: trades_today=2\n2026-04-07 22:10:11,340 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-04-07 22:10:11,340 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-04-07 22:10:11,340 [INFO] tradovate_api: Subscribed to REST quotes: MNQM6 -> NQ=F\n2026-04-07 22:10:11,340 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing\n2026-04-07 22:10:11,340 [INFO] tradovate_api: Subscribed to REST quotes: MESM6 -> ES=F\n2026-04-07 22:10:11,340 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing\n2026-04-07 22:10:11,341 [INFO] tradovate_api: Subscribed to REST quotes: MGCJ6 -> GC=F\n2026-04-07 22:10:11,341 [INFO] bot: Mapped contractId 3924410 -> MGCJ6 for quote routing\n2026-04-07 22:10:11,341 [INFO] tradovate_api: Subscribed to REST quotes: MCLK6 -> CL=F\n2026-04-07 22:10:11,341 [INFO] bot: Mapped contractId 3643469 -> MCLK6 for quote routing\n2026-04-07 22:10:11,341 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-07 22:10:11,341 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-07 22:10:11,341 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-07 22:10:11,341 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-07 22:10:11,341 [INFO] tradovate_api: Subscribed to REST quotes: NGK6 -> NG=F\n2026-04-07 22:10:11,341 [INFO] bot: Mapped contractId 3271013 -> NGK6 for quote routing\n2026-04-07 22:10:11,341 [INFO] bot: Entering main loop...\n2026-04-07 22:10:11,341 [WARNING] bot: Force close time reached. Closing all positions.\n2026-04-07 22:10:11,499 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-07 22:",
-    "bot_log_tail": "2026-04-07 22:10:12,020 [INFO] bot:   balance: 54604.1\n2026-04-07 22:10:12,020 [INFO] bot:   equity: 54604.1\n2026-04-07 22:10:12,020 [INFO] bot:   day_pnl: -404.77999999999884\n2026-04-07 22:10:12,020 [INFO] bot:   unrealized_pnl: 0.0\n2026-04-07 22:10:12,020 [INFO] bot:   peak_balance: 54604.1\n2026-04-07 22:10:12,020 [INFO] bot:   drawdown_floor: 52104.1\n2026-04-07 22:10:12,020 [INFO] bot:   distance_to_floor: 2500.0\n2026-04-07 22:10:12,020 [INFO] bot:   daily_loss_limit: 1000\n2026-04-07 22:10:12,020 [INFO] bot:   daily_loss_remaining: 595.2200000000012\n2026-04-07 22:10:12,020 [INFO] bot:   daily_profit_cap: 2400\n2026-04-07 22:10:12,020 [INFO] bot:   daily_profit_remaining: 2804.779999999999\n2026-04-07 22:10:12,020 [INFO] bot:   open_contracts: 0\n2026-04-07 22:10:12,020 [INFO] bot:   max_contracts: 10\n2026-04-07 22:10:12,020 [INFO] bot:   trades_today: 2\n2026-04-07 22:10:12,020 [INFO] bot:   max_daily_trades: 40\n2026-04-07 22:10:12,020 [INFO] bot:   locked: False\n2026-04-07 22:10:12,020 [INFO] bot:   lock_reason: \n2026-04-07 22:10:12,020 [INFO] bot:   balance_initialized: True\n2026-04-07 22:10:12,020 [INFO] bot: Bot stopped.\n2026-04-07 22:10:12,021 [INFO] bot: Session ended. Next trading session: 2026-04-08 09:25 ET (sleeping 915 minutes)",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 7590s)\n  Balance: $54604.1\n  Day P&L: $-404.77999999999884\n  Trades today: 2\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.3%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr  7 23:05:04 UTC 2026] Status: bot_active=true, pid=1317588\n[Tue Apr  7 23:05:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-04-07 23:10:15,199 [INFO] bot_state: Restored VWAP state for SI: longs=0, shorts=0\n2026-04-07 23:10:15,199 [INFO] bot_state: Restored VWAP state for NG: longs=0, shorts=0\n2026-04-07 23:10:15,199 [INFO] bot: Restored day_start_balance=$55008.88 from state \u2192 day_pnl=$-404.78\n2026-04-07 23:10:15,200 [INFO] bot: Restored bot state: trades_today=2\n2026-04-07 23:10:15,200 [INFO] tradovate_api: REST market data poller started (interval=5s)\n2026-04-07 23:10:15,200 [INFO] bot: Market data via REST polling (Yahoo Finance)\n2026-04-07 23:10:15,200 [INFO] tradovate_api: Subscribed to REST quotes: MNQM6 -> NQ=F\n2026-04-07 23:10:15,200 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing\n2026-04-07 23:10:15,200 [INFO] tradovate_api: Subscribed to REST quotes: MESM6 -> ES=F\n2026-04-07 23:10:15,200 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing\n2026-04-07 23:10:15,200 [INFO] tradovate_api: Subscribed to REST quotes: MGCJ6 -> GC=F\n2026-04-07 23:10:15,200 [INFO] bot: Mapped contractId 3924410 -> MGCJ6 for quote routing\n2026-04-07 23:10:15,200 [INFO] tradovate_api: Subscribed to REST quotes: MCLK6 -> CL=F\n2026-04-07 23:10:15,200 [INFO] bot: Mapped contractId 3643469 -> MCLK6 for quote routing\n2026-04-07 23:10:15,200 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-07 23:10:15,200 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-07 23:10:15,200 [WARNING] tradovate_api: No Yahoo symbol mapping for SILJ6 (root=SIL)\n2026-04-07 23:10:15,200 [INFO] bot: Mapped contractId 4856056 -> SILJ6 for quote routing\n2026-04-07 23:10:15,200 [INFO] tradovate_api: Subscribed to REST quotes: NGK6 -> NG=F\n2026-04-07 23:10:15,200 [INFO] bot: Mapped contractId 3271013 -> NGK6 for quote routing\n2026-04-07 23:10:15,200 [INFO] bot: Entering main loop...\n2026-04-07 23:10:15,200 [WARNING] bot: Force close time reached. Closing all positions.\n2026-04-07 23:10:15,361 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-07 23:",
+    "bot_log_tail": "",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 10890s)\n  Balance: $54604.1\n  Day P&L: $-404.77999999999884\n  Trades today: 2\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'SI', 'NG']\n  Disk: 18% | Memory: 13.3%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr  8 00:00:05 UTC 2026] Status: bot_active=true, pid=1331859\n[Wed Apr  8 00:00:05 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -94,40 +94,11 @@
       "market_data_source": "rest"
     },
     "token_status": "valid",
-    "token_expiry": "2026-04-07T23:30:09.320000+00:00",
+    "token_expiry": "2026-04-08T00:30:12.964000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-04-07 22:10:11,341 [INFO] bot: Entering main loop...",
-      "2026-04-07 22:10:11,341 [WARNING] bot: Force close time reached. Closing all positions.",
-      "2026-04-07 22:10:11,499 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-04-07 22:10:11,675 [INFO] auto_tuner: Auto-tuner: only 0 trades (need 5). Skipping.",
-      "2026-04-07 22:10:11,676 [INFO] bot: Shutting down bot...",
-      "2026-04-07 22:10:11,841 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-04-07 22:10:12,019 [INFO] bot: ============================================================",
-      "2026-04-07 22:10:12,020 [INFO] bot: END OF DAY SUMMARY",
-      "2026-04-07 22:10:12,020 [INFO] bot: ============================================================",
-      "2026-04-07 22:10:12,020 [INFO] bot: Total trades: 0",
-      "2026-04-07 22:10:12,020 [INFO] bot:   balance: 54604.1",
-      "2026-04-07 22:10:12,020 [INFO] bot:   equity: 54604.1",
-      "2026-04-07 22:10:12,020 [INFO] bot:   day_pnl: -404.77999999999884",
-      "2026-04-07 22:10:12,020 [INFO] bot:   unrealized_pnl: 0.0",
-      "2026-04-07 22:10:12,020 [INFO] bot:   peak_balance: 54604.1",
-      "2026-04-07 22:10:12,020 [INFO] bot:   drawdown_floor: 52104.1",
-      "2026-04-07 22:10:12,020 [INFO] bot:   distance_to_floor: 2500.0",
-      "2026-04-07 22:10:12,020 [INFO] bot:   daily_loss_limit: 1000",
-      "2026-04-07 22:10:12,020 [INFO] bot:   daily_loss_remaining: 595.2200000000012",
-      "2026-04-07 22:10:12,020 [INFO] bot:   daily_profit_cap: 2400",
-      "2026-04-07 22:10:12,020 [INFO] bot:   daily_profit_remaining: 2804.779999999999",
-      "2026-04-07 22:10:12,020 [INFO] bot:   open_contracts: 0",
-      "2026-04-07 22:10:12,020 [INFO] bot:   max_contracts: 10",
-      "2026-04-07 22:10:12,020 [INFO] bot:   trades_today: 2",
-      "2026-04-07 22:10:12,020 [INFO] bot:   max_daily_trades: 40",
-      "2026-04-07 22:10:12,020 [INFO] bot:   locked: False",
-      "2026-04-07 22:10:12,020 [INFO] bot:   lock_reason: ",
-      "2026-04-07 22:10:12,020 [INFO] bot:   balance_initialized: True",
-      "2026-04-07 22:10:12,020 [INFO] bot: Bot stopped.",
-      "2026-04-07 22:10:12,021 [INFO] bot: Session ended. Next trading session: 2026-04-08 09:25 ET (sleeping 915 minutes)"
+      ""
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -142,358 +113,13 @@
     "errors_in_log": [],
     "market_data_source": "rest",
     "today_trades": [],
-    "today_fills": [
-      {
-        "id": 409583849055,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6607.0,
-        "timestamp": "2026-04-07T13:49:10.496Z"
-      },
-      {
-        "id": 409583849447,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.32,
-        "timestamp": "2026-04-07T17:40:35.285Z"
-      },
-      {
-        "id": 409583849419,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 115.44,
-        "timestamp": "2026-04-07T17:21:07.167Z"
-      },
-      {
-        "id": 409583849188,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4648.8,
-        "timestamp": "2026-04-07T15:37:01.605Z"
-      },
-      {
-        "id": 409583849397,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.78,
-        "timestamp": "2026-04-07T17:09:05.905Z"
-      },
-      {
-        "id": 409583849251,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4659.1,
-        "timestamp": "2026-04-07T16:07:15.270Z"
-      },
-      {
-        "id": 409583849229,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.48,
-        "timestamp": "2026-04-07T16:05:14.034Z"
-      },
-      {
-        "id": 409583849494,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.3,
-        "timestamp": "2026-04-07T19:18:08.889Z"
-      },
-      {
-        "id": 409583849119,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6606.0,
-        "timestamp": "2026-04-07T14:44:21.902Z"
-      },
-      {
-        "id": 409583849266,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.99,
-        "timestamp": "2026-04-07T16:10:03.419Z"
-      },
-      {
-        "id": 409583849203,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4641.6,
-        "timestamp": "2026-04-07T15:40:10.177Z"
-      },
-      {
-        "id": 409583849288,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24167.0,
-        "timestamp": "2026-04-07T16:12:04.826Z"
-      },
-      {
-        "id": 409583849107,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6603.75,
-        "timestamp": "2026-04-07T14:43:06.030Z"
-      },
-      {
-        "id": 409583849145,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4646.4,
-        "timestamp": "2026-04-07T14:46:16.804Z"
-      },
-      {
-        "id": 409583848989,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24256.25,
-        "timestamp": "2026-04-07T13:36:21.543Z"
-      },
-      {
-        "id": 409583849044,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4637.5,
-        "timestamp": "2026-04-07T13:45:24.334Z"
-      },
-      {
-        "id": 409583849482,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.98,
-        "timestamp": "2026-04-07T19:12:11.683Z"
-      },
-      {
-        "id": 409583849177,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6592.75,
-        "timestamp": "2026-04-07T15:19:58.116Z"
-      },
-      {
-        "id": 409583849346,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 115.14,
-        "timestamp": "2026-04-07T16:37:20.919Z"
-      },
-      {
-        "id": 409583849217,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4642.0,
-        "timestamp": "2026-04-07T15:40:11.544Z"
-      },
-      {
-        "id": 409583849159,
-        "action": "Sell",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6593.75,
-        "timestamp": "2026-04-07T15:15:56.162Z"
-      },
-      {
-        "id": 409583849384,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.78,
-        "timestamp": "2026-04-07T16:47:28.310Z"
-      },
-      {
-        "id": 409583848974,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4643.2,
-        "timestamp": "2026-04-07T13:35:11.920Z"
-      },
-      {
-        "id": 409583849429,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 115.6,
-        "timestamp": "2026-04-07T17:25:04.689Z"
-      },
-      {
-        "id": 409583849067,
-        "action": "Buy",
-        "contractId": 4327108,
-        "qty": 2,
-        "price": 6617.75,
-        "timestamp": "2026-04-07T13:54:02.460Z"
-      },
-      {
-        "id": 409583849370,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24206.5,
-        "timestamp": "2026-04-07T16:44:57.341Z"
-      },
-      {
-        "id": 409583849336,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.93,
-        "timestamp": "2026-04-07T16:36:08.130Z"
-      },
-      {
-        "id": 409583849409,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.96,
-        "timestamp": "2026-04-07T17:09:50.339Z"
-      },
-      {
-        "id": 409583849457,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.36,
-        "timestamp": "2026-04-07T17:40:36.628Z"
-      },
-      {
-        "id": 409583849133,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4645.0,
-        "timestamp": "2026-04-07T14:46:15.443Z"
-      },
-      {
-        "id": 409583849312,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24203.5,
-        "timestamp": "2026-04-07T16:35:06.927Z"
-      },
-      {
-        "id": 409583849469,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.65,
-        "timestamp": "2026-04-07T19:03:16.092Z"
-      },
-      {
-        "id": 409583849438,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 115.61,
-        "timestamp": "2026-04-07T17:25:11.469Z"
-      },
-      {
-        "id": 409583849001,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24221.5,
-        "timestamp": "2026-04-07T13:39:09.480Z"
-      },
-      {
-        "id": 409583849358,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24195.25,
-        "timestamp": "2026-04-07T16:42:08.268Z"
-      },
-      {
-        "id": 409583849323,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 4,
-        "price": 4657.4,
-        "timestamp": "2026-04-07T16:35:07.266Z"
-      },
-      {
-        "id": 409583849504,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 112.35,
-        "timestamp": "2026-04-07T19:20:17.946Z"
-      },
-      {
-        "id": 409583849081,
-        "action": "Sell",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24025.5,
-        "timestamp": "2026-04-07T14:06:27.576Z"
-      },
-      {
-        "id": 409583849276,
-        "action": "Sell",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.76,
-        "timestamp": "2026-04-07T16:12:03.859Z"
-      },
-      {
-        "id": 409583849015,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4644.7,
-        "timestamp": "2026-04-07T13:39:14.839Z"
-      },
-      {
-        "id": 409583849239,
-        "action": "Buy",
-        "contractId": 3643469,
-        "qty": 2,
-        "price": 114.43,
-        "timestamp": "2026-04-07T16:05:18.659Z"
-      },
-      {
-        "id": 409583849029,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 2,
-        "price": 4646.4,
-        "timestamp": "2026-04-07T13:39:16.170Z"
-      },
-      {
-        "id": 409583849093,
-        "action": "Buy",
-        "contractId": 4327110,
-        "qty": 2,
-        "price": 24025.25,
-        "timestamp": "2026-04-07T14:06:29.043Z"
-      }
-    ]
+    "today_fills": []
   },
   "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 14863,
+    "ssh_output_len": 5889,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
