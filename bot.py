@@ -552,17 +552,17 @@ class TradovateBot:
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket.
 
-        Only process actual trade ticks — bid/ask-only updates carry no
-        volume, which makes VWAP's stale-bar counter spike and block all
-        signals.  Bid/ask prices also shouldn't set _prev_price in
-        strategies, as that causes false VWAP crossover detections.
+        Accepts both trade ticks and bid/ask updates.  Trade ticks carry
+        real volume for VWAP calculation; bid/ask updates carry volume=0
+        but still provide price for crossover detection.
         """
-        trade = data.get("trade")
-        if not trade or trade.get("price") is None:
-            return  # Skip bid/ask-only updates
+        # Prefer trade price, fall back to bid
+        trade = data.get("trade", {})
+        price = trade.get("price") or data.get("bid", {}).get("price")
+        if price is None:
+            return
 
-        price = trade["price"]
-        volume = trade.get("size", 1)
+        volume = trade.get("size", 0)
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
 

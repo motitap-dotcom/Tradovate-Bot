@@ -53,10 +53,6 @@ class TradeSignal:
 class _ORBWindow:
     """Tracks one opening range window and detects breakouts."""
 
-    # When the bot starts after the ORB window, build a range from this
-    # many minutes of live data instead of waiting until tomorrow.
-    LATE_START_WARMUP_MINUTES = 2
-
     def __init__(self, window_minutes: int, open_time: time):
         self.window_minutes = window_minutes
         self.open_time = open_time
@@ -64,61 +60,25 @@ class _ORBWindow:
         self.range_low: Optional[float] = None
         self.range_set: bool = False
         self.breakout_fired: bool = False
-        self.fire_count: int = 0  # how many times this window has fired
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
-        self._late_start_seconds: Optional[int] = None  # tracks late-start warmup
 
     def reset(self):
         self.range_high = None
         self.range_low = None
         self.range_set = False
         self.breakout_fired = False
-        self.fire_count = 0
         self.prices = []
         self._last_price = None
-        self._late_start_seconds = None
-
-    def _try_set_range(self, label: str) -> bool:
-        """Try to set the range from accumulated prices. Returns True if set."""
-        if not self.prices:
-            return False
-        self.range_high = max(self.prices)
-        self.range_low = min(self.prices)
-        range_size = self.range_high - self.range_low
-        if range_size <= 0:
-            logger.warning(
-                "ORB %d-min %s range invalid (size=%.2f). Skipping.",
-                self.window_minutes, label, range_size,
-            )
-            return False
-        self.range_set = True
-        logger.info(
-            "ORB %d-min %s range: high=%.2f low=%.2f size=%.2f",
-            self.window_minutes,
-            label,
-            self.range_high,
-            self.range_low,
-            range_size,
-        )
-        return True
-
-    def allow_reentry(self):
-        """Reset breakout_fired so this window can fire again on the next fresh cross.
-
-        Called by ORBStrategy after its cooldown has elapsed, enabling
-        re-entry trades from the same range level (re-test breakouts).
-        """
-        if self.breakout_fired:
-            self.breakout_fired = False
 
     def feed(self, price: float, high: float, low: float, current_time: time) -> Optional[str]:
         """
         Feed a price. Returns 'long', 'short', or None.
+        Only fires once per window.
 
-        After firing, the window blocks until allow_reentry() is called
-        (by the parent strategy after cooldown).  A fresh cross from inside
-        the range is still required to prevent stale breakouts.
+        Requires a fresh cross: the previous price must have been inside the
+        range for a breakout to fire.  This prevents stale breakouts after a
+        bot restart (warmup sets _last_price to the last historical close).
         """
         if self.breakout_fired:
             return None
@@ -134,45 +94,31 @@ class _ORBWindow:
         # Phase 1: Accumulate range
         if not self.range_set:
             if 0 <= elapsed < self.window_minutes:
-                # Normal: within the ORB window, collect prices
                 self.prices.append(high)
                 self.prices.append(low)
                 self._last_price = price
                 return None
 
-            if elapsed >= self.window_minutes:
-                if self._late_start_seconds is not None:
-                    # Late-start mode: still accumulating tick prices.
-                    # Append high AND low (not just close) for a wider range.
-                    self.prices.append(high)
-                    self.prices.append(low)
-                    self._last_price = price
-
-                    warmup_elapsed = (current_seconds - self._late_start_seconds) / 60
-                    if warmup_elapsed >= self.LATE_START_WARMUP_MINUTES and len(self.prices) >= 10:
-                        self._try_set_range("late-start")
-                    return None
-
-                elif self.prices:
-                    # Normal: ORB window just ended, set range from
-                    # accumulated prices collected during the window.
-                    self._try_set_range("normal")
-                    # Fall through to check breakout
-
-                else:
-                    # Late start: bot restarted after the ORB window.
-                    # Begin accumulating tick prices for a quick range.
-                    self._late_start_seconds = current_seconds
-                    logger.info(
-                        "ORB %d-min: late start (%.0fm after open), "
-                        "building %d-min warmup range...",
-                        self.window_minutes, elapsed,
-                        self.LATE_START_WARMUP_MINUTES,
+            if elapsed >= self.window_minutes and self.prices:
+                self.range_high = max(self.prices)
+                self.range_low = min(self.prices)
+                range_size = self.range_high - self.range_low
+                # Validate range: must be positive and not absurdly wide
+                if range_size <= 0:
+                    logger.warning(
+                        "ORB %d-min range invalid (size=%.2f). Skipping.",
+                        self.window_minutes, range_size,
                     )
-                    self.prices.append(high)
-                    self.prices.append(low)
-                    self._last_price = price
                     return None
+                self.range_set = True
+                logger.info(
+                    "ORB %d-min range: high=%.2f low=%.2f size=%.2f",
+                    self.window_minutes,
+                    self.range_high,
+                    self.range_low,
+                    range_size,
+                )
+                # Fall through to check breakout
 
         if not self.range_set:
             return None
@@ -181,25 +127,9 @@ class _ORBWindow:
         prev = self._last_price
         self._last_price = price
 
-        if prev is None:
-            # First tick after range set or warmup — allow if price is
-            # inside the range (sets up for breakout on next tick).
+        if prev is not None and not (self.range_low <= prev <= self.range_high):
+            # Previous price was outside the range — not a fresh cross
             return None
-
-        # If previous price was outside the range, allow breakout only if
-        # price crossed THROUGH the range (came back inside or crossed to
-        # the other side).  This prevents the window from being permanently
-        # stuck when a WS reconnect gap leaves _last_price outside.
-        if not (self.range_low <= prev <= self.range_high):
-            # Price returned inside the range — reset for fresh-cross next tick
-            if self.range_low <= price <= self.range_high:
-                return None
-            # Price still outside on the same side — not a fresh cross
-            if (prev > self.range_high and price > self.range_high) or \
-               (prev < self.range_low and price < self.range_low):
-                return None
-            # Price crossed from one side to the other through the range —
-            # treat as a valid breakout (momentum carried through)
 
         if price > self.range_high:
             self.breakout_fired = True
@@ -223,8 +153,8 @@ class ORBStrategy:
     Window 1 (5-min): Fast, aggressive breakout — fires first.
     Window 2 (15-min): Wider range, stronger confirmation — fires later.
 
-    Each window resets after firing, allowing repeated breakouts up to
-    max_orb_trades per day. A cooldown period separates consecutive trades.
+    Each window can produce one breakout. Total trades capped at max_orb_trades.
+    A cooldown period separates consecutive trades.
     """
 
     def __init__(self, symbol: str):
@@ -272,18 +202,10 @@ class ORBStrategy:
             return None
 
         # Cooldown check
-        cooldown_elapsed = True
         if self.last_trade_time is not None:
             elapsed = (timestamp - self.last_trade_time).total_seconds() / 60
             if elapsed < self.cooldown_minutes:
-                cooldown_elapsed = False
-            else:
-                # Cooldown passed — allow windows to fire again (re-entry)
-                for w in self.windows:
-                    w.allow_reentry()
-
-        if not cooldown_elapsed:
-            return None
+                return None
 
         current_time = timestamp.time()
 
@@ -292,13 +214,6 @@ class ORBStrategy:
             direction = window.feed(price, high, low, current_time)
             if direction is None:
                 continue
-
-            # Reset window so it can fire again after cooldown.
-            # Build a new range from the next few minutes of data.
-            window.breakout_fired = False
-            window.range_set = False
-            window.prices = []
-            window._late_start_seconds = None
 
             # Build signal
             spec = config.CONTRACT_SPECS[self.symbol]
@@ -348,29 +263,27 @@ class ORBStrategy:
                 sig_dir = Direction.SHORT
                 reason = (
                     f"ORB-{window.window_minutes}m short breakout "
-                    f"below {window.range_high:.2f}"
+                    f"below {window.range_low:.2f}"
                 )
 
             self.trades_taken += 1
             self.last_trade_time = timestamp
-            window.fire_count += 1
 
             logger.info(
-                "ORB %s %s at %.2f | window=%dm | trade %d/%d | fire#%d | SL=%.2f TP=%.2f",
+                "ORB %s %s at %.2f | window=%dm | trade %d/%d | SL=%.2f TP=%.2f",
                 self.symbol,
                 direction.upper(),
                 price,
                 window.window_minutes,
                 self.trades_taken,
                 self.max_trades,
-                window.fire_count,
                 stop,
                 tp,
             )
             return TradeSignal(
                 symbol=self.symbol,
                 direction=sig_dir,
-                entry_price=price,  # expected entry for journal (order is still Market)
+                entry_price=None,
                 stop_loss=stop,
                 take_profit=tp,
                 qty=0,  # set by risk manager
@@ -448,13 +361,14 @@ class VWAPStrategy:
         self._vwap_stale_bars = 0
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
-        """Update the running VWAP with a new bar."""
+        """Update the running VWAP with a new bar.
+
+        Zero-volume ticks (e.g. bid/ask WebSocket updates) are skipped
+        for VWAP calculation but do NOT increment the stale counter.
+        The stale counter is only meaningful for REST candle gaps where
+        an entire bar has no volume, not for individual WebSocket ticks.
+        """
         if volume <= 0:
-            # Tick-level quotes from WebSocket never carry volume — this is
-            # expected and NOT an indication of stale data.  Only candle bars
-            # (from the REST poller) provide real volume.  Do NOT increment
-            # _vwap_stale_bars here; the staleness guard is meant for detecting
-            # when the entire data feed has died, not for individual ticks.
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
@@ -518,11 +432,8 @@ class VWAPStrategy:
             return None
 
         # Don't signal if VWAP is stale (too many zero-volume bars)
-        # Threshold raised to 20: WebSocket tick data has many bid/ask updates
-        # between actual trades, each with volume=0. A threshold of 3 blocked
-        # signals almost permanently on low-frequency symbols.
         stale_bars = getattr(self, "_vwap_stale_bars", 0)
-        if stale_bars >= 20:
+        if stale_bars >= 3:
             self._prev_price = price
             return None
 
@@ -545,9 +456,6 @@ class VWAPStrategy:
                 and self._long_allowed()
             ):
                 stop = self.vwap - self.stop_points
-                # Cap: SL never more than stop_points from entry price
-                # (REST polling delay can put entry far from VWAP)
-                stop = max(stop, price - self.stop_points)
                 tp = price + self.tp_points
                 self.long_count += 1
                 self.last_long_time = self._current_time
@@ -566,7 +474,7 @@ class VWAPStrategy:
                 signal = TradeSignal(
                     symbol=self.symbol,
                     direction=Direction.LONG,
-                    entry_price=price,
+                    entry_price=None,
                     stop_loss=stop,
                     take_profit=tp,
                     qty=0,
@@ -586,8 +494,6 @@ class VWAPStrategy:
                 and self._short_allowed()
             ):
                 stop = self.vwap + self.stop_points
-                # Cap: SL never more than stop_points from entry price
-                stop = min(stop, price + self.stop_points)
                 tp = price - self.tp_points
                 self.short_count += 1
                 self.last_short_time = self._current_time
@@ -606,7 +512,7 @@ class VWAPStrategy:
                 signal = TradeSignal(
                     symbol=self.symbol,
                     direction=Direction.SHORT,
-                    entry_price=price,
+                    entry_price=None,
                     stop_loss=stop,
                     take_profit=tp,
                     qty=0,
