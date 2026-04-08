@@ -859,6 +859,13 @@ class TradovateBot:
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
                 )
+                # Log WebSocket quote flow for diagnostics
+                if isinstance(self.md_stream, MarketDataStream):
+                    logger.info(
+                        "WS health | quotes_received=%d | data_stale=%s",
+                        self.md_stream._quotes_received,
+                        self.md_stream.data_stale,
+                    )
 
                 # Write live status file for external monitoring
                 self._write_live_status()
@@ -1009,6 +1016,11 @@ class TradovateBot:
                     else "rest" if self.md_stream else "none"
                 ),
                 "md_access_token": "present" if self.api.md_access_token else "MISSING",
+                "ws_quotes_received": (
+                    self.md_stream._quotes_received
+                    if self.md_stream and hasattr(self.md_stream, "_quotes_received")
+                    else 0
+                ),
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
