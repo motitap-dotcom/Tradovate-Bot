@@ -126,6 +126,8 @@ class TradovateAPI:
             return True
 
         # 2. Try saved token from file
+        _renewed_access = None
+        _renewed_expiry = None
         if self._load_token():
             # Always attempt renewal — even for expired tokens.
             # Tradovate may accept renewal for recently-expired tokens.
@@ -134,9 +136,23 @@ class TradovateAPI:
             if self.renew_token():
                 logger.info("Saved token renewed successfully")
                 self._fetch_account_id()
-                self._save_token()
-                return True
-            logger.warning("Saved token renewal failed, trying fresh auth...")
+                if self.md_access_token:
+                    self._save_token()
+                    return True
+                # Renewal worked for trading but mdAccessToken is missing.
+                # Fall through to fresh web auth so WebSocket market data
+                # will be available.  Keep the renewed trading token as
+                # fallback in case fresh auth fails.
+                logger.info(
+                    "Token renewed but mdAccessToken missing — "
+                    "trying fresh auth for WebSocket market data..."
+                )
+                _renewed_access = self.access_token
+                _renewed_expiry = self.token_expiry
+            else:
+                _renewed_access = None
+                _renewed_expiry = None
+                logger.warning("Saved token renewal failed, trying fresh auth...")
             # Clear stale token and delete file before fresh auth
             self.access_token = None
             self.md_access_token = None
@@ -162,6 +178,17 @@ class TradovateAPI:
         if data is None:
             data = self._try_browser_auth()
         if data is None:
+            # Fresh auth failed — restore renewed trading token if we had one
+            if _renewed_access:
+                logger.warning(
+                    "Fresh auth failed but renewed trading token is still valid. "
+                    "Restoring it (WebSocket will be unavailable)."
+                )
+                self.access_token = _renewed_access
+                self.token_expiry = _renewed_expiry
+                self._fetch_account_id()
+                self._save_token()
+                return True
             logger.error("All authentication methods exhausted")
             return False
 
@@ -985,10 +1012,20 @@ class TradovateAPI:
             return None
 
     def _re_authenticate(self) -> bool:
-        """Clear expired token and do full re-authentication."""
+        """Clear expired token and do full re-authentication.
+
+        Deletes the saved token file so authenticate() performs a fresh
+        web auth instead of just renewing the stale saved token.  This is
+        important because token renewal does NOT return mdAccessToken,
+        so a full auth is the only way to obtain it.
+        """
         self.access_token = None
         self.md_access_token = None
         self.token_expiry = None
+        try:
+            _TOKEN_FILE.unlink(missing_ok=True)
+        except OSError:
+            pass
         return self.authenticate()
 
 
