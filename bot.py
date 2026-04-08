@@ -94,7 +94,7 @@ class TradovateBot:
         self.trades_today: list[dict] = []
 
         # Global cooldown: minimum seconds between any two order placements
-        self._min_order_gap_seconds: int = 60
+        self._min_order_gap_seconds: int = 30
         self._last_order_time: float = 0
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
@@ -152,15 +152,6 @@ class TradovateBot:
         if saved:
             bot_state.restore_strategies(saved, self.strategies)
             self.risk.trades_today = saved.get("trades_today_count", 0)
-            # Restore day_start_balance so day_pnl doesn't reset on restart
-            saved_day_start = saved.get("day_start_balance")
-            if saved_day_start is not None and self.risk._balance_initialized:
-                self.risk.day_start_balance = saved_day_start
-                self.risk.day_pnl = self.risk.current_balance - saved_day_start
-                logger.info(
-                    "Restored day_start_balance=$%.2f from state → day_pnl=$%.2f",
-                    saved_day_start, self.risk.day_pnl,
-                )
             logger.info("Restored bot state: trades_today=%d", self.risk.trades_today)
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
@@ -222,15 +213,7 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _resolve_contracts(self):
-        """Find the front-month contract for each enabled symbol.
-
-        Retries up to 3 times per symbol on API failure.
-        Falls back to cached contract_map from bot_state.json if all retries fail.
-        """
-        # Load cached contract map for fallback
-        cached = bot_state.load_state() or {}
-        cached_contracts = cached.get("contract_map", {})
-
+        """Find the front-month contract for each enabled symbol."""
         for symbol, spec in config.CONTRACT_SPECS.items():
             if not spec["enabled"]:
                 logger.info("Skipping %s (disabled)", symbol)
@@ -242,21 +225,7 @@ class TradovateBot:
                 logger.info("Dry run: %s -> %s", symbol, self.contract_map[symbol])
                 continue
 
-            # Retry up to 3 times with short backoff
-            contract = None
-            for attempt in range(3):
-                contract = self.api.suggest_contract(symbol)
-                if contract:
-                    break
-                if attempt < 2:
-                    import time
-                    wait = 2 * (attempt + 1)
-                    logger.warning(
-                        "suggest_contract(%s) failed (attempt %d/3), retrying in %ds...",
-                        symbol, attempt + 1, wait,
-                    )
-                    time.sleep(wait)
-
+            contract = self.api.suggest_contract(symbol)
             if contract:
                 contract_name = contract.get("name", symbol)
                 self.contract_map[symbol] = contract_name
@@ -269,17 +238,9 @@ class TradovateBot:
                     contract_name,
                     contract_id,
                 )
-            elif symbol in cached_contracts:
-                # Fallback: use cached contract from previous session
-                self.contract_map[symbol] = cached_contracts[symbol]
-                logger.warning(
-                    "Could not resolve %s from API — using cached contract: %s",
-                    symbol, cached_contracts[symbol],
-                )
             else:
                 logger.warning(
-                    "Could not resolve front-month for %s (no cache available). Skipping.",
-                    symbol,
+                    "Could not resolve front-month for %s. Skipping.", symbol
                 )
 
     # ─────────────────────────────────────────
@@ -551,21 +512,18 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _start_market_data(self):
-        """Start market data stream.
-
-        REST polling (Yahoo Finance) is the default — Tradovate's WebSocket
-        connects and authenticates but does not deliver usable quote data
-        for micro contracts.  WebSocket can be forced via env var
-        FORCE_WS_MARKET_DATA=1 for debugging.
-        """
-        force_ws = os.environ.get("FORCE_WS_MARKET_DATA", "").strip() == "1"
-
-        if force_ws and self.api.md_access_token:
+        """Try WebSocket first; fall back to REST polling if WS is unavailable."""
+        logger.info(
+            "Market data init: md_access_token=%s",
+            "present" if self.api.md_access_token else "MISSING — WebSocket will be skipped",
+        )
+        if self.api.md_access_token:
             try:
                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
                 ws.start()
+                # Give it a moment to connect
                 if ws._connected.wait(timeout=10):
-                    logger.info("Market data via WebSocket (forced)")
+                    logger.info("Market data via WebSocket")
                     return ws
                 logger.warning("WebSocket connection failed, falling back to REST polling")
                 ws.stop()
@@ -671,34 +629,6 @@ class TradovateBot:
             logger.error("No contract mapping for %s", signal.symbol)
             return
 
-        # ── Hard SL safety cap ──
-        # Strategies should already cap stop distance, but as a safety net
-        # we enforce the max from config here before sending to the API.
-        spec = config.CONTRACT_SPECS.get(signal.symbol, {})
-        max_stop_pts = spec.get("stop_loss_points", 25)
-        if signal.direction == Direction.LONG:
-            max_sl = signal.entry_price - max_stop_pts if signal.entry_price else signal.stop_loss
-            if signal.stop_loss < max_sl:
-                logger.warning(
-                    "SL safety cap: %s LONG SL %.2f too far from entry, capping to %.2f (max %s pts)",
-                    signal.symbol, signal.stop_loss, max_sl, max_stop_pts,
-                )
-                signal.stop_loss = max_sl
-        else:
-            # For market orders, entry_price is None — estimate from SL + stop distance
-            # The SL should never be more than max_stop_pts above the expected entry
-            if signal.stop_loss > 0 and signal.take_profit > 0:
-                # Estimate entry from midpoint between SL and TP direction
-                estimated_entry = (signal.stop_loss + signal.take_profit) / 2
-                max_sl = estimated_entry + max_stop_pts
-                if signal.stop_loss > max_sl:
-                    capped_sl = estimated_entry + max_stop_pts
-                    logger.warning(
-                        "SL safety cap: %s SHORT SL %.2f too far (est entry %.2f), capping to %.2f (max %s pts)",
-                        signal.symbol, signal.stop_loss, estimated_entry, capped_sl, max_stop_pts,
-                    )
-                    signal.stop_loss = capped_sl
-
         logger.info(
             "SIGNAL: %s %s %d @ market | SL=%.4f TP=%.4f | %s",
             signal.direction.value,
@@ -739,11 +669,10 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
-            actual_entry = result.get("avgPrice") or signal.entry_price or 0
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=actual_entry,
+                entry_price=signal.entry_price or 0,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -777,10 +706,6 @@ class TradovateBot:
             state = bot_state.build_state(
                 self.strategies, len(self.trades_today), self.trades_today
             )
-            # Save contract map for fallback on restart
-            state["contract_map"] = dict(self.contract_map)
-            # Save day_start_balance so day_pnl survives restarts
-            state["day_start_balance"] = self.risk.day_start_balance
             bot_state.save_state(state)
         except Exception as e:
             logger.warning("Failed to save bot state: %s", e)
@@ -884,10 +809,28 @@ class TradovateBot:
                         if self.md_stream:
                             self._subscribe_market_data()
 
-                # NOTE: WebSocket recovery disabled — Tradovate WS connects but
-                # does not deliver usable quote data for micro contracts.
-                # REST polling via Yahoo Finance is the reliable data source.
-                # To re-enable, set FORCE_WS_MARKET_DATA=1 in .env.
+                # Periodic WebSocket recovery: if currently on REST polling,
+                # try to upgrade back to WebSocket every 5 minutes
+                if not self.dry_run and self.md_stream and isinstance(self.md_stream, RestMarketDataPoller):
+                    if not hasattr(self, "_last_ws_retry"):
+                        self._last_ws_retry = time.time()
+                    if time.time() - self._last_ws_retry >= 300:  # 5 minutes
+                        self._last_ws_retry = time.time()
+                        if self.api.md_access_token or self.api._re_authenticate():
+                            logger.info("Attempting to upgrade from REST polling back to WebSocket...")
+                            try:
+                                ws = MarketDataStream(self.api.md_access_token, api=self.api)
+                                ws.start()
+                                if ws._connected.wait(timeout=10):
+                                    logger.info("WebSocket recovery succeeded! Switching from REST to WebSocket.")
+                                    self.md_stream.stop()
+                                    self.md_stream = ws
+                                    self._subscribe_market_data()
+                                else:
+                                    logger.info("WebSocket still unavailable, staying on REST polling.")
+                                    ws.stop()
+                            except Exception as e:
+                                logger.warning("WebSocket recovery attempt failed: %s", e)
 
                 # Periodic contract rollover check (every 10 min)
                 if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
@@ -962,17 +905,6 @@ class TradovateBot:
                         open_base_symbols.add(base_sym)
 
             self.risk.open_contracts = total_open
-
-            # Detect positions that just closed (SL/TP hit) → set strategy cooldown
-            if not hasattr(self, "_prev_open_symbols"):
-                self._prev_open_symbols = set()
-            just_closed = self._prev_open_symbols - open_base_symbols
-            for sym in just_closed:
-                strategy = self.strategies.get(sym)
-                if strategy and hasattr(strategy, "last_any_trade_time"):
-                    strategy.last_any_trade_time = now_et()
-                    logger.info("Position closed for %s — strategy cooldown set", sym)
-            self._prev_open_symbols = open_base_symbols.copy()
 
             # Close journal trades where position is now flat
             for trade_info in self.trades_today:
@@ -1170,15 +1102,11 @@ def main():
     # Only SIGINT/SIGTERM (from systemd stop) will break this loop.
     bot = None
     consecutive_crashes = 0
-    _crash_timestamps: list[float] = []
-    _MAX_CRASHES_IN_WINDOW = 5
-    _CRASH_WINDOW_SECONDS = 600  # 10 minutes
     while not _shutdown_requested:
         try:
             bot = TradovateBot(dry_run=args.dry_run)
             bot.start()
             consecutive_crashes = 0  # Successful session resets crash counter
-            _crash_timestamps.clear()
 
             if _shutdown_requested:
                 break
@@ -1199,20 +1127,6 @@ def main():
 
         except Exception as exc:
             consecutive_crashes += 1
-            _crash_timestamps.append(time.time())
-
-            # Crash loop detection: if 5+ crashes in 10 minutes, give up
-            recent = [t for t in _crash_timestamps if time.time() - t < _CRASH_WINDOW_SECONDS]
-            _crash_timestamps[:] = recent  # prune old entries
-            if len(recent) >= _MAX_CRASHES_IN_WINDOW:
-                logger.critical(
-                    "!!! CRASH LOOP DETECTED: %d crashes in %d seconds. "
-                    "Exiting to prevent infinite restart loop. "
-                    "Fix the issue and restart manually or via cron.",
-                    len(recent), _CRASH_WINDOW_SECONDS,
-                )
-                sys.exit(2)  # exit code 2 = crash loop (distinguishable from normal exit)
-
             restart_delay = min(30 * consecutive_crashes, 300)  # 30s, 60s, ... up to 5min
             logger.critical(
                 "!!! BOT CRASHED (attempt %d): %s. Restarting in %ds...",
