@@ -562,19 +562,6 @@ class TradovateBot:
                                 )
                 if hasattr(strategy, "vwap") and strategy.vwap:
                     logger.info("  VWAP: %.4f | prev_price: %.4f", strategy.vwap, strategy._prev_price or 0)
-                    # If prev_price is already on one side of VWAP after
-                    # warmup, the crossover already happened.  Snap prev_price
-                    # to VWAP so the next live cross in either direction is
-                    # detected as a fresh crossover.
-                    if strategy._prev_price is not None:
-                        gap = abs(strategy._prev_price - strategy.vwap)
-                        if gap > 0:
-                            logger.info(
-                                "  VWAP %s: snapping prev_price from %.4f to VWAP %.4f "
-                                "(gap=%.4f) so next crossover is detected",
-                                symbol, strategy._prev_price, strategy.vwap, gap,
-                            )
-                            strategy._prev_price = strategy.vwap
 
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
@@ -633,22 +620,10 @@ class TradovateBot:
             self._symbol_quotes = {}
         self._symbol_quotes[symbol] = self._symbol_quotes.get(symbol, 0) + 1
 
-        # Log first few quotes per symbol to understand data format
-        if not hasattr(self, "_sample_logged"):
-            self._sample_logged = {}
-        if self._sample_logged.get(symbol, 0) < 3:
-            self._sample_logged[symbol] = self._sample_logged.get(symbol, 0) + 1
-            import json
-            logger.info("QUOTE SAMPLE %s #%d: keys=%s data=%s",
-                        symbol, self._sample_logged[symbol],
-                        list(data.keys()), json.dumps(data, default=str)[:500])
-
-        # Prefer trade price, fall back to bid — try multiple formats
+        # Extract price — try multiple Tradovate WebSocket formats
         price = None
-        # Format 1: top-level trade/bid (original)
         trade = data.get("trade", {})
         price = trade.get("price") or data.get("bid", {}).get("price")
-        # Format 2: entries dict (Tradovate alternate format)
         if price is None:
             entries = data.get("entries", {})
             if entries:
@@ -664,7 +639,9 @@ class TradovateBot:
             self._null_price_count[symbol] = self._null_price_count.get(symbol, 0) + 1
             return
 
-        volume = trade.get("size", 0)
+        volume = trade.get("size", 0) or (
+            data.get("entries", {}).get("Trade", {}).get("size", 0)
+        )
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
 
