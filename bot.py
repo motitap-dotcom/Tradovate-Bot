@@ -147,6 +147,15 @@ class TradovateBot:
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
 
+        # Log post-warmup strategy readiness
+        for symbol, strat in self.strategies.items():
+            if hasattr(strat, "windows"):
+                fired = [w.breakout_fired for w in strat.windows]
+                logger.info(
+                    "Post-warmup %s: windows_fired=%s, late_start_eligible=%s",
+                    symbol, fired, all(fired),
+                )
+
         # Restore trade counts and cooldowns from saved state (layered on top of warmup)
         saved = bot_state.load_state()
         if saved:
@@ -553,6 +562,19 @@ class TradovateBot:
                                 )
                 if hasattr(strategy, "vwap") and strategy.vwap:
                     logger.info("  VWAP: %.4f | prev_price: %.4f", strategy.vwap, strategy._prev_price or 0)
+                    # If prev_price is already on one side of VWAP after
+                    # warmup, the crossover already happened.  Snap prev_price
+                    # to VWAP so the next live cross in either direction is
+                    # detected as a fresh crossover.
+                    if strategy._prev_price is not None:
+                        gap = abs(strategy._prev_price - strategy.vwap)
+                        if gap > 0:
+                            logger.info(
+                                "  VWAP %s: snapping prev_price from %.4f to VWAP %.4f "
+                                "(gap=%.4f) so next crossover is detected",
+                                symbol, strategy._prev_price, strategy.vwap, gap,
+                            )
+                            strategy._prev_price = strategy.vwap
 
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
