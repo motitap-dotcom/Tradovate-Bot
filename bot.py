@@ -228,8 +228,31 @@ class TradovateBot:
             contract = self.api.suggest_contract(symbol)
             if contract:
                 contract_name = contract.get("name", symbol)
-                self.contract_map[symbol] = contract_name
                 contract_id = contract.get("id")
+
+                # Validate: if the resolved contract's month code is not in
+                # the liquid months schedule, compute the correct front month.
+                liquid_months = config.CONTRACT_LIQUID_MONTHS.get(symbol)
+                if liquid_months and len(contract_name) >= len(symbol) + 2:
+                    month_code = contract_name[len(symbol)]
+                    if month_code not in liquid_months:
+                        corrected = self._next_liquid_contract(symbol, contract_name)
+                        if corrected:
+                            logger.warning(
+                                "Resolved %s -> %s but month '%s' is not liquid %s. "
+                                "Overriding to %s",
+                                symbol, contract_name, month_code,
+                                liquid_months, corrected,
+                            )
+                            # Re-resolve with the corrected name
+                            corrected_data = self.api.find_contract(corrected)
+                            if corrected_data:
+                                contract_name = corrected_data.get("name", corrected)
+                                contract_id = corrected_data.get("id", contract_id)
+                            else:
+                                contract_name = corrected
+
+                self.contract_map[symbol] = contract_name
                 if contract_id is not None:
                     self.contract_id_map[symbol] = contract_id
                 logger.info(
