@@ -448,7 +448,9 @@ class TradovateBot:
                 closes = quotes.get("close", [])
                 volumes = quotes.get("volume", [])
 
+                today = now_et().date()
                 fed = 0
+                skipped_old = 0
                 for i, ts in enumerate(timestamps):
                     c = closes[i] if i < len(closes) else None
                     h = highs[i] if i < len(highs) else None
@@ -459,6 +461,13 @@ class TradovateBot:
                         continue
 
                     candle_time = datetime.fromtimestamp(ts, tz=ET)
+
+                    # Only use TODAY's candles for warmup.
+                    # Yesterday's data would build stale ORB ranges and VWAP
+                    # levels that block today's signals.
+                    if candle_time.date() != today:
+                        skipped_old += 1
+                        continue
 
                     # Feed to strategy state WITHOUT executing signals
                     if hasattr(strategy, "update_vwap"):
@@ -488,6 +497,11 @@ class TradovateBot:
                 if timestamps:
                     self._warmup_last_ts[contract_name] = timestamps[-1]
 
+                if skipped_old:
+                    logger.info(
+                        "Warmup %s: skipped %d candles from previous day",
+                        symbol, skipped_old,
+                    )
                 logger.info(
                     "Warmed up %s with %d candles | strategy=%s",
                     symbol, fed, type(strategy).__name__,
