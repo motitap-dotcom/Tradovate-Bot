@@ -628,10 +628,18 @@ class TradovateBot:
         real volume for VWAP calculation; bid/ask updates carry volume=0
         but still provide price for crossover detection.
         """
+        # Per-symbol quote counter for diagnostics
+        if not hasattr(self, "_symbol_quotes"):
+            self._symbol_quotes = {}
+        self._symbol_quotes[symbol] = self._symbol_quotes.get(symbol, 0) + 1
+
         # Prefer trade price, fall back to bid
         trade = data.get("trade", {})
         price = trade.get("price") or data.get("bid", {}).get("price")
         if price is None:
+            if not hasattr(self, "_null_price_count"):
+                self._null_price_count = {}
+            self._null_price_count[symbol] = self._null_price_count.get(symbol, 0) + 1
             return
 
         volume = trade.get("size", 0)
@@ -944,6 +952,14 @@ class TradovateBot:
                     self._last_strategy_dump = 0
                 if time.time() - self._last_strategy_dump >= 300:
                     self._last_strategy_dump = time.time()
+                    # Log per-symbol quote routing
+                    sq = getattr(self, "_symbol_quotes", {})
+                    np = getattr(self, "_null_price_count", {})
+                    logger.info(
+                        "Quote routing | per_symbol=%s | null_price=%s",
+                        {s: sq.get(s, 0) for s in self.contract_map},
+                        {s: np.get(s, 0) for s in self.contract_map if np.get(s, 0) > 0},
+                    )
                     for sym, strat in self.strategies.items():
                         if hasattr(strat, "windows"):
                             all_w = list(strat.windows)
