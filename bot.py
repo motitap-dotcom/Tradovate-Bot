@@ -507,16 +507,29 @@ class TradovateBot:
                     symbol, fed, type(strategy).__name__,
                 )
 
-                # Log built ranges / VWAP
+                # Log built ranges / VWAP and detect stale breakouts
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
                         logger.info(
-                            "  ORB %d-min range: %.2f - %.2f (size=%.2f)",
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) | last_price=%.2f",
                             w.window_minutes, w.range_low, w.range_high,
                             w.range_high - w.range_low,
+                            w._last_price or 0,
                         )
+                        # If _last_price is already outside the range after
+                        # warmup, a breakout already happened.  Mark it fired
+                        # so the window doesn't sit in a "ready but blocked"
+                        # state that can never trigger.
+                        if w._last_price is not None and not w.breakout_fired:
+                            if w._last_price > w.range_high or w._last_price < w.range_low:
+                                w.breakout_fired = True
+                                logger.info(
+                                    "  ORB %d-min: breakout already occurred during warmup "
+                                    "(last_price=%.2f outside range). Marked as fired.",
+                                    w.window_minutes, w._last_price,
+                                )
                 if hasattr(strategy, "vwap") and strategy.vwap:
-                    logger.info("  VWAP: %.4f", strategy.vwap)
+                    logger.info("  VWAP: %.4f | prev_price: %.4f", strategy.vwap, strategy._prev_price or 0)
 
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
@@ -880,6 +893,32 @@ class TradovateBot:
                         self.md_stream._quotes_received,
                         self.md_stream.data_stale,
                     )
+
+                # Periodic strategy state dump (every ~5 minutes)
+                if not hasattr(self, "_last_strategy_dump"):
+                    self._last_strategy_dump = 0
+                if time.time() - self._last_strategy_dump >= 300:
+                    self._last_strategy_dump = time.time()
+                    for sym, strat in self.strategies.items():
+                        if hasattr(strat, "windows"):
+                            for w in strat.windows:
+                                logger.info(
+                                    "ORB state %s %dm | range_set=%s high=%.2f low=%.2f | fired=%s | last_price=%s",
+                                    sym, w.window_minutes, w.range_set,
+                                    w.range_high or 0, w.range_low or 0,
+                                    w.breakout_fired,
+                                    f"{w._last_price:.2f}" if w._last_price else "None",
+                                )
+                        elif hasattr(strat, "vwap"):
+                            logger.info(
+                                "VWAP state %s | vwap=%s | prev_price=%s | candles=%d | longs=%d/%d shorts=%d/%d",
+                                sym,
+                                f"{strat.vwap:.4f}" if strat.vwap else "None",
+                                f"{strat._prev_price:.4f}" if strat._prev_price else "None",
+                                getattr(strat, "_candle_count", 0),
+                                strat.long_count, strat.max_per_direction,
+                                strat.short_count, strat.max_per_direction,
+                            )
 
                 # Write live status file for external monitoring
                 self._write_live_status()
