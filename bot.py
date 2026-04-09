@@ -924,10 +924,14 @@ class TradovateBot:
                     self._last_strategy_dump = time.time()
                     for sym, strat in self.strategies.items():
                         if hasattr(strat, "windows"):
-                            for w in strat.windows:
+                            all_w = list(strat.windows)
+                            if getattr(strat, "_late_window", None):
+                                all_w.append(strat._late_window)
+                            for w in all_w:
+                                label = "late" if w is getattr(strat, "_late_window", None) else str(w.window_minutes)
                                 logger.info(
-                                    "ORB state %s %dm | range_set=%s high=%.2f low=%.2f | fired=%s | last_price=%s",
-                                    sym, w.window_minutes, w.range_set,
+                                    "ORB state %s %sm | range_set=%s high=%.2f low=%.2f | fired=%s | last_price=%s",
+                                    sym, label, w.range_set,
                                     w.range_high or 0, w.range_low or 0,
                                     w.breakout_fired,
                                     f"{w._last_price:.2f}" if w._last_price else "None",
