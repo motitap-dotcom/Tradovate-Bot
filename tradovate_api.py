@@ -995,12 +995,15 @@ class MarketDataStream:
         self._should_run = False
         self._reconnect_count = 0
         self._consecutive_failures = 0
+        self._zero_data_cycles = 0  # Reconnect cycles that produced 0 quotes
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
+        self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
+        self._quotes_dispatched: int = 0  # Quotes actually routed to callbacks
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1008,6 +1011,7 @@ class MarketDataStream:
         self._last_data_time = time.time()  # Grace period before staleness check
         self._start_time = time.time()
         self._quotes_received = 0
+        self._quotes_dispatched = 0
         self._connect()
         self._connected.wait(timeout=15)
 
@@ -1026,12 +1030,11 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
-        # Send WebSocket-level pings every 25s to keep the TCP connection alive
+        # Send WebSocket-level pings every 15s to keep the TCP connection alive
         # through load balancers, NAT, and server idle timeouts.
-        # Without this, the server closes the connection after ~30s of
-        # transport-level "silence" (application-level SockJS heartbeats don't count).
-        proxy_kwargs["ping_interval"] = 25
-        proxy_kwargs["ping_timeout"] = 10
+        # ping_interval MUST be > ping_timeout (websocket-client requirement).
+        proxy_kwargs["ping_interval"] = 15
+        proxy_kwargs["ping_timeout"] = 5
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
@@ -1058,6 +1061,7 @@ class MarketDataStream:
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
+        self._stop_heartbeat()
         # Cancel pending reconnect timer
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
@@ -1091,6 +1095,14 @@ class MarketDataStream:
                     time.time() - self._start_time,
                 )
                 return True
+        # Check 3: Receiving data but nothing routed to callbacks (contractId mismatch)
+        if self._quotes_received > 10 and self._quotes_dispatched == 0 and self._start_time:
+            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
+                logger.warning(
+                    "WebSocket received %d quotes but dispatched 0. ContractId routing broken. Declaring stale.",
+                    self._quotes_received,
+                )
+                return True
         return False
 
     def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
@@ -1115,6 +1127,25 @@ class MarketDataStream:
         """Register a callback for quote updates on a symbol."""
         with self._callbacks_lock:
             self._callbacks.setdefault(symbol, []).append(callback)
+
+    # ─────── SockJS keepalive ───────
+
+    def _start_heartbeat(self):
+        """Send SockJS keepalive '[]' every 10s to prevent server idle timeout."""
+        self._stop_heartbeat()
+        def _beat():
+            while self._should_run and self._connected.is_set():
+                try:
+                    if self.ws:
+                        self.ws.send("[]")
+                except Exception:
+                    break
+                time.sleep(10)
+        self._heartbeat_timer = threading.Thread(target=_beat, daemon=True)
+        self._heartbeat_timer.start()
+
+    def _stop_heartbeat(self):
+        self._heartbeat_timer = None  # daemon thread dies on its own
 
     # ─────── WebSocket handlers ───────
 
@@ -1152,6 +1183,7 @@ class MarketDataStream:
                 logger.info("Market data WebSocket authenticated")
                 self._reconnect_count = 0
                 self._connected.set()
+                self._start_heartbeat()
                 continue
 
             # Auth failure — trigger reconnect with fresh token
@@ -1190,12 +1222,16 @@ class MarketDataStream:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
                     contract_id = quote.get("contractId")
+                    # Try data-level contractId if quote-level is missing
+                    if contract_id is None and isinstance(data, dict):
+                        contract_id = data.get("contractId")
                     # Route quote to the correct symbol's callbacks using contractId.
                     # Without this filter, ALL quotes go to ALL symbols — causing
                     # strategies to receive prices from wrong contracts (e.g., NQ
                     # prices fed to GC strategy), which breaks ORB ranges and VWAP.
                     target_sym = self._contract_id_to_symbol.get(contract_id)
                     if target_sym and target_sym in cb_snapshot:
+                        self._quotes_dispatched += 1
                         for cb in cb_snapshot[target_sym]:
                             try:
                                 cb(target_sym, quote)
@@ -1208,6 +1244,7 @@ class MarketDataStream:
                         logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
+                        self._quotes_dispatched += 1
                         for sym, cbs in cb_snapshot.items():
                             for cb in cbs:
                                 try:
@@ -1215,8 +1252,13 @@ class MarketDataStream:
                                 except Exception as e:
                                     logger.error("Quote callback error for %s: %s", sym, e)
                     else:
-                        # No contractId and multiple symbols — cannot safely route, skip
-                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
+                        # No contractId and multiple symbols — cannot safely route
+                        if self._quotes_received <= 5:
+                            logger.warning(
+                                "Quote without contractId (%d symbols). keys=%s sample=%s",
+                                len(cb_snapshot), list(quote.keys())[:10],
+                                {k: quote[k] for k in list(quote.keys())[:3]},
+                            )
 
     def _on_error(self, ws, error):
         error_str = str(error)
@@ -1225,29 +1267,51 @@ class MarketDataStream:
             self._got_403 = True
         else:
             logger.error("Market data WebSocket error: %s", error)
+        # Detect graceful close (code 1000 "Bye") from the error payload.
+        # websocket-client fires _on_error BEFORE _on_close, and sometimes
+        # doesn't pass the close code to _on_close (leaves it None).
+        if "\\x03\\xe8" in error_str or "Bye" in error_str:
+            self._got_1000 = True
         # NOTE: Don't increment _consecutive_failures here — _on_close always
         # fires after _on_error and handles the counter.  Double-counting caused
         # premature fallback to REST polling.
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
+        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
-        is_graceful = close_status_code == 1000
+        # Note: websocket-client sometimes passes None for close_status_code
+        # even on graceful closes — check _got_1000 flag set by _on_error.
+        is_graceful = close_status_code == 1000 or getattr(self, "_got_1000", False)
+        self._got_1000 = False
         if is_graceful:
-            logger.info("Market data WebSocket closed gracefully (1000 %s). Reconnecting...", close_msg)
+            logger.info("Market data WebSocket closed gracefully (1000). Reconnecting...")
         else:
             logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
             self._consecutive_failures += 1
+
+        # Track reconnect cycles that produced 0 quotes — if this keeps
+        # happening, the WebSocket is fundamentally broken (wrong contract
+        # names, no market data permission, etc.) and we should fall back.
+        if self._quotes_received == 0:
+            self._zero_data_cycles += 1
+        else:
+            self._zero_data_cycles = 0
 
         if not self._should_run:
             return
 
         # Signal fallback after too many consecutive *real* failures
-        if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
+        # OR too many reconnect cycles with zero data
+        if self._consecutive_failures >= self.FALLBACK_THRESHOLD or self._zero_data_cycles >= 5:
+            reason = (
+                f"{self._zero_data_cycles} cycles with 0 quotes"
+                if self._zero_data_cycles >= 5
+                else f"{self._consecutive_failures} consecutive failures"
+            )
             logger.warning(
-                "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
-                self._consecutive_failures,
+                "WebSocket unhealthy (%s). Signaling fallback to REST polling.", reason,
             )
             self._should_run = False
             self.fell_back.set()
@@ -1273,6 +1337,9 @@ class MarketDataStream:
 
     def _reconnect(self):
         """Reconnect and re-subscribe to all symbols. Refreshes token on 403."""
+        # Reset per-cycle quote counter so _on_close can track zero-data cycles
+        self._quotes_received = 0
+
         # Close old WebSocket connection to prevent leaking
         if self.ws:
             try:
