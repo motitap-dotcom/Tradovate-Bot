@@ -184,12 +184,20 @@ class ORBStrategy:
         self.trades_taken: int = 0
         self.last_trade_time: Optional[datetime] = None
 
+        # Late-start window: created when the bot starts mid-day and all
+        # normal windows already fired.  Builds a fresh range from current
+        # prices so the strategy can still trade after a restart.
+        self._late_window: Optional[_ORBWindow] = None
+        self._late_window_created: bool = False
+
     def reset(self):
         """Reset state for a new trading day."""
         for w in self.windows:
             w.reset()
         self.trades_taken = 0
         self.last_trade_time = None
+        self._late_window = None
+        self._late_window_created = False
 
     def on_price(
         self, price: float, timestamp: datetime, high: float, low: float
@@ -209,8 +217,23 @@ class ORBStrategy:
 
         current_time = timestamp.time()
 
-        # Try each window (shorter windows fire earlier)
-        for window in self.windows:
+        # Late-start: if all normal windows already fired (breakout happened
+        # before this bot instance started), create a fresh window anchored
+        # to the current time so we can still catch intraday breakouts.
+        if not self._late_window_created and all(w.breakout_fired for w in self.windows):
+            self._late_window = _ORBWindow(5, current_time)
+            self._late_window_created = True
+            logger.info(
+                "ORB %s: all windows fired — creating late-start 5m window from %s",
+                self.symbol, current_time.strftime("%H:%M:%S"),
+            )
+
+        # Try each window (shorter windows fire earlier), including late window
+        all_windows = list(self.windows)
+        if self._late_window:
+            all_windows.append(self._late_window)
+
+        for window in all_windows:
             direction = window.feed(price, high, low, current_time)
             if direction is None:
                 continue
