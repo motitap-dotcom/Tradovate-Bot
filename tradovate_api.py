@@ -1494,7 +1494,7 @@ YAHOO_SYMBOLS = {
     # (Yahoo tracks the same underlying price, micros just have smaller multiplier)
     "MNQ": "NQ=F", "MES": "ES=F", "MGC": "GC=F", "MCL": "CL=F",
     "NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F",
-    "SI": "SI=F", "NG": "NG=F",
+    "SIL": "SI=F", "SI": "SI=F", "NG": "NG=F",
 }
 _YAHOO_SYMBOLS = YAHOO_SYMBOLS  # backward compat
 
