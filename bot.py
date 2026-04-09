@@ -633,9 +633,31 @@ class TradovateBot:
             self._symbol_quotes = {}
         self._symbol_quotes[symbol] = self._symbol_quotes.get(symbol, 0) + 1
 
-        # Prefer trade price, fall back to bid
+        # Log first few quotes per symbol to understand data format
+        if not hasattr(self, "_sample_logged"):
+            self._sample_logged = {}
+        if self._sample_logged.get(symbol, 0) < 3:
+            self._sample_logged[symbol] = self._sample_logged.get(symbol, 0) + 1
+            import json
+            logger.info("QUOTE SAMPLE %s #%d: keys=%s data=%s",
+                        symbol, self._sample_logged[symbol],
+                        list(data.keys()), json.dumps(data, default=str)[:500])
+
+        # Prefer trade price, fall back to bid — try multiple formats
+        price = None
+        # Format 1: top-level trade/bid (original)
         trade = data.get("trade", {})
         price = trade.get("price") or data.get("bid", {}).get("price")
+        # Format 2: entries dict (Tradovate alternate format)
+        if price is None:
+            entries = data.get("entries", {})
+            if entries:
+                trade_entry = entries.get("Trade", entries.get("trade", {}))
+                price = trade_entry.get("price")
+            if price is None and entries:
+                bid_entry = entries.get("Bid", entries.get("bid", {}))
+                price = bid_entry.get("price")
+
         if price is None:
             if not hasattr(self, "_null_price_count"):
                 self._null_price_count = {}
