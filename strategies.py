@@ -60,6 +60,7 @@ class _ORBWindow:
         self.range_low: Optional[float] = None
         self.range_set: bool = False
         self.breakout_fired: bool = False
+        self.fire_count: int = 0
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
 
@@ -68,6 +69,7 @@ class _ORBWindow:
         self.range_low = None
         self.range_set = False
         self.breakout_fired = False
+        self.fire_count = 0
         self.prices = []
         self._last_price = None
 
@@ -133,9 +135,11 @@ class _ORBWindow:
 
         if price > self.range_high:
             self.breakout_fired = True
+            self.fire_count += 1
             return "long"
         if price < self.range_low:
             self.breakout_fired = True
+            self.fire_count += 1
             return "short"
 
         return None
