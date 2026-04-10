@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-10T13:32:59Z",
+  "timestamp": "2026-04-10T13:35:37Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -11,15 +11,15 @@
   "balance": {
     "realizedPnl": null,
     "unrealizedPnl": null,
-    "totalCashValue": 53620.88,
+    "totalCashValue": 53673.76,
     "initialMargin": 0.0,
-    "netLiq": 53616.88
+    "netLiq": 53571.76
   },
   "positions": [
     {
       "contractId": 3924410,
       "netPos": -2,
-      "netPrice": 4774.8
+      "netPrice": 4768.5
     },
     {
       "contractId": 3643469,
@@ -29,25 +29,25 @@
   ],
   "orders": [
     {
-      "id": 409583849920,
+      "id": 409583849975,
       "action": "Buy",
       "qty": null,
       "status": "Working"
     },
     {
-      "id": 409583849934,
+      "id": 409583849976,
+      "action": "Buy",
+      "qty": null,
+      "status": "Working"
+    },
+    {
+      "id": 409583849989,
       "action": "Sell",
       "qty": null,
       "status": "Working"
     },
     {
-      "id": 409583849921,
-      "action": "Buy",
-      "qty": null,
-      "status": "Working"
-    },
-    {
-      "id": 409583849935,
+      "id": 409583849988,
       "action": "Sell",
       "qty": null,
       "status": "Working"
@@ -56,26 +56,26 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "2196333",
-    "uptime_since": "Fri 2026-04-10 13:28:27 UTC",
+    "bot_pid": "2198499",
+    "uptime_since": "Fri 2026-04-10 13:34:39 UTC",
     "disk": "19%",
-    "memory": "1164MB/7941MB (15%)",
+    "memory": "1187MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "d313054 Auto-merge claude/monitor-trading-startup-SpaBK \u2192 main",
+    "git_commit": "89a67dc Auto-merge claude/monitor-trading-startup-SpaBK \u2192 main",
     "live_status": {
-      "timestamp": "2026-04-10T13:32:36.855900+00:00",
-      "timestamp_et": "2026-04-10T09:32:36.855919-04:00",
-      "balance": 53584.88,
-      "equity": 53584.88,
-      "day_pnl": -39.56000000000495,
+      "timestamp": "2026-04-10T13:35:15.791296+00:00",
+      "timestamp_et": "2026-04-10T09:35:15.791314-04:00",
+      "balance": 53572.92,
+      "equity": 53572.92,
+      "day_pnl": -104.40000000000146,
       "unrealized_pnl": 0.0,
-      "peak_balance": 53646.04,
-      "drawdown_floor": 51146.04,
-      "distance_to_floor": 2438.8399999999965,
+      "peak_balance": 53677.32,
+      "drawdown_floor": 51177.32,
+      "distance_to_floor": 2395.5999999999985,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2439.560000000005,
-      "open_contracts": 4,
-      "trades_today": 2,
+      "daily_profit_remaining": 2504.4000000000015,
+      "open_contracts": 2,
+      "trades_today": 1,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -92,27 +92,27 @@
       "websocket_connected": true,
       "market_data_source": "websocket",
       "md_access_token": "present",
-      "ws_quotes_received": 29195
+      "ws_quotes_received": 4837
     },
-    "journal_tail": "2026-04-10 13:28:33,968 [INFO] bot: ORB state MNQ 5m | range_set=False high=0.00 low=0.00 | fired=False | last_price=None\n2026-04-10 13:28:33,968 [INFO] bot: ORB state MNQ 15m | range_set=False high=0.00 low=0.00 | fired=False | last_price=None\n2026-04-10 13:28:33,968 [INFO] bot: ORB state MES 5m | range_set=False high=0.00 low=0.00 | fired=False | last_price=None\n2026-04-10 13:28:33,968 [INFO] bot: ORB state MES 15m | range_set=False high=0.00 low=0.00 | fired=False | last_price=None\n2026-04-10 13:28:33,968 [INFO] bot: VWAP state MGC | vwap=4781.7010 | prev_price=4794.2002 | candles=559 | longs=0/8 shorts=0/8\n2026-04-10 13:28:33,968 [INFO] bot: VWAP state MCL | vwap=98.5160 | prev_price=97.7400 | candles=560 | longs=0/8 shorts=0/8\n2026-04-10 13:28:33,968 [INFO] bot: VWAP state SIL | vwap=75.8113 | prev_price=76.3850 | candles=507 | longs=0/8 shorts=0/8\n2026-04-10 13:28:33,968 [INFO] bot: VWAP state NG | vwap=2.6626 | prev_price=2.6680 | candles=547 | longs=0/8 shorts=0/8\n2026-04-10 13:29:04,481 [INFO] bot: Status | balance=53624.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-04-10 13:29:04,482 [INFO] bot: WS health | quotes_received=2211 | data_stale=False\n2026-04-10 13:29:34,827 [INFO] bot: Status | balance=53624.44 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/10 | trades=0/40 | locked=False\n2026-04-10 13:29:34,828 [INFO] bot: WS health | quotes_received=4291 | data_stale=False\n2026-04-10 13:30:00,074 [INFO] strategies: VWAP MGC SHORT #1 at 4773.6000 | VWAP=4781.7008 | SL=4786.7008 TP=4763.6000\n2026-04-10 13:30:00,074 [INFO] risk_manager: Position size for MGC: 2 contracts | budget=250.00 | risk/contract=50.00\n2026-04-10 13:30:00,075 [INFO] bot: SIGNAL: Sell MGC 2 @ market | SL=4786.7008 TP=4763.6000 | VWAP short #1 at 4773.6000 (VWAP=4781.7008)\n2026-04-10 13:30:00,075 [INFO] tradovate_api: Placing bracket Sell 2 MGCJ6 @ Market | SL=4786.70 TP=4763.60 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 399966",
-    "bot_log_tail": "2026-04-10 13:30:35,506 [INFO] bot: WS health | quotes_received=12050 | data_stale=False\n2026-04-10 13:31:05,844 [INFO] bot: Status | balance=53646.04 | day_pnl=21.60 | to_floor=2500.00 | contracts=2/10 | trades=1/40 | locked=False\n2026-04-10 13:31:05,846 [INFO] bot: WS health | quotes_received=16261 | data_stale=False\n2026-04-10 13:31:36,197 [INFO] bot: Status | balance=53646.04 | day_pnl=21.60 | to_floor=2500.00 | contracts=2/10 | trades=1/40 | locked=False\n2026-04-10 13:31:36,198 [INFO] bot: WS health | quotes_received=20820 | data_stale=False\n2026-04-10 13:31:37,598 [INFO] strategies: VWAP MCL LONG #1 at 98.5400 | VWAP=98.5134 | SL=98.3134 TP=98.9400\n2026-04-10 13:31:37,598 [INFO] risk_manager: Position size for MCL: 2 contracts | budget=250.00 | risk/contract=20.00\n2026-04-10 13:31:37,598 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=98.3134 TP=98.9400 | VWAP long #1 at 98.5400 (VWAP=98.5134)\n2026-04-10 13:31:37,598 [INFO] tradovate_api: Placing bracket Buy 2 MCLK6 @ Market | SL=98.31 TP=98.94 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Buy', 'symbol': 'MCLK6', 'orderQty': 2, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}\n2026-04-10 13:31:37,764 [INFO] tradovate_api: Entry order placed: orderId=409583849926 status=Unknown | full_response={'orderId': 409583849926}\n2026-04-10 13:31:38,944 [INFO] tradovate_api: Entry order check: orderId=409583849926 status=Filled filled=0 avgPrice=0 | detail={'id': 409583849926, 'accountId': 39996695, 'contractId': 3643469, 'timestamp': '2026-04-10T13:31:37.705Z', 'action': 'Buy', 'ordStatus': 'Filled', 'executionProviderId': 12, 'archived': False, 'external': False, 'admin': False}\n2026-04-10 13:31:39,106 [INFO] tradovate_api: Fill price from /fill/list: 2436.6550 (2 fills, 4 qty)\n2026-04-10 13:31:39,270 [INFO] tradovate_api: OCO placed: SL orderId=409583849934 TP orderId=409583849935\n2026-04-10 13:31:39,271 [INFO] trade_journal: Journal: ENTRY MCL_20260410_133139 Buy MCL",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 4\n  Signals today: 1\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 28s)\n  Balance: $53624.44\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'NG']\n  Disk: 19% | Memory: 14.8%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Apr 10 13:30:03 UTC 2026] Status: bot_active=true, pid=2196333\n[Fri Apr 10 13:30:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-04-10 13:34:41,982 [INFO] tradovate_api: Subscribed to quotes: SILK6 (contractId=4378521)\n2026-04-10 13:34:41,982 [INFO] bot: Mapped contractId 4378521 -> SILK6 for quote routing\n2026-04-10 13:34:41,983 [INFO] tradovate_api: Subscribed to quotes: NGK6 (contractId=3271013)\n2026-04-10 13:34:41,983 [INFO] bot: Mapped contractId 3271013 -> NGK6 for quote routing\n2026-04-10 13:34:41,983 [INFO] bot: Entering main loop...\n2026-04-10 13:34:42,098 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-10 13:34:42,104 [INFO] strategies: VWAP MGC SHORT #1 at 4773.6000 | VWAP=4782.2801 | SL=4787.2801 TP=4763.6000\n2026-04-10 13:34:42,104 [INFO] risk_manager: Position size for MGC: 2 contracts | budget=250.00 | risk/contract=50.00\n2026-04-10 13:34:42,104 [INFO] bot: SIGNAL: Sell MGC 2 @ market | SL=4787.2801 TP=4763.6000 | VWAP short #1 at 4773.6000 (VWAP=4782.2801)\n2026-04-10 13:34:42,104 [INFO] tradovate_api: Placing bracket Sell 2 MGCJ6 @ Market | SL=4787.28 TP=4763.60 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Sell', 'symbol': 'MGCJ6', 'orderQty': 2, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}\n2026-04-10 13:34:42,282 [INFO] tradovate_api: Entry order placed: orderId=409583849966 status=Unknown | full_response={'orderId': 409583849966}\n2026-04-10 13:34:43,449 [INFO] tradovate_api: Entry order check: orderId=409583849966 status=Filled filled=0 avgPrice=0 | detail={'id': 409583849966, 'accountId': 39996695, 'contractId': 3924410, 'timestamp': '2026-04-10T13:34:42.221Z', 'action': 'Sell', 'ordStatus': 'Filled', 'executionProviderId': 12, 'archived': False, 'external': False, 'admin': False}\n2026-04-10 13:34:43,619 [INFO] tradovate_api: Fill price from /fill/list: 2901.9840 (5 fills, 10 qty)\n2026-04-10 13:34:43,792 [INFO] tradovate_api: OCO placed: SL orderId=409583849975 TP orderId=409583849976\n2026-04-10 13:34:43,793 [INFO] trade_journal: Journal: ENTRY MGC_20260410_133443 Sell MGC @ 0.00 x2 (VWAP sh",
+    "bot_log_tail": "2026-04-10 13:34:45,295 [INFO] bot: VWAP state NG | vwap=2.6627 | prev_price=2.6570 | candles=570 | longs=0/8 shorts=0/8\n2026-04-10 13:35:00,002 [INFO] strategies: ORB 5-min range: high=25341.50 low=25335.25 size=6.25\n2026-04-10 13:35:00,018 [INFO] strategies: ORB 5-min range: high=6872.75 low=6871.25 size=1.50\n2026-04-10 13:35:00,234 [INFO] strategies: ORB MNQ SHORT at 25334.50 | window=5m | trade 1/4 | SL=25341.50 TP=25320.50\n2026-04-10 13:35:00,235 [INFO] bot: Signal for MNQ deferred: global cooldown (13s remaining)\n2026-04-10 13:35:00,301 [INFO] strategies: ORB MES SHORT at 6871.00 | window=5m | trade 1/4 | SL=6872.75 TP=6867.50\n2026-04-10 13:35:00,301 [INFO] bot: Signal for MES deferred: global cooldown (13s remaining)\n2026-04-10 13:35:15,790 [INFO] bot: Status | balance=53572.92 | day_pnl=-104.40 | to_floor=2395.60 | contracts=2/10 | trades=1/40 | locked=False\n2026-04-10 13:35:15,791 [INFO] bot: WS health | quotes_received=4837 | data_stale=False\n2026-04-10 13:35:29,140 [INFO] strategies: VWAP MCL LONG #1 at 98.5100 | VWAP=98.5065 | SL=98.3065 TP=98.9100\n2026-04-10 13:35:29,141 [INFO] risk_manager: Position size for MCL: 2 contracts | budget=250.00 | risk/contract=20.00\n2026-04-10 13:35:29,141 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=98.3065 TP=98.9100 | VWAP long #1 at 98.5100 (VWAP=98.5065)\n2026-04-10 13:35:29,141 [INFO] tradovate_api: Placing bracket Buy 2 MCLK6 @ Market | SL=98.31 TP=98.91 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Buy', 'symbol': 'MCLK6', 'orderQty': 2, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}\n2026-04-10 13:35:29,307 [INFO] tradovate_api: Entry order placed: orderId=409583849981 status=Unknown | full_response={'orderId': 409583849981}\n2026-04-10 13:35:30,471 [INFO] tradovate_api: Entry order check: orderId=409583849981 status=Filled filled=0 avgPrice=0 | detail={'id': 409583849981, 'accountId': 39996695, 'contractId': 3643469, 'timestamp': '2026-04-10T13:35:29.244Z', 'a",
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 7\n  Signals today: 3\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 18s)\n  Balance: $53677.32\n  Day P&L: $0.0\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'NG']\n  Disk: 19% | Memory: 14.9%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Apr 10 13:35:04 UTC 2026] Status: bot_active=true, pid=2198499\n[Fri Apr 10 13:35:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-10T13:32:36.855900+00:00",
-      "timestamp_et": "2026-04-10T09:32:36.855919-04:00",
-      "balance": 53584.88,
-      "equity": 53584.88,
-      "day_pnl": -39.56000000000495,
+      "timestamp": "2026-04-10T13:35:15.791296+00:00",
+      "timestamp_et": "2026-04-10T09:35:15.791314-04:00",
+      "balance": 53572.92,
+      "equity": 53572.92,
+      "day_pnl": -104.40000000000146,
       "unrealized_pnl": 0.0,
-      "peak_balance": 53646.04,
-      "drawdown_floor": 51146.04,
-      "distance_to_floor": 2438.8399999999965,
+      "peak_balance": 53677.32,
+      "drawdown_floor": 51177.32,
+      "distance_to_floor": 2395.5999999999985,
       "daily_profit_cap": 2400,
-      "daily_profit_remaining": 2439.560000000005,
-      "open_contracts": 4,
-      "trades_today": 2,
+      "daily_profit_remaining": 2504.4000000000015,
+      "open_contracts": 2,
+      "trades_today": 1,
       "locked": false,
       "lock_reason": "",
       "balance_initialized": true,
@@ -129,46 +129,48 @@
       "websocket_connected": true,
       "market_data_source": "websocket",
       "md_access_token": "present",
-      "ws_quotes_received": 29195
+      "ws_quotes_received": 4837
     },
     "token_status": "valid",
-    "token_expiry": "2026-04-10T14:48:27.993000+00:00",
+    "token_expiry": "2026-04-10T14:54:39.480000+00:00",
     "recent_signals": [
       "2026-04-10 13:30:00,075 [INFO] bot: SIGNAL: Sell MGC 2 @ market | SL=4786.7008 TP=4763.6000 | VWAP short #1 at 4773.6000 (VWAP=4781.7008)",
-      "2026-04-10 13:31:37,598 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=98.3134 TP=98.9400 | VWAP long #1 at 98.5400 (VWAP=98.5134)"
+      "2026-04-10 13:31:37,598 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=98.3134 TP=98.9400 | VWAP long #1 at 98.5400 (VWAP=98.5134)",
+      "2026-04-10 13:34:42,104 [INFO] bot: SIGNAL: Sell MGC 2 @ market | SL=4787.2801 TP=4763.6000 | VWAP short #1 at 4773.6000 (VWAP=4782.2801)",
+      "2026-04-10 13:35:29,141 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=98.3065 TP=98.9100 | VWAP long #1 at 98.5100 (VWAP=98.5065)"
     ],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-04-10 13:30:01,877 [INFO] trade_journal: Journal: ENTRY MGC_20260410_133001 Sell MGC @ 0.00 x2 (VWAP short #1 at 4773.6000 (VWAP=4781.7008))",
-      "2026-04-10 13:30:01,884 [INFO] bot: Order placed: orderId=409583849911 (journal: MGC_20260410_133001)",
-      "2026-04-10 13:30:01,884 [WARNING] bot: Failed to save bot state: '_ORBWindow' object has no attribute 'fire_count'",
-      "2026-04-10 13:30:01,907 [INFO] strategies: VWAP NG SHORT #1 at 2.6600 | VWAP=2.6626 | SL=2.6926 TP=2.6000",
-      "2026-04-10 13:30:01,921 [INFO] bot: Signal for NG deferred: global cooldown (29s remaining)",
-      "2026-04-10 13:30:04,993 [INFO] risk_manager: New peak equity: 53628.04 | drawdown floor: 51128.04",
-      "2026-04-10 13:30:05,173 [INFO] bot: Status | balance=53628.04 | day_pnl=3.60 | to_floor=2500.00 | contracts=2/10 | trades=1/40 | locked=False",
-      "2026-04-10 13:30:05,174 [INFO] bot: WS health | quotes_received=7617 | data_stale=False",
-      "2026-04-10 13:30:35,340 [INFO] risk_manager: New peak equity: 53646.04 | drawdown floor: 51146.04",
-      "2026-04-10 13:30:35,506 [INFO] bot: Status | balance=53646.04 | day_pnl=21.60 | to_floor=2500.00 | contracts=2/10 | trades=1/40 | locked=False",
-      "2026-04-10 13:30:35,506 [INFO] bot: WS health | quotes_received=12050 | data_stale=False",
-      "2026-04-10 13:31:05,844 [INFO] bot: Status | balance=53646.04 | day_pnl=21.60 | to_floor=2500.00 | contracts=2/10 | trades=1/40 | locked=False",
-      "2026-04-10 13:31:05,846 [INFO] bot: WS health | quotes_received=16261 | data_stale=False",
-      "2026-04-10 13:31:36,197 [INFO] bot: Status | balance=53646.04 | day_pnl=21.60 | to_floor=2500.00 | contracts=2/10 | trades=1/40 | locked=False",
-      "2026-04-10 13:31:36,198 [INFO] bot: WS health | quotes_received=20820 | data_stale=False",
-      "2026-04-10 13:31:37,598 [INFO] strategies: VWAP MCL LONG #1 at 98.5400 | VWAP=98.5134 | SL=98.3134 TP=98.9400",
-      "2026-04-10 13:31:37,598 [INFO] risk_manager: Position size for MCL: 2 contracts | budget=250.00 | risk/contract=20.00",
-      "2026-04-10 13:31:37,598 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=98.3134 TP=98.9400 | VWAP long #1 at 98.5400 (VWAP=98.5134)",
-      "2026-04-10 13:31:37,598 [INFO] tradovate_api: Placing bracket Buy 2 MCLK6 @ Market | SL=98.31 TP=98.94 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Buy', 'symbol': 'MCLK6', 'orderQty': 2, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}",
-      "2026-04-10 13:31:37,764 [INFO] tradovate_api: Entry order placed: orderId=409583849926 status=Unknown | full_response={'orderId': 409583849926}",
-      "2026-04-10 13:31:38,944 [INFO] tradovate_api: Entry order check: orderId=409583849926 status=Filled filled=0 avgPrice=0 | detail={'id': 409583849926, 'accountId': 39996695, 'contractId': 3643469, 'timestamp': '2026-04-10T13:31:37.705Z', 'action': 'Buy', 'ordStatus': 'Filled', 'executionProviderId': 12, 'archived': False, 'external': False, 'admin': False}",
-      "2026-04-10 13:31:39,106 [INFO] tradovate_api: Fill price from /fill/list: 2436.6550 (2 fills, 4 qty)",
-      "2026-04-10 13:31:39,270 [INFO] tradovate_api: OCO placed: SL orderId=409583849934 TP orderId=409583849935",
-      "2026-04-10 13:31:39,271 [INFO] trade_journal: Journal: ENTRY MCL_20260410_133139 Buy MCL @ 0.00 x2 (VWAP long #1 at 98.5400 (VWAP=98.5134))",
-      "2026-04-10 13:31:39,272 [INFO] bot: Order placed: orderId=409583849926 (journal: MCL_20260410_133139)",
-      "2026-04-10 13:31:39,272 [WARNING] bot: Failed to save bot state: '_ORBWindow' object has no attribute 'fire_count'",
-      "2026-04-10 13:32:06,529 [INFO] bot: Status | balance=53578.88 | day_pnl=-45.56 | to_floor=2432.84 | contracts=4/10 | trades=2/40 | locked=False",
-      "2026-04-10 13:32:06,530 [INFO] bot: WS health | quotes_received=24947 | data_stale=False",
-      "2026-04-10 13:32:36,855 [INFO] bot: Status | balance=53584.88 | day_pnl=-39.56 | to_floor=2438.84 | contracts=4/10 | trades=2/40 | locked=False",
-      "2026-04-10 13:32:36,855 [INFO] bot: WS health | quotes_received=29195 | data_stale=False"
+      "2026-04-10 13:34:45,294 [INFO] bot: Status | balance=53677.32 | day_pnl=0.00 | to_floor=2500.00 | contracts=4/10 | trades=1/40 | locked=False",
+      "2026-04-10 13:34:45,294 [INFO] bot: WS health | quotes_received=495 | data_stale=False",
+      "2026-04-10 13:34:45,295 [INFO] bot: Quote routing | per_symbol={'MNQ': 185, 'MES': 158, 'MGC': 76, 'MCL': 60, 'SIL': 55, 'NG': 17} | null_price={}",
+      "2026-04-10 13:34:45,295 [INFO] bot: ORB state MNQ 5m | range_set=False high=0.00 low=0.00 | fired=False | last_price=25336.50",
+      "2026-04-10 13:34:45,295 [INFO] bot: ORB state MNQ 15m | range_set=False high=0.00 low=0.00 | fired=False | last_price=25336.50",
+      "2026-04-10 13:34:45,295 [INFO] bot: ORB state MES 5m | range_set=False high=0.00 low=0.00 | fired=False | last_price=6871.50",
+      "2026-04-10 13:34:45,295 [INFO] bot: ORB state MES 15m | range_set=False high=0.00 low=0.00 | fired=False | last_price=6871.50",
+      "2026-04-10 13:34:45,295 [INFO] bot: VWAP state MGC | vwap=4782.2645 | prev_price=4773.6000 | candles=641 | longs=0/8 shorts=1/8",
+      "2026-04-10 13:34:45,295 [INFO] bot: VWAP state MCL | vwap=98.5072 | prev_price=98.3800 | candles=626 | longs=0/8 shorts=0/8",
+      "2026-04-10 13:34:45,295 [INFO] bot: VWAP state SIL | vwap=75.8543 | prev_price=76.4000 | candles=568 | longs=0/8 shorts=0/8",
+      "2026-04-10 13:34:45,295 [INFO] bot: VWAP state NG | vwap=2.6627 | prev_price=2.6570 | candles=570 | longs=0/8 shorts=0/8",
+      "2026-04-10 13:35:00,002 [INFO] strategies: ORB 5-min range: high=25341.50 low=25335.25 size=6.25",
+      "2026-04-10 13:35:00,018 [INFO] strategies: ORB 5-min range: high=6872.75 low=6871.25 size=1.50",
+      "2026-04-10 13:35:00,234 [INFO] strategies: ORB MNQ SHORT at 25334.50 | window=5m | trade 1/4 | SL=25341.50 TP=25320.50",
+      "2026-04-10 13:35:00,235 [INFO] bot: Signal for MNQ deferred: global cooldown (13s remaining)",
+      "2026-04-10 13:35:00,301 [INFO] strategies: ORB MES SHORT at 6871.00 | window=5m | trade 1/4 | SL=6872.75 TP=6867.50",
+      "2026-04-10 13:35:00,301 [INFO] bot: Signal for MES deferred: global cooldown (13s remaining)",
+      "2026-04-10 13:35:15,790 [INFO] bot: Status | balance=53572.92 | day_pnl=-104.40 | to_floor=2395.60 | contracts=2/10 | trades=1/40 | locked=False",
+      "2026-04-10 13:35:15,791 [INFO] bot: WS health | quotes_received=4837 | data_stale=False",
+      "2026-04-10 13:35:29,140 [INFO] strategies: VWAP MCL LONG #1 at 98.5100 | VWAP=98.5065 | SL=98.3065 TP=98.9100",
+      "2026-04-10 13:35:29,141 [INFO] risk_manager: Position size for MCL: 2 contracts | budget=250.00 | risk/contract=20.00",
+      "2026-04-10 13:35:29,141 [INFO] bot: SIGNAL: Buy MCL 2 @ market | SL=98.3065 TP=98.9100 | VWAP long #1 at 98.5100 (VWAP=98.5065)",
+      "2026-04-10 13:35:29,141 [INFO] tradovate_api: Placing bracket Buy 2 MCLK6 @ Market | SL=98.31 TP=98.91 | payload={'accountSpec': 'FNFTCHMOTITAPIRO67510', 'accountId': 39996695, 'action': 'Buy', 'symbol': 'MCLK6', 'orderQty': 2, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}",
+      "2026-04-10 13:35:29,307 [INFO] tradovate_api: Entry order placed: orderId=409583849981 status=Unknown | full_response={'orderId': 409583849981}",
+      "2026-04-10 13:35:30,471 [INFO] tradovate_api: Entry order check: orderId=409583849981 status=Filled filled=0 avgPrice=0 | detail={'id': 409583849981, 'accountId': 39996695, 'contractId': 3643469, 'timestamp': '2026-04-10T13:35:29.244Z', 'action': 'Buy', 'ordStatus': 'Filled', 'executionProviderId': 12, 'archived': False, 'external': False, 'admin': False}",
+      "2026-04-10 13:35:30,656 [INFO] tradovate_api: Fill price from /fill/list: 2434.7383 (6 fills, 12 qty)",
+      "2026-04-10 13:35:30,831 [INFO] tradovate_api: OCO placed: SL orderId=409583849988 TP orderId=409583849989",
+      "2026-04-10 13:35:30,832 [INFO] trade_journal: Journal: ENTRY MCL_20260410_133530 Buy MCL @ 0.00 x2 (VWAP long #1 at 98.5100 (VWAP=98.5065))",
+      "2026-04-10 13:35:30,833 [INFO] bot: Order placed: orderId=409583849981 (journal: MCL_20260410_133530)",
+      "2026-04-10 13:35:30,833 [WARNING] bot: Failed to save bot state: '_ORBWindow' object has no attribute 'fire_count'"
     ],
     "journal_summary": {
       "total_trades": 0,
@@ -184,16 +186,16 @@
     "market_data_source": "websocket",
     "today_trades": [
       {
-        "id": "MGC_20260410_133001",
+        "id": "MGC_20260410_133443",
         "symbol": "MGC",
         "direction": "Sell",
         "entry_price": 0,
         "qty": 2,
         "strategy": "VWAPStrategy",
-        "reason": "VWAP short #1 at 4773.6000 (VWAP=4781.7008)",
-        "stop_loss": 4786.700800744757,
+        "reason": "VWAP short #1 at 4773.6000 (VWAP=4782.2801)",
+        "stop_loss": 4787.280111419183,
         "take_profit": 4763.6,
-        "entry_time": "2026-04-10T13:30:01.858644+00:00",
+        "entry_time": "2026-04-10T13:34:43.792639+00:00",
         "entry_hour_et": 9,
         "entry_day_of_week": "Friday",
         "date": "2026-04-10",
@@ -209,16 +211,16 @@
         "mfe_points": null
       },
       {
-        "id": "MCL_20260410_133139",
+        "id": "MCL_20260410_133530",
         "symbol": "MCL",
         "direction": "Buy",
         "entry_price": 0,
         "qty": 2,
         "strategy": "VWAPStrategy",
-        "reason": "VWAP long #1 at 98.5400 (VWAP=98.5134)",
-        "stop_loss": 98.31342871213103,
-        "take_profit": 98.94000000000001,
-        "entry_time": "2026-04-10T13:31:39.271165+00:00",
+        "reason": "VWAP long #1 at 98.5100 (VWAP=98.5065)",
+        "stop_loss": 98.30648875178471,
+        "take_profit": 98.91000000000001,
+        "entry_time": "2026-04-10T13:35:30.832198+00:00",
         "entry_hour_et": 9,
         "entry_day_of_week": "Friday",
         "date": "2026-04-10",
@@ -236,12 +238,20 @@
     ],
     "today_fills": [
       {
-        "id": 409583849914,
-        "action": "Sell",
-        "contractId": 3924410,
+        "id": 409583849984,
+        "action": "Buy",
+        "contractId": 3643469,
         "qty": 2,
-        "price": 4774.8,
-        "timestamp": "2026-04-10T13:30:00.214Z"
+        "price": 98.51,
+        "timestamp": "2026-04-10T13:35:29.246Z"
+      },
+      {
+        "id": 409583849940,
+        "action": "Sell",
+        "contractId": 3643469,
+        "qty": 2,
+        "price": 98.31,
+        "timestamp": "2026-04-10T13:33:07.349Z"
       },
       {
         "id": 409583849929,
@@ -250,6 +260,30 @@
         "qty": 2,
         "price": 98.51,
         "timestamp": "2026-04-10T13:31:37.707Z"
+      },
+      {
+        "id": 409583849969,
+        "action": "Sell",
+        "contractId": 3924410,
+        "qty": 2,
+        "price": 4768.5,
+        "timestamp": "2026-04-10T13:34:42.223Z"
+      },
+      {
+        "id": 409583849914,
+        "action": "Sell",
+        "contractId": 3924410,
+        "qty": 2,
+        "price": 4774.8,
+        "timestamp": "2026-04-10T13:30:00.214Z"
+      },
+      {
+        "id": 409583849958,
+        "action": "Buy",
+        "contractId": 3924410,
+        "qty": 2,
+        "price": 4769.8,
+        "timestamp": "2026-04-10T13:34:38.812Z"
       }
     ]
   },
@@ -257,7 +291,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 13582,
+    "ssh_output_len": 14451,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
