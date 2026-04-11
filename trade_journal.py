@@ -236,6 +236,41 @@ class TradeJournal:
                 return
         logger.warning("Journal: no open trade found for %s", symbol)
 
+    def cleanup_stale_entries(self, max_age_days: int = 1):
+        """Close stale 'open' journal entries that are older than max_age_days.
+
+        After a bot restart, old open entries from previous days will never
+        be matched by _sync_fills (which only knows about today's trades).
+        This method force-closes them so they don't pollute the journal.
+        """
+        today = date.today()
+        closed_count = 0
+        for trade in self.trades:
+            if trade["status"] != "open":
+                continue
+            trade_date = trade.get("date", "")
+            try:
+                td = date.fromisoformat(trade_date)
+                age = (today - td).days
+            except (ValueError, TypeError):
+                age = max_age_days + 1  # Can't parse → treat as stale
+
+            if age >= max_age_days:
+                trade["status"] = "closed"
+                trade["exit_reason"] = "stale_cleanup"
+                trade["exit_time"] = datetime.now(timezone.utc).isoformat()
+                # P&L unknown — mark as 0 so summary doesn't break
+                if trade["pnl"] is None:
+                    trade["pnl"] = 0
+                if trade["exit_price"] is None:
+                    trade["exit_price"] = 0
+                closed_count += 1
+
+        if closed_count > 0:
+            self._save()
+            logger.info("Cleaned up %d stale open journal entries (older than %d day(s))",
+                        closed_count, max_age_days)
+
     def update_mae_mfe(self, symbol: str, current_price: float):
         """Update Maximum Adverse/Favorable Excursion for open trades on a symbol.
 

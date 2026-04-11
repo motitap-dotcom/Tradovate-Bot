@@ -13,11 +13,11 @@
       "entry_time": "2026-02-23T15:23:28.536939+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899596+00:00",
+      "status": "closed"
     },
     {
       "id": "ES_20260223_152328",
@@ -32,11 +32,11 @@
       "entry_time": "2026-02-23T15:23:28.922200+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899625+00:00",
+      "status": "closed"
     },
     {
       "id": "NQ_20260223_153739",
@@ -51,11 +51,11 @@
       "entry_time": "2026-02-23T15:37:39.904208+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899630+00:00",
+      "status": "closed"
     },
     {
       "id": "ES_20260223_153740",
@@ -70,11 +70,11 @@
       "entry_time": "2026-02-23T15:37:40.411766+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899633+00:00",
+      "status": "closed"
     },
     {
       "id": "NQ_20260223_153954",
@@ -89,11 +89,11 @@
       "entry_time": "2026-02-23T15:39:54.619192+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899637+00:00",
+      "status": "closed"
     },
     {
       "id": "ES_20260223_153954",
@@ -108,11 +108,11 @@
       "entry_time": "2026-02-23T15:39:54.998801+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899640+00:00",
+      "status": "closed"
     },
     {
       "id": "NQ_20260223_155631",
@@ -127,11 +127,11 @@
       "entry_time": "2026-02-23T15:56:31.642224+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899644+00:00",
+      "status": "closed"
     },
     {
       "id": "ES_20260223_155632",
@@ -146,11 +146,11 @@
       "entry_time": "2026-02-23T15:56:32.081050+00:00",
       "entry_hour_et": 10,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899652+00:00",
+      "status": "closed"
     },
     {
       "id": "NQ_20260223_164527",
@@ -165,11 +165,11 @@
       "entry_time": "2026-02-23T16:45:27.587110+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899656+00:00",
+      "status": "closed"
     },
     {
       "id": "ES_20260223_164528",
@@ -184,11 +184,11 @@
       "entry_time": "2026-02-23T16:45:28.334839+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899660+00:00",
+      "status": "closed"
     },
     {
       "id": "CL_20260223_164529",
@@ -203,11 +203,11 @@
       "entry_time": "2026-02-23T16:45:29.029054+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899663+00:00",
+      "status": "closed"
     },
     {
       "id": "CL_20260223_164535",
@@ -222,20 +222,31 @@
       "entry_time": "2026-02-23T16:45:35.544500+00:00",
       "entry_hour_et": 11,
       "date": "2026-02-23",
-      "exit_price": null,
-      "pnl": null,
-      "exit_reason": null,
-      "exit_time": null,
-      "status": "open"
+      "exit_price": 0,
+      "pnl": 0,
+      "exit_reason": "stale_cleanup",
+      "exit_time": "2026-04-11T20:52:34.899666+00:00",
+      "status": "closed"
     }
   ],
   "daily_notes": {},
   "summary": {
-    "total_trades": 0,
+    "total_trades": 12,
     "wins": 0,
     "losses": 0,
-    "win_rate": 0,
-    "total_pnl": 0
+    "win_rate": 0.0,
+    "total_pnl": 0,
+    "avg_win": 0,
+    "avg_loss": 0,
+    "profit_factor": 0,
+    "expectancy": 0,
+    "best_trade": 0,
+    "worst_trade": 0,
+    "avg_r_multiple": 0,
+    "highest_day_profit": 0.0,
+    "effective_target": 12359,
+    "base_target": 12359,
+    "consistency_adjusted": false
   },
-  "updated_at": "2026-02-23T16:45:35.544552+00:00"
+  "updated_at": "2026-04-11T20:52:34.899896+00:00"
 }
