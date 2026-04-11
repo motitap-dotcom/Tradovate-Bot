@@ -66,6 +66,7 @@ def build_state(
     """
     state = {
         "trades_today_count": trades_today_count,
+        "trades_today_list": trades_today_list,
         "symbols": {},
     }
 
