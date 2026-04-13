@@ -1153,51 +1153,67 @@ def test_rollover_unknown():
     assert result is None
 
 
-@test("Date-based rollover triggers when contract expires within threshold")
-def test_date_based_rollover():
+@test("Calendar rollover switches to new front-month when out of date")
+def test_calendar_rollover_triggers():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
-    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
     bot.contract_map = {"NQ": "NQH6"}
-
-    # Contract expires in 5 days (within 8-day threshold)
-    expiry = (date.today() + timedelta(days=5)).isoformat()
-    bot.api.get_contract_maturity.return_value = expiry
     bot.api.find_contract.return_value = {"id": 999, "name": "NQM6"}
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now:
+    with patch("bot.now_et") as mock_now, \
+         patch("config.get_front_month_contract", return_value="NQM6"):
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
     assert bot.contract_map["NQ"] == "NQM6", f"Expected NQM6, got {bot.contract_map['NQ']}"
 
 
-@test("No rollover when expiry is far away")
-def test_no_rollover_far_expiry():
+@test("Calendar rollover: no switch when calendar front matches current contract")
+def test_calendar_rollover_no_switch():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
-    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
-    bot.contract_map = {"NQ": "NQH6"}
-
-    # Contract expires in 20 days (outside 8-day threshold)
-    expiry = (date.today() + timedelta(days=20)).isoformat()
-    bot.api.get_contract_maturity.return_value = expiry
+    bot.contract_map = {"NQ": "NQM6"}
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now:
+    with patch("bot.now_et") as mock_now, \
+         patch("config.get_front_month_contract", return_value="NQM6"):
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
-    assert bot.contract_map["NQ"] == "NQH6", "Should NOT have rolled over"
+    assert bot.contract_map["NQ"] == "NQM6", "Should NOT have rolled over"
+
+
+@test("Gold rollover: calendar skips illiquid serial month from suggest API")
+def test_calendar_rollover_ignores_serial_month():
+    """If the calendar says we're fine but Tradovate's suggest API points at
+    an illiquid serial month (e.g. GCH6 for gold), the bot must NOT follow it."""
+    from bot import TradovateBot
+    from unittest.mock import MagicMock, patch
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.md_stream = None
+    bot.contract_map = {"GC": "GCM6"}
+    # Suggest returns GCH6 (March gold — not a liquid month for gold)
+    bot.api.suggest_contract.return_value = {"id": 123, "name": "GCH6"}
+
+    with patch("bot.now_et") as mock_now, \
+         patch("config.get_front_month_contract", return_value="GCM6"):
+        mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
+        bot._check_contract_rollover()
+
+    assert bot.contract_map["GC"] == "GCM6", (
+        f"Must not switch to illiquid serial month; got {bot.contract_map['GC']}"
+    )
 
 
 test_rollover_nq_h_to_m()
@@ -1207,8 +1223,147 @@ test_rollover_gc_year_wrap()
 test_rollover_cl_monthly()
 test_rollover_es_u_to_z()
 test_rollover_unknown()
-test_date_based_rollover()
-test_no_rollover_far_expiry()
+test_calendar_rollover_triggers()
+test_calendar_rollover_no_switch()
+test_calendar_rollover_ignores_serial_month()
+
+
+# ─────────────────────────────────────────────
+# Calendar-driven front-month tests
+# ─────────────────────────────────────────────
+# Verify config.get_front_month_contract() returns the correct front-month
+# for each product at representative dates, including the specific bug that
+# prompted this fix: on 2026-04-13 gold should be GCM6 (June), NOT GCJ6
+# (April), because FND for April gold was 2026-03-31.
+
+print("\n--- Calendar front-month ---")
+
+
+@test("Gold front-month on 2026-04-13 is GCM6 (past April FND)")
+def test_gold_front_month_april_13():
+    from datetime import date
+    result = config.get_front_month_contract("GC", date(2026, 4, 13))
+    assert result == "GCM6", f"Expected GCM6, got {result}"
+
+
+@test("Micro gold: MGC front-month on 2026-04-13 is MGCM6")
+def test_mgc_front_month_april_13():
+    from datetime import date
+    result = config.get_front_month_contract("MGC", date(2026, 4, 13))
+    assert result == "MGCM6", f"Expected MGCM6, got {result}"
+
+
+@test("Gold front-month on 2026-03-20 is still GCJ6 (before FND)")
+def test_gold_front_month_before_fnd():
+    from datetime import date
+    # April FND = last biz day of March 2026 = Mar 31 (Tue).
+    # Roll-out = 3 biz days before = Mar 26 (Thu).
+    # Mar 20 is still before roll-out → April contract is front month.
+    result = config.get_front_month_contract("GC", date(2026, 3, 20))
+    assert result == "GCJ6", f"Expected GCJ6, got {result}"
+
+
+@test("Gold front-month on 2026-03-27 has rolled to GCM6 (past FND roll-out)")
+def test_gold_front_month_at_rollover():
+    from datetime import date
+    # Mar 26 is roll-out day (last valid), Mar 27 → GCM6
+    result = config.get_front_month_contract("GC", date(2026, 3, 27))
+    assert result == "GCM6", f"Expected GCM6, got {result}"
+
+
+@test("Gold skips illiquid March contract — never returns GCH6")
+def test_gold_never_serial_month():
+    from datetime import date, timedelta
+    for day_offset in range(0, 400, 7):
+        d = date(2026, 1, 1) + timedelta(days=day_offset)
+        result = config.get_front_month_contract("GC", d)
+        assert result is not None
+        month_code = result[2]  # GC<code><year>
+        assert month_code in ("G", "J", "M", "Q", "V", "Z"), (
+            f"Got non-liquid month {result} for date {d}"
+        )
+
+
+@test("MNQ front-month on 2026-04-13 is MNQM6 (past H6 expiry)")
+def test_mnq_front_month_april():
+    from datetime import date
+    result = config.get_front_month_contract("MNQ", date(2026, 4, 13))
+    assert result == "MNQM6", f"Expected MNQM6, got {result}"
+
+
+@test("NQ front-month 8 days before 3rd Friday rolls to next quarter")
+def test_nq_rollout_timing():
+    from datetime import date
+    # NQM6 3rd Friday = 2026-06-19. Roll-out = 2026-06-11.
+    # On Jun 11: still NQM6. On Jun 12: NQU6.
+    assert config.get_front_month_contract("NQ", date(2026, 6, 11)) == "NQM6"
+    assert config.get_front_month_contract("NQ", date(2026, 6, 12)) == "NQU6"
+
+
+@test("MCL front-month on 2026-04-13 is MCLK6 (May, LTD=Apr 21)")
+def test_mcl_front_month_april():
+    from datetime import date
+    result = config.get_front_month_contract("MCL", date(2026, 4, 13))
+    assert result == "MCLK6", f"Expected MCLK6, got {result}"
+
+
+@test("CL rolls to June after mid-April")
+def test_cl_rollover_timing():
+    from datetime import date
+    # Apr 15 is past roll-out (Apr 14) → next contract CLM6.
+    result = config.get_front_month_contract("CL", date(2026, 4, 15))
+    assert result == "CLM6", f"Expected CLM6, got {result}"
+
+
+@test("SIL front-month on 2026-04-13 is SILK6 (silver May)")
+def test_sil_front_month_april():
+    from datetime import date
+    # Silver liquid months are H, K, N, U, Z. Silver April (J) is NOT listed,
+    # so after March (H) expires, next is K (May). FND for May silver =
+    # last biz day of Apr 2026 = Apr 30 (Thu). Roll-out = Apr 27 (Mon).
+    # Apr 13 <= Apr 27 → SILK6.
+    result = config.get_front_month_contract("SIL", date(2026, 4, 13))
+    assert result == "SILK6", f"Expected SILK6, got {result}"
+
+
+@test("MNG front-month on 2026-04-13 is MNGK6 (nat gas May)")
+def test_mng_front_month_april():
+    from datetime import date
+    # MNG rolls every month (FND = last biz day of prior month for metals pattern).
+    # FND for May nat gas ≈ last biz day of Apr 2026 = Apr 30. Roll-out = Apr 27.
+    # Apr 13 <= Apr 27 → MNGK6.
+    result = config.get_front_month_contract("MNG", date(2026, 4, 13))
+    assert result == "MNGK6", f"Expected MNGK6, got {result}"
+
+
+@test("Year-wrap: gold on 2026-12-28 points at 2027")
+def test_gold_year_wrap():
+    from datetime import date
+    # All 2026 liquid golds past. GCG7 (Feb 2027) FND = Jan 30 2027 (Fri),
+    # roll-out = Jan 27 (Tue). Dec 28 2026 <= Jan 27 2027 → GCG7.
+    result = config.get_front_month_contract("GC", date(2026, 12, 28))
+    assert result == "GCG7", f"Expected GCG7, got {result}"
+
+
+@test("Unknown symbol returns None")
+def test_front_month_unknown_symbol():
+    from datetime import date
+    assert config.get_front_month_contract("FAKE", date(2026, 4, 13)) is None
+
+
+test_gold_front_month_april_13()
+test_mgc_front_month_april_13()
+test_gold_front_month_before_fnd()
+test_gold_front_month_at_rollover()
+test_gold_never_serial_month()
+test_mnq_front_month_april()
+test_nq_rollout_timing()
+test_mcl_front_month_april()
+test_cl_rollover_timing()
+test_sil_front_month_april()
+test_mng_front_month_april()
+test_gold_year_wrap()
+test_front_month_unknown_symbol()
 
 
 # ─────────────────────────────────────────────
