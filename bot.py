@@ -230,7 +230,18 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _resolve_contracts(self):
-        """Find the front-month contract for each enabled symbol."""
+        """Find the front-month contract for each enabled symbol.
+
+        We compute the expected front-month locally from a calendar
+        (config.get_front_month_contract) and fetch it by name. This avoids
+        two failure modes of Tradovate's /contract/suggest endpoint:
+          1. Returning illiquid "serial" months (e.g. GCH6 March gold).
+          2. Failing to roll off a contract after First Notice Day passes,
+             so the bot ends up trading an in-delivery contract.
+        We still fall back to suggest_contract if the calendar lookup or
+        find_contract call fails for any reason.
+        """
+        today = now_et().date()
         for symbol, spec in config.CONTRACT_SPECS.items():
             if not spec["enabled"]:
                 logger.info("Skipping %s (disabled)", symbol)
@@ -242,7 +253,29 @@ class TradovateBot:
                 logger.info("Dry run: %s -> %s", symbol, self.contract_map[symbol])
                 continue
 
-            contract = self.api.suggest_contract(symbol)
+            contract = None
+            expected_name = config.get_front_month_contract(symbol, today)
+            if expected_name:
+                contract = self.api.find_contract(expected_name)
+                if contract:
+                    logger.info(
+                        "Front-month for %s resolved via calendar: %s",
+                        symbol, expected_name,
+                    )
+                else:
+                    logger.warning(
+                        "Calendar front-month %s not found on Tradovate; "
+                        "falling back to suggest API", expected_name,
+                    )
+
+            if not contract:
+                contract = self.api.suggest_contract(symbol)
+                if contract:
+                    logger.info(
+                        "Front-month for %s resolved via suggest API: %s",
+                        symbol, contract.get("name"),
+                    )
+
             if contract:
                 contract_name = contract.get("name", symbol)
                 contract_id = contract.get("id")
@@ -331,15 +364,17 @@ class TradovateBot:
         """
         Check if any active contracts need to roll to the next front-month.
 
-        Two-phase approach:
-        1. DATE-BASED (proactive): If the current contract expires within
-           ROLLOVER_DAYS_BEFORE_EXPIRY days, compute the next liquid contract
-           from the schedule and switch immediately.
-        2. SUGGEST-BASED (fallback): If Tradovate's suggest API returns a
-           different contract, follow it.
+        Primary mechanism (calendar-driven):
+          Ask config.get_front_month_contract() what the correct liquid
+          front month is for `today`. If it differs from the active
+          contract, roll. This handles First Notice Day for gold/metals
+          and the last-trading-day rule for CL, neither of which can be
+          derived correctly from Tradovate's `expirationDate` alone.
 
-        This ensures we roll early enough to avoid low-liquidity contracts
-        near expiration, even when the suggest API hasn't updated yet.
+        Fallback (suggest API):
+          If the calendar says to stay put but Tradovate's suggest API
+          has already rolled to a new contract, follow it. This protects
+          against the bot lagging the market on unexpected schedule shifts.
         """
         if self.dry_run:
             return
@@ -352,37 +387,27 @@ class TradovateBot:
             new_contract_data = None
             rollover_reason = ""
 
-            # ── Phase 1: Date-based early rollover ──
+            # ── Phase 1: Calendar-driven rollover ──
             try:
-                maturity = self.api.get_contract_maturity(old_contract)
-                if maturity:
-                    from datetime import date as date_type
-                    if isinstance(maturity, str):
-                        expiry_date = date_type.fromisoformat(maturity)
+                expected = config.get_front_month_contract(symbol, today)
+                if expected and expected != old_contract:
+                    verified = self.api.find_contract(expected)
+                    if verified:
+                        new_contract = expected
+                        new_contract_data = verified
+                        rollover_reason = (
+                            f"calendar-driven: {old_contract} past roll-out date, "
+                            f"front month is now {expected}"
+                        )
                     else:
-                        expiry_date = maturity
-
-                    days_to_expiry = (expiry_date - today).days
-
-                    if days_to_expiry <= config.ROLLOVER_DAYS_BEFORE_EXPIRY:
-                        next_name = self._next_liquid_contract(symbol, old_contract)
-                        if next_name and next_name != old_contract:
-                            # Verify the next contract exists on Tradovate
-                            verified = self.api.find_contract(next_name)
-                            if verified:
-                                new_contract = next_name
-                                new_contract_data = verified
-                                rollover_reason = (
-                                    f"expiry-based: {old_contract} expires {maturity} "
-                                    f"({days_to_expiry}d away, threshold={config.ROLLOVER_DAYS_BEFORE_EXPIRY}d)"
-                                )
-                            else:
-                                logger.warning(
-                                    "Early rollover: computed %s but contract not found on Tradovate",
-                                    next_name,
-                                )
+                        logger.warning(
+                            "Calendar rollover: computed %s but contract not "
+                            "found on Tradovate", expected,
+                        )
             except Exception as e:
-                logger.warning("Date-based rollover check failed for %s: %s", symbol, e)
+                logger.warning(
+                    "Calendar rollover check failed for %s: %s", symbol, e,
+                )
 
             # ── Phase 2: Suggest API fallback ──
             if not new_contract:
@@ -391,9 +416,22 @@ class TradovateBot:
                     if suggested:
                         suggested_name = suggested.get("name", "")
                         if suggested_name and suggested_name != old_contract:
-                            new_contract = suggested_name
-                            new_contract_data = suggested
-                            rollover_reason = f"suggest-api: Tradovate returned {suggested_name}"
+                            # Only follow suggest if the new contract is in the
+                            # liquid-month schedule — otherwise Tradovate may be
+                            # pointing us at an illiquid serial month.
+                            liquid = config.CONTRACT_LIQUID_MONTHS.get(symbol, [])
+                            suffix = suggested_name[len(symbol):]
+                            if len(suffix) >= 2 and suffix[0] in liquid:
+                                new_contract = suggested_name
+                                new_contract_data = suggested
+                                rollover_reason = (
+                                    f"suggest-api: Tradovate returned {suggested_name}"
+                                )
+                            else:
+                                logger.debug(
+                                    "Suggest API returned non-liquid month %s "
+                                    "for %s — ignoring", suggested_name, symbol,
+                                )
                 except Exception as e:
                     logger.warning("Suggest-based rollover check failed for %s: %s", symbol, e)
 
