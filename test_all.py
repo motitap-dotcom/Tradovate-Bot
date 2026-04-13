@@ -2891,6 +2891,89 @@ test_alerts_risk_manager_lock()
 
 
 # ─────────────────────────────────────────────
+# 20. MARKET DATA CIRCUIT BREAKER TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("20. MARKET DATA CIRCUIT BREAKER TESTS")
+print("=" * 60)
+
+
+def _fresh_stream():
+    from tradovate_api import MarketDataStream
+    return MarketDataStream.__new__(MarketDataStream)
+
+
+def _init_circuit_state(stream):
+    """Minimal init — only the fields _record_disconnect/healthy touch."""
+    from collections import deque
+    stream._disconnect_times = deque()
+    stream._circuit_open_until = 0.0
+
+
+@test("Circuit: healthy when no disconnects recorded")
+def test_circuit_healthy_baseline():
+    from tradovate_api import MarketDataStream
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    assert stream.market_data_healthy(now=1000.0) is True
+
+
+@test("Circuit: 5 disconnects inside 60s open the circuit")
+def test_circuit_opens_on_burst():
+    from tradovate_api import MarketDataStream
+    import alerts
+    alerts.reset_dedupe()
+    os.environ.pop("ALERT_WEBHOOK_URL", None)  # alerts noop
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    t0 = 10_000.0
+    for i in range(5):
+        stream._record_disconnect(t0 + i * 2)  # 0,2,4,6,8 → 5 in 8s
+    assert stream.market_data_healthy(now=t0 + 10) is False
+    # Open for CIRCUIT_COOLDOWN_SECONDS from the last disconnect
+    assert stream._circuit_open_until == t0 + 8 + MarketDataStream.CIRCUIT_COOLDOWN_SECONDS
+
+
+@test("Circuit: closes again after cooldown expires")
+def test_circuit_closes_after_cooldown():
+    from tradovate_api import MarketDataStream
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    t0 = 10_000.0
+    for i in range(5):
+        stream._record_disconnect(t0 + i)
+    open_until = stream._circuit_open_until
+    # Just before cooldown end — still open
+    assert stream.market_data_healthy(now=open_until - 1) is False
+    # After cooldown — closed
+    assert stream.market_data_healthy(now=open_until + 1) is True
+
+
+@test("Circuit: disconnects older than window are dropped")
+def test_circuit_window_sliding():
+    from tradovate_api import MarketDataStream
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    t0 = 10_000.0
+    # 4 disconnects, then a 5th one far in the future — only 1 in the
+    # rolling window, no circuit open
+    for i in range(4):
+        stream._record_disconnect(t0 + i)
+    stream._record_disconnect(t0 + MarketDataStream.CIRCUIT_WINDOW_SECONDS + 10)
+    assert stream.market_data_healthy(
+        now=t0 + MarketDataStream.CIRCUIT_WINDOW_SECONDS + 11,
+    ) is True
+    assert len(stream._disconnect_times) == 1
+
+
+test_circuit_healthy_baseline()
+test_circuit_opens_on_burst()
+test_circuit_closes_after_cooldown()
+test_circuit_window_sliding()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 

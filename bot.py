@@ -572,6 +572,13 @@ class TradovateBot:
         if not ok:
             return
 
+        # Market-data circuit-breaker: if the WS has been flapping, don't
+        # open new entries on possibly-stale ticks. Existing brackets on
+        # the server continue to manage themselves.
+        if self.md_stream is not None and hasattr(self.md_stream, "market_data_healthy"):
+            if not self.md_stream.market_data_healthy():
+                return
+
         # Check time constraints — only trade within the configured window
         current = now_et()
         start = parse_time_et(config.TRADING_START_ET)
@@ -1006,6 +1013,21 @@ class TradovateBot:
                 "market_data_source": (
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
+                ),
+                "market_data_healthy": (
+                    self.md_stream.market_data_healthy()
+                    if self.md_stream and hasattr(self.md_stream, "market_data_healthy")
+                    else True
+                ),
+                "circuit_open_until": (
+                    datetime.fromtimestamp(
+                        self.md_stream._circuit_open_until, timezone.utc
+                    ).isoformat()
+                    if (
+                        self.md_stream
+                        and getattr(self.md_stream, "_circuit_open_until", 0) > time.time()
+                    )
+                    else None
                 ),
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")

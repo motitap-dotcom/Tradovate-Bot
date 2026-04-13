@@ -21,12 +21,15 @@ import os
 import threading
 import time
 import uuid
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import requests
 import websocket
+
+import alerts
 
 import config
 
@@ -979,6 +982,13 @@ class MarketDataStream:
     # After this many consecutive reconnect failures, signal caller to fall back
     FALLBACK_THRESHOLD = 10
 
+    # Circuit-breaker: if the WS has this many disconnects inside
+    # CIRCUIT_WINDOW_SECONDS, open the circuit — callers should stop
+    # opening new positions until CIRCUIT_COOLDOWN_SECONDS has elapsed.
+    CIRCUIT_DISCONNECT_THRESHOLD = 5
+    CIRCUIT_WINDOW_SECONDS = 60
+    CIRCUIT_COOLDOWN_SECONDS = 300  # 5 minutes
+
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
         self._api = api  # Reference to API client for token refresh on 403
@@ -1001,6 +1011,10 @@ class MarketDataStream:
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
+
+        # Circuit-breaker state
+        self._disconnect_times: deque[float] = deque()
+        self._circuit_open_until: float = 0.0
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1240,6 +1254,10 @@ class MarketDataStream:
             logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
             self._consecutive_failures += 1
 
+        # Feed the circuit-breaker window (graceful closes count too —
+        # frequent "clean" reconnects are still a flapping stream).
+        self._record_disconnect(time.time())
+
         if not self._should_run:
             return
 
@@ -1340,6 +1358,52 @@ class MarketDataStream:
                 self.ws.send(msg)
             except Exception as e:
                 logger.warning("WebSocket send failed for %s: %s", endpoint, e)
+
+    # ─────────────────────────────────────────
+    # Circuit-breaker
+    # ─────────────────────────────────────────
+
+    def _record_disconnect(self, now: float):
+        """Append a disconnect timestamp and open the circuit if we blew
+        through CIRCUIT_DISCONNECT_THRESHOLD inside CIRCUIT_WINDOW_SECONDS.
+        """
+        self._disconnect_times.append(now)
+        # Trim entries older than the rolling window
+        cutoff = now - self.CIRCUIT_WINDOW_SECONDS
+        while self._disconnect_times and self._disconnect_times[0] < cutoff:
+            self._disconnect_times.popleft()
+
+        if len(self._disconnect_times) >= self.CIRCUIT_DISCONNECT_THRESHOLD:
+            if self._circuit_open_until <= now:
+                # Was closed — opening now
+                self._circuit_open_until = now + self.CIRCUIT_COOLDOWN_SECONDS
+                logger.warning(
+                    "MARKET DATA CIRCUIT: opened (%d disconnects in %ds). "
+                    "Blocking new entries until %s.",
+                    len(self._disconnect_times),
+                    self.CIRCUIT_WINDOW_SECONDS,
+                    datetime.fromtimestamp(self._circuit_open_until, timezone.utc).isoformat(),
+                )
+                alerts.send(
+                    "WARNING",
+                    "Market data circuit opened",
+                    f"{len(self._disconnect_times)} disconnects in "
+                    f"{self.CIRCUIT_WINDOW_SECONDS}s — new entries blocked "
+                    f"for {self.CIRCUIT_COOLDOWN_SECONDS // 60}m",
+                )
+            else:
+                # Already open — just refresh the deadline
+                self._circuit_open_until = now + self.CIRCUIT_COOLDOWN_SECONDS
+
+    def market_data_healthy(self, now: Optional[float] = None) -> bool:
+        """False while the circuit is open.
+
+        The caller should use this to short-circuit new signal
+        generation. Existing brackets on the server are not affected.
+        """
+        if now is None:
+            now = time.time()
+        return now >= self._circuit_open_until
 
 
 # ─────────────────────────────────────────────
