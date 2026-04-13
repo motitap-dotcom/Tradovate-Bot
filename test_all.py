@@ -2774,6 +2774,123 @@ test_tuner_rollback_after_losing_days()
 
 
 # ─────────────────────────────────────────────
+# 19. ALERT WEBHOOK TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("19. ALERT WEBHOOK TESTS")
+print("=" * 60)
+
+
+@test("Alerts: noop when ALERT_WEBHOOK_URL is unset")
+def test_alerts_noop_without_url():
+    import alerts
+    alerts.reset_dedupe()
+    orig = os.environ.pop("ALERT_WEBHOOK_URL", None)
+    try:
+        with patch("alerts.requests") as mock_req:
+            result = alerts.send("WARNING", "test", "body")
+        assert result is False
+        mock_req.post.assert_not_called()
+    finally:
+        if orig is not None:
+            os.environ["ALERT_WEBHOOK_URL"] = orig
+
+
+@test("Alerts: telegram POSTs to webhook with chat_id")
+def test_alerts_telegram_post():
+    import alerts
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.return_value.status_code = 200
+            result = alerts.send("CRITICAL", "lock", "reason=brake")
+        assert result is True
+        mock_req.post.assert_called_once()
+        call = mock_req.post.call_args
+        assert "telegram.org" in call.args[0]
+        payload = call.kwargs["json"]
+        assert payload["chat_id"] == "12345"
+        assert "CRITICAL" in payload["text"]
+        assert "reason=brake" in payload["text"]
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+@test("Alerts: dedupe suppresses same key within 5 min window")
+def test_alerts_dedupe():
+    import alerts
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.return_value.status_code = 200
+            a = alerts.send("CRITICAL", "lock", "first")
+            b = alerts.send("CRITICAL", "lock", "second")
+        assert a is True and b is False
+        assert mock_req.post.call_count == 1
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+@test("Alerts: network failure never raises")
+def test_alerts_swallow_exception():
+    import alerts
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.side_effect = Exception("connection refused")
+            result = alerts.send("WARNING", "net_fail", "body")
+        assert result is False  # logged, not raised
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+@test("Alerts: risk_manager _lock triggers an alert")
+def test_alerts_risk_manager_lock():
+    import alerts
+    from risk_manager import RiskManager
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.return_value.status_code = 200
+            rm = RiskManager()
+            rm._lock("test breach")
+        assert mock_req.post.call_count == 1
+        text = mock_req.post.call_args.kwargs["json"]["text"]
+        assert "Trading locked" in text
+        assert "test breach" in text
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+test_alerts_noop_without_url()
+test_alerts_telegram_post()
+test_alerts_dedupe()
+test_alerts_swallow_exception()
+test_alerts_risk_manager_lock()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 
