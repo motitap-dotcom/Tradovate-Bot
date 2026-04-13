@@ -85,10 +85,14 @@ class ContinuousLearner:
         # Generate insights
         report["insights"] = self._generate_daily_insights(closed, all_closed)
 
-        # Run auto-tuner
+        # Run auto-tuner (shadow pipeline — min_trades raised to 20 so
+        # proposals are backed by meaningful sample size, and changes must
+        # clear a 2-cycle confirmation before touching config)
         tuner = AutoTuner(self.journal)
-        adjustments = tuner.run()
+        adjustments = tuner.run(min_trades=20)
         report["tuner_adjustments"] = adjustments
+        report["tuner_rollbacks"] = getattr(tuner, "rollbacks", [])
+        report["tuner_staged"] = getattr(tuner, "adjustments", [])
 
         # Score today's performance
         report["score"] = self._score_day(closed, all_closed)
@@ -173,9 +177,51 @@ class ContinuousLearner:
                 "risk_reward": self._analyze_rr(sym, sym_trades, spec),
                 "time_of_day": self._analyze_time_performance(sym_trades),
                 "day_of_week": self._analyze_dow_performance(sym_trades),
+                "session_bucket": self._analyze_session_performance(sym_trades),
+                "slippage": self._analyze_slippage(sym_trades),
             }
 
         return result
+
+    def _analyze_session_performance(self, trades: list[dict]) -> dict:
+        """Bucket trades by ET session window and report WR / P&L / expectancy."""
+        by_bucket: dict[str, list[float]] = defaultdict(list)
+        for t in trades:
+            bucket = t.get("session_bucket") or "unknown"
+            pnl = t.get("pnl")
+            if pnl is not None:
+                by_bucket[bucket].append(pnl)
+
+        result: dict[str, dict] = {}
+        for bucket, pnls in by_bucket.items():
+            if not pnls:
+                continue
+            wins = [p for p in pnls if p > 0]
+            result[bucket] = {
+                "trades": len(pnls),
+                "total_pnl": round(sum(pnls), 2),
+                "win_rate": round(len(wins) / len(pnls), 2),
+                "avg_pnl": round(statistics.mean(pnls), 2),
+            }
+        return result
+
+    def _analyze_slippage(self, trades: list[dict]) -> dict:
+        """Per-symbol entry slippage — mean and 95th percentile."""
+        slips = [
+            t["slippage_points"] for t in trades
+            if t.get("slippage_points") is not None
+        ]
+        if not slips:
+            return {"trades": 0}
+        slips_sorted = sorted(slips)
+        p95_idx = int(len(slips_sorted) * 0.95)
+        p95_idx = min(p95_idx, len(slips_sorted) - 1)
+        return {
+            "trades": len(slips),
+            "mean_points": round(statistics.mean(slips), 4),
+            "p95_points": round(slips_sorted[p95_idx], 4),
+            "worst_points": round(max(slips, key=abs), 4),
+        }
 
     def _analyze_stop_loss(self, sym: str, trades: list[dict], spec: dict) -> dict:
         """Analyze stop-loss effectiveness for a symbol."""

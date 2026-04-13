@@ -38,6 +38,27 @@ logger = logging.getLogger(__name__)
 JOURNAL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trade_journal.json")
 
 
+# Session buckets in ET. Entry times outside these windows are tagged
+# "off_session" — useful for post-hoc analysis (overnight fills, etc).
+_SESSION_BUCKETS = (
+    ("pre_open",   (9, 30), (10, 0)),
+    ("morning",    (10, 0), (11, 30)),
+    ("midday",     (11, 30), (14, 0)),
+    ("afternoon",  (14, 0), (15, 45)),
+)
+
+
+def _session_bucket_for(hour: int, minute: int) -> str:
+    """Classify an (ET hour, minute) pair into a session bucket."""
+    total = hour * 60 + minute
+    for name, (sh, sm), (eh, em) in _SESSION_BUCKETS:
+        start = sh * 60 + sm
+        end = eh * 60 + em
+        if start <= total < end:
+            return name
+    return "off_session"
+
+
 class TradeJournal:
     """Records trades and generates performance analytics."""
 
@@ -93,22 +114,34 @@ class TradeJournal:
         reason: str,
         stop_loss: float = 0,
         take_profit: float = 0,
+        expected_fill: Optional[float] = None,
     ) -> str:
-        """Record a new trade entry. Returns trade_id."""
+        """Record a new trade entry. Returns trade_id.
+
+        ``expected_fill`` is the price the strategy saw at dispatch time.
+        Defaults to ``entry_price`` if not provided. When the actual fill
+        price arrives, call :meth:`set_actual_fill` to compute slippage.
+        """
         trade_id = f"{symbol}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
         now_utc = datetime.now(timezone.utc)
+        hour, minute = _current_et_hm()
         trade = {
             "id": trade_id,
             "symbol": symbol,
             "direction": direction,
             "entry_price": entry_price,
+            "expected_fill": expected_fill if expected_fill is not None else entry_price,
+            "actual_fill": None,          # set by set_actual_fill
+            "slippage_points": None,      # computed from expected vs actual
             "qty": qty,
             "strategy": strategy,
             "reason": reason,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "entry_time": now_utc.isoformat(),
-            "entry_hour_et": _current_et_hour(),
+            "entry_hour_et": hour,
+            "entry_minute_et": minute,
+            "session_bucket": _session_bucket_for(hour, minute),
             "entry_day_of_week": now_utc.strftime("%A"),
             "date": date.today().isoformat(),
             "exit_price": None,
@@ -119,7 +152,7 @@ class TradeJournal:
             # Learning fields — populated on exit
             "r_multiple": None,
             "duration_minutes": None,
-            "slippage_entry": None,     # Actual vs expected fill (set by bot)
+            "slippage_entry": None,     # Legacy field — kept for backcompat
             "mae_points": None,         # Maximum Adverse Excursion (worst drawdown before exit)
             "mfe_points": None,         # Maximum Favorable Excursion (best unrealized before exit)
         }
@@ -127,6 +160,35 @@ class TradeJournal:
         self._save()
         logger.info("Journal: ENTRY %s %s %s @ %.2f x%d (%s)", trade_id, direction, symbol, entry_price, qty, reason)
         return trade_id
+
+    def set_actual_fill(self, trade_id: str, actual_fill: float) -> Optional[float]:
+        """Stamp the real fill price on an open trade and compute slippage.
+
+        Slippage is measured in *points* and signed so that positive =
+        worse-than-expected fill (paid more for a long, got less for a
+        short). Returns the slippage in points, or None if the trade
+        was not found.
+        """
+        for trade in reversed(self.trades):
+            if trade["id"] != trade_id:
+                continue
+            expected = trade.get("expected_fill") or trade.get("entry_price")
+            if expected is None:
+                return None
+            trade["actual_fill"] = actual_fill
+            direction = trade.get("direction", "")
+            slippage = (
+                actual_fill - expected
+                if direction == "Buy"
+                else expected - actual_fill
+            )
+            trade["slippage_points"] = round(slippage, 4)
+            # Mirror to legacy field so old consumers keep working
+            trade["slippage_entry"] = trade["slippage_points"]
+            self._save()
+            return trade["slippage_points"]
+        logger.warning("Journal: set_actual_fill: trade_id %s not found", trade_id)
+        return None
 
     def record_exit(
         self,
@@ -708,6 +770,19 @@ def _current_et_hour() -> int:
         # Approximate: UTC - 5 (EST) or UTC - 4 (EDT)
         utc_hour = datetime.now(tz.utc).hour
         return (utc_hour - 5) % 24
+
+
+def _current_et_hm() -> tuple[int, int]:
+    """Get current (hour, minute) in Eastern Time."""
+    from datetime import timezone as tz
+    try:
+        import zoneinfo
+        et = zoneinfo.ZoneInfo("America/New_York")
+        now = datetime.now(et)
+        return now.hour, now.minute
+    except ImportError:
+        utc_now = datetime.now(tz.utc)
+        return (utc_now.hour - 5) % 24, utc_now.minute
 
 
 def _longest_losing_streak(trades: list[dict]) -> int:

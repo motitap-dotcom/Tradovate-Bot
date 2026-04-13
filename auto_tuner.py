@@ -16,7 +16,7 @@ import json
 import logging
 import os
 import statistics
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 import config
@@ -24,7 +24,9 @@ from trade_journal import TradeJournal
 
 logger = logging.getLogger(__name__)
 
-TUNER_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tuner_log.json")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+TUNER_LOG = os.path.join(_HERE, "tuner_log.json")
+TUNER_PENDING = os.path.join(_HERE, "tuner_pending.json")
 
 # Safety bounds for each tunable parameter (absolute min/max)
 _BOUNDS = {
@@ -60,17 +62,33 @@ class AutoTuner:
     def __init__(self, journal: Optional[TradeJournal] = None):
         self.journal = journal or TradeJournal()
         self.adjustments: list[dict] = []
+        self.applied_now: list[dict] = []
+        self.rollbacks: list[dict] = []
 
-    def run(self, min_trades: int = 5) -> list[dict]:
+    def run(self, min_trades: int = 20) -> list[dict]:
         """
         Analyze recent performance and generate parameter adjustments.
-        Returns list of adjustments made.
+
+        Safety pipeline (added 2026-04-13 audit P2):
+        1. Gate at ``min_trades`` (default 20) — raised from 5.
+        2. Roll back any applied adjustment that degraded 3 rolling days.
+        3. Stage proposals to ``tuner_pending.json``.
+        4. Only apply a staged proposal when the *same* direction for the
+           same (symbol, param) has been proposed in two consecutive daily
+           cycles.
+
+        Returns the list of adjustments that were actually applied in this
+        cycle (may be empty even when new proposals were staged).
         """
         closed = self.journal._closed_trades()
         if len(closed) < min_trades:
             logger.info("Auto-tuner: only %d trades (need %d). Skipping.", len(closed), min_trades)
             return []
 
+        # Step 1: rollback degraded applies before generating new proposals.
+        self.rollbacks = self._rollback_if_degraded(closed)
+
+        # Step 2: generate fresh proposals into self.adjustments.
         self.adjustments = []
 
         self._tune_stops(closed)
@@ -83,14 +101,24 @@ class AutoTuner:
         self._tune_symbol_allocation(closed)
         self._tune_daily_trade_cap(closed)
 
-        if self.adjustments:
-            self._apply_adjustments()
-            self._log_adjustments()
-            logger.info("Auto-tuner: %d adjustments applied", len(self.adjustments))
-        else:
-            logger.info("Auto-tuner: no adjustments needed")
+        # Step 3: reconcile proposals with the pending store; apply any
+        # proposal confirmed by two consecutive cycles.
+        self.applied_now = self._reconcile_pending(self.adjustments)
 
-        return self.adjustments
+        if self.applied_now:
+            self._apply_adjustments(self.applied_now)
+            self._log_adjustments(self.applied_now)
+            logger.info(
+                "Auto-tuner: %d adjustments applied (confirmed by shadow cycle)",
+                len(self.applied_now),
+            )
+        else:
+            logger.info(
+                "Auto-tuner: %d proposals staged, 0 applied this cycle",
+                len(self.adjustments),
+            )
+
+        return self.applied_now
 
     # ─────────────────────────────────────────
     # Tuning rules
@@ -422,7 +450,15 @@ class AutoTuner:
     # ─────────────────────────────────────────
 
     def _propose(self, param: str, symbol: str, old_val: float, new_val: float, reason: str):
-        """Propose an adjustment, clamped to safety bounds."""
+        """Propose an adjustment, clamped to safety bounds.
+
+        Note: this only *stages* the proposal (append to
+        ``self.adjustments``). Actual mutation of ``config.CONTRACT_SPECS``
+        happens in ``_apply_adjustments`` once the proposal has been
+        confirmed by a second cycle (see ``_reconcile_pending``).
+        ``applied=False`` is the staged state; ``_reconcile_pending``
+        flips it to True when the proposal clears the shadow cycle.
+        """
         # Cap change at ±MAX_ADJUST_PCT
         max_change = old_val * MAX_ADJUST_PCT
         new_val = max(old_val - max_change, min(old_val + max_change, new_val))
@@ -456,12 +492,121 @@ class AutoTuner:
             "new_value": new_val,
             "reason": reason,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "applied": True,
+            "applied": False,  # staged — _reconcile_pending promotes later
         })
 
-    def _apply_adjustments(self):
-        """Apply parameter changes to config.CONTRACT_SPECS."""
-        for adj in self.adjustments:
+    # ─────────────────────────────────────────
+    # Shadow-test pipeline
+    # ─────────────────────────────────────────
+
+    @staticmethod
+    def _key(adj: dict) -> str:
+        return f"{adj['symbol']}::{adj['param']}"
+
+    @staticmethod
+    def _direction(old_val, new_val) -> str:
+        if new_val > old_val:
+            return "up"
+        if new_val < old_val:
+            return "down"
+        return "flat"
+
+    def _load_pending(self) -> dict:
+        if not os.path.exists(TUNER_PENDING):
+            return {}
+        try:
+            with open(TUNER_PENDING) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    def _save_pending(self, pending: dict):
+        try:
+            tmp = TUNER_PENDING + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(pending, f, indent=2, default=str)
+            os.replace(tmp, TUNER_PENDING)
+        except OSError as e:
+            logger.warning("Failed to persist tuner_pending.json: %s", e)
+
+    def _reconcile_pending(self, staged: list[dict]) -> list[dict]:
+        """Compare staged proposals against the pending store.
+
+        - First time a direction is seen for a key → record it as pending.
+        - Second time the *same* direction is seen → promote it to applied
+          and clear the pending entry.
+        - A proposal in the opposite direction wipes the pending entry.
+        - Keys not touched this cycle age out after 7 days.
+        """
+        pending = self._load_pending()
+        now = datetime.now(timezone.utc)
+        applied: list[dict] = []
+
+        # Age out stale entries (> 7d without confirmation)
+        cutoff = now - timedelta(days=7)
+        stale_keys = []
+        for key, entry in pending.items():
+            try:
+                ts = datetime.fromisoformat(entry["first_seen"])
+            except (KeyError, ValueError):
+                continue
+            if ts < cutoff:
+                stale_keys.append(key)
+        for key in stale_keys:
+            pending.pop(key, None)
+
+        for adj in staged:
+            # Advisory proposals (trading_hours, enabled=REVIEW) and
+            # already-applied legacy proposals (MAX_DAILY_TRADES) bypass
+            # the shadow cycle.
+            if adj.get("applied") is True:
+                applied.append(adj)
+                continue
+            new_val = adj.get("new_value")
+            if not isinstance(new_val, (int, float)):
+                # Advisory / non-numeric — leave as-is, don't reconcile.
+                continue
+
+            key = self._key(adj)
+            direction = self._direction(adj["old_value"], adj["new_value"])
+            entry = pending.get(key)
+
+            if entry is None:
+                pending[key] = {
+                    "direction": direction,
+                    "first_seen": now.isoformat(),
+                    "proposed_value": adj["new_value"],
+                    "from_value": adj["old_value"],
+                    "reason": adj["reason"],
+                }
+                adj["pending"] = True
+                continue
+
+            if entry["direction"] != direction:
+                # Direction flipped → drop the pending, start over next cycle.
+                pending.pop(key, None)
+                adj["pending"] = True
+                pending[key] = {
+                    "direction": direction,
+                    "first_seen": now.isoformat(),
+                    "proposed_value": adj["new_value"],
+                    "from_value": adj["old_value"],
+                    "reason": adj["reason"],
+                }
+                continue
+
+            # Direction matches — promote to applied.
+            adj["applied"] = True
+            adj["confirmed_after_cycles"] = 2
+            applied.append(adj)
+            pending.pop(key, None)
+
+        self._save_pending(pending)
+        return applied
+
+    def _apply_adjustments(self, adjustments: list[dict]):
+        """Apply confirmed parameter changes to config.CONTRACT_SPECS."""
+        for adj in adjustments:
             if not adj.get("applied"):
                 continue
             sym = adj["symbol"]
@@ -473,8 +618,8 @@ class AutoTuner:
                     sym, param, adj["old_value"], adj["new_value"], adj["reason"],
                 )
 
-    def _log_adjustments(self):
-        """Append adjustments to persistent log file."""
+    def _log_adjustments(self, adjustments: list[dict]):
+        """Append adjustments (applied + rollbacks) to persistent log."""
         log = []
         if os.path.exists(TUNER_LOG):
             try:
@@ -483,13 +628,104 @@ class AutoTuner:
             except (json.JSONDecodeError, TypeError):
                 log = []
 
-        log.extend(self.adjustments)
+        log.extend(adjustments)
+        log.extend(self.rollbacks)
 
         # Keep last 200 entries
         log = log[-200:]
 
-        with open(TUNER_LOG, "w") as f:
-            json.dump(log, f, indent=2, default=str)
+        try:
+            tmp = TUNER_LOG + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(log, f, indent=2, default=str)
+            os.replace(tmp, TUNER_LOG)
+        except OSError as e:
+            logger.warning("Failed to persist tuner_log.json: %s", e)
+
+    # ─────────────────────────────────────────
+    # Rollback — revert applies that degraded performance
+    # ─────────────────────────────────────────
+
+    def _rollback_if_degraded(self, closed: list[dict]) -> list[dict]:
+        """Scan the tuner_log for the most recent applied change per key.
+
+        If the symbol has had 3 consecutive losing days *since* that apply,
+        revert the parameter and log a rollback record.
+        Returns the list of rollback records that were applied.
+        """
+        if not os.path.exists(TUNER_LOG):
+            return []
+        try:
+            with open(TUNER_LOG) as f:
+                log = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return []
+
+        # Most recent applied change per (symbol, param)
+        latest: dict[str, dict] = {}
+        for entry in log:
+            if not entry.get("applied"):
+                continue
+            if entry.get("param") in {"trading_hours", "enabled"}:
+                # advisory-only — not directly revertible
+                continue
+            key = f"{entry.get('symbol')}::{entry.get('param')}"
+            latest[key] = entry
+
+        rollbacks: list[dict] = []
+        for key, entry in latest.items():
+            sym = entry["symbol"]
+            param = entry["param"]
+            try:
+                applied_at = datetime.fromisoformat(entry["timestamp"])
+            except (KeyError, ValueError):
+                continue
+
+            # Daily P&L for this symbol since the apply date (ET day)
+            applied_date = applied_at.date().isoformat()
+            sym_trades = [
+                t for t in closed
+                if t.get("symbol") == sym and t.get("date", "") >= applied_date
+            ]
+            if not sym_trades:
+                continue
+
+            by_date: dict[str, float] = {}
+            for t in sym_trades:
+                d = t.get("date")
+                pnl = t.get("pnl") or 0
+                by_date[d] = by_date.get(d, 0) + pnl
+
+            # Check the last 3 days (chronologically) for the symbol
+            recent_days = sorted(by_date.items())[-3:]
+            if len(recent_days) < 3:
+                continue
+            if not all(pnl < 0 for _, pnl in recent_days):
+                continue
+
+            # Revert! — write the old value back to config
+            if sym in config.CONTRACT_SPECS and param in config.CONTRACT_SPECS[sym]:
+                old_live = config.CONTRACT_SPECS[sym][param]
+                config.CONTRACT_SPECS[sym][param] = entry["old_value"]
+                logger.warning(
+                    "Auto-tune ROLLBACK %s.%s: %s -> %s (3 losing days since %s)",
+                    sym, param, old_live, entry["old_value"], applied_date,
+                )
+                rollbacks.append({
+                    "param": param,
+                    "symbol": sym,
+                    "old_value": old_live,
+                    "new_value": entry["old_value"],
+                    "reason": (
+                        f"ROLLBACK: 3 losing days since apply on {applied_date} "
+                        f"({[(d, round(p, 2)) for d, p in recent_days]})"
+                    ),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "applied": True,
+                    "rollback_of": entry.get("timestamp"),
+                })
+
+        return rollbacks
 
 
 def _group_by(items: list[dict], key: str) -> dict[str, list]:

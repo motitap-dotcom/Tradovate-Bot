@@ -1,7 +1,7 @@
 """
 Tradovate API Client
 =====================
-REST + WebSocket wrapper for Tradovate (with mdAccessToken diagnostics).
+REST + WebSocket wrapper for Tradovate.
 Handles authentication, order placement (bracket orders),
 account info, positions, and market data subscriptions.
 
@@ -21,12 +21,15 @@ import os
 import threading
 import time
 import uuid
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import requests
 import websocket
+
+import alerts
 
 import config
 
@@ -126,8 +129,6 @@ class TradovateAPI:
             return True
 
         # 2. Try saved token from file
-        _renewed_access = None
-        _renewed_expiry = None
         if self._load_token():
             # Always attempt renewal — even for expired tokens.
             # Tradovate may accept renewal for recently-expired tokens.
@@ -136,23 +137,9 @@ class TradovateAPI:
             if self.renew_token():
                 logger.info("Saved token renewed successfully")
                 self._fetch_account_id()
-                if self.md_access_token:
-                    self._save_token()
-                    return True
-                # Renewal worked for trading but mdAccessToken is missing.
-                # Fall through to fresh web auth so WebSocket market data
-                # will be available.  Keep the renewed trading token as
-                # fallback in case fresh auth fails.
-                logger.info(
-                    "Token renewed but mdAccessToken missing — "
-                    "trying fresh auth for WebSocket market data..."
-                )
-                _renewed_access = self.access_token
-                _renewed_expiry = self.token_expiry
-            else:
-                _renewed_access = None
-                _renewed_expiry = None
-                logger.warning("Saved token renewal failed, trying fresh auth...")
+                self._save_token()
+                return True
+            logger.warning("Saved token renewal failed, trying fresh auth...")
             # Clear stale token and delete file before fresh auth
             self.access_token = None
             self.md_access_token = None
@@ -178,17 +165,6 @@ class TradovateAPI:
         if data is None:
             data = self._try_browser_auth()
         if data is None:
-            # Fresh auth failed — restore renewed trading token if we had one
-            if _renewed_access:
-                logger.warning(
-                    "Fresh auth failed but renewed trading token is still valid. "
-                    "Restoring it (WebSocket will be unavailable)."
-                )
-                self.access_token = _renewed_access
-                self.token_expiry = _renewed_expiry
-                self._fetch_account_id()
-                self._save_token()
-                return True
             logger.error("All authentication methods exhausted")
             return False
 
@@ -200,14 +176,6 @@ class TradovateAPI:
         self.md_access_token = data.get("mdAccessToken")
         self.user_id = data.get("userId")
         self.account_spec = data.get("name")
-
-        # Diagnostic: log whether mdAccessToken was provided
-        auth_keys = [k for k in data.keys() if k != "accessToken"]
-        logger.info(
-            "Auth response keys (excluding accessToken): %s | mdAccessToken=%s",
-            auth_keys,
-            "present" if self.md_access_token else "MISSING",
-        )
 
         if data.get("expirationTime"):
             self.token_expiry = datetime.fromisoformat(
@@ -608,12 +576,7 @@ class TradovateAPI:
                     self.token_expiry = datetime.fromisoformat(
                         data["expirationTime"].replace("Z", "+00:00")
                     )
-                renewal_keys = list(data.keys())
-                logger.info(
-                    "Token renewed via %s. Expires: %s | renewal keys: %s | mdAccessToken=%s",
-                    url.split("/")[2], self.token_expiry, renewal_keys,
-                    "present" if data.get("mdAccessToken") else "MISSING",
-                )
+                logger.info("Token renewed via %s. Expires: %s", url.split("/")[2], self.token_expiry)
                 self._save_token()
                 return True
             except requests.RequestException as e:
@@ -811,7 +774,6 @@ class TradovateAPI:
             return None
 
         # For market orders, verify fill after brief delay
-        avg_fill_price = entry_price or 0  # default; overwritten by actual fill below
         if order_type == "Market":
             time.sleep(1)
             order_detail = self._get(f"/order/item?id={entry_order_id}")
@@ -819,33 +781,10 @@ class TradovateAPI:
                 detail_status = order_detail.get("ordStatus", "Unknown")
                 filled_qty = order_detail.get("filledQty", 0)
                 avg_price = order_detail.get("avgPrice", 0)
-                if avg_price:
-                    avg_fill_price = avg_price
                 logger.info(
                     "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s | detail=%s",
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
-                # avgPrice on /order/item is often 0. Try /fill/list to get real price.
-                if not avg_fill_price or avg_fill_price == 0:
-                    try:
-                        fills = self._get(f"/fill/list?orderId={entry_order_id}")
-                        if fills and isinstance(fills, list):
-                            total_qty = 0
-                            total_cost = 0.0
-                            for f in fills:
-                                fq = f.get("qty", 0)
-                                fp = f.get("price", 0)
-                                if fq and fp:
-                                    total_qty += fq
-                                    total_cost += fq * fp
-                            if total_qty > 0:
-                                avg_fill_price = total_cost / total_qty
-                                logger.info(
-                                    "Fill price from /fill/list: %.4f (%d fills, %d qty)",
-                                    avg_fill_price, len(fills), total_qty,
-                                )
-                    except Exception as e:
-                        logger.warning("Could not fetch fills for entry price: %s", e)
                 if detail_status == "Rejected":
                     logger.error(
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
@@ -900,7 +839,6 @@ class TradovateAPI:
 
         return {
             "orderId": entry_order_id,
-            "avgPrice": avg_fill_price,
             "slOrderId": oco_result.get("orderId") if oco_result else None,
             "tpOrderId": oco_result.get("ocoId") if oco_result else None,
         }
@@ -1012,20 +950,10 @@ class TradovateAPI:
             return None
 
     def _re_authenticate(self) -> bool:
-        """Clear expired token and do full re-authentication.
-
-        Deletes the saved token file so authenticate() performs a fresh
-        web auth instead of just renewing the stale saved token.  This is
-        important because token renewal does NOT return mdAccessToken,
-        so a full auth is the only way to obtain it.
-        """
+        """Clear expired token and do full re-authentication."""
         self.access_token = None
         self.md_access_token = None
         self.token_expiry = None
-        try:
-            _TOKEN_FILE.unlink(missing_ok=True)
-        except OSError:
-            pass
         return self.authenticate()
 
 
@@ -1054,6 +982,13 @@ class MarketDataStream:
     # After this many consecutive reconnect failures, signal caller to fall back
     FALLBACK_THRESHOLD = 10
 
+    # Circuit-breaker: if the WS has this many disconnects inside
+    # CIRCUIT_WINDOW_SECONDS, open the circuit — callers should stop
+    # opening new positions until CIRCUIT_COOLDOWN_SECONDS has elapsed.
+    CIRCUIT_DISCONNECT_THRESHOLD = 5
+    CIRCUIT_WINDOW_SECONDS = 60
+    CIRCUIT_COOLDOWN_SECONDS = 300  # 5 minutes
+
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
         self._api = api  # Reference to API client for token refresh on 403
@@ -1070,15 +1005,16 @@ class MarketDataStream:
         self._should_run = False
         self._reconnect_count = 0
         self._consecutive_failures = 0
-        self._zero_data_cycles = 0  # Reconnect cycles that produced 0 quotes
         self.fell_back = threading.Event()  # Signals that WS is unrecoverable
         self._last_data_time: float = 0  # Track when we last received real data
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
-        self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
-        self._quotes_dispatched: int = 0  # Quotes actually routed to callbacks
+
+        # Circuit-breaker state
+        self._disconnect_times: deque[float] = deque()
+        self._circuit_open_until: float = 0.0
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1086,7 +1022,6 @@ class MarketDataStream:
         self._last_data_time = time.time()  # Grace period before staleness check
         self._start_time = time.time()
         self._quotes_received = 0
-        self._quotes_dispatched = 0
         self._connect()
         self._connected.wait(timeout=15)
 
@@ -1105,11 +1040,12 @@ class MarketDataStream:
         )
         # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
-        # Send WebSocket-level pings every 15s to keep the TCP connection alive
+        # Send WebSocket-level pings every 25s to keep the TCP connection alive
         # through load balancers, NAT, and server idle timeouts.
-        # ping_interval MUST be > ping_timeout (websocket-client requirement).
-        proxy_kwargs["ping_interval"] = 15
-        proxy_kwargs["ping_timeout"] = 5
+        # Without this, the server closes the connection after ~30s of
+        # transport-level "silence" (application-level SockJS heartbeats don't count).
+        proxy_kwargs["ping_interval"] = 25
+        proxy_kwargs["ping_timeout"] = 10
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
@@ -1136,7 +1072,6 @@ class MarketDataStream:
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
-        self._stop_heartbeat()
         # Cancel pending reconnect timer
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
@@ -1170,14 +1105,6 @@ class MarketDataStream:
                     time.time() - self._start_time,
                 )
                 return True
-        # Check 3: Receiving data but nothing routed to callbacks (contractId mismatch)
-        if self._quotes_received > 10 and self._quotes_dispatched == 0 and self._start_time:
-            if (time.time() - self._start_time) > self.NO_DATA_TIMEOUT:
-                logger.warning(
-                    "WebSocket received %d quotes but dispatched 0. ContractId routing broken. Declaring stale.",
-                    self._quotes_received,
-                )
-                return True
         return False
 
     def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
@@ -1202,25 +1129,6 @@ class MarketDataStream:
         """Register a callback for quote updates on a symbol."""
         with self._callbacks_lock:
             self._callbacks.setdefault(symbol, []).append(callback)
-
-    # ─────── SockJS keepalive ───────
-
-    def _start_heartbeat(self):
-        """Send SockJS keepalive '[]' every 10s to prevent server idle timeout."""
-        self._stop_heartbeat()
-        def _beat():
-            while self._should_run and self._connected.is_set():
-                try:
-                    if self.ws:
-                        self.ws.send("[]")
-                except Exception:
-                    break
-                time.sleep(10)
-        self._heartbeat_timer = threading.Thread(target=_beat, daemon=True)
-        self._heartbeat_timer.start()
-
-    def _stop_heartbeat(self):
-        self._heartbeat_timer = None  # daemon thread dies on its own
 
     # ─────── WebSocket handlers ───────
 
@@ -1258,7 +1166,6 @@ class MarketDataStream:
                 logger.info("Market data WebSocket authenticated")
                 self._reconnect_count = 0
                 self._connected.set()
-                self._start_heartbeat()
                 continue
 
             # Auth failure — trigger reconnect with fresh token
@@ -1297,16 +1204,12 @@ class MarketDataStream:
                     cb_snapshot = {sym: list(cbs) for sym, cbs in self._callbacks.items()}
                 for quote in quotes:
                     contract_id = quote.get("contractId")
-                    # Try data-level contractId if quote-level is missing
-                    if contract_id is None and isinstance(data, dict):
-                        contract_id = data.get("contractId")
                     # Route quote to the correct symbol's callbacks using contractId.
                     # Without this filter, ALL quotes go to ALL symbols — causing
                     # strategies to receive prices from wrong contracts (e.g., NQ
                     # prices fed to GC strategy), which breaks ORB ranges and VWAP.
                     target_sym = self._contract_id_to_symbol.get(contract_id)
                     if target_sym and target_sym in cb_snapshot:
-                        self._quotes_dispatched += 1
                         for cb in cb_snapshot[target_sym]:
                             try:
                                 cb(target_sym, quote)
@@ -1319,7 +1222,6 @@ class MarketDataStream:
                         logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
-                        self._quotes_dispatched += 1
                         for sym, cbs in cb_snapshot.items():
                             for cb in cbs:
                                 try:
@@ -1327,13 +1229,8 @@ class MarketDataStream:
                                 except Exception as e:
                                     logger.error("Quote callback error for %s: %s", sym, e)
                     else:
-                        # No contractId and multiple symbols — cannot safely route
-                        if self._quotes_received <= 5:
-                            logger.warning(
-                                "Quote without contractId (%d symbols). keys=%s sample=%s",
-                                len(cb_snapshot), list(quote.keys())[:10],
-                                {k: quote[k] for k in list(quote.keys())[:3]},
-                            )
+                        # No contractId and multiple symbols — cannot safely route, skip
+                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
 
     def _on_error(self, ws, error):
         error_str = str(error)
@@ -1342,51 +1239,33 @@ class MarketDataStream:
             self._got_403 = True
         else:
             logger.error("Market data WebSocket error: %s", error)
-        # Detect graceful close (code 1000 "Bye") from the error payload.
-        # websocket-client fires _on_error BEFORE _on_close, and sometimes
-        # doesn't pass the close code to _on_close (leaves it None).
-        if "\\x03\\xe8" in error_str or "Bye" in error_str:
-            self._got_1000 = True
         # NOTE: Don't increment _consecutive_failures here — _on_close always
         # fires after _on_error and handles the counter.  Double-counting caused
         # premature fallback to REST polling.
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
-        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
-        # Note: websocket-client sometimes passes None for close_status_code
-        # even on graceful closes — check _got_1000 flag set by _on_error.
-        is_graceful = close_status_code == 1000 or getattr(self, "_got_1000", False)
-        self._got_1000 = False
+        is_graceful = close_status_code == 1000
         if is_graceful:
-            logger.info("Market data WebSocket closed gracefully (1000). Reconnecting...")
+            logger.info("Market data WebSocket closed gracefully (1000 %s). Reconnecting...", close_msg)
         else:
             logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
             self._consecutive_failures += 1
 
-        # Track reconnect cycles that produced 0 quotes — if this keeps
-        # happening, the WebSocket is fundamentally broken (wrong contract
-        # names, no market data permission, etc.) and we should fall back.
-        if self._quotes_received == 0:
-            self._zero_data_cycles += 1
-        else:
-            self._zero_data_cycles = 0
+        # Feed the circuit-breaker window (graceful closes count too —
+        # frequent "clean" reconnects are still a flapping stream).
+        self._record_disconnect(time.time())
 
         if not self._should_run:
             return
 
         # Signal fallback after too many consecutive *real* failures
-        # OR too many reconnect cycles with zero data
-        if self._consecutive_failures >= self.FALLBACK_THRESHOLD or self._zero_data_cycles >= 5:
-            reason = (
-                f"{self._zero_data_cycles} cycles with 0 quotes"
-                if self._zero_data_cycles >= 5
-                else f"{self._consecutive_failures} consecutive failures"
-            )
+        if self._consecutive_failures >= self.FALLBACK_THRESHOLD:
             logger.warning(
-                "WebSocket unhealthy (%s). Signaling fallback to REST polling.", reason,
+                "WebSocket failed %d consecutive times. Signaling fallback to REST polling.",
+                self._consecutive_failures,
             )
             self._should_run = False
             self.fell_back.set()
@@ -1412,9 +1291,6 @@ class MarketDataStream:
 
     def _reconnect(self):
         """Reconnect and re-subscribe to all symbols. Refreshes token on 403."""
-        # Reset per-cycle quote counter so _on_close can track zero-data cycles
-        self._quotes_received = 0
-
         # Close old WebSocket connection to prevent leaking
         if self.ws:
             try:
@@ -1483,6 +1359,52 @@ class MarketDataStream:
             except Exception as e:
                 logger.warning("WebSocket send failed for %s: %s", endpoint, e)
 
+    # ─────────────────────────────────────────
+    # Circuit-breaker
+    # ─────────────────────────────────────────
+
+    def _record_disconnect(self, now: float):
+        """Append a disconnect timestamp and open the circuit if we blew
+        through CIRCUIT_DISCONNECT_THRESHOLD inside CIRCUIT_WINDOW_SECONDS.
+        """
+        self._disconnect_times.append(now)
+        # Trim entries older than the rolling window
+        cutoff = now - self.CIRCUIT_WINDOW_SECONDS
+        while self._disconnect_times and self._disconnect_times[0] < cutoff:
+            self._disconnect_times.popleft()
+
+        if len(self._disconnect_times) >= self.CIRCUIT_DISCONNECT_THRESHOLD:
+            if self._circuit_open_until <= now:
+                # Was closed — opening now
+                self._circuit_open_until = now + self.CIRCUIT_COOLDOWN_SECONDS
+                logger.warning(
+                    "MARKET DATA CIRCUIT: opened (%d disconnects in %ds). "
+                    "Blocking new entries until %s.",
+                    len(self._disconnect_times),
+                    self.CIRCUIT_WINDOW_SECONDS,
+                    datetime.fromtimestamp(self._circuit_open_until, timezone.utc).isoformat(),
+                )
+                alerts.send(
+                    "WARNING",
+                    "Market data circuit opened",
+                    f"{len(self._disconnect_times)} disconnects in "
+                    f"{self.CIRCUIT_WINDOW_SECONDS}s — new entries blocked "
+                    f"for {self.CIRCUIT_COOLDOWN_SECONDS // 60}m",
+                )
+            else:
+                # Already open — just refresh the deadline
+                self._circuit_open_until = now + self.CIRCUIT_COOLDOWN_SECONDS
+
+    def market_data_healthy(self, now: Optional[float] = None) -> bool:
+        """False while the circuit is open.
+
+        The caller should use this to short-circuit new signal
+        generation. Existing brackets on the server are not affected.
+        """
+        if now is None:
+            now = time.time()
+        return now >= self._circuit_open_until
+
 
 # ─────────────────────────────────────────────
 # REST-based Market Data (fallback when WebSocket is blocked)
@@ -1494,7 +1416,7 @@ YAHOO_SYMBOLS = {
     # (Yahoo tracks the same underlying price, micros just have smaller multiplier)
     "MNQ": "NQ=F", "MES": "ES=F", "MGC": "GC=F", "MCL": "CL=F",
     "NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F", "CL": "CL=F",
-    "SIL": "SI=F", "SI": "SI=F", "NG": "NG=F",
+    "SI": "SI=F", "NG": "NG=F",
 }
 _YAHOO_SYMBOLS = YAHOO_SYMBOLS  # backward compat
 

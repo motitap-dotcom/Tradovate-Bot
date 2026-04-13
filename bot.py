@@ -21,6 +21,7 @@ import signal
 import sys
 import time
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -34,6 +35,7 @@ from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
 import bot_state
+import news_calendar
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -103,6 +105,9 @@ class TradovateBot:
         # Contract rollover: check every 10 minutes (not every 30s loop)
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
+
+        # News-blackout debug — last suppressed signal (for live_status)
+        self._last_news_block: Optional[dict] = None
 
     # ─────────────────────────────────────────
     # Lifecycle
@@ -572,11 +577,28 @@ class TradovateBot:
         if not ok:
             return
 
+        # Market-data circuit-breaker: if the WS has been flapping, don't
+        # open new entries on possibly-stale ticks. Existing brackets on
+        # the server continue to manage themselves.
+        if self.md_stream is not None and hasattr(self.md_stream, "market_data_healthy"):
+            if not self.md_stream.market_data_healthy():
+                return
+
         # Check time constraints — only trade within the configured window
         current = now_et()
         start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
+            return
+
+        # News blackout: skip new entries inside scheduled high-impact windows.
+        blocked, event = news_calendar.in_blackout(symbol, current)
+        if blocked:
+            self._last_news_block = {
+                "symbol": symbol,
+                "event": event.get("name") if event else None,
+                "until": current.isoformat(),
+            }
             return
 
         # Feed price to strategy
@@ -591,6 +613,9 @@ class TradovateBot:
                 signal = strategy.on_price(price, current, high, low)
 
         if signal is not None:
+            # Stash the observed tick price on the signal so _execute_signal
+            # can pass it through as expected_fill (for slippage tracking).
+            signal._observed_price = price
             self._execute_signal(signal)
 
     # ─────────────────────────────────────────
@@ -671,15 +696,21 @@ class TradovateBot:
                 symbol=signal.symbol,
                 direction=signal.direction.value,
             )
+            expected_fill = (
+                getattr(signal, "_observed_price", None)
+                or signal.entry_price
+                or 0
+            )
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=expected_fill,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
                 stop_loss=signal.stop_loss,
                 take_profit=signal.take_profit,
+                expected_fill=expected_fill,
             )
             self.trades_today.append(
                 {
@@ -905,6 +936,24 @@ class TradovateBot:
                     base_sym = self._contract_id_to_symbol.get(cid)
                     if base_sym:
                         open_base_symbols.add(base_sym)
+                        # First time we see a position for this symbol, stamp
+                        # the actual average fill price on the journal entry
+                        # so slippage can be computed later.
+                        avg_price = p.get("netPrice") or p.get("avgPrice")
+                        if avg_price:
+                            for trade_info in self.trades_today:
+                                if (
+                                    trade_info.get("symbol") == base_sym
+                                    and not trade_info.get("_fill_stamped")
+                                ):
+                                    try:
+                                        self.journal.set_actual_fill(
+                                            trade_info["journal_id"], float(avg_price),
+                                        )
+                                        trade_info["_fill_stamped"] = True
+                                    except Exception as e:
+                                        logger.debug("set_actual_fill failed: %s", e)
+                                    break
 
             self.risk.open_contracts = total_open
 
@@ -1007,6 +1056,22 @@ class TradovateBot:
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
                 ),
+                "market_data_healthy": (
+                    self.md_stream.market_data_healthy()
+                    if self.md_stream and hasattr(self.md_stream, "market_data_healthy")
+                    else True
+                ),
+                "circuit_open_until": (
+                    datetime.fromtimestamp(
+                        self.md_stream._circuit_open_until, timezone.utc
+                    ).isoformat()
+                    if (
+                        self.md_stream
+                        and getattr(self.md_stream, "_circuit_open_until", 0) > time.time()
+                    )
+                    else None
+                ),
+                "suppressed_by_news": self._last_news_block,
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))

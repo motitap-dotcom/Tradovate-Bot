@@ -15,6 +15,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+import alerts
 import config
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,18 @@ class RiskManager:
         self._check_drawdown(equity)
         self._check_daily_loss()
         self._check_daily_profit_cap()
+        self._check_drawdown_proximity(equity)
+
+    def _check_drawdown_proximity(self, equity: float):
+        """Fire a WARNING alert when equity gets within $1000 of the floor."""
+        distance = equity - self.drawdown_floor
+        if 0 < distance <= 1000.0:
+            alerts.send(
+                "WARNING",
+                "Drawdown floor proximity",
+                f"equity=${equity:.2f} floor=${self.drawdown_floor:.2f} "
+                f"distance=${distance:.2f}",
+            )
 
     def end_of_day_update(self, realized_balance: float):
         """Call at session close for EOD trailing drawdown (Topstep)."""
@@ -197,6 +210,13 @@ class RiskManager:
                     "LOSING STREAK KILL-SWITCH: %d losses in a row. "
                     "Pausing new trades until %s ET.",
                     self.losing_streak, pause_end.strftime("%H:%M"),
+                )
+                alerts.send(
+                    "WARNING",
+                    "Losing streak pause",
+                    f"{self.losing_streak} consecutive losses. "
+                    f"New trades paused until {pause_end.strftime('%H:%M')} ET. "
+                    f"day_pnl=${self.day_pnl:+.2f}",
                 )
         elif pnl_change > 0:
             if self.losing_streak > 0:
@@ -266,6 +286,14 @@ class RiskManager:
             self.trading_locked = True
             self.lock_reason = reason
             logger.critical("TRADING LOCKED: %s", reason)
+            alerts.send(
+                "CRITICAL",
+                "Trading locked",
+                f"{reason}\n"
+                f"balance=${self.current_balance:.2f} "
+                f"day_pnl=${self.day_pnl:+.2f} "
+                f"floor=${self.drawdown_floor:.2f}",
+            )
 
     # ─────────────────────────────────────────
     # Pre-trade validation
