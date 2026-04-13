@@ -548,8 +548,9 @@ def test_orb_cooldown():
 @test("ORB: max trades cap respected")
 def test_orb_max_trades():
     from strategies import ORBStrategy
+    import config
     strategy = ORBStrategy("MNQ")
-    assert strategy.max_trades == 15  # From config max_orb_trades
+    assert strategy.max_trades == config.CONTRACT_SPECS["MNQ"]["max_orb_trades"]
 
 
 @test("VWAP: running VWAP calculation")
@@ -571,11 +572,12 @@ def test_vwap_calculation():
 def test_vwap_long_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1  # test a single-bar confirmation
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Build initial VWAP around 2000 — feed enough candles through on_price
     # to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price below VWAP
@@ -591,10 +593,11 @@ def test_vwap_long_crossover():
 def test_vwap_short_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price above VWAP
@@ -610,10 +613,11 @@ def test_vwap_short_crossover():
 def test_vwap_cooldown():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # First long
@@ -987,7 +991,11 @@ def test_e2e_nq_orb():
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
+    # Synthetic random walk isn't guaranteed to produce a range that clears
+    # the production min_range filter — relax it for the simulation.
+    strategy.min_range_points = 0.0
+    strategy.max_range_points = float("inf")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -1000,19 +1008,20 @@ def test_e2e_nq_orb():
     for minute in range(360):  # 6 hours
         t = datetime(2026, 2, 23, 9, 30, tzinfo=ET) + timedelta(minutes=minute)
 
-        # Price random walk
-        base_price += random.gauss(0, 2)
-        high = base_price + abs(random.gauss(0, 3))
-        low = base_price - abs(random.gauss(0, 3))
+        # Price random walk — larger step so the ORB range is meaningful
+        base_price += random.gauss(0, 5)
+        high = base_price + abs(random.gauss(0, 6))
+        low = base_price - abs(random.gauss(0, 6))
 
         signal = strategy.on_price(base_price, t, high, low)
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("NQ")
+                qty = rm.calculate_position_size("MNQ")
                 if qty > 0:
                     signal.qty = qty
-                    rm.register_open(qty)
+                    rm.register_open(qty, symbol="MNQ",
+                                     direction=signal.direction.value)
                     signals.append(signal)
 
     assert len(signals) > 0, "Should generate at least 1 signal in 6 hours"
@@ -1144,67 +1153,51 @@ def test_rollover_unknown():
     assert result is None
 
 
-@test("Calendar rollover switches to new front-month when out of date")
-def test_calendar_rollover_triggers():
+@test("Date-based rollover triggers when contract expires within threshold")
+def test_date_based_rollover():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
+    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
     bot.contract_map = {"NQ": "NQH6"}
+
+    # Contract expires in 5 days (within 8-day threshold)
+    expiry = (date.today() + timedelta(days=5)).isoformat()
+    bot.api.get_contract_maturity.return_value = expiry
     bot.api.find_contract.return_value = {"id": 999, "name": "NQM6"}
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now, \
-         patch("config.get_front_month_contract", return_value="NQM6"):
+    with patch("bot.now_et") as mock_now:
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
     assert bot.contract_map["NQ"] == "NQM6", f"Expected NQM6, got {bot.contract_map['NQ']}"
 
 
-@test("Calendar rollover: no switch when calendar front matches current contract")
-def test_calendar_rollover_no_switch():
+@test("No rollover when expiry is far away")
+def test_no_rollover_far_expiry():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
+    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
-    bot.contract_map = {"NQ": "NQM6"}
+    bot.contract_map = {"NQ": "NQH6"}
+
+    # Contract expires in 20 days (outside 8-day threshold)
+    expiry = (date.today() + timedelta(days=20)).isoformat()
+    bot.api.get_contract_maturity.return_value = expiry
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now, \
-         patch("config.get_front_month_contract", return_value="NQM6"):
+    with patch("bot.now_et") as mock_now:
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
-    assert bot.contract_map["NQ"] == "NQM6", "Should NOT have rolled over"
-
-
-@test("Gold rollover: calendar skips illiquid serial month from suggest API")
-def test_calendar_rollover_ignores_serial_month():
-    """If the calendar says we're fine but Tradovate's suggest API points at
-    an illiquid serial month (e.g. GCH6 for gold), the bot must NOT follow it."""
-    from bot import TradovateBot
-    from unittest.mock import MagicMock, patch
-
-    bot = TradovateBot(dry_run=False)
-    bot.api = MagicMock()
-    bot.md_stream = None
-    bot.contract_map = {"GC": "GCM6"}
-    # Suggest returns GCH6 (March gold — not a liquid month for gold)
-    bot.api.suggest_contract.return_value = {"id": 123, "name": "GCH6"}
-
-    with patch("bot.now_et") as mock_now, \
-         patch("config.get_front_month_contract", return_value="GCM6"):
-        mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
-        bot._check_contract_rollover()
-
-    assert bot.contract_map["GC"] == "GCM6", (
-        f"Must not switch to illiquid serial month; got {bot.contract_map['GC']}"
-    )
+    assert bot.contract_map["NQ"] == "NQH6", "Should NOT have rolled over"
 
 
 test_rollover_nq_h_to_m()
@@ -1214,130 +1207,8 @@ test_rollover_gc_year_wrap()
 test_rollover_cl_monthly()
 test_rollover_es_u_to_z()
 test_rollover_unknown()
-test_calendar_rollover_triggers()
-test_calendar_rollover_no_switch()
-test_calendar_rollover_ignores_serial_month()
-
-
-# ─────────────────────────────────────────────
-# Calendar-driven front-month tests
-# ─────────────────────────────────────────────
-# These verify config.get_front_month_contract() returns the correct
-# front-month for each product at representative dates, including the
-# bug that prompted this fix: on 2026-04-13 gold should be GCM6 (June),
-# NOT GCJ6 (April), because FND for April gold was 2026-03-31.
-
-print("\n--- Calendar front-month ---")
-
-
-@test("Gold front-month on 2026-04-13 is GCM6 (past April FND)")
-def test_gold_front_month_april_13():
-    from datetime import date
-    result = config.get_front_month_contract("GC", date(2026, 4, 13))
-    assert result == "GCM6", f"Expected GCM6, got {result}"
-
-
-@test("Gold front-month on 2026-03-20 is still GCJ6 (before FND)")
-def test_gold_front_month_before_fnd():
-    from datetime import date
-    # April FND = last biz day of March 2026 = Mar 31 (Tue).
-    # Roll-out = 3 biz days before = Mar 26 (Thu).
-    # Mar 20 is still before roll-out → April contract is front month.
-    result = config.get_front_month_contract("GC", date(2026, 3, 20))
-    assert result == "GCJ6", f"Expected GCJ6, got {result}"
-
-
-@test("Gold front-month on 2026-03-27 has rolled to GCM6 (past FND roll-out)")
-def test_gold_front_month_at_rollover():
-    from datetime import date
-    # Mar 26 is roll-out day (last valid), Mar 27 → GCM6
-    result = config.get_front_month_contract("GC", date(2026, 3, 27))
-    assert result == "GCM6", f"Expected GCM6, got {result}"
-
-
-@test("Gold skips illiquid March contract — never returns GCH6")
-def test_gold_never_serial_month():
-    from datetime import date
-    # Regardless of date, GC must only return months in [G, J, M, Q, V, Z].
-    # Confirm we never return a March (H) contract.
-    for day_offset in range(0, 400, 7):
-        from datetime import timedelta
-        d = date(2026, 1, 1) + timedelta(days=day_offset)
-        result = config.get_front_month_contract("GC", d)
-        assert result is not None
-        month_code = result[2]  # GC<code><year>
-        assert month_code in ("G", "J", "M", "Q", "V", "Z"), (
-            f"Got non-liquid month {result} for date {d}"
-        )
-
-
-@test("NQ front-month on 2026-04-13 is NQM6 (past H6 expiry)")
-def test_nq_front_month_april():
-    from datetime import date
-    result = config.get_front_month_contract("NQ", date(2026, 4, 13))
-    assert result == "NQM6", f"Expected NQM6, got {result}"
-
-
-@test("NQ front-month 8 days before 3rd Friday rolls to next quarter")
-def test_nq_rollout_timing():
-    from datetime import date
-    # NQM6 3rd Friday = 2026-06-19. Roll-out = 2026-06-11.
-    # On Jun 11: still NQM6. On Jun 12: NQU6.
-    assert config.get_front_month_contract("NQ", date(2026, 6, 11)) == "NQM6"
-    assert config.get_front_month_contract("NQ", date(2026, 6, 12)) == "NQU6"
-
-
-@test("CL front-month on 2026-04-13 is CLK6 (May, LTD=Apr 21)")
-def test_cl_front_month_april():
-    from datetime import date
-    # CLK6 LTD = 3 biz days before Apr 24 (Apr 25 is Sat) = Apr 21.
-    # Roll-out = 5 biz days before Apr 21 = Apr 14.
-    # Apr 13 is still on CLK6.
-    result = config.get_front_month_contract("CL", date(2026, 4, 13))
-    assert result == "CLK6", f"Expected CLK6, got {result}"
-
-
-@test("CL rolls to June after mid-April")
-def test_cl_rollover_timing():
-    from datetime import date
-    # Apr 15 is past roll-out (Apr 14) → next contract CLM6.
-    result = config.get_front_month_contract("CL", date(2026, 4, 15))
-    assert result == "CLM6", f"Expected CLM6, got {result}"
-
-
-@test("ES front-month on 2026-04-13 is ESM6")
-def test_es_front_month_april():
-    from datetime import date
-    result = config.get_front_month_contract("ES", date(2026, 4, 13))
-    assert result == "ESM6", f"Expected ESM6, got {result}"
-
-
-@test("Year-wrap: gold on 2026-12-28 points at 2027")
-def test_gold_year_wrap():
-    from datetime import date
-    # All 2026 liquid golds past. GCG7 (Feb 2027) FND = Jan 30 2027 (Fri),
-    # roll-out = Jan 27 (Tue). Dec 28 2026 <= Jan 27 2027 → GCG7.
-    result = config.get_front_month_contract("GC", date(2026, 12, 28))
-    assert result == "GCG7", f"Expected GCG7, got {result}"
-
-
-@test("Unknown symbol returns None")
-def test_front_month_unknown_symbol():
-    from datetime import date
-    assert config.get_front_month_contract("FAKE", date(2026, 4, 13)) is None
-
-
-test_gold_front_month_april_13()
-test_gold_front_month_before_fnd()
-test_gold_front_month_at_rollover()
-test_gold_never_serial_month()
-test_nq_front_month_april()
-test_nq_rollout_timing()
-test_cl_front_month_april()
-test_cl_rollover_timing()
-test_es_front_month_april()
-test_gold_year_wrap()
-test_front_month_unknown_symbol()
+test_date_based_rollover()
+test_no_rollover_far_expiry()
 
 
 # ─────────────────────────────────────────────
@@ -1608,13 +1479,13 @@ def test_tuner_widen_stops():
         tuner = AutoTuner(journal=j)
 
         # 8 SL hits, 2 TP hits = 80% SL rate
-        trades = _make_closed_trades("NQ", 8, 2)
+        trades = _make_closed_trades("MNQ", 8, 2)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
         # Should have proposed widening
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1, f"Expected 1 SL adjustment, got {len(sl_adj)}"
         assert sl_adj[0]["new_value"] > old_sl, "New SL should be wider (larger)"
     finally:
@@ -1632,12 +1503,12 @@ def test_tuner_tighten_stops():
         tuner = AutoTuner(journal=j)
 
         # 1 SL hit, 6 TP hits = ~14% SL rate
-        trades = _make_closed_trades("NQ", 1, 6)
+        trades = _make_closed_trades("MNQ", 1, 6)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1
         assert sl_adj[0]["new_value"] < old_sl, "New SL should be tighter (smaller)"
     finally:
@@ -1655,12 +1526,12 @@ def test_tuner_widen_tp():
         tuner = AutoTuner(journal=j)
 
         # High R-multiple trades
-        trades = _make_closed_trades("NQ", 1, 4, r_mult=2.0)
+        trades = _make_closed_trades("MNQ", 1, 4, r_mult=2.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] > old_tp, "TP should be widened for high R"
     finally:
@@ -1679,12 +1550,12 @@ def test_tuner_tighten_tp():
 
         # Negative R-multiple trades — all stop_loss exits (no TP trades)
         # so we reach the avg_r < -0.5 branch (not blocked by tp_trades > 0)
-        trades = _make_closed_trades("NQ", 4, 0, r_mult=-1.0)
+        trades = _make_closed_trades("MNQ", 4, 0, r_mult=-1.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] < old_tp, "TP should be tightened for negative R"
     finally:
@@ -1960,12 +1831,12 @@ def test_bot_execute_signal_dry_run():
 
     bot = TradovateBot(dry_run=True)
     bot.api = MagicMock()
-    bot.contract_map = {"NQ": "NQH6"}
-    bot.strategies = {"NQ": MagicMock()}
+    bot.contract_map = {"MNQ": "MNQH6"}
+    bot.strategies = {"MNQ": MagicMock()}
     bot._last_order_time = 0  # No cooldown
 
     signal = TradeSignal(
-        symbol="NQ", direction=Direction.LONG,
+        symbol="MNQ", direction=Direction.LONG,
         entry_price=21000, stop_loss=20975, take_profit=21050,
         qty=1, reason="test breakout",
     )
@@ -2047,7 +1918,9 @@ def test_bot_execute_signal_success():
     bot._execute_signal(signal)
 
     bot.api.place_bracket_order.assert_called_once()
-    bot.risk.register_open.assert_called_once_with(2)
+    bot.risk.register_open.assert_called_once_with(
+        2, symbol="NQ", direction="Buy",
+    )
     bot.journal.record_entry.assert_called_once()
 
 

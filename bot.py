@@ -1,5 +1,5 @@
 """
-Tradovate Trading Bot — v2.2 (never-die)
+Tradovate Trading Bot — v2.1 (never-die)
 ======================
 Multi-asset futures trading bot with prop firm risk management.
 Supports ORB (indices) and VWAP momentum (commodities) strategies.
@@ -138,9 +138,6 @@ class TradovateBot:
         if not self.dry_run:
             self._init_balance_from_api()
 
-        # Clean up stale open journal entries from previous days
-        self.journal.cleanup_stale_entries()
-
         # Resolve front-month contracts
         self._resolve_contracts()
 
@@ -150,26 +147,12 @@ class TradovateBot:
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
 
-        # Log post-warmup strategy readiness
-        for symbol, strat in self.strategies.items():
-            if hasattr(strat, "windows"):
-                fired = [w.breakout_fired for w in strat.windows]
-                logger.info(
-                    "Post-warmup %s: windows_fired=%s, late_start_eligible=%s",
-                    symbol, fired, all(fired),
-                )
-
         # Restore trade counts and cooldowns from saved state (layered on top of warmup)
         saved = bot_state.load_state()
         if saved:
             bot_state.restore_strategies(saved, self.strategies)
             self.risk.trades_today = saved.get("trades_today_count", 0)
-            # Restore trades_today list so _sync_fills can close journal entries after restart
-            saved_trades = saved.get("trades_today_list", [])
-            if saved_trades:
-                self.trades_today = saved_trades
-            logger.info("Restored bot state: trades_today=%d, trade_records=%d",
-                        self.risk.trades_today, len(self.trades_today))
+            logger.info("Restored bot state: trades_today=%d", self.risk.trades_today)
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -230,18 +213,7 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _resolve_contracts(self):
-        """Find the front-month contract for each enabled symbol.
-
-        We compute the expected front-month locally from a calendar
-        (config.get_front_month_contract) and fetch it by name. This avoids
-        two failure modes of Tradovate's /contract/suggest endpoint:
-          1. Returning illiquid "serial" months (e.g. GCH6 March gold).
-          2. Failing to roll off a contract after First Notice Day passes,
-             so the bot ends up trading an in-delivery contract.
-        We still fall back to suggest_contract if the calendar lookup or
-        find_contract call fails for any reason.
-        """
-        today = now_et().date()
+        """Find the front-month contract for each enabled symbol."""
         for symbol, spec in config.CONTRACT_SPECS.items():
             if not spec["enabled"]:
                 logger.info("Skipping %s (disabled)", symbol)
@@ -253,56 +225,11 @@ class TradovateBot:
                 logger.info("Dry run: %s -> %s", symbol, self.contract_map[symbol])
                 continue
 
-            contract = None
-            expected_name = config.get_front_month_contract(symbol, today)
-            if expected_name:
-                contract = self.api.find_contract(expected_name)
-                if contract:
-                    logger.info(
-                        "Front-month for %s resolved via calendar: %s",
-                        symbol, expected_name,
-                    )
-                else:
-                    logger.warning(
-                        "Calendar front-month %s not found on Tradovate; "
-                        "falling back to suggest API", expected_name,
-                    )
-
-            if not contract:
-                contract = self.api.suggest_contract(symbol)
-                if contract:
-                    logger.info(
-                        "Front-month for %s resolved via suggest API: %s",
-                        symbol, contract.get("name"),
-                    )
-
+            contract = self.api.suggest_contract(symbol)
             if contract:
                 contract_name = contract.get("name", symbol)
-                contract_id = contract.get("id")
-
-                # Validate: if the resolved contract's month code is not in
-                # the liquid months schedule, compute the correct front month.
-                liquid_months = config.CONTRACT_LIQUID_MONTHS.get(symbol)
-                if liquid_months and len(contract_name) >= len(symbol) + 2:
-                    month_code = contract_name[len(symbol)]
-                    if month_code not in liquid_months:
-                        corrected = self._next_liquid_contract(symbol, contract_name)
-                        if corrected:
-                            logger.warning(
-                                "Resolved %s -> %s but month '%s' is not liquid %s. "
-                                "Overriding to %s",
-                                symbol, contract_name, month_code,
-                                liquid_months, corrected,
-                            )
-                            # Re-resolve with the corrected name
-                            corrected_data = self.api.find_contract(corrected)
-                            if corrected_data:
-                                contract_name = corrected_data.get("name", corrected)
-                                contract_id = corrected_data.get("id", contract_id)
-                            else:
-                                contract_name = corrected
-
                 self.contract_map[symbol] = contract_name
+                contract_id = contract.get("id")
                 if contract_id is not None:
                     self.contract_id_map[symbol] = contract_id
                 logger.info(
@@ -364,17 +291,15 @@ class TradovateBot:
         """
         Check if any active contracts need to roll to the next front-month.
 
-        Primary mechanism (calendar-driven):
-          Ask config.get_front_month_contract() what the correct liquid
-          front month is for `today`. If it differs from the active
-          contract, roll. This handles First Notice Day for gold/metals
-          and the last-trading-day rule for CL, neither of which can be
-          derived correctly from Tradovate's `expirationDate` alone.
+        Two-phase approach:
+        1. DATE-BASED (proactive): If the current contract expires within
+           ROLLOVER_DAYS_BEFORE_EXPIRY days, compute the next liquid contract
+           from the schedule and switch immediately.
+        2. SUGGEST-BASED (fallback): If Tradovate's suggest API returns a
+           different contract, follow it.
 
-        Fallback (suggest API):
-          If the calendar says to stay put but Tradovate's suggest API
-          has already rolled to a new contract, follow it. This protects
-          against the bot lagging the market on unexpected schedule shifts.
+        This ensures we roll early enough to avoid low-liquidity contracts
+        near expiration, even when the suggest API hasn't updated yet.
         """
         if self.dry_run:
             return
@@ -387,27 +312,37 @@ class TradovateBot:
             new_contract_data = None
             rollover_reason = ""
 
-            # ── Phase 1: Calendar-driven rollover ──
+            # ── Phase 1: Date-based early rollover ──
             try:
-                expected = config.get_front_month_contract(symbol, today)
-                if expected and expected != old_contract:
-                    verified = self.api.find_contract(expected)
-                    if verified:
-                        new_contract = expected
-                        new_contract_data = verified
-                        rollover_reason = (
-                            f"calendar-driven: {old_contract} past roll-out date, "
-                            f"front month is now {expected}"
-                        )
+                maturity = self.api.get_contract_maturity(old_contract)
+                if maturity:
+                    from datetime import date as date_type
+                    if isinstance(maturity, str):
+                        expiry_date = date_type.fromisoformat(maturity)
                     else:
-                        logger.warning(
-                            "Calendar rollover: computed %s but contract not "
-                            "found on Tradovate", expected,
-                        )
+                        expiry_date = maturity
+
+                    days_to_expiry = (expiry_date - today).days
+
+                    if days_to_expiry <= config.ROLLOVER_DAYS_BEFORE_EXPIRY:
+                        next_name = self._next_liquid_contract(symbol, old_contract)
+                        if next_name and next_name != old_contract:
+                            # Verify the next contract exists on Tradovate
+                            verified = self.api.find_contract(next_name)
+                            if verified:
+                                new_contract = next_name
+                                new_contract_data = verified
+                                rollover_reason = (
+                                    f"expiry-based: {old_contract} expires {maturity} "
+                                    f"({days_to_expiry}d away, threshold={config.ROLLOVER_DAYS_BEFORE_EXPIRY}d)"
+                                )
+                            else:
+                                logger.warning(
+                                    "Early rollover: computed %s but contract not found on Tradovate",
+                                    next_name,
+                                )
             except Exception as e:
-                logger.warning(
-                    "Calendar rollover check failed for %s: %s", symbol, e,
-                )
+                logger.warning("Date-based rollover check failed for %s: %s", symbol, e)
 
             # ── Phase 2: Suggest API fallback ──
             if not new_contract:
@@ -416,22 +351,9 @@ class TradovateBot:
                     if suggested:
                         suggested_name = suggested.get("name", "")
                         if suggested_name and suggested_name != old_contract:
-                            # Only follow suggest if the new contract is in the
-                            # liquid-month schedule — otherwise Tradovate may be
-                            # pointing us at an illiquid serial month.
-                            liquid = config.CONTRACT_LIQUID_MONTHS.get(symbol, [])
-                            suffix = suggested_name[len(symbol):]
-                            if len(suffix) >= 2 and suffix[0] in liquid:
-                                new_contract = suggested_name
-                                new_contract_data = suggested
-                                rollover_reason = (
-                                    f"suggest-api: Tradovate returned {suggested_name}"
-                                )
-                            else:
-                                logger.debug(
-                                    "Suggest API returned non-liquid month %s "
-                                    "for %s — ignoring", suggested_name, symbol,
-                                )
+                            new_contract = suggested_name
+                            new_contract_data = suggested
+                            rollover_reason = f"suggest-api: Tradovate returned {suggested_name}"
                 except Exception as e:
                     logger.warning("Suggest-based rollover check failed for %s: %s", symbol, e)
 
@@ -526,9 +448,7 @@ class TradovateBot:
                 closes = quotes.get("close", [])
                 volumes = quotes.get("volume", [])
 
-                today = now_et().date()
                 fed = 0
-                skipped_old = 0
                 for i, ts in enumerate(timestamps):
                     c = closes[i] if i < len(closes) else None
                     h = highs[i] if i < len(highs) else None
@@ -539,13 +459,6 @@ class TradovateBot:
                         continue
 
                     candle_time = datetime.fromtimestamp(ts, tz=ET)
-
-                    # Only use TODAY's candles for warmup.
-                    # Yesterday's data would build stale ORB ranges and VWAP
-                    # levels that block today's signals.
-                    if candle_time.date() != today:
-                        skipped_old += 1
-                        continue
 
                     # Feed to strategy state WITHOUT executing signals
                     if hasattr(strategy, "update_vwap"):
@@ -575,39 +488,21 @@ class TradovateBot:
                 if timestamps:
                     self._warmup_last_ts[contract_name] = timestamps[-1]
 
-                if skipped_old:
-                    logger.info(
-                        "Warmup %s: skipped %d candles from previous day",
-                        symbol, skipped_old,
-                    )
                 logger.info(
                     "Warmed up %s with %d candles | strategy=%s",
                     symbol, fed, type(strategy).__name__,
                 )
 
-                # Log built ranges / VWAP and detect stale breakouts
+                # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
                         logger.info(
-                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) | last_price=%.2f",
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f)",
                             w.window_minutes, w.range_low, w.range_high,
                             w.range_high - w.range_low,
-                            w._last_price or 0,
                         )
-                        # If _last_price is already outside the range after
-                        # warmup, a breakout already happened.  Mark it fired
-                        # so the window doesn't sit in a "ready but blocked"
-                        # state that can never trigger.
-                        if w._last_price is not None and not w.breakout_fired:
-                            if w._last_price > w.range_high or w._last_price < w.range_low:
-                                w.breakout_fired = True
-                                logger.info(
-                                    "  ORB %d-min: breakout already occurred during warmup "
-                                    "(last_price=%.2f outside range). Marked as fired.",
-                                    w.window_minutes, w._last_price,
-                                )
                 if hasattr(strategy, "vwap") and strategy.vwap:
-                    logger.info("  VWAP: %.4f | prev_price: %.4f", strategy.vwap, strategy._prev_price or 0)
+                    logger.info("  VWAP: %.4f", strategy.vwap)
 
             except Exception as e:
                 logger.warning("Warmup failed for %s: %s", symbol, e)
@@ -618,10 +513,6 @@ class TradovateBot:
 
     def _start_market_data(self):
         """Try WebSocket first; fall back to REST polling if WS is unavailable."""
-        logger.info(
-            "Market data init: md_access_token=%s",
-            "present" if self.api.md_access_token else "MISSING — WebSocket will be skipped",
-        )
         if self.api.md_access_token:
             try:
                 ws = MarketDataStream(self.api.md_access_token, api=self.api)
@@ -655,41 +546,16 @@ class TradovateBot:
                 logger.info("Mapped contractId %s -> %s for quote routing", contract_id, contract_name)
 
     def _on_quote(self, symbol: str, data: dict):
-        """Handle incoming quote data from WebSocket.
-
-        Accepts both trade ticks and bid/ask updates.  Trade ticks carry
-        real volume for VWAP calculation; bid/ask updates carry volume=0
-        but still provide price for crossover detection.
-        """
-        # Per-symbol quote counter for diagnostics
-        if not hasattr(self, "_symbol_quotes"):
-            self._symbol_quotes = {}
-        self._symbol_quotes[symbol] = self._symbol_quotes.get(symbol, 0) + 1
-
-        # Extract price — try multiple Tradovate WebSocket formats
-        price = None
-        trade = data.get("trade", {})
-        price = trade.get("price") or data.get("bid", {}).get("price")
+        """Handle incoming quote data from WebSocket."""
+        # Extract price from quote data
+        # Tradovate quote structure includes bid/ask/last
+        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
-            entries = data.get("entries", {})
-            if entries:
-                trade_entry = entries.get("Trade", entries.get("trade", {}))
-                price = trade_entry.get("price")
-            if price is None and entries:
-                bid_entry = entries.get("Bid", entries.get("bid", {}))
-                price = bid_entry.get("price")
-
-        if price is None:
-            if not hasattr(self, "_null_price_count"):
-                self._null_price_count = {}
-            self._null_price_count[symbol] = self._null_price_count.get(symbol, 0) + 1
             return
 
-        volume = trade.get("size", 0) or (
-            data.get("entries", {}).get("Trade", {}).get("size", 0)
-        )
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
+        volume = data.get("trade", {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -742,7 +608,9 @@ class TradovateBot:
             )
             return
 
-        ok, reason = self.risk.can_trade()
+        ok, reason = self.risk.can_trade(
+            symbol=signal.symbol, direction=signal.direction.value,
+        )
         if not ok:
             logger.warning("Signal rejected by risk manager: %s", reason)
             return
@@ -798,23 +666,15 @@ class TradovateBot:
 
         if result:
             self._last_order_time = time.time()
-            self.risk.register_open(signal.qty)
-
-            # Fetch actual entry fill price from API (market orders fill immediately)
-            actual_entry_price = signal.entry_price or 0
-            entry_order_id = result.get("orderId")
-            if entry_order_id:
-                try:
-                    detail = self.api._get(f"/order/item?id={entry_order_id}")
-                    if detail and detail.get("avgPrice"):
-                        actual_entry_price = detail["avgPrice"]
-                except Exception as e:
-                    logger.warning("Could not fetch entry fill price: %s", e)
-
+            self.risk.register_open(
+                signal.qty,
+                symbol=signal.symbol,
+                direction=signal.direction.value,
+            )
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=actual_entry_price,
+                entry_price=signal.entry_price or 0,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -830,18 +690,11 @@ class TradovateBot:
                     "stop": signal.stop_loss,
                     "target": signal.take_profit,
                     "reason": signal.reason,
-                    "order_id": entry_order_id,
-                    "sl_order_id": result.get("slOrderId"),
-                    "tp_order_id": result.get("tpOrderId"),
+                    "order_id": result.get("orderId"),
                     "journal_id": trade_id,
-                    "entry_price": actual_entry_price,
                 }
             )
-            logger.info(
-                "Order placed: orderId=%s sl=%s tp=%s entry=%.4f (journal: %s)",
-                entry_order_id, result.get("slOrderId"), result.get("tpOrderId"),
-                actual_entry_price, trade_id,
-            )
+            logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
             self._save_bot_state()
         else:
             logger.error(
@@ -1003,51 +856,6 @@ class TradovateBot:
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
                 )
-                # Log WebSocket quote flow for diagnostics
-                if isinstance(self.md_stream, MarketDataStream):
-                    logger.info(
-                        "WS health | quotes_received=%d | data_stale=%s",
-                        self.md_stream._quotes_received,
-                        self.md_stream.data_stale,
-                    )
-
-                # Periodic strategy state dump (every ~5 minutes)
-                if not hasattr(self, "_last_strategy_dump"):
-                    self._last_strategy_dump = 0
-                if time.time() - self._last_strategy_dump >= 300:
-                    self._last_strategy_dump = time.time()
-                    # Log per-symbol quote routing
-                    sq = getattr(self, "_symbol_quotes", {})
-                    np = getattr(self, "_null_price_count", {})
-                    logger.info(
-                        "Quote routing | per_symbol=%s | null_price=%s",
-                        {s: sq.get(s, 0) for s in self.contract_map},
-                        {s: np.get(s, 0) for s in self.contract_map if np.get(s, 0) > 0},
-                    )
-                    for sym, strat in self.strategies.items():
-                        if hasattr(strat, "windows"):
-                            all_w = list(strat.windows)
-                            if getattr(strat, "_late_window", None):
-                                all_w.append(strat._late_window)
-                            for w in all_w:
-                                label = "late" if w is getattr(strat, "_late_window", None) else str(w.window_minutes)
-                                logger.info(
-                                    "ORB state %s %sm | range_set=%s high=%.2f low=%.2f | fired=%s | last_price=%s",
-                                    sym, label, w.range_set,
-                                    w.range_high or 0, w.range_low or 0,
-                                    w.breakout_fired,
-                                    f"{w._last_price:.2f}" if w._last_price else "None",
-                                )
-                        elif hasattr(strat, "vwap"):
-                            logger.info(
-                                "VWAP state %s | vwap=%s | prev_price=%s | candles=%d | longs=%d/%d shorts=%d/%d",
-                                sym,
-                                f"{strat.vwap:.4f}" if strat.vwap else "None",
-                                f"{strat._prev_price:.4f}" if strat._prev_price else "None",
-                                getattr(strat, "_candle_count", 0),
-                                strat.long_count, strat.max_per_direction,
-                                strat.short_count, strat.max_per_direction,
-                            )
 
                 # Write live status file for external monitoring
                 self._write_live_status()
@@ -1073,8 +881,12 @@ class TradovateBot:
             positions = self.api.get_positions()
 
             # Build contractId -> base symbol mapping from our contract_map
+            # contract_map: {"NQ": "NQH6", "ES": "ESH6", ...}
+            # We need to match position contractId (int) to our symbols.
+            # Resolve this once and cache it.
             if not hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {}
+            # Lazily build the mapping from API contract lookups
             for symbol, contract_name in self.contract_map.items():
                 if symbol not in [v for v in self._contract_id_to_symbol.values()]:
                     contract = self.api.find_contract(contract_name)
@@ -1083,6 +895,7 @@ class TradovateBot:
 
             # Count total open contracts from API (authoritative)
             total_open = 0
+            # Track which base symbols have open positions
             open_base_symbols = set()
             for p in positions:
                 net = abs(p.get("netPos", 0))
@@ -1103,100 +916,18 @@ class TradovateBot:
                     continue
 
                 if sym not in open_base_symbols:
-                    # Position is flat — fetch real exit data from API
-                    exit_price, pnl, exit_reason = self._get_trade_exit_data(trade_info)
+                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
                     self.journal.record_exit_by_symbol(
-                        sym, exit_price, pnl, exit_reason=exit_reason
+                        sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(trade_info.get("qty", 1))
+                    self.risk.register_close(
+                        trade_info.get("qty", 1), symbol=sym,
+                    )
                     trade_info["_closed"] = True
-                    self._save_bot_state()
-                    logger.info(
-                        "Position closed for %s | exit=%.4f pnl=$%.2f reason=%s",
-                        sym, exit_price, pnl, exit_reason,
-                    )
+                    logger.info("Position closed for %s (flat)", sym)
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
-
-    def _get_trade_exit_data(self, trade_info: dict) -> tuple[float, float, str]:
-        """Fetch actual exit price and P&L for a closed trade.
-
-        Checks the SL and TP bracket orders to find which one filled,
-        then computes realized P&L from entry vs exit price.
-
-        Returns (exit_price, pnl, exit_reason).
-        """
-        symbol = trade_info.get("symbol", "")
-        direction = trade_info.get("direction", "Buy")
-        qty = trade_info.get("qty", 1)
-        entry_price = trade_info.get("entry_price", 0)
-        sl_order_id = trade_info.get("sl_order_id")
-        tp_order_id = trade_info.get("tp_order_id")
-        entry_order_id = trade_info.get("order_id")
-
-        spec = config.CONTRACT_SPECS.get(symbol, {})
-        point_value = spec.get("point_value", 1)
-
-        exit_price = 0.0
-        exit_reason = "bracket_fill"
-
-        try:
-            # If we don't have entry price, try to fetch it
-            if not entry_price and entry_order_id:
-                detail = self.api._get(f"/order/item?id={entry_order_id}")
-                if detail and detail.get("avgPrice"):
-                    entry_price = detail["avgPrice"]
-
-            # Check which bracket leg filled (TP first, then SL)
-            for oid, reason in [(tp_order_id, "take_profit"), (sl_order_id, "stop_loss")]:
-                if not oid:
-                    continue
-                try:
-                    detail = self.api._get(f"/order/item?id={oid}")
-                    if detail and detail.get("ordStatus") == "Filled":
-                        exit_price = detail.get("avgPrice", 0) or 0
-                        exit_reason = reason
-                        break
-                except Exception:
-                    continue
-
-            # Fallback: scan recent fills for this contract
-            if exit_price == 0:
-                try:
-                    fills = self.api.get_fills()
-                    contract_name = self.contract_map.get(symbol, "")
-                    for fill in reversed(fills):
-                        # Match by contract name or order ID
-                        fill_contract = fill.get("contractName", "")
-                        if contract_name and contract_name in fill_contract:
-                            fill_oid = fill.get("orderId")
-                            if fill_oid != entry_order_id:
-                                exit_price = fill.get("price", 0)
-                                exit_reason = "fill_detected"
-                                break
-                except Exception as e:
-                    logger.debug("Fill scan fallback failed: %s", e)
-
-            # Compute P&L
-            if entry_price > 0 and exit_price > 0:
-                if direction == "Buy":
-                    pnl = (exit_price - entry_price) * qty * point_value
-                else:
-                    pnl = (entry_price - exit_price) * qty * point_value
-            else:
-                pnl = 0.0
-                if exit_price == 0:
-                    logger.warning(
-                        "Could not determine exit price for %s (entry_oid=%s sl_oid=%s tp_oid=%s)",
-                        symbol, entry_order_id, sl_order_id, tp_order_id,
-                    )
-
-            return exit_price, round(pnl, 2), exit_reason
-
-        except Exception as e:
-            logger.warning("Failed to get exit data for %s: %s", symbol, e)
-            return 0.0, 0.0, "bracket_fill"
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
@@ -1275,12 +1006,6 @@ class TradovateBot:
                 "market_data_source": (
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
-                ),
-                "md_access_token": "present" if self.api.md_access_token else "MISSING",
-                "ws_quotes_received": (
-                    self.md_stream._quotes_received
-                    if self.md_stream and hasattr(self.md_stream, "_quotes_received")
-                    else 0
                 ),
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")

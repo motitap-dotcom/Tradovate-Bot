@@ -60,7 +60,6 @@ class _ORBWindow:
         self.range_low: Optional[float] = None
         self.range_set: bool = False
         self.breakout_fired: bool = False
-        self.fire_count: int = 0
         self.prices: list[float] = []
         self._last_price: Optional[float] = None
 
@@ -69,7 +68,6 @@ class _ORBWindow:
         self.range_low = None
         self.range_set = False
         self.breakout_fired = False
-        self.fire_count = 0
         self.prices = []
         self._last_price = None
 
@@ -135,11 +133,9 @@ class _ORBWindow:
 
         if price > self.range_high:
             self.breakout_fired = True
-            self.fire_count += 1
             return "long"
         if price < self.range_low:
             self.breakout_fired = True
-            self.fire_count += 1
             return "short"
 
         return None
@@ -173,6 +169,14 @@ class ORBStrategy:
         self.point_value: float = spec["point_value"]
         self.max_trades: int = spec.get("max_orb_trades", 2)
         self.cooldown_minutes: int = spec.get("orb_cooldown_minutes", 15)
+        self.min_range_points: float = spec.get("min_range_points", 0.0)
+        self.max_range_points: float = spec.get("max_range_points", float("inf"))
+
+        # Blackout window: suppress ORB signals during midday chop
+        bh, bm = config.ORB_BLACKOUT_START_ET.split(":")
+        eh, em = config.ORB_BLACKOUT_END_ET.split(":")
+        self._blackout_start = time(int(bh), int(bm))
+        self._blackout_end = time(int(eh), int(em))
 
         # Parse market open time
         h, m = config.MARKET_OPEN_ET.split(":")
@@ -188,20 +192,12 @@ class ORBStrategy:
         self.trades_taken: int = 0
         self.last_trade_time: Optional[datetime] = None
 
-        # Late-start window: created when the bot starts mid-day and all
-        # normal windows already fired.  Builds a fresh range from current
-        # prices so the strategy can still trade after a restart.
-        self._late_window: Optional[_ORBWindow] = None
-        self._late_window_created: bool = False
-
     def reset(self):
         """Reset state for a new trading day."""
         for w in self.windows:
             w.reset()
         self.trades_taken = 0
         self.last_trade_time = None
-        self._late_window = None
-        self._late_window_created = False
 
     def on_price(
         self, price: float, timestamp: datetime, high: float, low: float
@@ -221,26 +217,42 @@ class ORBStrategy:
 
         current_time = timestamp.time()
 
-        # Late-start: if all normal windows already fired (breakout happened
-        # before this bot instance started), create a fresh window anchored
-        # to the current time so we can still catch intraday breakouts.
-        if not self._late_window_created and all(w.breakout_fired for w in self.windows):
-            self._late_window = _ORBWindow(5, current_time)
-            self._late_window_created = True
-            logger.info(
-                "ORB %s: all windows fired — creating late-start 5m window from %s",
-                self.symbol, current_time.strftime("%H:%M:%S"),
-            )
+        # Midday blackout — feed the range so it closes, but don't fire new
+        # breakouts between blackout_start and blackout_end.
+        in_blackout = self._blackout_start <= current_time < self._blackout_end
 
-        # Try each window (shorter windows fire earlier), including late window
-        all_windows = list(self.windows)
-        if self._late_window:
-            all_windows.append(self._late_window)
-
-        for window in all_windows:
+        # Try each window (shorter windows fire earlier)
+        for window in self.windows:
             direction = window.feed(price, high, low, current_time)
             if direction is None:
                 continue
+
+            # Drop the signal if we are in the midday blackout.
+            if in_blackout:
+                logger.info(
+                    "ORB %s %s suppressed: inside midday blackout (%s–%s ET)",
+                    self.symbol, direction.upper(),
+                    config.ORB_BLACKOUT_START_ET, config.ORB_BLACKOUT_END_ET,
+                )
+                continue
+
+            # Range size sanity filter
+            if window.range_high is not None and window.range_low is not None:
+                range_size = window.range_high - window.range_low
+                if range_size < self.min_range_points:
+                    logger.info(
+                        "ORB %s %dm skipped: range %.2f < min %.2f",
+                        self.symbol, window.window_minutes,
+                        range_size, self.min_range_points,
+                    )
+                    continue
+                if range_size > self.max_range_points:
+                    logger.info(
+                        "ORB %s %dm skipped: range %.2f > max %.2f (news/gap?)",
+                        self.symbol, window.window_minutes,
+                        range_size, self.max_range_points,
+                    )
+                    continue
 
             # Build signal
             spec = config.CONTRACT_SPECS[self.symbol]
@@ -349,7 +361,9 @@ class VWAPStrategy:
         self.max_per_direction: int = spec.get("max_vwap_trades_per_direction", 2)
         self.cooldown_minutes: int = spec.get("vwap_cooldown_minutes", 30)
         # Minimum time between ANY trades (regardless of direction) to prevent whipsaw
-        self.min_trade_gap_minutes: int = 3
+        self.min_trade_gap_minutes: int = spec.get("min_trade_gap_minutes", 5)
+        # Max distance from VWAP (as fraction of price) for a valid crossover
+        self.max_vwap_distance_pct: float = spec.get("max_vwap_distance_pct", 0.01)
 
         # VWAP calculation state
         self._cum_vol: float = 0.0
@@ -388,14 +402,9 @@ class VWAPStrategy:
         self._vwap_stale_bars = 0
 
     def update_vwap(self, high: float, low: float, close: float, volume: float):
-        """Update the running VWAP with a new bar.
-
-        Zero-volume ticks (e.g. bid/ask WebSocket updates) are skipped
-        for VWAP calculation but do NOT increment the stale counter.
-        The stale counter is only meaningful for REST candle gaps where
-        an entire bar has no volume, not for individual WebSocket ticks.
-        """
+        """Update the running VWAP with a new bar."""
         if volume <= 0:
+            self._vwap_stale_bars = getattr(self, "_vwap_stale_bars", 0) + 1
             return
         # Sanity-check OHLC: swap if reversed (data corruption guard)
         if high < low:
@@ -436,8 +445,9 @@ class VWAPStrategy:
                 return False
         return True
 
-    # Minimum candles of data before generating signals
-    MIN_CANDLES_FOR_SIGNAL = 5
+    # Minimum candles of data before generating signals — raised so VWAP
+    # stabilises before we start reacting to crossovers.
+    MIN_CANDLES_FOR_SIGNAL = 10
 
     def on_price(
         self, price: float, high: float, low: float, volume: float
@@ -468,6 +478,14 @@ class VWAPStrategy:
         if self.last_any_trade_time and self._current_time:
             gap = (self._current_time - self.last_any_trade_time).total_seconds() / 60
             if gap < self.min_trade_gap_minutes:
+                self._prev_price = price
+                return None
+
+        # Distance-from-VWAP filter: if we are already far from VWAP the
+        # "crossover" is really a late-chase — skip it.
+        if self.vwap > 0:
+            distance_pct = abs(price - self.vwap) / self.vwap
+            if distance_pct > self.max_vwap_distance_pct:
                 self._prev_price = price
                 return None
 

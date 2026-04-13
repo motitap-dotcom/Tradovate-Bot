@@ -11,7 +11,7 @@ Enforces prop firm challenge rules:
 
 import logging
 import math
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -56,10 +56,26 @@ class RiskManager:
 
         # Open position tracking
         self.open_contracts: int = 0
+        # symbol -> direction ("Buy"/"Sell") for correlation guard
+        self.open_directions: dict[str, str] = {}
 
         # Daily trade counter (safety cap)
         self.max_daily_trades: int = config.MAX_DAILY_TRADES
         self.trades_today: int = 0
+
+        # Losing-streak kill-switch state
+        self.losing_streak: int = 0
+        self.streak_pause_until: Optional[datetime] = None
+        self.max_losing_streak: int = getattr(config, "MAX_LOSING_STREAK", 3)
+        self.streak_pause_minutes: int = getattr(config, "STREAK_PAUSE_MINUTES", 30)
+
+        # Defensive sizing thresholds
+        self.defensive_floor_distance: float = getattr(
+            config, "DEFENSIVE_FLOOR_DISTANCE", 800.0
+        )
+        self.max_contracts_per_trade: int = getattr(
+            config, "MAX_CONTRACTS_PER_TRADE", 5
+        )
 
         logger.info(
             "RiskManager initialized | account=%s | max_dd=%s | daily_limit=%s | brake=%.0f%% | max_trades/day=%d | daily_profit_cap=%s",
@@ -166,34 +182,38 @@ class RiskManager:
             )
             new_balance = 0
         self.current_balance = new_balance
+
+        # Update losing streak & arm pause if needed.
+        # pnl_change == 0 is treated as neutral (e.g. scratch) and ignored.
+        if pnl_change < 0:
+            self.losing_streak += 1
+            logger.info("Losing streak: %d consecutive", self.losing_streak)
+            if self.losing_streak >= self.max_losing_streak:
+                pause_end = datetime.now(_ET) + timedelta(
+                    minutes=self.streak_pause_minutes
+                )
+                self.streak_pause_until = pause_end
+                logger.warning(
+                    "LOSING STREAK KILL-SWITCH: %d losses in a row. "
+                    "Pausing new trades until %s ET.",
+                    self.losing_streak, pause_end.strftime("%H:%M"),
+                )
+        elif pnl_change > 0:
+            if self.losing_streak > 0:
+                logger.info(
+                    "Losing streak broken at %d by +$%.2f fill",
+                    self.losing_streak, pnl_change,
+                )
+            self.losing_streak = 0
+
         self.update_balance(self.current_balance, self.unrealized_pnl)
 
     # ─────────────────────────────────────────
     # Rule checks
     # ─────────────────────────────────────────
 
-    # Drawdown warning thresholds (distance from floor)
-    _DRAWDOWN_WARN_500 = False  # Logged once per session
-    _DRAWDOWN_WARN_250 = False
-
     def _check_drawdown(self, equity: float):
         """Lock trading if equity breaches the trailing drawdown floor."""
-        distance = equity - self.drawdown_floor
-
-        # Early warnings (log once per threshold per session)
-        if distance < 250 and not self._DRAWDOWN_WARN_250:
-            logger.critical(
-                "DRAWDOWN CRITICAL: only $%.0f from floor! equity=%.2f floor=%.2f",
-                distance, equity, self.drawdown_floor,
-            )
-            self._DRAWDOWN_WARN_250 = True
-        elif distance < 500 and not self._DRAWDOWN_WARN_500:
-            logger.warning(
-                "DRAWDOWN WARNING: $%.0f from floor. equity=%.2f floor=%.2f",
-                distance, equity, self.drawdown_floor,
-            )
-            self._DRAWDOWN_WARN_500 = True
-
         if equity <= self.drawdown_floor:
             self._lock(
                 f"DRAWDOWN BREACH: equity {equity:.2f} <= floor {self.drawdown_floor:.2f}"
@@ -202,14 +222,6 @@ class RiskManager:
     def _check_daily_loss(self):
         """Lock trading if approaching daily loss limit (emergency brake)."""
         if self.daily_loss_limit is None:
-            return
-
-        # Hard limit — absolute stop at 100%
-        if self.day_pnl <= -self.daily_loss_limit:
-            self._lock(
-                f"DAILY LOSS LIMIT BREACHED: day P&L ${self.day_pnl:.2f} "
-                f"exceeded limit (-${self.daily_loss_limit:.2f})"
-            )
             return
 
         # Emergency brake at configured % of daily loss limit
@@ -242,6 +254,9 @@ class RiskManager:
             self.trades_today = 0
             self.trading_locked = False
             self.lock_reason = ""
+            # Reset streak & pause — a new day is a clean slate.
+            self.losing_streak = 0
+            self.streak_pause_until = None
             # Keep _balance_initialized — current_balance is already real
             # (it was set by API in the previous day's loop)
 
@@ -256,10 +271,33 @@ class RiskManager:
     # Pre-trade validation
     # ─────────────────────────────────────────
 
-    def can_trade(self) -> tuple[bool, str]:
-        """Check whether a new trade is allowed right now."""
+    def can_trade(self, symbol: Optional[str] = None,
+                  direction: Optional[str] = None) -> tuple[bool, str]:
+        """Check whether a new trade is allowed right now.
+
+        Args:
+            symbol: optional symbol to check correlation guard against.
+            direction: "Buy" or "Sell" — used with symbol for correlation.
+        """
         if self.trading_locked:
             return False, f"Trading locked: {self.lock_reason}"
+
+        # Losing-streak pause
+        if self.streak_pause_until is not None:
+            now = datetime.now(_ET)
+            if now < self.streak_pause_until:
+                remaining = int(
+                    (self.streak_pause_until - now).total_seconds() / 60
+                )
+                return False, (
+                    f"Losing streak pause: {remaining}m remaining "
+                    f"({self.losing_streak} losses)"
+                )
+            else:
+                # Pause expired — clear it and the streak counter
+                logger.info("Losing-streak pause expired; resuming trading")
+                self.streak_pause_until = None
+                self.losing_streak = 0
 
         if self.open_contracts >= self.max_contracts:
             return False, (
@@ -271,19 +309,32 @@ class RiskManager:
                 f"Daily trade cap reached: {self.trades_today}/{self.max_daily_trades}"
             )
 
-        # Safety net: if distance to drawdown floor is dangerously low,
-        # stop trading even if daily loss check didn't fire (e.g. after restart).
-        # This survives restarts because drawdown_floor is based on peak balance.
-        equity = self.current_balance + self.unrealized_pnl
-        distance = equity - self.drawdown_floor
-        if distance < 500:
-            self._lock(
-                f"DRAWDOWN SAFETY: only ${distance:.0f} from floor "
-                f"(equity={equity:.0f}, floor={self.drawdown_floor:.0f})"
-            )
-            return False, f"Too close to drawdown floor: ${distance:.0f} remaining"
+        # Correlation guard — only enforced if caller passes symbol+direction.
+        if symbol is not None and direction is not None:
+            blocked = self._correlation_conflict(symbol, direction)
+            if blocked is not None:
+                return False, (
+                    f"Correlation guard: {symbol} {direction} blocked by "
+                    f"open {blocked[0]} {blocked[1]}"
+                )
 
         return True, "OK"
+
+    def _correlation_conflict(
+        self, symbol: str, direction: str
+    ) -> Optional[tuple[str, str]]:
+        """Return (existing_symbol, existing_direction) if a correlated
+        position in the same direction is already open; else None."""
+        groups = getattr(config, "CORRELATED_GROUPS", [])
+        for group in groups:
+            if symbol not in group:
+                continue
+            for other_sym, other_dir in self.open_directions.items():
+                if other_sym == symbol:
+                    continue
+                if other_sym in group and other_dir == direction:
+                    return (other_sym, other_dir)
+        return None
 
     def calculate_position_size(self, symbol: str) -> int:
         """
@@ -333,10 +384,21 @@ class RiskManager:
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
 
-        # Per-symbol hard cap (prevents over-sizing on low-risk-per-contract symbols)
-        max_qty = spec.get("max_qty")
-        if max_qty is not None:
-            contracts = min(contracts, max_qty)
+        # Hard ceiling per single trade (defensive cap)
+        contracts = min(contracts, self.max_contracts_per_trade)
+
+        # Defensive sizing near the drawdown floor — halve the size.
+        equity = self.current_balance + self.unrealized_pnl
+        floor_distance = equity - self.drawdown_floor
+        if floor_distance < self.defensive_floor_distance and contracts >= 2:
+            halved = max(1, contracts // 2)
+            logger.warning(
+                "Defensive sizing for %s: %d -> %d contracts "
+                "(floor_distance=%.2f < %.2f)",
+                symbol, contracts, halved,
+                floor_distance, self.defensive_floor_distance,
+            )
+            contracts = halved
 
         # At least 1 if we have budget, at most max_contracts
         contracts = max(contracts, 0)
@@ -350,12 +412,15 @@ class RiskManager:
         )
         return contracts
 
-    def register_open(self, qty: int):
+    def register_open(self, qty: int, symbol: Optional[str] = None,
+                      direction: Optional[str] = None):
         """Track that we opened positions."""
         self.open_contracts += qty
         self.trades_today += 1
+        if symbol and direction:
+            self.open_directions[symbol] = direction
 
-    def register_close(self, qty: int):
+    def register_close(self, qty: int, symbol: Optional[str] = None):
         """Track that we closed positions."""
         if qty > self.open_contracts:
             logger.warning(
@@ -363,6 +428,10 @@ class RiskManager:
                 qty, self.open_contracts,
             )
         self.open_contracts = max(0, self.open_contracts - qty)
+        if self.open_contracts == 0:
+            self.open_directions.clear()
+        elif symbol is not None:
+            self.open_directions.pop(symbol, None)
 
     # ─────────────────────────────────────────
     # Status
@@ -398,4 +467,10 @@ class RiskManager:
             "locked": self.trading_locked,
             "lock_reason": self.lock_reason,
             "balance_initialized": self._balance_initialized,
+            "losing_streak": self.losing_streak,
+            "streak_pause_until": (
+                self.streak_pause_until.isoformat()
+                if self.streak_pause_until else None
+            ),
+            "open_directions": dict(self.open_directions),
         }
