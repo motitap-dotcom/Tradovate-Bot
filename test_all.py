@@ -2623,6 +2623,157 @@ test_tuner_mfe_targets()
 
 
 # ─────────────────────────────────────────────
+# 18. AUTO-TUNER SHADOW PIPELINE TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("18. AUTO-TUNER SHADOW PIPELINE TESTS")
+print("=" * 60)
+
+
+def _run_tuner_with_trades(trades_spec, tmp_root):
+    """Helper: create a journal + tuner with an isolated pending/log dir."""
+    import auto_tuner
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+
+    journal_path = os.path.join(tmp_root, "journal.json")
+    # Seed journal file directly
+    with open(journal_path, "w") as f:
+        json.dump({"trades": trades_spec}, f)
+
+    # Redirect tuner persistence to the temp dir
+    auto_tuner.TUNER_LOG = os.path.join(tmp_root, "tuner_log.json")
+    auto_tuner.TUNER_PENDING = os.path.join(tmp_root, "tuner_pending.json")
+
+    j = TradeJournal(filepath=journal_path)
+    return AutoTuner(j)
+
+
+@test("AutoTuner: shadow cycle requires 2 confirmations before applying")
+def test_tuner_shadow_double_confirm():
+    import auto_tuner
+    from auto_tuner import AutoTuner
+    import tempfile, shutil
+
+    tmp_root = tempfile.mkdtemp()
+    # Save & restore globals
+    orig_log = auto_tuner.TUNER_LOG
+    orig_pending = auto_tuner.TUNER_PENDING
+    orig_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
+    try:
+        # 80% SL hit rate — proposes widen
+        trades = _make_closed_trades("MNQ", 16, 4)
+        tuner = _run_tuner_with_trades(trades, tmp_root)
+
+        applied1 = tuner.run(min_trades=5)
+        assert applied1 == [], (
+            f"First cycle must only stage, got applied={applied1}"
+        )
+        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] == orig_sl, (
+            "First cycle should NOT mutate config"
+        )
+        assert os.path.exists(auto_tuner.TUNER_PENDING)
+        with open(auto_tuner.TUNER_PENDING) as f:
+            pending = json.load(f)
+        assert "MNQ::stop_loss_points" in pending, (
+            f"Expected pending entry, got keys={list(pending)}"
+        )
+
+        # Second cycle: same direction → should apply.
+        tuner2 = _run_tuner_with_trades(trades, tmp_root)
+        applied2 = tuner2.run(min_trades=5)
+        sl_applied = [a for a in applied2
+                      if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
+        assert len(sl_applied) == 1, (
+            f"Second cycle should apply widen, got {applied2}"
+        )
+        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] > orig_sl, (
+            "Config should be updated on second cycle"
+        )
+        # pending entry should have been cleared
+        with open(auto_tuner.TUNER_PENDING) as f:
+            pending2 = json.load(f)
+        assert "MNQ::stop_loss_points" not in pending2
+    finally:
+        # Restore everything
+        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = orig_sl
+        auto_tuner.TUNER_LOG = orig_log
+        auto_tuner.TUNER_PENDING = orig_pending
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+@test("AutoTuner: rollback after 3 losing days for a tuned symbol")
+def test_tuner_rollback_after_losing_days():
+    import auto_tuner
+    from auto_tuner import AutoTuner
+    from datetime import date, timedelta
+    import tempfile, shutil
+
+    tmp_root = tempfile.mkdtemp()
+    orig_log = auto_tuner.TUNER_LOG
+    orig_pending = auto_tuner.TUNER_PENDING
+    orig_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
+    try:
+        auto_tuner.TUNER_LOG = os.path.join(tmp_root, "tuner_log.json")
+        auto_tuner.TUNER_PENDING = os.path.join(tmp_root, "tuner_pending.json")
+
+        # Seed an applied change 5 days ago
+        applied_date = date.today() - timedelta(days=5)
+        stale_apply = {
+            "param": "stop_loss_points",
+            "symbol": "MNQ",
+            "old_value": orig_sl,
+            "new_value": orig_sl * 1.15,
+            "reason": "test apply",
+            "timestamp": datetime(
+                applied_date.year, applied_date.month, applied_date.day,
+                tzinfo=timezone.utc,
+            ).isoformat(),
+            "applied": True,
+        }
+        with open(auto_tuner.TUNER_LOG, "w") as f:
+            json.dump([stale_apply], f)
+
+        # Live config reflects the apply
+        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = stale_apply["new_value"]
+
+        # 3 consecutive losing days for MNQ after the apply
+        losing_trades = []
+        for days_ago in (0, 1, 2):
+            d = (date.today() - timedelta(days=days_ago)).isoformat()
+            losing_trades.append({
+                "symbol": "MNQ", "status": "closed", "pnl": -300,
+                "exit_reason": "stop_loss", "strategy": "ORB",
+                "entry_hour_et": 10, "date": d, "r_multiple": -1.0,
+            })
+        # Enough total trades to clear min_trades gate
+        losing_trades.extend(_make_closed_trades("MES", 8, 12))
+
+        tuner = _run_tuner_with_trades(losing_trades, tmp_root)
+        tuner.run(min_trades=5)
+
+        # Rollback should have restored the original SL value
+        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] == orig_sl, (
+            f"Expected rollback to {orig_sl}, got "
+            f"{config.CONTRACT_SPECS['MNQ']['stop_loss_points']}"
+        )
+        assert any(
+            r.get("rollback_of") == stale_apply["timestamp"]
+            for r in tuner.rollbacks
+        ), f"Expected rollback record, got {tuner.rollbacks}"
+    finally:
+        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = orig_sl
+        auto_tuner.TUNER_LOG = orig_log
+        auto_tuner.TUNER_PENDING = orig_pending
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+test_tuner_shadow_double_confirm()
+test_tuner_rollback_after_losing_days()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 

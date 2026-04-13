@@ -85,10 +85,14 @@ class ContinuousLearner:
         # Generate insights
         report["insights"] = self._generate_daily_insights(closed, all_closed)
 
-        # Run auto-tuner
+        # Run auto-tuner (shadow pipeline — min_trades raised to 20 so
+        # proposals are backed by meaningful sample size, and changes must
+        # clear a 2-cycle confirmation before touching config)
         tuner = AutoTuner(self.journal)
-        adjustments = tuner.run()
+        adjustments = tuner.run(min_trades=20)
         report["tuner_adjustments"] = adjustments
+        report["tuner_rollbacks"] = getattr(tuner, "rollbacks", [])
+        report["tuner_staged"] = getattr(tuner, "adjustments", [])
 
         # Score today's performance
         report["score"] = self._score_day(closed, all_closed)
