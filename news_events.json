@@ -1,0 +1,101 @@
+{
+  "_comment": "High-impact recurring economic events. Times are ET. 'cadence' values: monthly_nth_weekday (e.g. '1st_friday'), monthly_day (e.g. 15), weekly (day name), fomc_schedule. 'symbols' lists the symbols to block ([] = all enabled).",
+  "events": [
+    {
+      "name": "Nonfarm Payrolls (NFP)",
+      "cadence": "monthly_nth_weekday",
+      "week": 1,
+      "weekday": "friday",
+      "time_et": "08:30",
+      "window_minutes": 30,
+      "symbols": []
+    },
+    {
+      "name": "CPI",
+      "cadence": "monthly_day_approx",
+      "day": 12,
+      "weekday": "tuesday,wednesday",
+      "time_et": "08:30",
+      "window_minutes": 30,
+      "symbols": []
+    },
+    {
+      "name": "FOMC Rate Decision",
+      "cadence": "fomc_schedule",
+      "time_et": "14:00",
+      "window_minutes": 45,
+      "symbols": []
+    },
+    {
+      "name": "FOMC Powell Press Conference",
+      "cadence": "fomc_schedule",
+      "time_et": "14:30",
+      "window_minutes": 60,
+      "symbols": []
+    },
+    {
+      "name": "Retail Sales",
+      "cadence": "monthly_day_approx",
+      "day": 15,
+      "weekday": "tuesday,wednesday,thursday",
+      "time_et": "08:30",
+      "window_minutes": 15,
+      "symbols": []
+    },
+    {
+      "name": "EIA Crude Oil Inventories",
+      "cadence": "weekly",
+      "weekday": "wednesday",
+      "time_et": "10:30",
+      "window_minutes": 15,
+      "symbols": ["MCL", "CL"]
+    },
+    {
+      "name": "EIA Natural Gas Storage",
+      "cadence": "weekly",
+      "weekday": "thursday",
+      "time_et": "10:30",
+      "window_minutes": 15,
+      "symbols": ["MNG", "NG"]
+    },
+    {
+      "name": "London Gold Fix (AM)",
+      "cadence": "daily",
+      "time_et": "05:30",
+      "window_minutes": 10,
+      "symbols": ["MGC", "GC", "SIL", "SI"]
+    },
+    {
+      "name": "London Gold Fix (PM)",
+      "cadence": "daily",
+      "time_et": "10:00",
+      "window_minutes": 10,
+      "symbols": ["MGC", "GC", "SIL", "SI"]
+    },
+    {
+      "name": "ISM Manufacturing PMI",
+      "cadence": "monthly_day_approx",
+      "day": 1,
+      "weekday": "monday,tuesday,wednesday",
+      "time_et": "10:00",
+      "window_minutes": 15,
+      "symbols": []
+    },
+    {
+      "name": "JOLTS Job Openings",
+      "cadence": "monthly_day_approx",
+      "day": 8,
+      "time_et": "10:00",
+      "window_minutes": 15,
+      "symbols": []
+    },
+    {
+      "name": "GDP (Advance)",
+      "cadence": "quarterly_approx",
+      "month_days": {"1": 28, "4": 28, "7": 28, "10": 28},
+      "time_et": "08:30",
+      "window_minutes": 15,
+      "symbols": []
+    }
+  ]
+}

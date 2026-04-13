@@ -21,6 +21,7 @@ import signal
 import sys
 import time
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -34,6 +35,7 @@ from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
 import bot_state
+import news_calendar
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -103,6 +105,9 @@ class TradovateBot:
         # Contract rollover: check every 10 minutes (not every 30s loop)
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
+
+        # News-blackout debug — last suppressed signal (for live_status)
+        self._last_news_block: Optional[dict] = None
 
     # ─────────────────────────────────────────
     # Lifecycle
@@ -586,6 +591,16 @@ class TradovateBot:
         if current < start or current >= cutoff:
             return
 
+        # News blackout: skip new entries inside scheduled high-impact windows.
+        blocked, event = news_calendar.in_blackout(symbol, current)
+        if blocked:
+            self._last_news_block = {
+                "symbol": symbol,
+                "event": event.get("name") if event else None,
+                "until": current.isoformat(),
+            }
+            return
+
         # Feed price to strategy
         signal = None
         if hasattr(strategy, "on_price"):
@@ -1029,6 +1044,7 @@ class TradovateBot:
                     )
                     else None
                 ),
+                "suppressed_by_news": self._last_news_block,
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))

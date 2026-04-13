@@ -2974,6 +2974,132 @@ test_circuit_window_sliding()
 
 
 # ─────────────────────────────────────────────
+# 21. NEWS BLACKOUT CALENDAR TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("21. NEWS BLACKOUT CALENDAR TESTS")
+print("=" * 60)
+
+
+_ET_TZ = ZoneInfo("America/New_York")
+
+
+@test("News: empty events list never blocks")
+def test_news_empty():
+    import news_calendar
+    now = datetime(2026, 4, 13, 10, 0, tzinfo=_ET_TZ)
+    blocked, _ = news_calendar.in_blackout("MNQ", now, events=[])
+    assert blocked is False
+
+
+@test("News: weekly EIA crude event blocks MCL on Wednesday 10:25-10:45")
+def test_news_eia_crude():
+    import news_calendar
+    events = [{
+        "name": "EIA Crude",
+        "cadence": "weekly",
+        "weekday": "wednesday",
+        "time_et": "10:30",
+        "window_minutes": 15,
+        "symbols": ["MCL", "CL"],
+    }]
+    # 2026-04-15 is Wednesday
+    wed_inside = datetime(2026, 4, 15, 10, 30, tzinfo=_ET_TZ)
+    wed_before = datetime(2026, 4, 15, 10, 14, tzinfo=_ET_TZ)
+    wed_after = datetime(2026, 4, 15, 10, 46, tzinfo=_ET_TZ)
+    thursday = datetime(2026, 4, 16, 10, 30, tzinfo=_ET_TZ)
+
+    assert news_calendar.in_blackout("MCL", wed_inside, events=events)[0] is True
+    assert news_calendar.in_blackout("MCL", wed_before, events=events)[0] is False
+    assert news_calendar.in_blackout("MCL", wed_after, events=events)[0] is False
+    assert news_calendar.in_blackout("MCL", thursday, events=events)[0] is False
+    # Other symbols not affected
+    assert news_calendar.in_blackout("MNQ", wed_inside, events=events)[0] is False
+
+
+@test("News: global event (empty symbols) blocks any symbol")
+def test_news_global_event():
+    import news_calendar
+    events = [{
+        "name": "NFP",
+        "cadence": "monthly_nth_weekday",
+        "week": 1,
+        "weekday": "friday",
+        "time_et": "08:30",
+        "window_minutes": 30,
+        "symbols": [],
+    }]
+    # First Friday of May 2026 = 2026-05-01
+    first_friday = datetime(2026, 5, 1, 8, 35, tzinfo=_ET_TZ)
+    second_friday = datetime(2026, 5, 8, 8, 35, tzinfo=_ET_TZ)
+
+    assert news_calendar.in_blackout("MNQ", first_friday, events=events)[0] is True
+    assert news_calendar.in_blackout("MCL", first_friday, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", second_friday, events=events)[0] is False
+
+
+@test("News: monthly_day_approx CPI tolerates ±3 days around target")
+def test_news_cpi_approx():
+    import news_calendar
+    events = [{
+        "name": "CPI",
+        "cadence": "monthly_day_approx",
+        "day": 12,
+        "weekday": "tuesday,wednesday",
+        "time_et": "08:30",
+        "window_minutes": 15,
+        "symbols": [],
+    }]
+    # 2026-05-12 is Tuesday
+    tuesday_12 = datetime(2026, 5, 12, 8, 35, tzinfo=_ET_TZ)
+    wednesday_13 = datetime(2026, 5, 13, 8, 35, tzinfo=_ET_TZ)
+    friday_15 = datetime(2026, 5, 15, 8, 35, tzinfo=_ET_TZ)  # outside weekday list
+    sunday_17 = datetime(2026, 5, 17, 8, 35, tzinfo=_ET_TZ)  # outside day range
+
+    assert news_calendar.in_blackout("MNQ", tuesday_12, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", wednesday_13, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", friday_15, events=events)[0] is False
+    assert news_calendar.in_blackout("MNQ", sunday_17, events=events)[0] is False
+
+
+@test("News: FOMC schedule blocks exactly on listed dates")
+def test_news_fomc():
+    import news_calendar
+    events = [{
+        "name": "FOMC",
+        "cadence": "fomc_schedule",
+        "time_et": "14:00",
+        "window_minutes": 30,
+        "symbols": [],
+    }]
+    # 2026-01-28 is in the hardcoded FOMC list
+    fomc_day = datetime(2026, 1, 28, 14, 5, tzinfo=_ET_TZ)
+    non_fomc = datetime(2026, 1, 27, 14, 5, tzinfo=_ET_TZ)
+    assert news_calendar.in_blackout("MNQ", fomc_day, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", non_fomc, events=events)[0] is False
+
+
+@test("News: shipped calendar file loads and produces a reasonable result")
+def test_news_shipped_calendar():
+    import news_calendar
+    events = news_calendar._load_events()
+    assert len(events) > 0, "Shipped calendar should contain events"
+    # A random Sunday at 3am: nothing should block
+    sunday = datetime(2026, 4, 19, 3, 0, tzinfo=_ET_TZ)
+    blocked, _ = news_calendar.in_blackout("MNQ", sunday, events=events)
+    assert blocked is False
+
+
+test_news_empty()
+test_news_eia_crude()
+test_news_global_event()
+test_news_cpi_approx()
+test_news_fomc()
+test_news_shipped_calendar()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 
