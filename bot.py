@@ -608,7 +608,9 @@ class TradovateBot:
             )
             return
 
-        ok, reason = self.risk.can_trade()
+        ok, reason = self.risk.can_trade(
+            symbol=signal.symbol, direction=signal.direction.value,
+        )
         if not ok:
             logger.warning("Signal rejected by risk manager: %s", reason)
             return
@@ -664,7 +666,11 @@ class TradovateBot:
 
         if result:
             self._last_order_time = time.time()
-            self.risk.register_open(signal.qty)
+            self.risk.register_open(
+                signal.qty,
+                symbol=signal.symbol,
+                direction=signal.direction.value,
+            )
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
@@ -914,7 +920,9 @@ class TradovateBot:
                     self.journal.record_exit_by_symbol(
                         sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(trade_info.get("qty", 1))
+                    self.risk.register_close(
+                        trade_info.get("qty", 1), symbol=sym,
+                    )
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
 

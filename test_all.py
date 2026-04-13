@@ -548,8 +548,9 @@ def test_orb_cooldown():
 @test("ORB: max trades cap respected")
 def test_orb_max_trades():
     from strategies import ORBStrategy
+    import config
     strategy = ORBStrategy("MNQ")
-    assert strategy.max_trades == 2  # Default from config
+    assert strategy.max_trades == config.CONTRACT_SPECS["MNQ"]["max_orb_trades"]
 
 
 @test("VWAP: running VWAP calculation")
@@ -571,11 +572,12 @@ def test_vwap_calculation():
 def test_vwap_long_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1  # test a single-bar confirmation
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Build initial VWAP around 2000 — feed enough candles through on_price
     # to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price below VWAP
@@ -591,10 +593,11 @@ def test_vwap_long_crossover():
 def test_vwap_short_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price above VWAP
@@ -610,10 +613,11 @@ def test_vwap_short_crossover():
 def test_vwap_cooldown():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # First long
@@ -987,7 +991,11 @@ def test_e2e_nq_orb():
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
+    # Synthetic random walk isn't guaranteed to produce a range that clears
+    # the production min_range filter — relax it for the simulation.
+    strategy.min_range_points = 0.0
+    strategy.max_range_points = float("inf")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -1000,19 +1008,20 @@ def test_e2e_nq_orb():
     for minute in range(360):  # 6 hours
         t = datetime(2026, 2, 23, 9, 30, tzinfo=ET) + timedelta(minutes=minute)
 
-        # Price random walk
-        base_price += random.gauss(0, 2)
-        high = base_price + abs(random.gauss(0, 3))
-        low = base_price - abs(random.gauss(0, 3))
+        # Price random walk — larger step so the ORB range is meaningful
+        base_price += random.gauss(0, 5)
+        high = base_price + abs(random.gauss(0, 6))
+        low = base_price - abs(random.gauss(0, 6))
 
         signal = strategy.on_price(base_price, t, high, low)
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("NQ")
+                qty = rm.calculate_position_size("MNQ")
                 if qty > 0:
                     signal.qty = qty
-                    rm.register_open(qty)
+                    rm.register_open(qty, symbol="MNQ",
+                                     direction=signal.direction.value)
                     signals.append(signal)
 
     assert len(signals) > 0, "Should generate at least 1 signal in 6 hours"
@@ -1470,13 +1479,13 @@ def test_tuner_widen_stops():
         tuner = AutoTuner(journal=j)
 
         # 8 SL hits, 2 TP hits = 80% SL rate
-        trades = _make_closed_trades("NQ", 8, 2)
+        trades = _make_closed_trades("MNQ", 8, 2)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
         # Should have proposed widening
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1, f"Expected 1 SL adjustment, got {len(sl_adj)}"
         assert sl_adj[0]["new_value"] > old_sl, "New SL should be wider (larger)"
     finally:
@@ -1494,12 +1503,12 @@ def test_tuner_tighten_stops():
         tuner = AutoTuner(journal=j)
 
         # 1 SL hit, 6 TP hits = ~14% SL rate
-        trades = _make_closed_trades("NQ", 1, 6)
+        trades = _make_closed_trades("MNQ", 1, 6)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1
         assert sl_adj[0]["new_value"] < old_sl, "New SL should be tighter (smaller)"
     finally:
@@ -1517,12 +1526,12 @@ def test_tuner_widen_tp():
         tuner = AutoTuner(journal=j)
 
         # High R-multiple trades
-        trades = _make_closed_trades("NQ", 1, 4, r_mult=2.0)
+        trades = _make_closed_trades("MNQ", 1, 4, r_mult=2.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] > old_tp, "TP should be widened for high R"
     finally:
@@ -1541,12 +1550,12 @@ def test_tuner_tighten_tp():
 
         # Negative R-multiple trades — all stop_loss exits (no TP trades)
         # so we reach the avg_r < -0.5 branch (not blocked by tp_trades > 0)
-        trades = _make_closed_trades("NQ", 4, 0, r_mult=-1.0)
+        trades = _make_closed_trades("MNQ", 4, 0, r_mult=-1.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] < old_tp, "TP should be tightened for negative R"
     finally:
@@ -1822,12 +1831,12 @@ def test_bot_execute_signal_dry_run():
 
     bot = TradovateBot(dry_run=True)
     bot.api = MagicMock()
-    bot.contract_map = {"NQ": "NQH6"}
-    bot.strategies = {"NQ": MagicMock()}
+    bot.contract_map = {"MNQ": "MNQH6"}
+    bot.strategies = {"MNQ": MagicMock()}
     bot._last_order_time = 0  # No cooldown
 
     signal = TradeSignal(
-        symbol="NQ", direction=Direction.LONG,
+        symbol="MNQ", direction=Direction.LONG,
         entry_price=21000, stop_loss=20975, take_profit=21050,
         qty=1, reason="test breakout",
     )
@@ -1909,7 +1918,9 @@ def test_bot_execute_signal_success():
     bot._execute_signal(signal)
 
     bot.api.place_bracket_order.assert_called_once()
-    bot.risk.register_open.assert_called_once_with(2)
+    bot.risk.register_open.assert_called_once_with(
+        2, symbol="NQ", direction="Buy",
+    )
     bot.journal.record_entry.assert_called_once()
 
 

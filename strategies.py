@@ -169,6 +169,14 @@ class ORBStrategy:
         self.point_value: float = spec["point_value"]
         self.max_trades: int = spec.get("max_orb_trades", 2)
         self.cooldown_minutes: int = spec.get("orb_cooldown_minutes", 15)
+        self.min_range_points: float = spec.get("min_range_points", 0.0)
+        self.max_range_points: float = spec.get("max_range_points", float("inf"))
+
+        # Blackout window: suppress ORB signals during midday chop
+        bh, bm = config.ORB_BLACKOUT_START_ET.split(":")
+        eh, em = config.ORB_BLACKOUT_END_ET.split(":")
+        self._blackout_start = time(int(bh), int(bm))
+        self._blackout_end = time(int(eh), int(em))
 
         # Parse market open time
         h, m = config.MARKET_OPEN_ET.split(":")
@@ -209,11 +217,42 @@ class ORBStrategy:
 
         current_time = timestamp.time()
 
+        # Midday blackout — feed the range so it closes, but don't fire new
+        # breakouts between blackout_start and blackout_end.
+        in_blackout = self._blackout_start <= current_time < self._blackout_end
+
         # Try each window (shorter windows fire earlier)
         for window in self.windows:
             direction = window.feed(price, high, low, current_time)
             if direction is None:
                 continue
+
+            # Drop the signal if we are in the midday blackout.
+            if in_blackout:
+                logger.info(
+                    "ORB %s %s suppressed: inside midday blackout (%s–%s ET)",
+                    self.symbol, direction.upper(),
+                    config.ORB_BLACKOUT_START_ET, config.ORB_BLACKOUT_END_ET,
+                )
+                continue
+
+            # Range size sanity filter
+            if window.range_high is not None and window.range_low is not None:
+                range_size = window.range_high - window.range_low
+                if range_size < self.min_range_points:
+                    logger.info(
+                        "ORB %s %dm skipped: range %.2f < min %.2f",
+                        self.symbol, window.window_minutes,
+                        range_size, self.min_range_points,
+                    )
+                    continue
+                if range_size > self.max_range_points:
+                    logger.info(
+                        "ORB %s %dm skipped: range %.2f > max %.2f (news/gap?)",
+                        self.symbol, window.window_minutes,
+                        range_size, self.max_range_points,
+                    )
+                    continue
 
             # Build signal
             spec = config.CONTRACT_SPECS[self.symbol]
@@ -322,7 +361,9 @@ class VWAPStrategy:
         self.max_per_direction: int = spec.get("max_vwap_trades_per_direction", 2)
         self.cooldown_minutes: int = spec.get("vwap_cooldown_minutes", 30)
         # Minimum time between ANY trades (regardless of direction) to prevent whipsaw
-        self.min_trade_gap_minutes: int = 3
+        self.min_trade_gap_minutes: int = spec.get("min_trade_gap_minutes", 5)
+        # Max distance from VWAP (as fraction of price) for a valid crossover
+        self.max_vwap_distance_pct: float = spec.get("max_vwap_distance_pct", 0.01)
 
         # VWAP calculation state
         self._cum_vol: float = 0.0
@@ -404,8 +445,9 @@ class VWAPStrategy:
                 return False
         return True
 
-    # Minimum candles of data before generating signals
-    MIN_CANDLES_FOR_SIGNAL = 5
+    # Minimum candles of data before generating signals — raised so VWAP
+    # stabilises before we start reacting to crossovers.
+    MIN_CANDLES_FOR_SIGNAL = 10
 
     def on_price(
         self, price: float, high: float, low: float, volume: float
@@ -436,6 +478,14 @@ class VWAPStrategy:
         if self.last_any_trade_time and self._current_time:
             gap = (self._current_time - self.last_any_trade_time).total_seconds() / 60
             if gap < self.min_trade_gap_minutes:
+                self._prev_price = price
+                return None
+
+        # Distance-from-VWAP filter: if we are already far from VWAP the
+        # "crossover" is really a late-chase — skip it.
+        if self.vwap > 0:
+            distance_pct = abs(price - self.vwap) / self.vwap
+            if distance_pct > self.max_vwap_distance_pct:
                 self._prev_price = price
                 return None
 
