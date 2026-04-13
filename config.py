@@ -314,6 +314,132 @@ MONTH_CODES = {
 }
 MONTH_CODE_REVERSE = {v: k for k, v in MONTH_CODES.items()}
 
+
+# ─────────────────────────────────────────────
+# Front-month Contract Resolution
+# ─────────────────────────────────────────────
+# Tradovate's /contract/suggest API can return illiquid "serial" months
+# (e.g. GCH6 — March gold, which is listed but carries almost no volume)
+# and it does not always roll off a contract when First Notice Day passes.
+# These helpers compute the correct front month locally from a calendar so
+# the bot never ends up subscribed to an in-delivery or illiquid contract.
+
+def _add_business_days(d, n):
+    """Shift `d` by `n` business days (Mon–Fri). `n` may be negative."""
+    from datetime import timedelta
+    step = 1 if n >= 0 else -1
+    remaining = abs(n)
+    while remaining > 0:
+        d = d + timedelta(days=step)
+        if d.weekday() < 5:
+            remaining -= 1
+    return d
+
+
+def _last_business_day(year, month):
+    """Return the last business day (Mon–Fri) of a month."""
+    import calendar
+    from datetime import date, timedelta
+    last = calendar.monthrange(year, month)[1]
+    d = date(year, month, last)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
+
+
+def _third_friday(year, month):
+    """Return the third Friday of a month (used for index futures expiry)."""
+    import calendar
+    from datetime import date
+    fridays = [date(year, month, day)
+               for day in range(1, calendar.monthrange(year, month)[1] + 1)
+               if date(year, month, day).weekday() == 4]
+    return fridays[2]
+
+
+def _contract_roll_out_date(base_symbol, year, month):
+    """
+    Return the last calendar date the bot should still be trading the
+    (base_symbol, year, month) contract. After this date the bot must
+    switch to the next liquid contract.
+
+    Accounts for:
+      • Cash-settled equity indices (NQ/ES/MNQ/MES/RTY/YM): third-Friday expiry
+        of the contract month — roll 8 calendar days before expiry.
+      • Physical-delivery metals and natural gas (GC/MGC/SI/PL/PA/NG/MNG):
+        First Notice Day is the last business day of the month *prior* to
+        the contract month — roll 3 business days before FND.
+      • Crude oil (CL/MCL): last trading day is 3 business days before the
+        25th of the month prior to the contract month — roll 5 business
+        days before that.
+    """
+    from datetime import date, timedelta
+
+    # Cash-settled equity index futures
+    if base_symbol in ("NQ", "ES", "MNQ", "MES", "RTY", "M2K", "YM", "MYM"):
+        return _third_friday(year, month) - timedelta(days=8)
+
+    # Physical-delivery metals & natural gas — First Notice Day drives rollover
+    if base_symbol in ("GC", "MGC", "SI", "SIL", "PL", "PA", "HG", "MHG",
+                       "NG", "MNG"):
+        prior_m = month - 1
+        prior_y = year
+        if prior_m == 0:
+            prior_m = 12
+            prior_y -= 1
+        fnd = _last_business_day(prior_y, prior_m)
+        return _add_business_days(fnd, -3)
+
+    # Crude oil — last trading day is 3 biz days before 25th of prior month
+    if base_symbol in ("CL", "MCL", "RB", "HO"):
+        prior_m = month - 1
+        prior_y = year
+        if prior_m == 0:
+            prior_m = 12
+            prior_y -= 1
+        ref = date(prior_y, prior_m, 25)
+        while ref.weekday() >= 5:
+            ref -= timedelta(days=1)
+        ltd = _add_business_days(ref, -3)
+        return _add_business_days(ltd, -5)
+
+    # Fallback: roll on the last business day before the contract month begins.
+    prior_m = month - 1
+    prior_y = year
+    if prior_m == 0:
+        prior_m = 12
+        prior_y -= 1
+    return _last_business_day(prior_y, prior_m)
+
+
+def get_front_month_contract(base_symbol, today=None):
+    """
+    Compute the correct front-month contract name for `base_symbol` on
+    `today`, restricted to the product's liquid-month schedule and taking
+    First Notice Day / expiry rules into account.
+
+    Returns a contract name like 'GCM6' or None if the symbol is unknown.
+    """
+    from datetime import date
+    if today is None:
+        today = date.today()
+
+    liquid = CONTRACT_LIQUID_MONTHS.get(base_symbol)
+    if not liquid:
+        return None
+
+    # Look up to ~2 years forward. Iterating year-by-year preserves
+    # chronological order within each year's liquid months.
+    for y_offset in range(3):
+        year = today.year + y_offset
+        for mc in liquid:
+            m = MONTH_CODES[mc]
+            roll_out = _contract_roll_out_date(base_symbol, year, m)
+            if today <= roll_out:
+                return f"{base_symbol}{mc}{year % 10}"
+
+    return None
+
 # ─────────────────────────────────────────────
 # Trading Session Times (Eastern Time)
 # ─────────────────────────────────────────────
