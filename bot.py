@@ -613,6 +613,9 @@ class TradovateBot:
                 signal = strategy.on_price(price, current, high, low)
 
         if signal is not None:
+            # Stash the observed tick price on the signal so _execute_signal
+            # can pass it through as expected_fill (for slippage tracking).
+            signal._observed_price = price
             self._execute_signal(signal)
 
     # ─────────────────────────────────────────
@@ -693,15 +696,21 @@ class TradovateBot:
                 symbol=signal.symbol,
                 direction=signal.direction.value,
             )
+            expected_fill = (
+                getattr(signal, "_observed_price", None)
+                or signal.entry_price
+                or 0
+            )
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=expected_fill,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
                 stop_loss=signal.stop_loss,
                 take_profit=signal.take_profit,
+                expected_fill=expected_fill,
             )
             self.trades_today.append(
                 {
@@ -927,6 +936,24 @@ class TradovateBot:
                     base_sym = self._contract_id_to_symbol.get(cid)
                     if base_sym:
                         open_base_symbols.add(base_sym)
+                        # First time we see a position for this symbol, stamp
+                        # the actual average fill price on the journal entry
+                        # so slippage can be computed later.
+                        avg_price = p.get("netPrice") or p.get("avgPrice")
+                        if avg_price:
+                            for trade_info in self.trades_today:
+                                if (
+                                    trade_info.get("symbol") == base_sym
+                                    and not trade_info.get("_fill_stamped")
+                                ):
+                                    try:
+                                        self.journal.set_actual_fill(
+                                            trade_info["journal_id"], float(avg_price),
+                                        )
+                                        trade_info["_fill_stamped"] = True
+                                    except Exception as e:
+                                        logger.debug("set_actual_fill failed: %s", e)
+                                    break
 
             self.risk.open_contracts = total_open
 

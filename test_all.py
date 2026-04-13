@@ -3100,6 +3100,163 @@ test_news_shipped_calendar()
 
 
 # ─────────────────────────────────────────────
+# 22. SESSION BUCKET + SLIPPAGE TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("22. SESSION BUCKET + SLIPPAGE TESTS")
+print("=" * 60)
+
+
+@test("Journal: _session_bucket_for maps ET clock times to correct buckets")
+def test_session_bucket_for():
+    from trade_journal import _session_bucket_for
+    assert _session_bucket_for(9, 30) == "pre_open"
+    assert _session_bucket_for(9, 59) == "pre_open"
+    assert _session_bucket_for(10, 0) == "morning"
+    assert _session_bucket_for(11, 29) == "morning"
+    assert _session_bucket_for(11, 30) == "midday"
+    assert _session_bucket_for(13, 59) == "midday"
+    assert _session_bucket_for(14, 0) == "afternoon"
+    assert _session_bucket_for(15, 44) == "afternoon"
+    assert _session_bucket_for(15, 45) == "off_session"
+    assert _session_bucket_for(8, 0) == "off_session"
+    assert _session_bucket_for(17, 30) == "off_session"
+
+
+@test("Journal: record_entry stamps expected_fill and session_bucket")
+def test_journal_expected_fill():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tid = j.record_entry(
+            "MNQ", "Buy", 21000.25, 1, "ORB", "breakout",
+            stop_loss=20990, take_profit=21020.5,
+            expected_fill=21000.0,
+        )
+        t = [x for x in j.trades if x["id"] == tid][0]
+        assert t["expected_fill"] == 21000.0
+        assert "session_bucket" in t
+        assert t["session_bucket"] in {
+            "pre_open", "morning", "midday", "afternoon", "off_session",
+        }
+        assert t["actual_fill"] is None
+        assert t["slippage_points"] is None
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: set_actual_fill computes signed slippage")
+def test_journal_set_actual_fill():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        # Long paid a point more than expected → slippage = +1.0 (worse)
+        tid_long = j.record_entry(
+            "MNQ", "Buy", 21000, 1, "ORB", "r", expected_fill=21000.0,
+        )
+        slip_long = j.set_actual_fill(tid_long, 21001.0)
+        assert slip_long == 1.0
+
+        # Short got 0.5 less than expected → slippage = +0.5 (worse)
+        tid_short = j.record_entry(
+            "MES", "Sell", 5000, 1, "ORB", "r", expected_fill=5000.0,
+        )
+        slip_short = j.set_actual_fill(tid_short, 4999.5)
+        assert slip_short == 0.5
+
+        # Long got 0.25 better fill → slippage = -0.25 (better than expected)
+        tid_better = j.record_entry(
+            "MNQ", "Buy", 21000, 1, "ORB", "r", expected_fill=21000.0,
+        )
+        slip_better = j.set_actual_fill(tid_better, 20999.75)
+        assert slip_better == -0.25
+    finally:
+        os.unlink(path)
+
+
+@test("Learner: session bucket + slippage analytics in parameter_analysis")
+def test_learner_session_analytics():
+    from trade_journal import TradeJournal
+    from continuous_learner import ContinuousLearner
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        # Seed 5 closed MNQ trades across two session buckets with known slippage
+        seed = [
+            # morning — profitable
+            {"id": f"MNQ_{i}", "symbol": "MNQ", "direction": "Buy",
+             "entry_price": 21000, "expected_fill": 21000,
+             "actual_fill": 21000.25,
+             "slippage_points": 0.25,
+             "qty": 1, "strategy": "ORBStrategy", "reason": "x",
+             "stop_loss": 20990, "take_profit": 21020,
+             "entry_time": "2026-04-13T14:30:00+00:00",
+             "entry_hour_et": 10, "entry_minute_et": 30,
+             "session_bucket": "morning",
+             "entry_day_of_week": "Monday",
+             "date": "2026-04-13",
+             "exit_price": 21020, "pnl": 40, "exit_reason": "take_profit",
+             "exit_time": "2026-04-13T14:45:00+00:00", "status": "closed",
+             "r_multiple": 2.0, "duration_minutes": 15,
+             "slippage_entry": 0.25, "mae_points": -2, "mfe_points": 22}
+            for i in range(3)
+        ] + [
+            # afternoon — losing
+            {"id": f"MNQ_A{i}", "symbol": "MNQ", "direction": "Sell",
+             "entry_price": 21000, "expected_fill": 21000,
+             "actual_fill": 20999.50,
+             "slippage_points": 0.50,
+             "qty": 1, "strategy": "ORBStrategy", "reason": "x",
+             "stop_loss": 21010, "take_profit": 20980,
+             "entry_time": "2026-04-13T19:15:00+00:00",
+             "entry_hour_et": 15, "entry_minute_et": 15,
+             "session_bucket": "afternoon",
+             "entry_day_of_week": "Monday",
+             "date": "2026-04-13",
+             "exit_price": 21010, "pnl": -20, "exit_reason": "stop_loss",
+             "exit_time": "2026-04-13T19:30:00+00:00", "status": "closed",
+             "r_multiple": -1.0, "duration_minutes": 15,
+             "slippage_entry": 0.50, "mae_points": -10, "mfe_points": 2}
+            for i in range(2)
+        ]
+        j.trades = seed
+        j._save()
+
+        learner = ContinuousLearner(journal=j)
+        closed = j._closed_trades()
+        analysis = learner._analyze_all_parameters(closed)
+
+        assert "MNQ" in analysis
+        mnq = analysis["MNQ"]
+        assert "session_bucket" in mnq
+        assert "morning" in mnq["session_bucket"]
+        assert "afternoon" in mnq["session_bucket"]
+        assert mnq["session_bucket"]["morning"]["trades"] == 3
+        assert mnq["session_bucket"]["morning"]["total_pnl"] == 120.0
+        assert mnq["session_bucket"]["afternoon"]["win_rate"] == 0.0
+
+        assert "slippage" in mnq
+        slip = mnq["slippage"]
+        assert slip["trades"] == 5
+        # 3×0.25 + 2×0.50 = 1.75 / 5 = 0.35
+        assert abs(slip["mean_points"] - 0.35) < 0.001
+    finally:
+        os.unlink(path)
+
+
+test_session_bucket_for()
+test_journal_expected_fill()
+test_journal_set_actual_fill()
+test_learner_session_analytics()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 
