@@ -63,20 +63,33 @@ if git fetch origin "$BRANCH" 2>/dev/null; then
     CODE_UPDATED="false"
 
     if [ "$LOCAL" != "$REMOTE" ]; then
-        echo "[$(date)] New code found. Updating..."
+        # Check whether any executable/runtime file changed.  Status-only
+        # commits (system_status.json, server_status.json, README.md, docs/)
+        # should NOT trigger a bot restart — they get committed every few
+        # minutes by GitHub Actions and would kill any data accumulation.
+        CHANGED_CODE=$(git diff --name-only "$LOCAL" "$REMOTE" 2>/dev/null | \
+            grep -vE '^(system_status\.json|server_status\.json|live_status\.json|bot_health\.json|connection_status\.json|trade_journal\.json|server_manage_result\.json|server_report\.json|\.github/|docs/|.*\.md$)' || true)
+
+        echo "[$(date)] New commits found. Changed runtime files:"
+        echo "$CHANGED_CODE" | sed 's/^/  /'
         git reset --hard "origin/$BRANCH"
         echo "[$(date)] Now at: $(git log -1 --oneline)"
-        CODE_UPDATED="true"
 
-        # Update dependencies if needed
-        if [ -f venv/bin/pip ]; then
-            venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3 || true
+        if [ -n "$CHANGED_CODE" ]; then
+            CODE_UPDATED="true"
+
+            # Update dependencies if needed
+            if [ -f venv/bin/pip ]; then
+                venv/bin/pip install -r requirements.txt -q 2>&1 | tail -3 || true
+            fi
+
+            # Restart bot
+            echo "[$(date)] Runtime code changed — restarting bot..."
+            systemctl restart "$SERVICE"
+            sleep 5
+        else
+            echo "[$(date)] Only status/docs files changed — NOT restarting bot."
         fi
-
-        # Restart bot
-        echo "[$(date)] Restarting bot..."
-        systemctl restart "$SERVICE"
-        sleep 5
     else
         echo "[$(date)] No changes."
     fi
