@@ -50,6 +50,49 @@ jobs:
           python -m py_compile status.py
           echo "All Python files compile successfully"
 
+      - name: Validate config values
+        run: |
+          python -c "
+          import config
+          from tradovate_api import YAHOO_SYMBOLS
+
+          errors = []
+          for sym, spec in config.CONTRACT_SPECS.items():
+              if not spec.get('enabled'):
+                  continue
+              # Every enabled symbol must have valid risk params
+              if spec.get('stop_loss_points', 0) <= 0:
+                  errors.append(f'{sym}: stop_loss_points must be > 0')
+              if spec.get('take_profit_points', 0) <= 0:
+                  errors.append(f'{sym}: take_profit_points must be > 0')
+              if spec.get('point_value', 0) <= 0:
+                  errors.append(f'{sym}: point_value must be > 0')
+              if spec.get('max_qty', 999) <= 0:
+                  errors.append(f'{sym}: max_qty must be > 0')
+              # Must have Yahoo mapping for warmup
+              if sym not in YAHOO_SYMBOLS:
+                  errors.append(f'{sym}: no Yahoo symbol mapping (warmup will fail)')
+
+          # Global settings
+          if config.RISK_PER_TRADE_PCT <= 0 or config.RISK_PER_TRADE_PCT > 0.05:
+              errors.append(f'RISK_PER_TRADE_PCT={config.RISK_PER_TRADE_PCT} — must be 0 < x <= 0.05')
+          if config.ACTIVE_CHALLENGE['max_contracts'] <= 0:
+              errors.append('max_contracts must be > 0')
+          if config.ACTIVE_CHALLENGE['account_size'] <= 0:
+              errors.append('account_size must be > 0')
+
+          if errors:
+              print('CONFIG VALIDATION FAILED:')
+              for e in errors:
+                  print(f'  - {e}')
+              exit(1)
+          else:
+              enabled = [s for s,sp in config.CONTRACT_SPECS.items() if sp.get('enabled')]
+              print(f'Config OK: {len(enabled)} enabled symbols: {enabled}')
+              print(f'  RISK_PER_TRADE_PCT={config.RISK_PER_TRADE_PCT}')
+              print(f'  max_contracts={config.ACTIVE_CHALLENGE[\"max_contracts\"]}')
+          "
+
       - name: Run test suite
         continue-on-error: true
         run: python test_all.py

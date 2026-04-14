@@ -90,7 +90,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 10,              # micros (switched from minis for tighter risk)
+        "max_contracts": 20,              # micros — raised from 10 (user approved 2026-04-13 audit)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -112,11 +112,32 @@ if PROP_FIRM not in CHALLENGE_SETTINGS:
 ACTIVE_CHALLENGE = CHALLENGE_SETTINGS[PROP_FIRM]
 
 # Emergency brake: stop trading at this % of the daily loss limit
-# Lowered from 70% to 60% to compensate for increased trade frequency
-DAILY_LOSS_BRAKE_PCT = 0.60  # 60% — tighter brake for higher frequency
+# 0.50 = $500 on a $1000 limit → 2 full R-losses before halt.
+# Matches the value running on the VPS as of the 2026-04-13 audit.
+DAILY_LOSS_BRAKE_PCT = 0.50
 
-# Hard cap: max total trades per day across all symbols (safety net)
-MAX_DAILY_TRADES = 100
+# Hard cap: max total trades per day across all symbols (safety net).
+# 6 symbols × ~4 trades/symbol = 24 upper bound under normal conditions.
+MAX_DAILY_TRADES = 25
+
+# Losing-streak kill-switch: after this many consecutive losing trades,
+# pause trading for STREAK_PAUSE_MINUTES. Prevents tilting through a bad day.
+MAX_LOSING_STREAK = 3
+STREAK_PAUSE_MINUTES = 30
+
+# Defensive sizing: when equity is closer than DEFENSIVE_FLOOR_DISTANCE
+# to the trailing drawdown floor, cut position size in half.
+DEFENSIVE_FLOOR_DISTANCE = 800.0
+
+# Correlation guard: symbols that share directional exposure.
+# The bot will not open a new position in a correlated symbol if one is
+# already open in the same direction.
+CORRELATED_GROUPS = [
+    {"MNQ", "MES", "NQ", "ES"},   # equity indices
+    {"MGC", "GC", "SIL", "SI"},   # precious metals
+    {"MCL", "CL"},                # energy — oil
+    {"MNG", "NG"},                # energy — nat gas
+]
 
 # ─────────────────────────────────────────────
 # Contract Specifications
@@ -134,11 +155,13 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 15,
-        "orb_cooldown_minutes": 15,
-        "stop_loss_points": 25,
-        "take_profit_points": 50,
-        "risk_reward_ratio": 2.0,
+        "max_orb_trades": 6,              # tightened from 15 — breakout should be rare
+        "orb_cooldown_minutes": 20,
+        "stop_loss_points": 20,
+        "take_profit_points": 45,
+        "risk_reward_ratio": 2.25,
+        "min_range_points": 15,           # skip low-vol days
+        "max_range_points": 60,           # skip gap/news chop
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -149,11 +172,13 @@ CONTRACT_SPECS = {
         "strategy": "ORB",
         "enabled": True,
         "orb_windows": [5, 15],
-        "max_orb_trades": 15,
-        "orb_cooldown_minutes": 15,
-        "stop_loss_points": 6,
-        "take_profit_points": 12,
+        "max_orb_trades": 6,
+        "orb_cooldown_minutes": 20,
+        "stop_loss_points": 5,
+        "take_profit_points": 10,
         "risk_reward_ratio": 2.0,
+        "min_range_points": 3,
+        "max_range_points": 15,
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -163,12 +188,14 @@ CONTRACT_SPECS = {
         "point_value": 10.00,
         "strategy": "VWAP",
         "enabled": True,
-        "stop_loss_points": 5.0,
-        "take_profit_points": 10.0,
+        "stop_loss_points": 4.0,
+        "take_profit_points": 8.0,
         "risk_reward_ratio": 2.0,
-        "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 8,
+        "vwap_confirmation_candles": 2,   # require 2 bars of cross confirmation
+        "max_vwap_trades_per_direction": 4,
         "vwap_cooldown_minutes": 30,
+        "min_trade_gap_minutes": 5,
+        "max_vwap_distance_pct": 0.005,   # skip signal if price > 0.5% away from VWAP
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -178,12 +205,48 @@ CONTRACT_SPECS = {
         "point_value": 100.00,
         "strategy": "VWAP",
         "enabled": True,
-        "stop_loss_points": 0.20,
-        "take_profit_points": 0.40,
+        "stop_loss_points": 0.18,
+        "take_profit_points": 0.36,
         "risk_reward_ratio": 2.0,
-        "vwap_confirmation_candles": 1,
-        "max_vwap_trades_per_direction": 8,
+        "vwap_confirmation_candles": 2,
+        "max_vwap_trades_per_direction": 4,
         "vwap_cooldown_minutes": 30,
+        "min_trade_gap_minutes": 5,
+        "max_vwap_distance_pct": 0.005,
+    },
+    "SIL": {
+        "name": "Micro Silver (COMEX)",
+        "exchange": "COMEX",
+        "tick_size": 0.005,
+        "tick_value": 1.00,               # 1,000 oz × $0.001 = $1 / $0.005 tick = $5? verify on VPS
+        "point_value": 1_000.00,
+        "strategy": "VWAP",
+        "enabled": True,
+        "stop_loss_points": 0.25,         # $250 risk per contract — sits inside $400 budget
+        "take_profit_points": 0.50,
+        "risk_reward_ratio": 2.0,
+        "vwap_confirmation_candles": 2,
+        "max_vwap_trades_per_direction": 3,
+        "vwap_cooldown_minutes": 30,
+        "min_trade_gap_minutes": 5,
+        "max_vwap_distance_pct": 0.006,
+    },
+    "MNG": {
+        "name": "Micro Henry Hub Natural Gas",
+        "exchange": "NYMEX",
+        "tick_size": 0.005,
+        "tick_value": 1.25,
+        "point_value": 250.00,
+        "strategy": "VWAP",
+        "enabled": True,
+        "stop_loss_points": 0.060,        # $15 risk/contract — safe
+        "take_profit_points": 0.120,
+        "risk_reward_ratio": 2.0,
+        "vwap_confirmation_candles": 2,
+        "max_vwap_trades_per_direction": 3,
+        "vwap_cooldown_minutes": 30,
+        "min_trade_gap_minutes": 5,
+        "max_vwap_distance_pct": 0.008,
     },
     # ─── Mini Contracts (disabled — switched to micros) ──────
     "NQ": {
@@ -303,8 +366,10 @@ CONTRACT_LIQUID_MONTHS = {
     "MCL": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
     # Silver: quarterly-ish (H=Mar, K=May, N=Jul, U=Sep, Z=Dec)
     "SI": ["H", "K", "N", "U", "Z"],
+    "SIL": ["H", "K", "N", "U", "Z"],
     # Natural Gas: every month
     "NG": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
+    "MNG": ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"],
 }
 
 # Month code → month number mapping
@@ -313,6 +378,132 @@ MONTH_CODES = {
     "N": 7, "Q": 8, "U": 9, "V": 10, "X": 11, "Z": 12,
 }
 MONTH_CODE_REVERSE = {v: k for k, v in MONTH_CODES.items()}
+
+
+# ─────────────────────────────────────────────
+# Front-month Contract Resolution
+# ─────────────────────────────────────────────
+# Tradovate's /contract/suggest API can return illiquid "serial" months
+# (e.g. GCH6 — March gold, which is listed but carries almost no volume)
+# and it does not always roll off a contract when First Notice Day passes.
+# These helpers compute the correct front month locally from a calendar so
+# the bot never ends up subscribed to an in-delivery or illiquid contract.
+
+def _add_business_days(d, n):
+    """Shift `d` by `n` business days (Mon–Fri). `n` may be negative."""
+    from datetime import timedelta
+    step = 1 if n >= 0 else -1
+    remaining = abs(n)
+    while remaining > 0:
+        d = d + timedelta(days=step)
+        if d.weekday() < 5:
+            remaining -= 1
+    return d
+
+
+def _last_business_day(year, month):
+    """Return the last business day (Mon–Fri) of a month."""
+    import calendar
+    from datetime import date, timedelta
+    last = calendar.monthrange(year, month)[1]
+    d = date(year, month, last)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
+
+
+def _third_friday(year, month):
+    """Return the third Friday of a month (used for index futures expiry)."""
+    import calendar
+    from datetime import date
+    fridays = [date(year, month, day)
+               for day in range(1, calendar.monthrange(year, month)[1] + 1)
+               if date(year, month, day).weekday() == 4]
+    return fridays[2]
+
+
+def _contract_roll_out_date(base_symbol, year, month):
+    """
+    Return the last calendar date the bot should still be trading the
+    (base_symbol, year, month) contract. After this date the bot must
+    switch to the next liquid contract.
+
+    Accounts for:
+      • Cash-settled equity indices (NQ/ES/MNQ/MES/RTY/YM): third-Friday expiry
+        of the contract month — roll 8 calendar days before expiry.
+      • Physical-delivery metals and natural gas (GC/MGC/SI/SIL/PL/PA/NG/MNG):
+        First Notice Day is the last business day of the month *prior* to
+        the contract month — roll 3 business days before FND.
+      • Crude oil (CL/MCL): last trading day is 3 business days before the
+        25th of the month prior to the contract month — roll 5 business
+        days before that.
+    """
+    from datetime import date, timedelta
+
+    # Cash-settled equity index futures
+    if base_symbol in ("NQ", "ES", "MNQ", "MES", "RTY", "M2K", "YM", "MYM"):
+        return _third_friday(year, month) - timedelta(days=8)
+
+    # Physical-delivery metals & natural gas — First Notice Day drives rollover
+    if base_symbol in ("GC", "MGC", "SI", "SIL", "PL", "PA", "HG", "MHG",
+                       "NG", "MNG"):
+        prior_m = month - 1
+        prior_y = year
+        if prior_m == 0:
+            prior_m = 12
+            prior_y -= 1
+        fnd = _last_business_day(prior_y, prior_m)
+        return _add_business_days(fnd, -3)
+
+    # Crude oil — last trading day is 3 biz days before 25th of prior month
+    if base_symbol in ("CL", "MCL", "RB", "HO"):
+        prior_m = month - 1
+        prior_y = year
+        if prior_m == 0:
+            prior_m = 12
+            prior_y -= 1
+        ref = date(prior_y, prior_m, 25)
+        while ref.weekday() >= 5:
+            ref -= timedelta(days=1)
+        ltd = _add_business_days(ref, -3)
+        return _add_business_days(ltd, -5)
+
+    # Fallback: roll on the last business day before the contract month begins.
+    prior_m = month - 1
+    prior_y = year
+    if prior_m == 0:
+        prior_m = 12
+        prior_y -= 1
+    return _last_business_day(prior_y, prior_m)
+
+
+def get_front_month_contract(base_symbol, today=None):
+    """
+    Compute the correct front-month contract name for `base_symbol` on
+    `today`, restricted to the product's liquid-month schedule and taking
+    First Notice Day / expiry rules into account.
+
+    Returns a contract name like 'GCM6' or None if the symbol is unknown.
+    """
+    from datetime import date
+    if today is None:
+        today = date.today()
+
+    liquid = CONTRACT_LIQUID_MONTHS.get(base_symbol)
+    if not liquid:
+        return None
+
+    # Look up to ~2 years forward. Iterating year-by-year preserves
+    # chronological order within each year's liquid months.
+    for y_offset in range(3):
+        year = today.year + y_offset
+        for mc in liquid:
+            m = MONTH_CODES[mc]
+            roll_out = _contract_roll_out_date(base_symbol, year, m)
+            if today <= roll_out:
+                return f"{base_symbol}{mc}{year % 10}"
+
+    return None
 
 # ─────────────────────────────────────────────
 # Trading Session Times (Eastern Time)
@@ -324,7 +515,13 @@ MARKET_OPEN_ET = "09:30"
 TRADING_START_ET = "09:30"
 
 # Stop placing new trades after this time
-TRADING_CUTOFF_ET = "16:15"
+# Pulled in from 16:15 → 15:45 to avoid the chaotic closing-auction drift.
+TRADING_CUTOFF_ET = "15:45"
+
+# "No-fly zone" for ORB breakouts — midday chop window in ET.
+# During this window ORB signals are suppressed (VWAP strategies still run).
+ORB_BLACKOUT_START_ET = "10:30"
+ORB_BLACKOUT_END_ET = "13:30"
 
 # Force-close everything before this time
 FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
@@ -332,9 +529,13 @@ FORCE_CLOSE_ET = ACTIVE_CHALLENGE["close_by_et"]
 # ─────────────────────────────────────────────
 # Position Sizing
 # ─────────────────────────────────────────────
-# Max risk per trade as % of daily loss budget
-# Lowered to 1.0% — tighter risk per trade, more trades allowed
-RISK_PER_TRADE_PCT = 0.010  # 1.0% of account per trade
+# Max risk per trade as % of account.
+# 0.8% of $50K = $400/trade → 2 clean R losses before the daily brake fires.
+RISK_PER_TRADE_PCT = 0.008
+
+# Hard ceiling on contracts per single trade, regardless of account size.
+# Prevents a buggy budget calc from stacking dozens of contracts.
+MAX_CONTRACTS_PER_TRADE = 5
 
 # ─────────────────────────────────────────────
 # Logging

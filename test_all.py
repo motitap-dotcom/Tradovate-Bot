@@ -548,8 +548,9 @@ def test_orb_cooldown():
 @test("ORB: max trades cap respected")
 def test_orb_max_trades():
     from strategies import ORBStrategy
+    import config
     strategy = ORBStrategy("MNQ")
-    assert strategy.max_trades == 2  # Default from config
+    assert strategy.max_trades == config.CONTRACT_SPECS["MNQ"]["max_orb_trades"]
 
 
 @test("VWAP: running VWAP calculation")
@@ -571,11 +572,12 @@ def test_vwap_calculation():
 def test_vwap_long_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1  # test a single-bar confirmation
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Build initial VWAP around 2000 — feed enough candles through on_price
     # to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price below VWAP
@@ -591,10 +593,11 @@ def test_vwap_long_crossover():
 def test_vwap_short_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price above VWAP
@@ -610,10 +613,11 @@ def test_vwap_short_crossover():
 def test_vwap_cooldown():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
+    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(6):
+    for i in range(12):
         strat.on_price(2000, 2001, 1999, 100)
 
     # First long
@@ -987,7 +991,11 @@ def test_e2e_nq_orb():
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("NQ")
+    strategy = ORBStrategy("MNQ")
+    # Synthetic random walk isn't guaranteed to produce a range that clears
+    # the production min_range filter — relax it for the simulation.
+    strategy.min_range_points = 0.0
+    strategy.max_range_points = float("inf")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -1000,19 +1008,20 @@ def test_e2e_nq_orb():
     for minute in range(360):  # 6 hours
         t = datetime(2026, 2, 23, 9, 30, tzinfo=ET) + timedelta(minutes=minute)
 
-        # Price random walk
-        base_price += random.gauss(0, 2)
-        high = base_price + abs(random.gauss(0, 3))
-        low = base_price - abs(random.gauss(0, 3))
+        # Price random walk — larger step so the ORB range is meaningful
+        base_price += random.gauss(0, 5)
+        high = base_price + abs(random.gauss(0, 6))
+        low = base_price - abs(random.gauss(0, 6))
 
         signal = strategy.on_price(base_price, t, high, low)
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("NQ")
+                qty = rm.calculate_position_size("MNQ")
                 if qty > 0:
                     signal.qty = qty
-                    rm.register_open(qty)
+                    rm.register_open(qty, symbol="MNQ",
+                                     direction=signal.direction.value)
                     signals.append(signal)
 
     assert len(signals) > 0, "Should generate at least 1 signal in 6 hours"
@@ -1144,51 +1153,67 @@ def test_rollover_unknown():
     assert result is None
 
 
-@test("Date-based rollover triggers when contract expires within threshold")
-def test_date_based_rollover():
+@test("Calendar rollover switches to new front-month when out of date")
+def test_calendar_rollover_triggers():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
-    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
     bot.contract_map = {"NQ": "NQH6"}
-
-    # Contract expires in 5 days (within 8-day threshold)
-    expiry = (date.today() + timedelta(days=5)).isoformat()
-    bot.api.get_contract_maturity.return_value = expiry
     bot.api.find_contract.return_value = {"id": 999, "name": "NQM6"}
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now:
+    with patch("bot.now_et") as mock_now, \
+         patch("config.get_front_month_contract", return_value="NQM6"):
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
     assert bot.contract_map["NQ"] == "NQM6", f"Expected NQM6, got {bot.contract_map['NQ']}"
 
 
-@test("No rollover when expiry is far away")
-def test_no_rollover_far_expiry():
+@test("Calendar rollover: no switch when calendar front matches current contract")
+def test_calendar_rollover_no_switch():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
-    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
-    bot.contract_map = {"NQ": "NQH6"}
-
-    # Contract expires in 20 days (outside 8-day threshold)
-    expiry = (date.today() + timedelta(days=20)).isoformat()
-    bot.api.get_contract_maturity.return_value = expiry
+    bot.contract_map = {"NQ": "NQM6"}
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now:
+    with patch("bot.now_et") as mock_now, \
+         patch("config.get_front_month_contract", return_value="NQM6"):
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
-    assert bot.contract_map["NQ"] == "NQH6", "Should NOT have rolled over"
+    assert bot.contract_map["NQ"] == "NQM6", "Should NOT have rolled over"
+
+
+@test("Gold rollover: calendar skips illiquid serial month from suggest API")
+def test_calendar_rollover_ignores_serial_month():
+    """If the calendar says we're fine but Tradovate's suggest API points at
+    an illiquid serial month (e.g. GCH6 for gold), the bot must NOT follow it."""
+    from bot import TradovateBot
+    from unittest.mock import MagicMock, patch
+
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.md_stream = None
+    bot.contract_map = {"GC": "GCM6"}
+    # Suggest returns GCH6 (March gold — not a liquid month for gold)
+    bot.api.suggest_contract.return_value = {"id": 123, "name": "GCH6"}
+
+    with patch("bot.now_et") as mock_now, \
+         patch("config.get_front_month_contract", return_value="GCM6"):
+        mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
+        bot._check_contract_rollover()
+
+    assert bot.contract_map["GC"] == "GCM6", (
+        f"Must not switch to illiquid serial month; got {bot.contract_map['GC']}"
+    )
 
 
 test_rollover_nq_h_to_m()
@@ -1198,8 +1223,147 @@ test_rollover_gc_year_wrap()
 test_rollover_cl_monthly()
 test_rollover_es_u_to_z()
 test_rollover_unknown()
-test_date_based_rollover()
-test_no_rollover_far_expiry()
+test_calendar_rollover_triggers()
+test_calendar_rollover_no_switch()
+test_calendar_rollover_ignores_serial_month()
+
+
+# ─────────────────────────────────────────────
+# Calendar-driven front-month tests
+# ─────────────────────────────────────────────
+# Verify config.get_front_month_contract() returns the correct front-month
+# for each product at representative dates, including the specific bug that
+# prompted this fix: on 2026-04-13 gold should be GCM6 (June), NOT GCJ6
+# (April), because FND for April gold was 2026-03-31.
+
+print("\n--- Calendar front-month ---")
+
+
+@test("Gold front-month on 2026-04-13 is GCM6 (past April FND)")
+def test_gold_front_month_april_13():
+    from datetime import date
+    result = config.get_front_month_contract("GC", date(2026, 4, 13))
+    assert result == "GCM6", f"Expected GCM6, got {result}"
+
+
+@test("Micro gold: MGC front-month on 2026-04-13 is MGCM6")
+def test_mgc_front_month_april_13():
+    from datetime import date
+    result = config.get_front_month_contract("MGC", date(2026, 4, 13))
+    assert result == "MGCM6", f"Expected MGCM6, got {result}"
+
+
+@test("Gold front-month on 2026-03-20 is still GCJ6 (before FND)")
+def test_gold_front_month_before_fnd():
+    from datetime import date
+    # April FND = last biz day of March 2026 = Mar 31 (Tue).
+    # Roll-out = 3 biz days before = Mar 26 (Thu).
+    # Mar 20 is still before roll-out → April contract is front month.
+    result = config.get_front_month_contract("GC", date(2026, 3, 20))
+    assert result == "GCJ6", f"Expected GCJ6, got {result}"
+
+
+@test("Gold front-month on 2026-03-27 has rolled to GCM6 (past FND roll-out)")
+def test_gold_front_month_at_rollover():
+    from datetime import date
+    # Mar 26 is roll-out day (last valid), Mar 27 → GCM6
+    result = config.get_front_month_contract("GC", date(2026, 3, 27))
+    assert result == "GCM6", f"Expected GCM6, got {result}"
+
+
+@test("Gold skips illiquid March contract — never returns GCH6")
+def test_gold_never_serial_month():
+    from datetime import date, timedelta
+    for day_offset in range(0, 400, 7):
+        d = date(2026, 1, 1) + timedelta(days=day_offset)
+        result = config.get_front_month_contract("GC", d)
+        assert result is not None
+        month_code = result[2]  # GC<code><year>
+        assert month_code in ("G", "J", "M", "Q", "V", "Z"), (
+            f"Got non-liquid month {result} for date {d}"
+        )
+
+
+@test("MNQ front-month on 2026-04-13 is MNQM6 (past H6 expiry)")
+def test_mnq_front_month_april():
+    from datetime import date
+    result = config.get_front_month_contract("MNQ", date(2026, 4, 13))
+    assert result == "MNQM6", f"Expected MNQM6, got {result}"
+
+
+@test("NQ front-month 8 days before 3rd Friday rolls to next quarter")
+def test_nq_rollout_timing():
+    from datetime import date
+    # NQM6 3rd Friday = 2026-06-19. Roll-out = 2026-06-11.
+    # On Jun 11: still NQM6. On Jun 12: NQU6.
+    assert config.get_front_month_contract("NQ", date(2026, 6, 11)) == "NQM6"
+    assert config.get_front_month_contract("NQ", date(2026, 6, 12)) == "NQU6"
+
+
+@test("MCL front-month on 2026-04-13 is MCLK6 (May, LTD=Apr 21)")
+def test_mcl_front_month_april():
+    from datetime import date
+    result = config.get_front_month_contract("MCL", date(2026, 4, 13))
+    assert result == "MCLK6", f"Expected MCLK6, got {result}"
+
+
+@test("CL rolls to June after mid-April")
+def test_cl_rollover_timing():
+    from datetime import date
+    # Apr 15 is past roll-out (Apr 14) → next contract CLM6.
+    result = config.get_front_month_contract("CL", date(2026, 4, 15))
+    assert result == "CLM6", f"Expected CLM6, got {result}"
+
+
+@test("SIL front-month on 2026-04-13 is SILK6 (silver May)")
+def test_sil_front_month_april():
+    from datetime import date
+    # Silver liquid months are H, K, N, U, Z. Silver April (J) is NOT listed,
+    # so after March (H) expires, next is K (May). FND for May silver =
+    # last biz day of Apr 2026 = Apr 30 (Thu). Roll-out = Apr 27 (Mon).
+    # Apr 13 <= Apr 27 → SILK6.
+    result = config.get_front_month_contract("SIL", date(2026, 4, 13))
+    assert result == "SILK6", f"Expected SILK6, got {result}"
+
+
+@test("MNG front-month on 2026-04-13 is MNGK6 (nat gas May)")
+def test_mng_front_month_april():
+    from datetime import date
+    # MNG rolls every month (FND = last biz day of prior month for metals pattern).
+    # FND for May nat gas ≈ last biz day of Apr 2026 = Apr 30. Roll-out = Apr 27.
+    # Apr 13 <= Apr 27 → MNGK6.
+    result = config.get_front_month_contract("MNG", date(2026, 4, 13))
+    assert result == "MNGK6", f"Expected MNGK6, got {result}"
+
+
+@test("Year-wrap: gold on 2026-12-28 points at 2027")
+def test_gold_year_wrap():
+    from datetime import date
+    # All 2026 liquid golds past. GCG7 (Feb 2027) FND = Jan 30 2027 (Fri),
+    # roll-out = Jan 27 (Tue). Dec 28 2026 <= Jan 27 2027 → GCG7.
+    result = config.get_front_month_contract("GC", date(2026, 12, 28))
+    assert result == "GCG7", f"Expected GCG7, got {result}"
+
+
+@test("Unknown symbol returns None")
+def test_front_month_unknown_symbol():
+    from datetime import date
+    assert config.get_front_month_contract("FAKE", date(2026, 4, 13)) is None
+
+
+test_gold_front_month_april_13()
+test_mgc_front_month_april_13()
+test_gold_front_month_before_fnd()
+test_gold_front_month_at_rollover()
+test_gold_never_serial_month()
+test_mnq_front_month_april()
+test_nq_rollout_timing()
+test_mcl_front_month_april()
+test_cl_rollover_timing()
+test_sil_front_month_april()
+test_mng_front_month_april()
+test_gold_year_wrap()
+test_front_month_unknown_symbol()
 
 
 # ─────────────────────────────────────────────
@@ -1470,13 +1634,13 @@ def test_tuner_widen_stops():
         tuner = AutoTuner(journal=j)
 
         # 8 SL hits, 2 TP hits = 80% SL rate
-        trades = _make_closed_trades("NQ", 8, 2)
+        trades = _make_closed_trades("MNQ", 8, 2)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
         # Should have proposed widening
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1, f"Expected 1 SL adjustment, got {len(sl_adj)}"
         assert sl_adj[0]["new_value"] > old_sl, "New SL should be wider (larger)"
     finally:
@@ -1494,12 +1658,12 @@ def test_tuner_tighten_stops():
         tuner = AutoTuner(journal=j)
 
         # 1 SL hit, 6 TP hits = ~14% SL rate
-        trades = _make_closed_trades("NQ", 1, 6)
+        trades = _make_closed_trades("MNQ", 1, 6)
 
-        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
         assert len(sl_adj) == 1
         assert sl_adj[0]["new_value"] < old_sl, "New SL should be tighter (smaller)"
     finally:
@@ -1517,12 +1681,12 @@ def test_tuner_widen_tp():
         tuner = AutoTuner(journal=j)
 
         # High R-multiple trades
-        trades = _make_closed_trades("NQ", 1, 4, r_mult=2.0)
+        trades = _make_closed_trades("MNQ", 1, 4, r_mult=2.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] > old_tp, "TP should be widened for high R"
     finally:
@@ -1541,12 +1705,12 @@ def test_tuner_tighten_tp():
 
         # Negative R-multiple trades — all stop_loss exits (no TP trades)
         # so we reach the avg_r < -0.5 branch (not blocked by tp_trades > 0)
-        trades = _make_closed_trades("NQ", 4, 0, r_mult=-1.0)
+        trades = _make_closed_trades("MNQ", 4, 0, r_mult=-1.0)
 
-        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] < old_tp, "TP should be tightened for negative R"
     finally:
@@ -1822,12 +1986,12 @@ def test_bot_execute_signal_dry_run():
 
     bot = TradovateBot(dry_run=True)
     bot.api = MagicMock()
-    bot.contract_map = {"NQ": "NQH6"}
-    bot.strategies = {"NQ": MagicMock()}
+    bot.contract_map = {"MNQ": "MNQH6"}
+    bot.strategies = {"MNQ": MagicMock()}
     bot._last_order_time = 0  # No cooldown
 
     signal = TradeSignal(
-        symbol="NQ", direction=Direction.LONG,
+        symbol="MNQ", direction=Direction.LONG,
         entry_price=21000, stop_loss=20975, take_profit=21050,
         qty=1, reason="test breakout",
     )
@@ -1909,7 +2073,9 @@ def test_bot_execute_signal_success():
     bot._execute_signal(signal)
 
     bot.api.place_bracket_order.assert_called_once()
-    bot.risk.register_open.assert_called_once_with(2)
+    bot.risk.register_open.assert_called_once_with(
+        2, symbol="NQ", direction="Buy",
+    )
     bot.journal.record_entry.assert_called_once()
 
 
@@ -2609,6 +2775,640 @@ test_journal_streaks()
 test_tuner_cooldowns()
 test_tuner_mae_stops()
 test_tuner_mfe_targets()
+
+
+# ─────────────────────────────────────────────
+# 18. AUTO-TUNER SHADOW PIPELINE TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("18. AUTO-TUNER SHADOW PIPELINE TESTS")
+print("=" * 60)
+
+
+def _run_tuner_with_trades(trades_spec, tmp_root):
+    """Helper: create a journal + tuner with an isolated pending/log dir."""
+    import auto_tuner
+    from auto_tuner import AutoTuner
+    from trade_journal import TradeJournal
+
+    journal_path = os.path.join(tmp_root, "journal.json")
+    # Seed journal file directly
+    with open(journal_path, "w") as f:
+        json.dump({"trades": trades_spec}, f)
+
+    # Redirect tuner persistence to the temp dir
+    auto_tuner.TUNER_LOG = os.path.join(tmp_root, "tuner_log.json")
+    auto_tuner.TUNER_PENDING = os.path.join(tmp_root, "tuner_pending.json")
+
+    j = TradeJournal(filepath=journal_path)
+    return AutoTuner(j)
+
+
+@test("AutoTuner: shadow cycle requires 2 confirmations before applying")
+def test_tuner_shadow_double_confirm():
+    import auto_tuner
+    from auto_tuner import AutoTuner
+    import tempfile, shutil
+
+    tmp_root = tempfile.mkdtemp()
+    # Save & restore globals
+    orig_log = auto_tuner.TUNER_LOG
+    orig_pending = auto_tuner.TUNER_PENDING
+    orig_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
+    try:
+        # 80% SL hit rate — proposes widen
+        trades = _make_closed_trades("MNQ", 16, 4)
+        tuner = _run_tuner_with_trades(trades, tmp_root)
+
+        applied1 = tuner.run(min_trades=5)
+        assert applied1 == [], (
+            f"First cycle must only stage, got applied={applied1}"
+        )
+        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] == orig_sl, (
+            "First cycle should NOT mutate config"
+        )
+        assert os.path.exists(auto_tuner.TUNER_PENDING)
+        with open(auto_tuner.TUNER_PENDING) as f:
+            pending = json.load(f)
+        assert "MNQ::stop_loss_points" in pending, (
+            f"Expected pending entry, got keys={list(pending)}"
+        )
+
+        # Second cycle: same direction → should apply.
+        tuner2 = _run_tuner_with_trades(trades, tmp_root)
+        applied2 = tuner2.run(min_trades=5)
+        sl_applied = [a for a in applied2
+                      if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
+        assert len(sl_applied) == 1, (
+            f"Second cycle should apply widen, got {applied2}"
+        )
+        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] > orig_sl, (
+            "Config should be updated on second cycle"
+        )
+        # pending entry should have been cleared
+        with open(auto_tuner.TUNER_PENDING) as f:
+            pending2 = json.load(f)
+        assert "MNQ::stop_loss_points" not in pending2
+    finally:
+        # Restore everything
+        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = orig_sl
+        auto_tuner.TUNER_LOG = orig_log
+        auto_tuner.TUNER_PENDING = orig_pending
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+@test("AutoTuner: rollback after 3 losing days for a tuned symbol")
+def test_tuner_rollback_after_losing_days():
+    import auto_tuner
+    from auto_tuner import AutoTuner
+    from datetime import date, timedelta
+    import tempfile, shutil
+
+    tmp_root = tempfile.mkdtemp()
+    orig_log = auto_tuner.TUNER_LOG
+    orig_pending = auto_tuner.TUNER_PENDING
+    orig_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
+    try:
+        auto_tuner.TUNER_LOG = os.path.join(tmp_root, "tuner_log.json")
+        auto_tuner.TUNER_PENDING = os.path.join(tmp_root, "tuner_pending.json")
+
+        # Seed an applied change 5 days ago
+        applied_date = date.today() - timedelta(days=5)
+        stale_apply = {
+            "param": "stop_loss_points",
+            "symbol": "MNQ",
+            "old_value": orig_sl,
+            "new_value": orig_sl * 1.15,
+            "reason": "test apply",
+            "timestamp": datetime(
+                applied_date.year, applied_date.month, applied_date.day,
+                tzinfo=timezone.utc,
+            ).isoformat(),
+            "applied": True,
+        }
+        with open(auto_tuner.TUNER_LOG, "w") as f:
+            json.dump([stale_apply], f)
+
+        # Live config reflects the apply
+        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = stale_apply["new_value"]
+
+        # 3 consecutive losing days for MNQ after the apply
+        losing_trades = []
+        for days_ago in (0, 1, 2):
+            d = (date.today() - timedelta(days=days_ago)).isoformat()
+            losing_trades.append({
+                "symbol": "MNQ", "status": "closed", "pnl": -300,
+                "exit_reason": "stop_loss", "strategy": "ORB",
+                "entry_hour_et": 10, "date": d, "r_multiple": -1.0,
+            })
+        # Enough total trades to clear min_trades gate
+        losing_trades.extend(_make_closed_trades("MES", 8, 12))
+
+        tuner = _run_tuner_with_trades(losing_trades, tmp_root)
+        tuner.run(min_trades=5)
+
+        # Rollback should have restored the original SL value
+        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] == orig_sl, (
+            f"Expected rollback to {orig_sl}, got "
+            f"{config.CONTRACT_SPECS['MNQ']['stop_loss_points']}"
+        )
+        assert any(
+            r.get("rollback_of") == stale_apply["timestamp"]
+            for r in tuner.rollbacks
+        ), f"Expected rollback record, got {tuner.rollbacks}"
+    finally:
+        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = orig_sl
+        auto_tuner.TUNER_LOG = orig_log
+        auto_tuner.TUNER_PENDING = orig_pending
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+test_tuner_shadow_double_confirm()
+test_tuner_rollback_after_losing_days()
+
+
+# ─────────────────────────────────────────────
+# 19. ALERT WEBHOOK TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("19. ALERT WEBHOOK TESTS")
+print("=" * 60)
+
+
+@test("Alerts: noop when ALERT_WEBHOOK_URL is unset")
+def test_alerts_noop_without_url():
+    import alerts
+    alerts.reset_dedupe()
+    orig = os.environ.pop("ALERT_WEBHOOK_URL", None)
+    try:
+        with patch("alerts.requests") as mock_req:
+            result = alerts.send("WARNING", "test", "body")
+        assert result is False
+        mock_req.post.assert_not_called()
+    finally:
+        if orig is not None:
+            os.environ["ALERT_WEBHOOK_URL"] = orig
+
+
+@test("Alerts: telegram POSTs to webhook with chat_id")
+def test_alerts_telegram_post():
+    import alerts
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.return_value.status_code = 200
+            result = alerts.send("CRITICAL", "lock", "reason=brake")
+        assert result is True
+        mock_req.post.assert_called_once()
+        call = mock_req.post.call_args
+        assert "telegram.org" in call.args[0]
+        payload = call.kwargs["json"]
+        assert payload["chat_id"] == "12345"
+        assert "CRITICAL" in payload["text"]
+        assert "reason=brake" in payload["text"]
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+@test("Alerts: dedupe suppresses same key within 5 min window")
+def test_alerts_dedupe():
+    import alerts
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.return_value.status_code = 200
+            a = alerts.send("CRITICAL", "lock", "first")
+            b = alerts.send("CRITICAL", "lock", "second")
+        assert a is True and b is False
+        assert mock_req.post.call_count == 1
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+@test("Alerts: network failure never raises")
+def test_alerts_swallow_exception():
+    import alerts
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.side_effect = Exception("connection refused")
+            result = alerts.send("WARNING", "net_fail", "body")
+        assert result is False  # logged, not raised
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+@test("Alerts: risk_manager _lock triggers an alert")
+def test_alerts_risk_manager_lock():
+    import alerts
+    from risk_manager import RiskManager
+    alerts.reset_dedupe()
+    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
+    os.environ["ALERT_TRANSPORT"] = "telegram"
+    os.environ["TELEGRAM_CHAT_ID"] = "12345"
+    try:
+        with patch("alerts.requests") as mock_req:
+            mock_req.post.return_value.status_code = 200
+            rm = RiskManager()
+            rm._lock("test breach")
+        assert mock_req.post.call_count == 1
+        text = mock_req.post.call_args.kwargs["json"]["text"]
+        assert "Trading locked" in text
+        assert "test breach" in text
+    finally:
+        os.environ.pop("ALERT_WEBHOOK_URL", None)
+        os.environ.pop("ALERT_TRANSPORT", None)
+        os.environ.pop("TELEGRAM_CHAT_ID", None)
+
+
+test_alerts_noop_without_url()
+test_alerts_telegram_post()
+test_alerts_dedupe()
+test_alerts_swallow_exception()
+test_alerts_risk_manager_lock()
+
+
+# ─────────────────────────────────────────────
+# 20. MARKET DATA CIRCUIT BREAKER TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("20. MARKET DATA CIRCUIT BREAKER TESTS")
+print("=" * 60)
+
+
+def _fresh_stream():
+    from tradovate_api import MarketDataStream
+    return MarketDataStream.__new__(MarketDataStream)
+
+
+def _init_circuit_state(stream):
+    """Minimal init — only the fields _record_disconnect/healthy touch."""
+    from collections import deque
+    stream._disconnect_times = deque()
+    stream._circuit_open_until = 0.0
+
+
+@test("Circuit: healthy when no disconnects recorded")
+def test_circuit_healthy_baseline():
+    from tradovate_api import MarketDataStream
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    assert stream.market_data_healthy(now=1000.0) is True
+
+
+@test("Circuit: 5 disconnects inside 60s open the circuit")
+def test_circuit_opens_on_burst():
+    from tradovate_api import MarketDataStream
+    import alerts
+    alerts.reset_dedupe()
+    os.environ.pop("ALERT_WEBHOOK_URL", None)  # alerts noop
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    t0 = 10_000.0
+    for i in range(5):
+        stream._record_disconnect(t0 + i * 2)  # 0,2,4,6,8 → 5 in 8s
+    assert stream.market_data_healthy(now=t0 + 10) is False
+    # Open for CIRCUIT_COOLDOWN_SECONDS from the last disconnect
+    assert stream._circuit_open_until == t0 + 8 + MarketDataStream.CIRCUIT_COOLDOWN_SECONDS
+
+
+@test("Circuit: closes again after cooldown expires")
+def test_circuit_closes_after_cooldown():
+    from tradovate_api import MarketDataStream
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    t0 = 10_000.0
+    for i in range(5):
+        stream._record_disconnect(t0 + i)
+    open_until = stream._circuit_open_until
+    # Just before cooldown end — still open
+    assert stream.market_data_healthy(now=open_until - 1) is False
+    # After cooldown — closed
+    assert stream.market_data_healthy(now=open_until + 1) is True
+
+
+@test("Circuit: disconnects older than window are dropped")
+def test_circuit_window_sliding():
+    from tradovate_api import MarketDataStream
+    stream = _fresh_stream()
+    _init_circuit_state(stream)
+    t0 = 10_000.0
+    # 4 disconnects, then a 5th one far in the future — only 1 in the
+    # rolling window, no circuit open
+    for i in range(4):
+        stream._record_disconnect(t0 + i)
+    stream._record_disconnect(t0 + MarketDataStream.CIRCUIT_WINDOW_SECONDS + 10)
+    assert stream.market_data_healthy(
+        now=t0 + MarketDataStream.CIRCUIT_WINDOW_SECONDS + 11,
+    ) is True
+    assert len(stream._disconnect_times) == 1
+
+
+test_circuit_healthy_baseline()
+test_circuit_opens_on_burst()
+test_circuit_closes_after_cooldown()
+test_circuit_window_sliding()
+
+
+# ─────────────────────────────────────────────
+# 21. NEWS BLACKOUT CALENDAR TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("21. NEWS BLACKOUT CALENDAR TESTS")
+print("=" * 60)
+
+
+_ET_TZ = ZoneInfo("America/New_York")
+
+
+@test("News: empty events list never blocks")
+def test_news_empty():
+    import news_calendar
+    now = datetime(2026, 4, 13, 10, 0, tzinfo=_ET_TZ)
+    blocked, _ = news_calendar.in_blackout("MNQ", now, events=[])
+    assert blocked is False
+
+
+@test("News: weekly EIA crude event blocks MCL on Wednesday 10:25-10:45")
+def test_news_eia_crude():
+    import news_calendar
+    events = [{
+        "name": "EIA Crude",
+        "cadence": "weekly",
+        "weekday": "wednesday",
+        "time_et": "10:30",
+        "window_minutes": 15,
+        "symbols": ["MCL", "CL"],
+    }]
+    # 2026-04-15 is Wednesday
+    wed_inside = datetime(2026, 4, 15, 10, 30, tzinfo=_ET_TZ)
+    wed_before = datetime(2026, 4, 15, 10, 14, tzinfo=_ET_TZ)
+    wed_after = datetime(2026, 4, 15, 10, 46, tzinfo=_ET_TZ)
+    thursday = datetime(2026, 4, 16, 10, 30, tzinfo=_ET_TZ)
+
+    assert news_calendar.in_blackout("MCL", wed_inside, events=events)[0] is True
+    assert news_calendar.in_blackout("MCL", wed_before, events=events)[0] is False
+    assert news_calendar.in_blackout("MCL", wed_after, events=events)[0] is False
+    assert news_calendar.in_blackout("MCL", thursday, events=events)[0] is False
+    # Other symbols not affected
+    assert news_calendar.in_blackout("MNQ", wed_inside, events=events)[0] is False
+
+
+@test("News: global event (empty symbols) blocks any symbol")
+def test_news_global_event():
+    import news_calendar
+    events = [{
+        "name": "NFP",
+        "cadence": "monthly_nth_weekday",
+        "week": 1,
+        "weekday": "friday",
+        "time_et": "08:30",
+        "window_minutes": 30,
+        "symbols": [],
+    }]
+    # First Friday of May 2026 = 2026-05-01
+    first_friday = datetime(2026, 5, 1, 8, 35, tzinfo=_ET_TZ)
+    second_friday = datetime(2026, 5, 8, 8, 35, tzinfo=_ET_TZ)
+
+    assert news_calendar.in_blackout("MNQ", first_friday, events=events)[0] is True
+    assert news_calendar.in_blackout("MCL", first_friday, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", second_friday, events=events)[0] is False
+
+
+@test("News: monthly_day_approx CPI tolerates ±3 days around target")
+def test_news_cpi_approx():
+    import news_calendar
+    events = [{
+        "name": "CPI",
+        "cadence": "monthly_day_approx",
+        "day": 12,
+        "weekday": "tuesday,wednesday",
+        "time_et": "08:30",
+        "window_minutes": 15,
+        "symbols": [],
+    }]
+    # 2026-05-12 is Tuesday
+    tuesday_12 = datetime(2026, 5, 12, 8, 35, tzinfo=_ET_TZ)
+    wednesday_13 = datetime(2026, 5, 13, 8, 35, tzinfo=_ET_TZ)
+    friday_15 = datetime(2026, 5, 15, 8, 35, tzinfo=_ET_TZ)  # outside weekday list
+    sunday_17 = datetime(2026, 5, 17, 8, 35, tzinfo=_ET_TZ)  # outside day range
+
+    assert news_calendar.in_blackout("MNQ", tuesday_12, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", wednesday_13, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", friday_15, events=events)[0] is False
+    assert news_calendar.in_blackout("MNQ", sunday_17, events=events)[0] is False
+
+
+@test("News: FOMC schedule blocks exactly on listed dates")
+def test_news_fomc():
+    import news_calendar
+    events = [{
+        "name": "FOMC",
+        "cadence": "fomc_schedule",
+        "time_et": "14:00",
+        "window_minutes": 30,
+        "symbols": [],
+    }]
+    # 2026-01-28 is in the hardcoded FOMC list
+    fomc_day = datetime(2026, 1, 28, 14, 5, tzinfo=_ET_TZ)
+    non_fomc = datetime(2026, 1, 27, 14, 5, tzinfo=_ET_TZ)
+    assert news_calendar.in_blackout("MNQ", fomc_day, events=events)[0] is True
+    assert news_calendar.in_blackout("MNQ", non_fomc, events=events)[0] is False
+
+
+@test("News: shipped calendar file loads and produces a reasonable result")
+def test_news_shipped_calendar():
+    import news_calendar
+    events = news_calendar._load_events()
+    assert len(events) > 0, "Shipped calendar should contain events"
+    # A random Sunday at 3am: nothing should block
+    sunday = datetime(2026, 4, 19, 3, 0, tzinfo=_ET_TZ)
+    blocked, _ = news_calendar.in_blackout("MNQ", sunday, events=events)
+    assert blocked is False
+
+
+test_news_empty()
+test_news_eia_crude()
+test_news_global_event()
+test_news_cpi_approx()
+test_news_fomc()
+test_news_shipped_calendar()
+
+
+# ─────────────────────────────────────────────
+# 22. SESSION BUCKET + SLIPPAGE TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("22. SESSION BUCKET + SLIPPAGE TESTS")
+print("=" * 60)
+
+
+@test("Journal: _session_bucket_for maps ET clock times to correct buckets")
+def test_session_bucket_for():
+    from trade_journal import _session_bucket_for
+    assert _session_bucket_for(9, 30) == "pre_open"
+    assert _session_bucket_for(9, 59) == "pre_open"
+    assert _session_bucket_for(10, 0) == "morning"
+    assert _session_bucket_for(11, 29) == "morning"
+    assert _session_bucket_for(11, 30) == "midday"
+    assert _session_bucket_for(13, 59) == "midday"
+    assert _session_bucket_for(14, 0) == "afternoon"
+    assert _session_bucket_for(15, 44) == "afternoon"
+    assert _session_bucket_for(15, 45) == "off_session"
+    assert _session_bucket_for(8, 0) == "off_session"
+    assert _session_bucket_for(17, 30) == "off_session"
+
+
+@test("Journal: record_entry stamps expected_fill and session_bucket")
+def test_journal_expected_fill():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        tid = j.record_entry(
+            "MNQ", "Buy", 21000.25, 1, "ORB", "breakout",
+            stop_loss=20990, take_profit=21020.5,
+            expected_fill=21000.0,
+        )
+        t = [x for x in j.trades if x["id"] == tid][0]
+        assert t["expected_fill"] == 21000.0
+        assert "session_bucket" in t
+        assert t["session_bucket"] in {
+            "pre_open", "morning", "midday", "afternoon", "off_session",
+        }
+        assert t["actual_fill"] is None
+        assert t["slippage_points"] is None
+    finally:
+        os.unlink(path)
+
+
+@test("Journal: set_actual_fill computes signed slippage")
+def test_journal_set_actual_fill():
+    from trade_journal import TradeJournal
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        # Long paid a point more than expected → slippage = +1.0 (worse)
+        tid_long = j.record_entry(
+            "MNQ", "Buy", 21000, 1, "ORB", "r", expected_fill=21000.0,
+        )
+        slip_long = j.set_actual_fill(tid_long, 21001.0)
+        assert slip_long == 1.0
+
+        # Short got 0.5 less than expected → slippage = +0.5 (worse)
+        tid_short = j.record_entry(
+            "MES", "Sell", 5000, 1, "ORB", "r", expected_fill=5000.0,
+        )
+        slip_short = j.set_actual_fill(tid_short, 4999.5)
+        assert slip_short == 0.5
+
+        # Long got 0.25 better fill → slippage = -0.25 (better than expected)
+        tid_better = j.record_entry(
+            "MNQ", "Buy", 21000, 1, "ORB", "r", expected_fill=21000.0,
+        )
+        slip_better = j.set_actual_fill(tid_better, 20999.75)
+        assert slip_better == -0.25
+    finally:
+        os.unlink(path)
+
+
+@test("Learner: session bucket + slippage analytics in parameter_analysis")
+def test_learner_session_analytics():
+    from trade_journal import TradeJournal
+    from continuous_learner import ContinuousLearner
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        path = f.name
+    try:
+        j = TradeJournal(filepath=path)
+        # Seed 5 closed MNQ trades across two session buckets with known slippage
+        seed = [
+            # morning — profitable
+            {"id": f"MNQ_{i}", "symbol": "MNQ", "direction": "Buy",
+             "entry_price": 21000, "expected_fill": 21000,
+             "actual_fill": 21000.25,
+             "slippage_points": 0.25,
+             "qty": 1, "strategy": "ORBStrategy", "reason": "x",
+             "stop_loss": 20990, "take_profit": 21020,
+             "entry_time": "2026-04-13T14:30:00+00:00",
+             "entry_hour_et": 10, "entry_minute_et": 30,
+             "session_bucket": "morning",
+             "entry_day_of_week": "Monday",
+             "date": "2026-04-13",
+             "exit_price": 21020, "pnl": 40, "exit_reason": "take_profit",
+             "exit_time": "2026-04-13T14:45:00+00:00", "status": "closed",
+             "r_multiple": 2.0, "duration_minutes": 15,
+             "slippage_entry": 0.25, "mae_points": -2, "mfe_points": 22}
+            for i in range(3)
+        ] + [
+            # afternoon — losing
+            {"id": f"MNQ_A{i}", "symbol": "MNQ", "direction": "Sell",
+             "entry_price": 21000, "expected_fill": 21000,
+             "actual_fill": 20999.50,
+             "slippage_points": 0.50,
+             "qty": 1, "strategy": "ORBStrategy", "reason": "x",
+             "stop_loss": 21010, "take_profit": 20980,
+             "entry_time": "2026-04-13T19:15:00+00:00",
+             "entry_hour_et": 15, "entry_minute_et": 15,
+             "session_bucket": "afternoon",
+             "entry_day_of_week": "Monday",
+             "date": "2026-04-13",
+             "exit_price": 21010, "pnl": -20, "exit_reason": "stop_loss",
+             "exit_time": "2026-04-13T19:30:00+00:00", "status": "closed",
+             "r_multiple": -1.0, "duration_minutes": 15,
+             "slippage_entry": 0.50, "mae_points": -10, "mfe_points": 2}
+            for i in range(2)
+        ]
+        j.trades = seed
+        j._save()
+
+        learner = ContinuousLearner(journal=j)
+        closed = j._closed_trades()
+        analysis = learner._analyze_all_parameters(closed)
+
+        assert "MNQ" in analysis
+        mnq = analysis["MNQ"]
+        assert "session_bucket" in mnq
+        assert "morning" in mnq["session_bucket"]
+        assert "afternoon" in mnq["session_bucket"]
+        assert mnq["session_bucket"]["morning"]["trades"] == 3
+        assert mnq["session_bucket"]["morning"]["total_pnl"] == 120.0
+        assert mnq["session_bucket"]["afternoon"]["win_rate"] == 0.0
+
+        assert "slippage" in mnq
+        slip = mnq["slippage"]
+        assert slip["trades"] == 5
+        # 3×0.25 + 2×0.50 = 1.75 / 5 = 0.35
+        assert abs(slip["mean_points"] - 0.35) < 0.001
+    finally:
+        os.unlink(path)
+
+
+test_session_bucket_for()
+test_journal_expected_fill()
+test_journal_set_actual_fill()
+test_learner_session_analytics()
 
 
 # ─────────────────────────────────────────────
