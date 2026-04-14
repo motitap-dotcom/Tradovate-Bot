@@ -564,15 +564,63 @@ class TradovateBot:
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket."""
-        # Extract price from quote data
-        # Tradovate quote structure includes bid/ask/last
-        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
+        # Log the raw shape of the first 2 quotes per symbol so we can
+        # diagnose format mismatches.
+        seen = self.__dict__.setdefault("_quote_log_count", {})
+        seen.setdefault(symbol, 0)
+        if seen[symbol] < 2:
+            seen[symbol] += 1
+            try:
+                import json as _j
+                logger.info("RAW QUOTE %s #%d: %s", symbol, seen[symbol], _j.dumps(data)[:500])
+            except Exception:
+                logger.info("RAW QUOTE %s #%d (unserializable): keys=%s", symbol, seen[symbol], list(data.keys()) if isinstance(data, dict) else type(data).__name__)
+
+        # Try a variety of known Tradovate quote shapes — the spec differs
+        # between WebSocket builds and sometimes uses capitalized Trade/Bid.
+        def _dig(obj, *paths):
+            for path in paths:
+                cur = obj
+                ok = True
+                for key in path:
+                    if isinstance(cur, dict) and key in cur:
+                        cur = cur[key]
+                    else:
+                        ok = False
+                        break
+                if ok and isinstance(cur, (int, float)):
+                    return cur
+            return None
+
+        price = _dig(
+            data,
+            ("trade", "price"),
+            ("Trade", "price"),
+            ("last", "price"),
+            ("Last", "price"),
+            ("lastPrice",),
+            ("price",),
+            ("bid", "price"),
+            ("Bid", "price"),
+            ("bidPrice",),
+            ("offer", "price"),
+            ("Offer", "price"),
+            ("ask", "price"),
+            ("Ask", "price"),
+            ("askPrice",),
+        )
         if price is None:
             return
 
-        high = data.get("high", {}).get("price", price)
-        low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
+        high = _dig(data, ("high", "price"), ("High", "price"), ("highPrice",)) or price
+        low = _dig(data, ("low", "price"), ("Low", "price"), ("lowPrice",)) or price
+        volume = _dig(
+            data,
+            ("trade", "size"),
+            ("Trade", "size"),
+            ("volume",),
+            ("totalVolume",),
+        ) or 0
 
         # Track for diagnostic status logs
         self._last_prices[symbol] = price
