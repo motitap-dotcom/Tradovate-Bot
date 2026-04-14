@@ -100,6 +100,9 @@ class TradovateBot:
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
+        # Track most recent live price per symbol for diagnostic logging
+        self._last_prices: dict[str, float] = {}
+
         # Contract rollover: check every 10 minutes (not every 30s loop)
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
@@ -480,8 +483,8 @@ class TradovateBot:
                             else:
                                 # Range is set — track _last_price ONLY if the
                                 # close is inside the range.  If it's outside,
-                                # leave _last_price as None so the next live tick
-                                # can immediately fire a late-entry breakout.
+                                # CLEAR _last_price (set to None) so the next live
+                                # tick can immediately fire a late-entry breakout.
                                 # Without this, the fresh-cross guard in
                                 # _ORBWindow.feed() would permanently block
                                 # entries on late starts (common after any mid-
@@ -489,23 +492,8 @@ class TradovateBot:
                                 # outside the range.
                                 if window.range_low <= c <= window.range_high:
                                     window._last_price = c
-                                    _late_entry_state = "inside-range"
                                 else:
-                                    # Leave _last_price=None for late entry
-                                    _late_entry_state = (
-                                        "ABOVE-range (long armed)"
-                                        if c > window.range_high
-                                        else "BELOW-range (short armed)"
-                                    )
-                                logger.info(
-                                    "ORB %s %dm: warmup close %.4f vs range [%.4f-%.4f] -> %s",
-                                    symbol,
-                                    window.window_minutes,
-                                    c,
-                                    window.range_low,
-                                    window.range_high,
-                                    _late_entry_state,
-                                )
+                                    window._last_price = None  # arm late entry
 
                     fed += 1
 
@@ -521,10 +509,14 @@ class TradovateBot:
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
+                        if w._last_price is None:
+                            arm_state = "LATE-ENTRY ARMED (last close outside range)"
+                        else:
+                            arm_state = f"waiting for fresh cross (_last_price={w._last_price:.2f}, inside range)"
                         logger.info(
-                            "  ORB %d-min range: %.2f - %.2f (size=%.2f)",
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) — %s",
                             w.window_minutes, w.range_low, w.range_high,
-                            w.range_high - w.range_low,
+                            w.range_high - w.range_low, arm_state,
                         )
                 if hasattr(strategy, "vwap") and strategy.vwap:
                     logger.info("  VWAP: %.4f", strategy.vwap)
@@ -581,6 +573,9 @@ class TradovateBot:
         high = data.get("high", {}).get("price", price)
         low = data.get("low", {}).get("price", price)
         volume = data.get("trade", {}).get("size", 0)
+
+        # Track for diagnostic status logs
+        self._last_prices[symbol] = price
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -863,8 +858,11 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
+                prices_str = " ".join(
+                    f"{s}={p:.2f}" for s, p in sorted(self._last_prices.items())
+                ) or "(no quotes)"
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s | prices: %s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -874,6 +872,7 @@ class TradovateBot:
                     status["max_daily_trades"],
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
+                    prices_str,
                 )
 
                 # Write live status file for external monitoring
