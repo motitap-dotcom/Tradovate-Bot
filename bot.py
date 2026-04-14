@@ -636,7 +636,7 @@ class TradovateBot:
                     return cur
             return None
 
-        # Tradovate market-data quotes nest the actual levels under "entries"
+        # Tradovate market-data quotes nest the actual price levels under "entries"
         # with capitalized keys: {Trade, Bid, Offer, OpeningPrice, ...}.
         # Prefer Trade; fall back to mid (Bid + Offer / 2); then Bid; then Offer.
         price = _dig(
