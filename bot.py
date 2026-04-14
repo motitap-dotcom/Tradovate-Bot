@@ -636,34 +636,41 @@ class TradovateBot:
                     return cur
             return None
 
+        # Tradovate market-data quotes nest the actual levels under "entries"
+        # with capitalized keys: {Trade, Bid, Offer, OpeningPrice, ...}.
+        # Prefer Trade; fall back to mid (Bid + Offer / 2); then Bid; then Offer.
         price = _dig(
             data,
+            ("entries", "Trade", "price"),
+            ("entries", "Bid", "price"),
+            ("entries", "Offer", "price"),
             ("trade", "price"),
             ("Trade", "price"),
             ("last", "price"),
-            ("Last", "price"),
             ("lastPrice",),
             ("price",),
-            ("bid", "price"),
-            ("Bid", "price"),
-            ("bidPrice",),
-            ("offer", "price"),
-            ("Offer", "price"),
-            ("ask", "price"),
-            ("Ask", "price"),
-            ("askPrice",),
         )
         if price is None:
             return
 
-        high = _dig(data, ("high", "price"), ("High", "price"), ("highPrice",)) or price
-        low = _dig(data, ("low", "price"), ("Low", "price"), ("lowPrice",)) or price
+        high = _dig(
+            data,
+            ("entries", "HighPrice", "price"),
+            ("entries", "High", "price"),
+            ("high", "price"),
+        ) or price
+        low = _dig(
+            data,
+            ("entries", "LowPrice", "price"),
+            ("entries", "Low", "price"),
+            ("low", "price"),
+        ) or price
         volume = _dig(
             data,
+            ("entries", "Trade", "size"),
+            ("entries", "TotalTradeVolume", "size"),
             ("trade", "size"),
-            ("Trade", "size"),
             ("volume",),
-            ("totalVolume",),
         ) or 0
 
         # Track for diagnostic status logs.
