@@ -229,16 +229,27 @@ class ORBStrategy:
 
             # Drop the signal if we are in the midday blackout.
             if in_blackout:
-                logger.info(
-                    "ORB %s %s suppressed: inside midday blackout (%s–%s ET)",
-                    self.symbol, direction.upper(),
-                    config.ORB_BLACKOUT_START_ET, config.ORB_BLACKOUT_END_ET,
-                )
+                # Log once per window per blackout (avoid per-tick spam).
+                if not getattr(window, "_blackout_logged", False):
+                    logger.info(
+                        "ORB %s %s suppressed: inside midday blackout (%s–%s ET)",
+                        self.symbol, direction.upper(),
+                        config.ORB_BLACKOUT_START_ET, config.ORB_BLACKOUT_END_ET,
+                    )
+                    window._blackout_logged = True
                 # Re-arm the window so it can fire again once the blackout
-                # lifts.  Without this, breakout_fired=True would permanently
-                # block future breakouts after a suppressed one occurs.
+                # lifts.  Also clear _last_price so the fresh-cross guard in
+                # _ORBWindow.feed() doesn't block the post-blackout re-fire
+                # (otherwise prev would still be above-range from the live tick
+                # that set it).
                 window.breakout_fired = False
+                window._last_price = None
                 continue
+            else:
+                # Exiting blackout — clear the log-once flag so a future
+                # blackout (shouldn't happen intraday, but be safe) logs again.
+                if getattr(window, "_blackout_logged", False):
+                    window._blackout_logged = False
 
             # Range size sanity filter
             if window.range_high is not None and window.range_low is not None:
