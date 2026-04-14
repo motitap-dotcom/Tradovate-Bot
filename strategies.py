@@ -236,7 +236,7 @@ class ORBStrategy:
                 )
                 # Re-arm the window so it can fire again once the blackout
                 # lifts.  Without this, breakout_fired=True would permanently
-                # block future breakouts after a suppressed one.
+                # block future breakouts after a suppressed one occurs.
                 window.breakout_fired = False
                 continue
 
