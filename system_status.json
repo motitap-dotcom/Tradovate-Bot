@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-14T22:53:24Z",
+  "timestamp": "2026-04-14T23:49:53Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "3606523",
     "uptime_since": "Tue 2026-04-14 18:44:42 UTC",
     "disk": "18%",
-    "memory": "1147MB/7941MB (14%)",
+    "memory": "1154MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "bf84884 status: 2026-04-14 21:56 UTC | api=ok auth=server_token bot=running trading=active",
+    "git_commit": "87955e0 status: 2026-04-14 22:53 UTC | api=ok auth=None bot=running trading=active",
     "live_status": {
       "timestamp": "2026-04-14T20:58:32.871804+00:00",
       "timestamp_et": "2026-04-14T16:58:32.871823-04:00",
@@ -51,7 +51,7 @@
     },
     "journal_tail": "2026-04-14 20:54:28,860 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=91.95 MES=7005.25 MGC=4866.10 MNG=2.59 MNQ=25995.75 SIL=79.75\n2026-04-14 20:54:59,193 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.03 MES=7004.75 MGC=4866.10 MNG=2.59 MNQ=25995.00 SIL=79.72\n2026-04-14 20:55:29,194 [INFO] tradovate_api: Token expiring in 880s. Renewing...\n2026-04-14 20:55:29,366 [INFO] tradovate_api: Token renewed via demo.tradovateapi.com. Expires: 2026-04-14 22:15:29.302000+00:00\n2026-04-14 20:55:29,706 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.00 MES=7004.50 MGC=4866.10 MNG=2.59 MNQ=25994.00 SIL=79.69\n2026-04-14 20:56:00,041 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.03 MES=7004.50 MGC=4866.10 MNG=2.59 MNQ=25992.50 SIL=79.67\n2026-04-14 20:56:30,859 [WARNING] bot: CONTRACT ROLLOVER: MGC from MGCJ6 -> MGCM6 (calendar-driven: MGCJ6 past roll-out date, front month is now MGCM6)\n2026-04-14 20:56:30,860 [INFO] tradovate_api: Subscribed to quotes: MGCM6 (contractId=None)\n2026-04-14 20:56:30,860 [INFO] bot: Rollover complete: MGC now trading MGCM6 (id=3961353)\n2026-04-14 20:56:31,359 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.02 MES=7004.75 MGC=4864.90 MNG=2.59 MNQ=25994.25 SIL=79.66\n2026-04-14 20:57:01,854 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.06 MES=7004.75 MGC=4865.30 MNG=2.59 MNQ=25994.00 SIL=79.65\n2026-04-14 20:57:32,179 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | lock",
     "bot_log_tail": "2026-04-14 20:59:03,647 [INFO] bot:   drawdown_floor: 49798.71\n2026-04-14 20:59:03,647 [INFO] bot:   distance_to_floor: 2500.0\n2026-04-14 20:59:03,647 [INFO] bot:   daily_loss_limit: 1000\n2026-04-14 20:59:03,647 [INFO] bot:   daily_loss_remaining: 1234.25\n2026-04-14 20:59:03,647 [INFO] bot:   daily_profit_cap: 2400\n2026-04-14 20:59:03,647 [INFO] bot:   daily_profit_remaining: 2165.75\n2026-04-14 20:59:03,647 [INFO] bot:   open_contracts: 0\n2026-04-14 20:59:03,647 [INFO] bot:   max_contracts: 20\n2026-04-14 20:59:03,647 [INFO] bot:   trades_today: 1\n2026-04-14 20:59:03,647 [INFO] bot:   max_daily_trades: 25\n2026-04-14 20:59:03,647 [INFO] bot:   locked: False\n2026-04-14 20:59:03,647 [INFO] bot:   lock_reason: \n2026-04-14 20:59:03,647 [INFO] bot:   balance_initialized: True\n2026-04-14 20:59:03,647 [INFO] bot:   losing_streak: 0\n2026-04-14 20:59:03,647 [INFO] bot:   streak_pause_until: None\n2026-04-14 20:59:03,647 [INFO] bot:   open_directions: {}\n2026-04-14 20:59:03,647 [INFO] bot: Trades:\n2026-04-14 20:59:03,647 [INFO] bot:   2026-04-14T14:44:46.913526-04:00 | Buy MES 5 | SL=6982.2500 TP=6997.2500 | ORB-5m long breakout above 6947.25\n2026-04-14 20:59:03,647 [INFO] bot: Bot stopped.\n2026-04-14 20:59:03,647 [INFO] bot: Session ended. Next trading session: 2026-04-15 09:25 ET (sleeping 986 minutes)",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 6690s)\n  Balance: $52298.71\n  Day P&L: $234.25\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr 14 22:50:03 UTC 2026] Status: bot_active=true, pid=3606523\n[Tue Apr 14 22:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 9990s)\n  Balance: $52298.71\n  Day P&L: $234.25\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.3%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr 14 23:45:03 UTC 2026] Status: bot_active=true, pid=3606523\n[Tue Apr 14 23:45:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -154,7 +154,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 9605,
+    "ssh_output_len": 9597,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -163,23 +163,5 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
-  },
-  "last_known": {
-    "timestamp": "2026-04-14T21:56:04Z",
-    "auth_method": "server_token",
-    "account": {
-      "name": "FNFTCHMOTITAPIRO67510",
-      "id": 39996695,
-      "active": true
-    },
-    "balance": {
-      "realizedPnl": null,
-      "unrealizedPnl": null,
-      "totalCashValue": 52298.71,
-      "initialMargin": 0.0,
-      "netLiq": 52298.71
-    },
-    "positions": [],
-    "orders": []
   }
 }
