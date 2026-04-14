@@ -489,7 +489,23 @@ class TradovateBot:
                                 # outside the range.
                                 if window.range_low <= c <= window.range_high:
                                     window._last_price = c
-                                # else: leave _last_price=None for late entry
+                                    _late_entry_state = "inside-range"
+                                else:
+                                    # Leave _last_price=None for late entry
+                                    _late_entry_state = (
+                                        "ABOVE-range (long armed)"
+                                        if c > window.range_high
+                                        else "BELOW-range (short armed)"
+                                    )
+                                logger.info(
+                                    "ORB %s %dm: warmup close %.4f vs range [%.4f-%.4f] -> %s",
+                                    symbol,
+                                    window.window_minutes,
+                                    c,
+                                    window.range_low,
+                                    window.range_high,
+                                    _late_entry_state,
+                                )
 
                     fed += 1
 
