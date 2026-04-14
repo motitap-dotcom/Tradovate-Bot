@@ -100,7 +100,7 @@ class TradovateBot:
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
-        # Track most recent live price per symbol for diagnostic logging
+        # Track most recent live price per symbol for diagnostic logging.
         self._last_prices: dict[str, float] = {}
 
         # Contract rollover: check every 10 minutes (not every 30s loop)
