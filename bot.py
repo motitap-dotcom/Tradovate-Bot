@@ -522,9 +522,18 @@ class TradovateBot:
                                 if window.breakout_fired:
                                     window.breakout_fired = False
                             else:
-                                # Range is set — just track _last_price so
-                                # feed() can detect fresh crosses on live ticks.
-                                window._last_price = c
+                                # Range is set — track _last_price ONLY if the
+                                # close is inside the range.  If it's outside,
+                                # leave _last_price as None so the next live tick
+                                # can immediately fire a late-entry breakout.
+                                # Without this, the fresh-cross guard in
+                                # _ORBWindow.feed() would permanently block
+                                # entries on late starts (common after any mid-
+                                # session restart) because prev would always be
+                                # outside the range.
+                                if window.range_low <= c <= window.range_high:
+                                    window._last_price = c
+                                # else: leave _last_price=None for late entry
 
                     fed += 1
 

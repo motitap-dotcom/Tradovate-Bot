@@ -192,4 +192,4 @@ SIGNAL: Buy NQ 1 @ market | SL=15050.00 TP=15150.00 | ORB long breakout above 15
 - [Apex Trader Funding Rules](https://support.apextraderfunding.com/hc/en-us/articles/31519769997083-Evaluation-Rules)
 - [Topstep Combine Rules](https://help.topstep.com/en/articles/8284204-what-is-the-maximum-loss-limit)
 
-<!-- status-refresh: 2026-04-14T14:20Z -->
+<!-- status-refresh: 2026-04-14T15:20Z check-trading-v2 -->
