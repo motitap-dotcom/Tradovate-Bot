@@ -607,21 +607,13 @@ class TradovateBot:
                 logger.info("Mapped contractId %s -> %s for quote routing", contract_id, contract_name)
 
     def _on_quote(self, symbol: str, data: dict):
-        """Handle incoming quote data from WebSocket."""
-        # Log the raw shape of the first 2 quotes per symbol so we can
-        # diagnose format mismatches.
-        seen = self.__dict__.setdefault("_quote_log_count", {})
-        seen.setdefault(symbol, 0)
-        if seen[symbol] < 2:
-            seen[symbol] += 1
-            try:
-                import json as _j
-                logger.info("RAW QUOTE %s #%d: %s", symbol, seen[symbol], _j.dumps(data)[:500])
-            except Exception:
-                logger.info("RAW QUOTE %s #%d (unserializable): keys=%s", symbol, seen[symbol], list(data.keys()) if isinstance(data, dict) else type(data).__name__)
+        """Handle incoming quote data from WebSocket.
 
-        # Try a variety of known Tradovate quote shapes — the spec differs
-        # between WebSocket builds and sometimes uses capitalized Trade/Bid.
+        Tradovate market-data quotes nest the actual price levels under
+        'entries' with capitalized keys: {Trade, Bid, Offer, OpeningPrice, ...}.
+        The _dig helper walks multiple candidate paths for forward/backward
+        compatibility with other formats.
+        """
         def _dig(obj, *paths):
             for path in paths:
                 cur = obj
@@ -636,9 +628,6 @@ class TradovateBot:
                     return cur
             return None
 
-        # Tradovate market-data quotes nest the actual price levels under "entries"
-        # with capitalized keys: {Trade, Bid, Offer, OpeningPrice, ...}.
-        # Prefer Trade; fall back to mid (Bid + Offer / 2); then Bid; then Offer.
         price = _dig(
             data,
             ("entries", "Trade", "price"),
@@ -673,7 +662,7 @@ class TradovateBot:
             ("volume",),
         ) or 0
 
-        # Track for diagnostic status logs.
+        # Track latest live price per symbol for the periodic status log.
         self._last_prices[symbol] = price
 
         self._process_price(symbol, price, high, low, volume)
