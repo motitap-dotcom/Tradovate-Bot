@@ -239,9 +239,7 @@ class ORBStrategy:
                     window._blackout_logged = True
                 # Re-arm the window so it can fire again once the blackout
                 # lifts.  Also clear _last_price so the fresh-cross guard in
-                # _ORBWindow.feed() doesn't block the post-blackout re-fire
-                # (otherwise prev would still be above-range from the live tick
-                # that set it).
+                # _ORBWindow.feed() doesn't block the post-blackout re-fire.
                 window.breakout_fired = False
                 window._last_price = None
                 continue
