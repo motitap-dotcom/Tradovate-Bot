@@ -981,6 +981,12 @@ class MarketDataStream:
     RECONNECT_BASE_DELAY = 2  # seconds
     # After this many consecutive reconnect failures, signal caller to fall back
     FALLBACK_THRESHOLD = 10
+    # Proactive SockJS-style heartbeat interval.  The Tradovate market-data
+    # gateway closes idle connections (code 1000 "Bye") after ~30s if the
+    # client hasn't sent anything at the application layer — WebSocket pings
+    # don't count.  Sending an empty frame "[]" every 2.5s keeps the server's
+    # idle timer from firing and eliminates the 30s reconnect loop.
+    HEARTBEAT_INTERVAL = 2.5  # seconds
 
     # Circuit-breaker: if the WS has this many disconnects inside
     # CIRCUIT_WINDOW_SECONDS, open the circuit — callers should stop
@@ -1010,6 +1016,7 @@ class MarketDataStream:
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
+        self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
         # Circuit-breaker state
@@ -1076,6 +1083,7 @@ class MarketDataStream:
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
             self._reconnect_timer = None
+        self._stop_heartbeat()
         if self.ws:
             try:
                 self.ws.close()
@@ -1084,6 +1092,39 @@ class MarketDataStream:
         # Wait briefly for the thread to finish
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
+
+    def _start_heartbeat(self):
+        """Send an application-level heartbeat and reschedule.
+
+        Tradovate's market-data gateway closes connections after ~30s of
+        application-layer silence (code 1000 "Bye") even though WebSocket
+        pings keep the TCP layer alive.  Sending an empty SockJS frame
+        ("[]") every HEARTBEAT_INTERVAL seconds prevents the server-side
+        idle timer from firing.
+        """
+        if not self._should_run:
+            return
+        try:
+            if self.ws:
+                self.ws.send("[]")
+        except Exception as e:
+            logger.debug("Market data heartbeat send failed: %s", e)
+        if not self._should_run:
+            return
+        self._heartbeat_timer = threading.Timer(
+            self.HEARTBEAT_INTERVAL, self._start_heartbeat
+        )
+        self._heartbeat_timer.daemon = True
+        self._heartbeat_timer.start()
+
+    def _stop_heartbeat(self):
+        """Cancel the proactive heartbeat timer if scheduled."""
+        if self._heartbeat_timer:
+            try:
+                self._heartbeat_timer.cancel()
+            except Exception:
+                pass
+            self._heartbeat_timer = None
 
     # How long to wait for first quote before declaring stream dead
     NO_DATA_TIMEOUT = 60  # seconds
@@ -1166,6 +1207,9 @@ class MarketDataStream:
                 logger.info("Market data WebSocket authenticated")
                 self._reconnect_count = 0
                 self._connected.set()
+                # Begin proactive heartbeat — prevents server-side idle close
+                self._stop_heartbeat()
+                self._start_heartbeat()
                 continue
 
             # Auth failure — trigger reconnect with fresh token
@@ -1245,6 +1289,9 @@ class MarketDataStream:
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
+        # Stop the heartbeat for the dead connection — a fresh one will start
+        # after the next authenticated reconnect.
+        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
         is_graceful = close_status_code == 1000
