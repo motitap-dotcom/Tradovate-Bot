@@ -234,6 +234,10 @@ class ORBStrategy:
                     self.symbol, direction.upper(),
                     config.ORB_BLACKOUT_START_ET, config.ORB_BLACKOUT_END_ET,
                 )
+                # Re-arm the window so it can fire again once the blackout
+                # lifts.  Without this, breakout_fired=True would permanently
+                # block future breakouts after a suppressed one.
+                window.breakout_fired = False
                 continue
 
             # Range size sanity filter
