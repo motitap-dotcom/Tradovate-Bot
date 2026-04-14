@@ -622,7 +622,7 @@ class TradovateBot:
             ("totalVolume",),
         ) or 0
 
-        # Track for diagnostic status logs
+        # Track for diagnostic status logs.
         self._last_prices[symbol] = price
 
         self._process_price(symbol, price, high, low, volume)
