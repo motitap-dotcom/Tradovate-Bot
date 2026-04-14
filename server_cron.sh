@@ -1,5 +1,5 @@
 #!/bin/bash
-# server_cron.sh — Pulls latest code, restarts bot, pushes status via GitHub API.
+# server_cron.sh — Pulls latest code, restarts bot on code changes, pushes status via GitHub API.
 #
 # Required env var:
 #   GH_PAT — GitHub Personal Access Token (repo scope) for pushing status
