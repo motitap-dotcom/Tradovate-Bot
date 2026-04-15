@@ -104,6 +104,11 @@ class TradovateBot:
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
 
+        # Trading-day tracking (ET) — used to detect rollover at midnight ET
+        # and reset strategy state (ORB ranges, VWAP, breakout flags, trade
+        # counters) + re-run warmup so the bot trades the new day fresh.
+        self._trading_day = None  # set after _warm_up_strategies() runs
+
     # ─────────────────────────────────────────
     # Lifecycle
     # ─────────────────────────────────────────
@@ -146,6 +151,7 @@ class TradovateBot:
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
+        self._trading_day = now_et().date()
 
         # Restore trade counts and cooldowns from saved state (layered on top of warmup)
         saved = bot_state.load_state()
@@ -411,6 +417,57 @@ class TradovateBot:
                 "Rollover complete: %s now trading %s (id=%s)",
                 symbol, new_contract, new_contract_id if new_contract_id is not None else "?",
             )
+
+    # ─────────────────────────────────────────
+    # Daily rollover (midnight ET)
+    # ─────────────────────────────────────────
+
+    def _check_new_trading_day(self):
+        """
+        If the ET calendar date has changed since the last warmup, reset
+        per-day strategy state (ORB ranges, breakout flags, VWAP cumulative,
+        trade counters, cooldowns) and re-run warmup so the bot starts the
+        new day with fresh ranges built from today's historical candles.
+
+        Without this, a bot that has been running for >1 day keeps yesterday's
+        ORB range and breakout_fired flags — which blocks all trades today.
+        risk_manager._check_new_day() already resets the daily loss/P&L
+        counters, but strategy state was being leaked across days.
+        """
+        today = now_et().date()
+        if self._trading_day is None:
+            self._trading_day = today
+            return
+        if today == self._trading_day:
+            return
+
+        logger.warning(
+            "NEW TRADING DAY (%s -> %s): resetting strategy state and re-running warmup",
+            self._trading_day, today,
+        )
+        # 1. Reset each strategy to a clean slate
+        for symbol, strategy in self.strategies.items():
+            try:
+                if hasattr(strategy, "reset"):
+                    strategy.reset()
+            except Exception as e:
+                logger.warning("Error resetting strategy for %s: %s", symbol, e)
+
+        # 2. Clear warmup timestamps so the REST poller doesn't skip today's bars
+        self._warmup_last_ts.clear()
+
+        # 3. Re-run warmup — rebuilds today's ORB ranges + VWAP from Yahoo 1-min
+        try:
+            self._warm_up_strategies()
+        except Exception as e:
+            logger.error("Re-warmup failed on new day: %s", e, exc_info=True)
+
+        # 4. risk_manager._check_new_day() already resets trades_today/day_pnl,
+        #    and the next save_state() call after a trade will overwrite any
+        #    stale persisted snapshot.
+
+        self._trading_day = today
+        logger.info("New trading day setup complete. Ready for %s.", today)
 
     # ─────────────────────────────────────────
     # Strategy initialization
@@ -844,6 +901,13 @@ class TradovateBot:
                                     ws.stop()
                             except Exception as e:
                                 logger.warning("WebSocket recovery attempt failed: %s", e)
+
+                # Detect ET calendar day change and reset per-day strategy
+                # state + re-run warmup. Cheap (date comparison) so runs every loop.
+                try:
+                    self._check_new_trading_day()
+                except Exception as e:
+                    logger.error("New-day check error: %s", e, exc_info=True)
 
                 # Periodic contract rollover check (every 10 min)
                 if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
