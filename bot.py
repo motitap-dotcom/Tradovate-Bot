@@ -465,15 +465,33 @@ class TradovateBot:
                                 # subscriptions on each flip.
                                 accept = True
                                 try:
+                                    # Use get_contract_maturity for BOTH sides
+                                    # (it does a find_contract lookup, which
+                                    # returns the full row including the
+                                    # expirationDate / contractMaturityDate
+                                    # fields). Don't rely on the suggest-api
+                                    # dict directly — it's a thin response and
+                                    # often omits maturity, which silently
+                                    # disabled this guard the first time we
+                                    # tried it.
                                     old_mat = self.api.get_contract_maturity(old_contract)
-                                    new_mat = suggested.get("expirationDate") or suggested.get("contractMaturityDate")
-                                    if old_mat and new_mat and str(new_mat) <= str(old_mat):
-                                        accept = False
-                                        logger.info(
-                                            "Suggest API returned %s (mat %s) "
-                                            "which is not after %s (mat %s) — "
-                                            "ignoring backward rollover",
-                                            suggested_name, new_mat, old_contract, old_mat,
+                                    new_mat = self.api.get_contract_maturity(suggested_name)
+                                    if old_mat and new_mat:
+                                        old_key = str(old_mat)[:10]
+                                        new_key = str(new_mat)[:10]
+                                        if new_key <= old_key:
+                                            accept = False
+                                            logger.warning(
+                                                "Suggest API returned %s (mat %s) "
+                                                "which is not after %s (mat %s) — "
+                                                "ignoring backward rollover",
+                                                suggested_name, new_key, old_contract, old_key,
+                                            )
+                                    else:
+                                        logger.debug(
+                                            "Maturity unavailable for %s (%s) or %s (%s); "
+                                            "skipping forward-only guard",
+                                            old_contract, old_mat, suggested_name, new_mat,
                                         )
                                 except Exception as e:
                                     logger.debug(
