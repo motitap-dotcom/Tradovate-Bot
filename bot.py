@@ -96,7 +96,12 @@ class TradovateBot:
         self.trades_today: list[dict] = []
 
         # Global cooldown: minimum seconds between any two order placements
-        self._min_order_gap_seconds: int = 30
+        # Global cooldown: prevent rapid-fire orders across all symbols.
+        # Reduced from 30s to 3s — the longer gap was meant to dampen
+        # debug-era duplicate fires, but it also DROPS legitimate cross-
+        # symbol signals that arrive within seconds of each other (e.g.
+        # MNQ + MES both firing at the post-blackout reopen at 13:30 ET).
+        self._min_order_gap_seconds: int = 3
         self._last_order_time: float = 0
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
@@ -448,11 +453,40 @@ class TradovateBot:
                             liquid = config.CONTRACT_LIQUID_MONTHS.get(symbol, [])
                             suffix = suggested_name[len(symbol):]
                             if len(suffix) >= 2 and suffix[0] in liquid:
-                                new_contract = suggested_name
-                                new_contract_data = suggested
-                                rollover_reason = (
-                                    f"suggest-api: Tradovate returned {suggested_name}"
-                                )
+                                # Forward-only guard: reject suggestions whose
+                                # maturity is on/before the current contract's
+                                # maturity. Tradovate's suggest-api occasionally
+                                # returns a NEAR contract that is still tradeable
+                                # but is *behind* the front month we're already
+                                # on (e.g. MGCM6 -> MGCJ6). Without this guard,
+                                # the bot ping-pongs between months every 10 min
+                                # because Phase 1 then immediately rolls forward
+                                # again — costing us VWAP continuity and quote
+                                # subscriptions on each flip.
+                                accept = True
+                                try:
+                                    old_mat = self.api.get_contract_maturity(old_contract)
+                                    new_mat = suggested.get("expirationDate") or suggested.get("contractMaturityDate")
+                                    if old_mat and new_mat and str(new_mat) <= str(old_mat):
+                                        accept = False
+                                        logger.info(
+                                            "Suggest API returned %s (mat %s) "
+                                            "which is not after %s (mat %s) — "
+                                            "ignoring backward rollover",
+                                            suggested_name, new_mat, old_contract, old_mat,
+                                        )
+                                except Exception as e:
+                                    logger.debug(
+                                        "Maturity comparison failed for %s vs %s: %s",
+                                        old_contract, suggested_name, e,
+                                    )
+
+                                if accept:
+                                    new_contract = suggested_name
+                                    new_contract_data = suggested
+                                    rollover_reason = (
+                                        f"suggest-api: Tradovate returned {suggested_name}"
+                                    )
                             else:
                                 logger.debug(
                                     "Suggest API returned non-liquid month %s "
@@ -801,14 +835,24 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
-        # Global cooldown: prevent rapid-fire orders across all symbols
+        # Global cooldown: prevent rapid-fire orders across all symbols.
+        # Previously this DROPPED the signal when the cooldown wasn't yet
+        # elapsed, which was catastrophic at the post-blackout reopen
+        # (13:30 ET): MNQ + MES both fire within ~2s of each other, the
+        # second one was dropped, and because the strategy already mutated
+        # its window state (breakout_fired=True, trades_taken++,
+        # last_trade_time=now), the symbol was permanently locked for the
+        # rest of the day. Now we BLOCK-WAIT for the cooldown to clear and
+        # then proceed, so the signal is delayed by a few seconds at worst
+        # instead of being silently lost.
         elapsed = time.time() - self._last_order_time
         if elapsed < self._min_order_gap_seconds:
+            wait_s = self._min_order_gap_seconds - elapsed
             logger.info(
-                "Signal for %s deferred: global cooldown (%ds remaining)",
-                signal.symbol, int(self._min_order_gap_seconds - elapsed),
+                "Signal for %s waiting %.2fs for global cooldown to clear",
+                signal.symbol, wait_s,
             )
-            return
+            time.sleep(wait_s)
 
         ok, reason = self.risk.can_trade(
             symbol=signal.symbol, direction=signal.direction.value,
