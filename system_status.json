@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-15T18:41:44Z",
+  "timestamp": "2026-04-15T18:42:47Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "3917167",
     "uptime_since": "Wed 2026-04-15 17:10:28 UTC",
     "disk": "18%",
-    "memory": "1151MB/7941MB (14%)",
+    "memory": "1165MB/7941MB (15%)",
     "hostname": "vmi3096165",
     "git_commit": "599dba6 status: 2026-04-15 17:36 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-04-15T18:41:18.638966+00:00",
-      "timestamp_et": "2026-04-15T14:41:18.638986-04:00",
+      "timestamp": "2026-04-15T18:42:20.625649+00:00",
+      "timestamp_et": "2026-04-15T14:42:20.625667-04:00",
       "balance": 52218.41,
       "equity": 52218.41,
       "day_pnl": -80.29999999999563,
@@ -59,14 +59,14 @@
       "circuit_open_until": null,
       "suppressed_by_news": null
     },
-    "journal_tail": "2026-04-15 18:21:33,055 [INFO] bot: Rollover complete: MGC now trading MGCM6 (id=3961353)\n2026-04-15 18:21:33,232 [WARNING] bot: CONTRACT ROLLOVER: MCL from MCLK6 -> MCLM6 (calendar-driven: MCLK6 past roll-out date, front month is now MCLM6)\n2026-04-15 18:21:33,234 [INFO] tradovate_api: Subscribed to quotes: MCLM6 (contractId=3643471)\n2026-04-15 18:21:33,234 [INFO] bot: Rollover complete: MCL now trading MCLM6 (id=3643471)\n2026-04-15 18:21:33,581 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.20 MES=7045.25 MGC=4816.20 MNG=2.62 MNQ=26238.25 SIL=79.33\n2026-04-15 18:22:04,304 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.20 MES=7046.00 MGC=4817.60 MNG=2.62 MNQ=26241.00 SIL=79.36\n2026-04-15 18:22:34,630 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.17 MES=7046.00 MGC=4817.50 MNG=2.62 MNQ=26242.75 SIL=79.37\n2026-04-15 18:23:04,988 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.16 MES=7046.00 MGC=4817.00 MNG=2.61 MNQ=26242.50 SIL=79.36\n2026-04-15 18:23:35,347 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.07 MES=7046.00 MGC=4818.60 MNG=2.61 MNQ=26242.50 SIL=79.39\n2026-04-15 18:24:05,682 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.02 MES=7047.00 MGC=4818.70 MNG=2.61 MNQ=26244.75 SIL=79.41\n2026-04-15 18:24:36,013 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=87.98 MES=7047.25 MGC=4817.50 MNG=2.61 MNQ=26244.50 SIL=79.41\n2026-04-15 18:25:06,379 [INFO] bo",
-    "bot_log_tail": "2026-04-15 18:31:41,888 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.27 MES=7049.00 MGC=4810.20 MNG=2.61 MNQ=26257.25 SIL=79.43\n2026-04-15 18:32:12,546 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.21 MES=7049.50 MGC=4810.20 MNG=2.61 MNQ=26259.25 SIL=79.43\n2026-04-15 18:32:42,873 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.26 MES=7048.75 MGC=4810.20 MNG=2.61 MNQ=26257.00 SIL=79.39\n2026-04-15 18:33:13,206 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.31 MES=7049.00 MGC=4810.20 MNG=2.61 MNQ=26258.00 SIL=79.38\n2026-04-15 18:33:43,543 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.25 MES=7050.50 MGC=4810.20 MNG=2.61 MNQ=26265.00 SIL=79.42\n2026-04-15 18:34:13,886 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.29 MES=7052.00 MGC=4810.20 MNG=2.61 MNQ=26273.25 SIL=79.42\n2026-04-15 18:34:44,210 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.31 MES=7052.50 MGC=4810.20 MNG=2.61 MNQ=26273.75 SIL=79.43\n2026-04-15 18:35:14,561 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.21 MES=7053.75 MGC=4810.20 MNG=2.61 MNQ=26278.50 SIL=79.42\n2026-04-15 18:35:44,909 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.18 MES=7053.25 MGC=4810.20 MNG=2.61 MNQ=26279.75 SIL=79.42\n2026-04-15 18:36:15,",
+    "journal_tail": "2026-04-15 18:23:35,347 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.07 MES=7046.00 MGC=4818.60 MNG=2.61 MNQ=26242.50 SIL=79.39\n2026-04-15 18:24:05,682 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.02 MES=7047.00 MGC=4818.70 MNG=2.61 MNQ=26244.75 SIL=79.41\n2026-04-15 18:24:36,013 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=87.98 MES=7047.25 MGC=4817.50 MNG=2.61 MNQ=26244.50 SIL=79.41\n2026-04-15 18:25:06,379 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.01 MES=7047.50 MGC=4816.80 MNG=2.61 MNQ=26244.25 SIL=79.41\n2026-04-15 18:25:36,717 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.14 MES=7046.25 MGC=4816.30 MNG=2.61 MNQ=26239.25 SIL=79.37\n2026-04-15 18:26:07,059 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.16 MES=7046.00 MGC=4815.30 MNG=2.61 MNQ=26239.00 SIL=79.38\n2026-04-15 18:26:37,399 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.19 MES=7046.00 MGC=4815.20 MNG=2.61 MNQ=26241.25 SIL=79.36\n2026-04-15 18:27:07,726 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.20 MES=7046.75 MGC=4817.10 MNG=2.61 MNQ=26247.25 SIL=79.43\n2026-04-15 18:27:38,051 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.16 MES=7047.25 MGC=4816.70 MNG=2.60 MNQ=26248.25 SIL=79.42\n2026-04-15 18:28:08,",
+    "bot_log_tail": "2026-04-15 18:35:44,909 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.18 MES=7053.25 MGC=4810.20 MNG=2.61 MNQ=26279.75 SIL=79.42\n2026-04-15 18:36:15,259 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.22 MES=7053.75 MGC=4810.20 MNG=2.61 MNQ=26281.75 SIL=79.43\n2026-04-15 18:36:45,608 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.19 MES=7053.50 MGC=4810.20 MNG=2.61 MNQ=26283.00 SIL=79.41\n2026-04-15 18:37:15,937 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.13 MES=7053.75 MGC=4810.20 MNG=2.61 MNQ=26284.50 SIL=79.38\n2026-04-15 18:37:46,266 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.20 MES=7051.75 MGC=4810.20 MNG=2.61 MNQ=26277.50 SIL=79.34\n2026-04-15 18:38:16,608 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.29 MES=7050.75 MGC=4810.20 MNG=2.61 MNQ=26271.75 SIL=79.35\n2026-04-15 18:38:46,946 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.23 MES=7051.25 MGC=4810.20 MNG=2.61 MNQ=26274.25 SIL=79.38\n2026-04-15 18:39:17,282 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.27 MES=7050.50 MGC=4810.20 MNG=2.61 MNQ=26269.25 SIL=79.39\n2026-04-15 18:39:47,621 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.17 MES=7051.75 MGC=4810.20 MNG=2.61 MNQ=26274.00 SIL=79.38\n2026-04-15 18:40:17,",
     "cron_log_tail": "  Errors (1h): 0 | Warnings: 17\n  Signals today: 1\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 16s)\n  Balance: $52218.41\n  Day P&L: $-80.29999999999563\n  Trades today: 2\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.7%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 18:40:03 UTC 2026] Status: bot_active=true, pid=3917167\n[Wed Apr 15 18:40:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-15T18:41:18.638966+00:00",
-      "timestamp_et": "2026-04-15T14:41:18.638986-04:00",
+      "timestamp": "2026-04-15T18:42:20.625649+00:00",
+      "timestamp_et": "2026-04-15T14:42:20.625667-04:00",
       "balance": 52218.41,
       "equity": 52218.41,
       "day_pnl": -80.29999999999563,
@@ -104,14 +104,6 @@
     ],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-04-15 18:29:39,376 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.14 MES=7047.00 MGC=4816.50 MNG=2.61 MNQ=26246.00 SIL=79.36",
-      "2026-04-15 18:30:09,705 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.14 MES=7047.75 MGC=4817.80 MNG=2.61 MNQ=26252.25 SIL=79.41",
-      "2026-04-15 18:30:40,059 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.17 MES=7048.00 MGC=4817.60 MNG=2.61 MNQ=26254.25 SIL=79.39",
-      "2026-04-15 18:31:10,464 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.10 MES=7048.00 MGC=4817.90 MNG=2.61 MNQ=26252.00 SIL=79.40",
-      "2026-04-15 18:31:41,347 [WARNING] bot: CONTRACT ROLLOVER: MGC from MGCM6 -> MGCJ6 (suggest-api: Tradovate returned MGCJ6)",
-      "2026-04-15 18:31:41,348 [INFO] tradovate_api: Subscribed to quotes: MGCJ6 (contractId=3924410)",
-      "2026-04-15 18:31:41,348 [INFO] bot: Rollover complete: MGC now trading MGCJ6 (id=3924410)",
-      "2026-04-15 18:31:41,522 [WARNING] bot: CONTRACT ROLLOVER: MCL from MCLM6 -> MCLK6 (suggest-api: Tradovate returned MCLK6)",
       "2026-04-15 18:31:41,523 [INFO] tradovate_api: Subscribed to quotes: MCLK6 (contractId=3643469)",
       "2026-04-15 18:31:41,523 [INFO] bot: Rollover complete: MCL now trading MCLK6 (id=3643469)",
       "2026-04-15 18:31:41,888 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.27 MES=7049.00 MGC=4810.20 MNG=2.61 MNQ=26257.25 SIL=79.43",
@@ -133,7 +125,15 @@
       "2026-04-15 18:39:47,621 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.17 MES=7051.75 MGC=4810.20 MNG=2.61 MNQ=26274.00 SIL=79.38",
       "2026-04-15 18:40:17,991 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.16 MES=7051.75 MGC=4810.20 MNG=2.61 MNQ=26276.50 SIL=79.36",
       "2026-04-15 18:40:48,311 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.21 MES=7048.75 MGC=4810.20 MNG=2.61 MNQ=26266.50 SIL=79.31",
-      "2026-04-15 18:41:18,638 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.27 MES=7049.00 MGC=4810.20 MNG=2.61 MNQ=26269.50 SIL=79.30"
+      "2026-04-15 18:41:18,638 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=91.27 MES=7049.00 MGC=4810.20 MNG=2.61 MNQ=26269.50 SIL=79.30",
+      "2026-04-15 18:41:49,477 [WARNING] bot: CONTRACT ROLLOVER: MGC from MGCJ6 -> MGCM6 (calendar-driven: MGCJ6 past roll-out date, front month is now MGCM6)",
+      "2026-04-15 18:41:49,478 [INFO] tradovate_api: Subscribed to quotes: MGCM6 (contractId=3961353)",
+      "2026-04-15 18:41:49,478 [INFO] bot: Rollover complete: MGC now trading MGCM6 (id=3961353)",
+      "2026-04-15 18:41:49,642 [WARNING] bot: CONTRACT ROLLOVER: MCL from MCLK6 -> MCLM6 (calendar-driven: MCLK6 past roll-out date, front month is now MCLM6)",
+      "2026-04-15 18:41:49,643 [INFO] tradovate_api: Subscribed to quotes: MCLM6 (contractId=3643471)",
+      "2026-04-15 18:41:49,643 [INFO] bot: Rollover complete: MCL now trading MCLM6 (id=3643471)",
+      "2026-04-15 18:41:49,972 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.07 MES=7049.50 MGC=4818.10 MNG=2.61 MNQ=26269.75 SIL=79.33",
+      "2026-04-15 18:42:20,625 [INFO] bot: Status | balance=52218.41 | day_pnl=-80.30 | to_floor=2179.20 | contracts=0/20 | trades=2/25 | locked=False | prices: MCL=88.14 MES=7048.75 MGC=4817.30 MNG=2.61 MNQ=26266.00 SIL=79.30"
     ],
     "journal_summary": {
       "total_trades": 14,
@@ -259,7 +259,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 16387,
+    "ssh_output_len": 16190,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
