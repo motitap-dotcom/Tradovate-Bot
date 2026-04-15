@@ -88,7 +88,10 @@ def build_state(
                     "range_high": w.range_high,
                     "range_low": w.range_low,
                     "breakout_fired": w.breakout_fired,
-                    "fire_count": w.fire_count,
+                    # _ORBWindow no longer carries a fire_count attr; use
+                    # getattr so build_state stays compatible regardless of
+                    # whether the field is present.
+                    "fire_count": getattr(w, "fire_count", 0),
                 })
 
         elif hasattr(strategy, "vwap"):
@@ -145,7 +148,10 @@ def restore_strategies(state: dict, strategies: dict):
                     sw = saved_windows[i]
                     if sw.get("breakout_fired"):
                         w.breakout_fired = True
-                    w.fire_count = sw.get("fire_count", 0)
+                    # _ORBWindow may or may not have fire_count depending on
+                    # version. Only restore if the attribute already exists.
+                    if hasattr(w, "fire_count"):
+                        w.fire_count = sw.get("fire_count", 0)
                     # Restore range if warmup didn't set it
                     if not w.range_set and sw.get("range_set"):
                         w.range_high = sw["range_high"]
@@ -155,7 +161,7 @@ def restore_strategies(state: dict, strategies: dict):
             logger.info(
                 "Restored ORB state for %s: trades_taken=%d, windows=%s",
                 symbol, strategy.trades_taken,
-                [(w.breakout_fired, w.fire_count) for w in strategy.windows],
+                [(w.breakout_fired, getattr(w, "fire_count", 0)) for w in strategy.windows],
             )
 
         elif hasattr(strategy, "vwap") and sym_state.get("type") == "VWAPStrategy":
