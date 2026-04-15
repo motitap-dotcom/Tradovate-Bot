@@ -464,38 +464,43 @@ class TradovateBot:
                                 # again — costing us VWAP continuity and quote
                                 # subscriptions on each flip.
                                 accept = True
+                                # Forward-only guard: parse (year, month)
+                                # directly from the contract names. No API
+                                # call is needed — the contract name itself
+                                # carries the month code and year digit
+                                # (e.g. "MGCM6" -> month=M=June, year=6).
+                                # The previous attempts at this guard relied
+                                # on get_contract_maturity which silently
+                                # returned None for at least one side and
+                                # left the guard disabled.
                                 try:
-                                    # Use get_contract_maturity for BOTH sides
-                                    # (it does a find_contract lookup, which
-                                    # returns the full row including the
-                                    # expirationDate / contractMaturityDate
-                                    # fields). Don't rely on the suggest-api
-                                    # dict directly — it's a thin response and
-                                    # often omits maturity, which silently
-                                    # disabled this guard the first time we
-                                    # tried it.
-                                    old_mat = self.api.get_contract_maturity(old_contract)
-                                    new_mat = self.api.get_contract_maturity(suggested_name)
-                                    if old_mat and new_mat:
-                                        old_key = str(old_mat)[:10]
-                                        new_key = str(new_mat)[:10]
+                                    old_suffix = old_contract[len(symbol):]
+                                    new_suffix = suggested_name[len(symbol):]
+                                    if (
+                                        len(old_suffix) >= 2
+                                        and len(new_suffix) >= 2
+                                        and old_suffix[0] in config.MONTH_CODES
+                                        and new_suffix[0] in config.MONTH_CODES
+                                        and old_suffix[1].isdigit()
+                                        and new_suffix[1].isdigit()
+                                    ):
+                                        old_key = (int(old_suffix[1]),
+                                                   config.MONTH_CODES[old_suffix[0]])
+                                        new_key = (int(new_suffix[1]),
+                                                   config.MONTH_CODES[new_suffix[0]])
                                         if new_key <= old_key:
                                             accept = False
                                             logger.warning(
-                                                "Suggest API returned %s (mat %s) "
-                                                "which is not after %s (mat %s) — "
+                                                "Suggest API returned %s (year=%d month=%d) "
+                                                "which is not after %s (year=%d month=%d) — "
                                                 "ignoring backward rollover",
-                                                suggested_name, new_key, old_contract, old_key,
+                                                suggested_name, new_key[0], new_key[1],
+                                                old_contract, old_key[0], old_key[1],
                                             )
-                                    else:
-                                        logger.debug(
-                                            "Maturity unavailable for %s (%s) or %s (%s); "
-                                            "skipping forward-only guard",
-                                            old_contract, old_mat, suggested_name, new_mat,
-                                        )
                                 except Exception as e:
-                                    logger.debug(
-                                        "Maturity comparison failed for %s vs %s: %s",
+                                    logger.warning(
+                                        "Forward-only rollover guard failed "
+                                        "to parse %s / %s: %s — accepting",
                                         old_contract, suggested_name, e,
                                     )
 
