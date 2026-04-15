@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-15T05:36:30Z",
+  "timestamp": "2026-04-15T07:57:10Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "3606523",
     "uptime_since": "Tue 2026-04-14 18:44:42 UTC",
     "disk": "18%",
-    "memory": "1162MB/7941MB (15%)",
+    "memory": "1152MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "ed31e7a status: 2026-04-15 03:18 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "27c0fd4 status: 2026-04-15 05:36 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-04-14T20:58:32.871804+00:00",
       "timestamp_et": "2026-04-14T16:58:32.871823-04:00",
@@ -51,7 +51,7 @@
     },
     "journal_tail": "2026-04-14 20:54:28,860 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=91.95 MES=7005.25 MGC=4866.10 MNG=2.59 MNQ=25995.75 SIL=79.75\n2026-04-14 20:54:59,193 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.03 MES=7004.75 MGC=4866.10 MNG=2.59 MNQ=25995.00 SIL=79.72\n2026-04-14 20:55:29,194 [INFO] tradovate_api: Token expiring in 880s. Renewing...\n2026-04-14 20:55:29,366 [INFO] tradovate_api: Token renewed via demo.tradovateapi.com. Expires: 2026-04-14 22:15:29.302000+00:00\n2026-04-14 20:55:29,706 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.00 MES=7004.50 MGC=4866.10 MNG=2.59 MNQ=25994.00 SIL=79.69\n2026-04-14 20:56:00,041 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.03 MES=7004.50 MGC=4866.10 MNG=2.59 MNQ=25992.50 SIL=79.67\n2026-04-14 20:56:30,859 [WARNING] bot: CONTRACT ROLLOVER: MGC from MGCJ6 -> MGCM6 (calendar-driven: MGCJ6 past roll-out date, front month is now MGCM6)\n2026-04-14 20:56:30,860 [INFO] tradovate_api: Subscribed to quotes: MGCM6 (contractId=None)\n2026-04-14 20:56:30,860 [INFO] bot: Rollover complete: MGC now trading MGCM6 (id=3961353)\n2026-04-14 20:56:31,359 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.02 MES=7004.75 MGC=4864.90 MNG=2.59 MNQ=25994.25 SIL=79.66\n2026-04-14 20:57:01,854 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | locked=False | prices: MCL=92.06 MES=7004.75 MGC=4865.30 MNG=2.59 MNQ=25994.00 SIL=79.65\n2026-04-14 20:57:32,179 [INFO] bot: Status | balance=52298.71 | day_pnl=234.25 | to_floor=2500.00 | contracts=0/20 | trades=1/25 | lock",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 30989s)\n  Balance: $52298.71\n  Day P&L: $234.25\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.2%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 05:35:02 UTC 2026] Status: bot_active=true, pid=3606523\n[Wed Apr 15 05:35:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 39389s)\n  Balance: $52298.71\n  Day P&L: $234.25\n  Trades today: 1\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.2%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 07:55:02 UTC 2026] Status: bot_active=true, pid=3606523\n[Wed Apr 15 07:55:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
