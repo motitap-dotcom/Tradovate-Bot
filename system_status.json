@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-15T15:48:24Z",
+  "timestamp": "2026-04-15T16:18:10Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "3606523",
     "uptime_since": "Tue 2026-04-14 18:44:42 UTC",
     "disk": "18%",
-    "memory": "1186MB/7941MB (15%)",
+    "memory": "1197MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "2cb1544 status: 2026-04-15 14:11 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "e48d1fb status: 2026-04-15 15:48 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-04-15T15:48:00.719225+00:00",
-      "timestamp_et": "2026-04-15T11:48:00.719244-04:00",
+      "timestamp": "2026-04-15T16:17:55.238380+00:00",
+      "timestamp_et": "2026-04-15T12:17:55.238401-04:00",
       "balance": 52298.71,
       "equity": 52298.71,
       "day_pnl": 0.0,
@@ -63,14 +63,14 @@
         "until": "2026-04-15T10:44:59.529266-04:00"
       }
     },
-    "journal_tail": "2026-04-15 15:28:12,374 [INFO] tradovate_api: Subscribed to quotes: MCLK6 (contractId=None)\n2026-04-15 15:28:12,375 [INFO] bot: Rollover complete: MCL now trading MCLK6 (id=3643469)\n2026-04-15 15:28:12,699 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7037.25 MGC=4826.00 MNG=2.60 MNQ=26199.50 SIL=79.63\n2026-04-15 15:28:43,368 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7037.00 MGC=4826.00 MNG=2.60 MNQ=26199.00 SIL=79.60\n2026-04-15 15:29:13,720 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7036.00 MGC=4826.00 MNG=2.60 MNQ=26195.50 SIL=79.62\n2026-04-15 15:29:44,061 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7035.75 MGC=4826.00 MNG=2.60 MNQ=26193.25 SIL=79.54\n2026-04-15 15:30:14,400 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7034.75 MGC=4826.00 MNG=2.60 MNQ=26187.25 SIL=79.33\n2026-04-15 15:30:44,725 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7033.25 MGC=4826.00 MNG=2.60 MNQ=26182.00 SIL=79.24\n2026-04-15 15:31:15,081 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7032.25 MGC=4826.00 MNG=2.60 MNQ=26179.50 SIL=79.14\n2026-04-15 15:31:45,404 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.35 MES=7033.00 MGC=4826.00 MNG=2.60 MNQ=26180.50 SIL=79.09\n2026-04-15 15:32:15,740 [INFO] bot: Status | balance=52298.71 | day_pnl=0.",
+    "journal_tail": "2026-04-15 15:58:39,911 [INFO] tradovate_api: Subscribed to quotes: MGCM6 (contractId=None)\n2026-04-15 15:58:39,911 [INFO] bot: Rollover complete: MGC now trading MGCM6 (id=3961353)\n2026-04-15 15:58:40,068 [WARNING] bot: CONTRACT ROLLOVER: MCL from MCLK6 -> MCLM6 (calendar-driven: MCLK6 past roll-out date, front month is now MCLM6)\n2026-04-15 15:58:40,069 [INFO] tradovate_api: Subscribed to quotes: MCLM6 (contractId=None)\n2026-04-15 15:58:40,069 [INFO] bot: Rollover complete: MCL now trading MCLM6 (id=3643471)\n2026-04-15 15:58:40,410 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.04 MES=7033.00 MGC=4824.10 MNG=2.61 MNQ=26200.50 SIL=79.47\n2026-04-15 15:59:11,095 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.04 MES=7033.75 MGC=4825.40 MNG=2.61 MNQ=26205.75 SIL=79.50\n2026-04-15 15:59:41,436 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.00 MES=7033.50 MGC=4824.60 MNG=2.61 MNQ=26204.50 SIL=79.50\n2026-04-15 16:00:11,829 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.17 MES=7031.00 MGC=4824.20 MNG=2.61 MNQ=26190.00 SIL=79.45\n2026-04-15 16:00:42,194 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.17 MES=7031.00 MGC=4824.90 MNG=2.61 MNQ=26192.75 SIL=79.50\n2026-04-15 16:01:12,538 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.14 MES=7031.50 MGC=4825.70 MNG=2.61 MNQ=26196.00 SIL=79.49\n2026-04-15 16:01:42,889 [INFO] bot: Status | balance=52298.71 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=89.22 MES=7032.00 MG",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 5s)\n  Balance: $52298.71\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.7%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 15:45:03 UTC 2026] Status: bot_active=true, pid=3606523\n[Wed Apr 15 15:45:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 10s)\n  Balance: $52298.71\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.6%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 16:15:03 UTC 2026] Status: bot_active=true, pid=3606523\n[Wed Apr 15 16:15:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-15T15:48:00.719225+00:00",
-      "timestamp_et": "2026-04-15T11:48:00.719244-04:00",
+      "timestamp": "2026-04-15T16:17:55.238380+00:00",
+      "timestamp_et": "2026-04-15T12:17:55.238401-04:00",
       "balance": 52298.71,
       "equity": 52298.71,
       "day_pnl": 0.0,
@@ -142,7 +142,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 6396,
+    "ssh_output_len": 6398,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
