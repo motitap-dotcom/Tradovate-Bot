@@ -422,6 +422,9 @@ class TradovateBot:
 
             # Update mapping
             self.contract_map[symbol] = new_contract
+            new_contract_id = new_contract_data.get("id") if new_contract_data else None
+            if new_contract_id is not None:
+                self.contract_id_map[symbol] = new_contract_id
 
             # Clear cached contract ID mapping so _sync_fills rebuilds it
             if hasattr(self, "_contract_id_to_symbol"):
@@ -430,16 +433,30 @@ class TradovateBot:
                     if v != symbol
                 }
 
-            # Subscribe to new contract
+            # Drop stale contractId→symbol entries on the md_stream itself,
+            # otherwise quotes from the retired contract could still dispatch
+            # to this symbol (and the new contractId never gets registered
+            # if the subscribe response omits contractId — leading to quotes
+            # being silently dropped by the contractId-based dispatcher).
+            if self.md_stream and hasattr(self.md_stream, "_contract_id_to_symbol"):
+                self.md_stream._contract_id_to_symbol = {
+                    k: v for k, v in self.md_stream._contract_id_to_symbol.items()
+                    if v != symbol
+                }
+
+            # Subscribe to new contract — pass contract_id so the md_stream
+            # can route quotes immediately without relying on auto-learning
+            # from the subscribe response (which sometimes lacks contractId).
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
+                    contract_id=new_contract_id,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
+                symbol, new_contract, new_contract_id if new_contract_id is not None else "?",
             )
 
     # ─────────────────────────────────────────
