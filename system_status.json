@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-15T19:57:00Z",
+  "timestamp": "2026-04-15T20:02:01Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "3960924",
     "uptime_since": "Wed 2026-04-15 19:52:24 UTC",
     "disk": "18%",
-    "memory": "1181MB/7941MB (15%)",
+    "memory": "1159MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "fa1196e Auto-merge claude/check-bot-status-Bu6hT \u2192 main",
+    "git_commit": "09cb9fa status: 2026-04-15 19:57 UTC | api=ok auth=server_token bot=running trading=active",
     "live_status": {
-      "timestamp": "2026-04-15T19:56:32.763325+00:00",
-      "timestamp_et": "2026-04-15T15:56:32.763342-04:00",
+      "timestamp": "2026-04-15T20:01:36.127024+00:00",
+      "timestamp_et": "2026-04-15T16:01:36.127043-04:00",
       "balance": 52286.41,
       "equity": 52286.41,
       "day_pnl": 0.0,
@@ -59,14 +59,14 @@
       "circuit_open_until": null,
       "suppressed_by_news": null
     },
-    "journal_tail": "2026-04-15 19:52:25,878 [INFO] bot: Strategy for SIL: VWAPStrategy\n2026-04-15 19:52:25,878 [INFO] bot: Strategy for MNG: VWAPStrategy\n2026-04-15 19:52:25,926 [INFO] strategies: ORB 5-min range: high=26040.50 low=25995.25 size=45.25\n2026-04-15 19:52:25,926 [INFO] strategies: ORB 15-min range: high=26059.75 low=25982.25 size=77.50\n2026-04-15 19:52:25,927 [INFO] bot: Warmed up MNQ with 935 candles | strategy=ORBStrategy\n2026-04-15 19:52:25,927 [INFO] bot:   ORB 5-min range: 25995.25 - 26040.50 (size=45.25) \u2014 LATE-ENTRY ARMED (last close outside range)\n2026-04-15 19:52:25,927 [INFO] bot:   ORB 15-min range: 25982.25 - 26059.75 (size=77.50) \u2014 LATE-ENTRY ARMED (last close outside range)\n2026-04-15 19:52:26,057 [INFO] strategies: ORB 5-min range: high=7020.00 low=7012.25 size=7.75\n2026-04-15 19:52:26,057 [INFO] strategies: ORB 15-min range: high=7024.75 low=7004.00 size=20.75\n2026-04-15 19:52:26,058 [INFO] bot: Warmed up MES with 935 candles | strategy=ORBStrategy\n2026-04-15 19:52:26,058 [INFO] bot:   ORB 5-min range: 7012.25 - 7020.00 (size=7.75) \u2014 LATE-ENTRY ARMED (last close outside range)\n2026-04-15 19:52:26,058 [INFO] bot:   ORB 15-min range: 7004.00 - 7024.75 (size=20.75) \u2014 LATE-ENTRY ARMED (last close outside range)\n2026-04-15 19:52:26,172 [INFO] bot: Warmed up MGC with 944 candles | strategy=VWAPStrategy\n2026-04-15 19:52:26,173 [INFO] bot:   VWAP: 4831.6869\n2026-04-15 19:52:26,285 [INFO] bot: Warmed up MCL with 942 candles | strategy=VWAPStrategy\n2026-04-15 19:52:26,285 [INFO] bot:   VWAP: 91.7632\n2026-04-15 19:52:26,287 [INFO] bot_state: Bot state is from 2026-04-13 (not today). Starting fresh.\n2026-04-15 19:52:26,459 [INFO] websocket: Websocket connected\n2026-04-15 19:52:26,460 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-15 19:52:26,578 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-15 19:52:26,578 [INFO] bot: Market data via WebSocket\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MNQM6 (contractId=432711",
-    "bot_log_tail": "2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 4378521 -> SILK6 for quote routing\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MNGK6 (contractId=3852589)\n2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 3852589 -> MNGK6 for quote routing\n2026-04-15 19:52:26,579 [INFO] bot: Entering main loop...\n2026-04-15 19:52:26,694 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-15 19:52:28,747 [WARNING] bot: CONTRACT ROLLOVER: MGC from MGCM6 -> MGCJ6 (suggest-api: Tradovate returned MGCJ6)\n2026-04-15 19:52:28,747 [INFO] tradovate_api: Subscribed to quotes: MGCJ6 (contractId=3924410)\n2026-04-15 19:52:28,747 [INFO] bot: Rollover complete: MGC now trading MGCJ6 (id=3924410)\n2026-04-15 19:52:29,242 [WARNING] bot: CONTRACT ROLLOVER: MCL from MCLM6 -> MCLK6 (suggest-api: Tradovate returned MCLK6)\n2026-04-15 19:52:29,243 [INFO] tradovate_api: Subscribed to quotes: MCLK6 (contractId=3643469)\n2026-04-15 19:52:29,244 [INFO] bot: Rollover complete: MCL now trading MCLK6 (id=3643469)\n2026-04-15 19:52:29,585 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.93 MES=7061.50 MGC=4810.20 MNG=2.61 MNQ=26355.75 SIL=79.68\n2026-04-15 19:53:00,264 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.95 MES=7059.75 MGC=4810.20 MNG=2.61 MNQ=26350.00 SIL=79.64\n2026-04-15 19:53:30,628 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.04 MES=7057.75 MGC=4810.20 MNG=2.61 MNQ=26344.25 SIL=79.61\n2026-04-15 19:54:00,973 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.05 MES=7057.75 MGC=4810.20 MNG=2.61 MNQ=26345.00 SIL=79.62\n2026-04-15 19:54:31,319 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | con",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 9\n  Signals today: 1\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 2s)\n  Balance: $52286.41\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.8%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 19:55:04 UTC 2026] Status: bot_active=true, pid=3960924\n[Wed Apr 15 19:55:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-04-15 19:52:26,058 [INFO] bot:   ORB 5-min range: 7012.25 - 7020.00 (size=7.75) \u2014 LATE-ENTRY ARMED (last close outside range)\n2026-04-15 19:52:26,058 [INFO] bot:   ORB 15-min range: 7004.00 - 7024.75 (size=20.75) \u2014 LATE-ENTRY ARMED (last close outside range)\n2026-04-15 19:52:26,172 [INFO] bot: Warmed up MGC with 944 candles | strategy=VWAPStrategy\n2026-04-15 19:52:26,173 [INFO] bot:   VWAP: 4831.6869\n2026-04-15 19:52:26,285 [INFO] bot: Warmed up MCL with 942 candles | strategy=VWAPStrategy\n2026-04-15 19:52:26,285 [INFO] bot:   VWAP: 91.7632\n2026-04-15 19:52:26,287 [INFO] bot_state: Bot state is from 2026-04-13 (not today). Starting fresh.\n2026-04-15 19:52:26,459 [INFO] websocket: Websocket connected\n2026-04-15 19:52:26,460 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-15 19:52:26,578 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-15 19:52:26,578 [INFO] bot: Market data via WebSocket\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MNQM6 (contractId=4327110)\n2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MESM6 (contractId=4327108)\n2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MGCM6 (contractId=3961353)\n2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 3961353 -> MGCM6 for quote routing\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MCLM6 (contractId=3643471)\n2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 3643471 -> MCLM6 for quote routing\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: SILK6 (contractId=4378521)\n2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 4378521 -> SILK6 for quote routing\n2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MNGK6 (contractId=3852589)\n2026-04-15 19:52:26,579 [INFO] bot: Mapped contra",
+    "bot_log_tail": "2026-04-15 19:52:29,244 [INFO] bot: Rollover complete: MCL now trading MCLK6 (id=3643469)\n2026-04-15 19:52:29,585 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.93 MES=7061.50 MGC=4810.20 MNG=2.61 MNQ=26355.75 SIL=79.68\n2026-04-15 19:53:00,264 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.95 MES=7059.75 MGC=4810.20 MNG=2.61 MNQ=26350.00 SIL=79.64\n2026-04-15 19:53:30,628 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.04 MES=7057.75 MGC=4810.20 MNG=2.61 MNQ=26344.25 SIL=79.61\n2026-04-15 19:54:00,973 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.05 MES=7057.75 MGC=4810.20 MNG=2.61 MNQ=26345.00 SIL=79.62\n2026-04-15 19:54:31,319 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.96 MES=7059.75 MGC=4810.20 MNG=2.61 MNQ=26349.00 SIL=79.62\n2026-04-15 19:55:01,706 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.94 MES=7062.25 MGC=4810.20 MNG=2.61 MNQ=26365.75 SIL=79.65\n2026-04-15 19:55:32,057 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.96 MES=7061.75 MGC=4810.20 MNG=2.61 MNQ=26358.00 SIL=79.61\n2026-04-15 19:56:02,413 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.92 MES=7063.50 MGC=4810.20 MNG=2.61 MNQ=26363.25 SIL=79.57\n2026-04-15 19:56:32,762 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.97 MES=",
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 9\n  Signals today: 1\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 29s)\n  Balance: $52286.41\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 18% | Memory: 14.5%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 20:00:04 UTC 2026] Status: bot_active=true, pid=3960924\n[Wed Apr 15 20:00:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-15T19:56:32.763325+00:00",
-      "timestamp_et": "2026-04-15T15:56:32.763342-04:00",
+      "timestamp": "2026-04-15T20:01:36.127024+00:00",
+      "timestamp_et": "2026-04-15T16:01:36.127043-04:00",
       "balance": 52286.41,
       "equity": 52286.41,
       "day_pnl": 0.0,
@@ -104,16 +104,6 @@
     ],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-04-15 19:52:26,578 [INFO] bot: Market data via WebSocket",
-      "2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MNQM6 (contractId=4327110)",
-      "2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 4327110 -> MNQM6 for quote routing",
-      "2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MESM6 (contractId=4327108)",
-      "2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 4327108 -> MESM6 for quote routing",
-      "2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MGCM6 (contractId=3961353)",
-      "2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 3961353 -> MGCM6 for quote routing",
-      "2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MCLM6 (contractId=3643471)",
-      "2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 3643471 -> MCLM6 for quote routing",
-      "2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: SILK6 (contractId=4378521)",
       "2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 4378521 -> SILK6 for quote routing",
       "2026-04-15 19:52:26,579 [INFO] tradovate_api: Subscribed to quotes: MNGK6 (contractId=3852589)",
       "2026-04-15 19:52:26,579 [INFO] bot: Mapped contractId 3852589 -> MNGK6 for quote routing",
@@ -133,7 +123,17 @@
       "2026-04-15 19:55:01,706 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.94 MES=7062.25 MGC=4810.20 MNG=2.61 MNQ=26365.75 SIL=79.65",
       "2026-04-15 19:55:32,057 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.96 MES=7061.75 MGC=4810.20 MNG=2.61 MNQ=26358.00 SIL=79.61",
       "2026-04-15 19:56:02,413 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.92 MES=7063.50 MGC=4810.20 MNG=2.61 MNQ=26363.25 SIL=79.57",
-      "2026-04-15 19:56:32,762 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.97 MES=7062.75 MGC=4810.20 MNG=2.61 MNQ=26360.50 SIL=79.56"
+      "2026-04-15 19:56:32,762 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.97 MES=7062.75 MGC=4810.20 MNG=2.61 MNQ=26360.50 SIL=79.56",
+      "2026-04-15 19:57:03,085 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.04 MES=7061.00 MGC=4810.20 MNG=2.61 MNQ=26354.25 SIL=79.53",
+      "2026-04-15 19:57:33,416 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.02 MES=7062.75 MGC=4810.20 MNG=2.61 MNQ=26361.50 SIL=79.53",
+      "2026-04-15 19:58:03,743 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.05 MES=7063.25 MGC=4810.20 MNG=2.61 MNQ=26369.25 SIL=79.56",
+      "2026-04-15 19:58:34,069 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.03 MES=7062.75 MGC=4810.20 MNG=2.61 MNQ=26371.75 SIL=79.56",
+      "2026-04-15 19:59:04,397 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.02 MES=7063.50 MGC=4810.20 MNG=2.61 MNQ=26368.50 SIL=79.56",
+      "2026-04-15 19:59:34,752 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.01 MES=7062.25 MGC=4810.20 MNG=2.61 MNQ=26368.50 SIL=79.52",
+      "2026-04-15 20:00:05,082 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.99 MES=7062.25 MGC=4810.20 MNG=2.61 MNQ=26370.50 SIL=79.55",
+      "2026-04-15 20:00:35,445 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.07 MES=7058.75 MGC=4810.20 MNG=2.61 MNQ=26352.00 SIL=79.49",
+      "2026-04-15 20:01:05,795 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.06 MES=7058.75 MGC=4810.20 MNG=2.61 MNQ=26354.75 SIL=79.44",
+      "2026-04-15 20:01:36,126 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=91.10 MES=7059.00 MGC=4810.20 MNG=2.61 MNQ=26356.00 SIL=79.43"
     ],
     "journal_summary": {
       "total_trades": 12,
@@ -214,7 +214,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 13101,
+    "ssh_output_len": 14404,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
