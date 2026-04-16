@@ -161,7 +161,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 45,
         "risk_reward_ratio": 2.25,
         "min_range_points": 15,           # skip low-vol days
-        "max_range_points": 60,           # skip gap/news chop
+        "max_range_points": 150,          # NQ regularly opens 50-120pts
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -178,7 +178,7 @@ CONTRACT_SPECS = {
         "take_profit_points": 10,
         "risk_reward_ratio": 2.0,
         "min_range_points": 3,
-        "max_range_points": 15,
+        "max_range_points": 40,           # ES regularly opens 10-25pts
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
