@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-15T23:12:16Z",
+  "timestamp": "2026-04-16T00:08:01Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "3964523",
     "uptime_since": "Wed 2026-04-15 20:03:39 UTC",
     "disk": "19%",
-    "memory": "1165MB/7941MB (15%)",
+    "memory": "1194MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "92545d2 status: 2026-04-15 22:25 UTC | api=ok auth=None bot=running trading=active",
+    "git_commit": "c123726 status: 2026-04-15 23:12 UTC | api=ok auth=None bot=running trading=active",
     "live_status": {
       "timestamp": "2026-04-15T20:58:55.927222+00:00",
       "timestamp_et": "2026-04-15T16:58:55.927238-04:00",
@@ -50,8 +50,8 @@
       "suppressed_by_news": null
     },
     "journal_tail": "2026-04-15 20:51:50,138 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.13 MES=7057.25 MGC=4812.10 MNG=2.61 MNQ=26347.50 SIL=79.06\n2026-04-15 20:52:20,496 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.14 MES=7057.00 MGC=4812.20 MNG=2.61 MNQ=26348.75 SIL=79.05\n2026-04-15 20:52:50,819 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.14 MES=7057.00 MGC=4812.00 MNG=2.61 MNQ=26348.25 SIL=79.05\n2026-04-15 20:53:21,161 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.12 MES=7057.25 MGC=4812.00 MNG=2.61 MNQ=26349.50 SIL=79.05\n2026-04-15 20:53:51,496 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.13 MES=7056.75 MGC=4811.60 MNG=2.61 MNQ=26346.00 SIL=79.05\n2026-04-15 20:54:22,337 [WARNING] bot: Suggest API returned MGCJ6 (year=6 month=4) which is not after MGCM6 (year=6 month=6) \u2014 ignoring backward rollover\n2026-04-15 20:54:22,508 [WARNING] bot: Suggest API returned MCLK6 (year=6 month=5) which is not after MCLM6 (year=6 month=6) \u2014 ignoring backward rollover\n2026-04-15 20:54:22,837 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.12 MES=7056.50 MGC=4811.00 MNG=2.61 MNQ=26347.25 SIL=79.05\n2026-04-15 20:54:53,165 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.16 MES=7058.00 MGC=4811.60 MNG=2.61 MNQ=26352.25 SIL=79.06\n2026-04-15 20:55:23,515 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=88.16 MES=",
-    "bot_log_tail": "2026-04-15 20:59:26,749 [INFO] bot:   unrealized_pnl: 0.0\n2026-04-15 20:59:26,749 [INFO] bot:   peak_balance: 52286.41\n2026-04-15 20:59:26,749 [INFO] bot:   drawdown_floor: 49786.41\n2026-04-15 20:59:26,749 [INFO] bot:   distance_to_floor: 2500.0\n2026-04-15 20:59:26,749 [INFO] bot:   daily_loss_limit: 1000\n2026-04-15 20:59:26,749 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-04-15 20:59:26,749 [INFO] bot:   daily_profit_cap: 2400\n2026-04-15 20:59:26,750 [INFO] bot:   daily_profit_remaining: 2400.0\n2026-04-15 20:59:26,750 [INFO] bot:   open_contracts: 0\n2026-04-15 20:59:26,750 [INFO] bot:   max_contracts: 20\n2026-04-15 20:59:26,750 [INFO] bot:   trades_today: 0\n2026-04-15 20:59:26,750 [INFO] bot:   max_daily_trades: 25\n2026-04-15 20:59:26,750 [INFO] bot:   locked: False\n2026-04-15 20:59:26,750 [INFO] bot:   lock_reason: \n2026-04-15 20:59:26,750 [INFO] bot:   balance_initialized: True\n2026-04-15 20:59:26,750 [INFO] bot:   losing_streak: 0\n2026-04-15 20:59:26,750 [INFO] bot:   streak_pause_until: None\n2026-04-15 20:59:26,750 [INFO] bot:   open_directions: {}\n2026-04-15 20:59:26,750 [INFO] bot: Bot stopped.\n2026-04-15 20:59:26,750 [INFO] bot: Session ended. Next trading session: 2026-04-16 09:25 ET (sleeping 986 minutes)",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 7866s)\n  Balance: $52286.41\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 19% | Memory: 14.4%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 15 23:10:02 UTC 2026] Status: bot_active=true, pid=3964523\n[Wed Apr 15 23:10:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "bot_log_tail": "",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 11166s)\n  Balance: $52286.41\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 19% | Memory: 14.3%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Apr 16 00:05:02 UTC 2026] Status: bot_active=true, pid=3964523\n[Thu Apr 16 00:05:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -92,36 +92,7 @@
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-04-15 20:59:26,288 [INFO] bot: Shutting down bot...",
-      "2026-04-15 20:59:26,474 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-04-15 20:59:26,717 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-      "2026-04-15 20:59:26,749 [INFO] bot: ============================================================",
-      "2026-04-15 20:59:26,749 [INFO] bot: END OF DAY SUMMARY",
-      "2026-04-15 20:59:26,749 [INFO] bot: ============================================================",
-      "2026-04-15 20:59:26,749 [INFO] bot: Total trades: 0",
-      "2026-04-15 20:59:26,749 [INFO] bot:   balance: 52286.41",
-      "2026-04-15 20:59:26,749 [INFO] bot:   equity: 52286.41",
-      "2026-04-15 20:59:26,749 [INFO] bot:   day_pnl: 0.0",
-      "2026-04-15 20:59:26,749 [INFO] bot:   unrealized_pnl: 0.0",
-      "2026-04-15 20:59:26,749 [INFO] bot:   peak_balance: 52286.41",
-      "2026-04-15 20:59:26,749 [INFO] bot:   drawdown_floor: 49786.41",
-      "2026-04-15 20:59:26,749 [INFO] bot:   distance_to_floor: 2500.0",
-      "2026-04-15 20:59:26,749 [INFO] bot:   daily_loss_limit: 1000",
-      "2026-04-15 20:59:26,749 [INFO] bot:   daily_loss_remaining: 1000.0",
-      "2026-04-15 20:59:26,749 [INFO] bot:   daily_profit_cap: 2400",
-      "2026-04-15 20:59:26,750 [INFO] bot:   daily_profit_remaining: 2400.0",
-      "2026-04-15 20:59:26,750 [INFO] bot:   open_contracts: 0",
-      "2026-04-15 20:59:26,750 [INFO] bot:   max_contracts: 20",
-      "2026-04-15 20:59:26,750 [INFO] bot:   trades_today: 0",
-      "2026-04-15 20:59:26,750 [INFO] bot:   max_daily_trades: 25",
-      "2026-04-15 20:59:26,750 [INFO] bot:   locked: False",
-      "2026-04-15 20:59:26,750 [INFO] bot:   lock_reason: ",
-      "2026-04-15 20:59:26,750 [INFO] bot:   balance_initialized: True",
-      "2026-04-15 20:59:26,750 [INFO] bot:   losing_streak: 0",
-      "2026-04-15 20:59:26,750 [INFO] bot:   streak_pause_until: None",
-      "2026-04-15 20:59:26,750 [INFO] bot:   open_directions: {}",
-      "2026-04-15 20:59:26,750 [INFO] bot: Bot stopped.",
-      "2026-04-15 20:59:26,750 [INFO] bot: Session ended. Next trading session: 2026-04-16 09:25 ET (sleeping 986 minutes)"
+      ""
     ],
     "journal_summary": {
       "total_trades": 12,
@@ -142,12 +113,9 @@
       "consistency_adjusted": false,
       "trades_today": 0
     },
-    "trading_active": true,
+    "trading_active": false,
     "websocket_connected": true,
-    "errors_in_log": [
-      "2026-04-15 20:06:13,706 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
-      "2026-04-15 20:06:13,706 [ERROR] websocket: Connection to remote host was lost. - goodbye"
-    ],
+    "errors_in_log": [],
     "market_data_source": "websocket",
     "today_trades": []
   },
@@ -157,7 +125,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 9659,
+    "ssh_output_len": 6194,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
