@@ -21,15 +21,12 @@ import os
 import threading
 import time
 import uuid
-from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import requests
 import websocket
-
-import alerts
 
 import config
 
@@ -79,6 +76,7 @@ class TradovateAPI:
         self.user_id: Optional[int] = None
         self.account_id: Optional[int] = None
         self.account_spec: Optional[str] = None
+        self._auth_cooldown_until: Optional[datetime] = None  # Rate-limit guard
 
     # ─────────────────────────────────────────
     # Authentication
@@ -588,6 +586,13 @@ class TradovateAPI:
         if self.token_expiry is None:
             return
         now = datetime.now(timezone.utc)
+        # Rate-limit guard: don't hammer auth endpoint after repeated failures.
+        # Tradovate returns "Incorrect password" when rate-limited, which causes
+        # a death-spiral of retries that never recover.
+        if self._auth_cooldown_until and now < self._auth_cooldown_until:
+            remaining_cd = (self._auth_cooldown_until - now).total_seconds()
+            logger.debug("Auth cooldown active (%.0fs remaining). Skipping.", remaining_cd)
+            return
         remaining = (self.token_expiry - now).total_seconds()
         # Renew if less than 15 minutes remain (proactive — avoids expiry during slow API calls)
         if remaining < 900:
@@ -604,6 +609,12 @@ class TradovateAPI:
                     # Do NOT restore expired token — it will cause 401 loops.
                     # Leave token as None so next API call triggers re-auth via 401 handler.
                     logger.error("Full re-authentication also failed! Token is now None.")
+                    # Back off for 5 minutes to avoid rate-limit death spiral.
+                    self._auth_cooldown_until = now + timedelta(seconds=300)
+                    logger.warning("Auth cooldown set — next attempt in 5 minutes.")
+                else:
+                    # Auth succeeded — clear any cooldown
+                    self._auth_cooldown_until = None
 
     def _headers(self) -> dict:
         return {
@@ -951,10 +962,21 @@ class TradovateAPI:
 
     def _re_authenticate(self) -> bool:
         """Clear expired token and do full re-authentication."""
+        # Respect cooldown to avoid rate-limit death spiral
+        now = datetime.now(timezone.utc)
+        if self._auth_cooldown_until and now < self._auth_cooldown_until:
+            logger.debug("Auth cooldown active — skipping re-auth.")
+            return False
         self.access_token = None
         self.md_access_token = None
         self.token_expiry = None
-        return self.authenticate()
+        result = self.authenticate()
+        if not result:
+            self._auth_cooldown_until = now + timedelta(seconds=300)
+            logger.warning("Re-auth failed — cooldown set for 5 minutes.")
+        else:
+            self._auth_cooldown_until = None
+        return result
 
 
 # ─────────────────────────────────────────────
@@ -981,19 +1003,6 @@ class MarketDataStream:
     RECONNECT_BASE_DELAY = 2  # seconds
     # After this many consecutive reconnect failures, signal caller to fall back
     FALLBACK_THRESHOLD = 10
-    # Proactive SockJS-style heartbeat interval.  The Tradovate market-data
-    # gateway closes idle connections (code 1000 "Bye") after ~30s if the
-    # client hasn't sent anything at the application layer — WebSocket pings
-    # don't count.  Sending an empty frame "[]" every 2.5s keeps the server's
-    # idle timer from firing and eliminates the 30s reconnect loop.
-    HEARTBEAT_INTERVAL = 2.5  # seconds
-
-    # Circuit-breaker: if the WS has this many disconnects inside
-    # CIRCUIT_WINDOW_SECONDS, open the circuit — callers should stop
-    # opening new positions until CIRCUIT_COOLDOWN_SECONDS has elapsed.
-    CIRCUIT_DISCONNECT_THRESHOLD = 5
-    CIRCUIT_WINDOW_SECONDS = 60
-    CIRCUIT_COOLDOWN_SECONDS = 300  # 5 minutes
 
     def __init__(self, md_access_token: str, api: Optional["TradovateAPI"] = None):
         self.md_token = md_access_token
@@ -1016,12 +1025,7 @@ class MarketDataStream:
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
-        self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
-
-        # Circuit-breaker state
-        self._disconnect_times: deque[float] = deque()
-        self._circuit_open_until: float = 0.0
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1083,7 +1087,6 @@ class MarketDataStream:
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
             self._reconnect_timer = None
-        self._stop_heartbeat()
         if self.ws:
             try:
                 self.ws.close()
@@ -1092,39 +1095,6 @@ class MarketDataStream:
         # Wait briefly for the thread to finish
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
-
-    def _start_heartbeat(self):
-        """Send an application-level heartbeat and reschedule.
-
-        Tradovate's market-data gateway closes connections after ~30s of
-        application-layer silence (code 1000 "Bye") even though WebSocket
-        pings keep the TCP layer alive.  Sending an empty SockJS frame
-        ("[]") every HEARTBEAT_INTERVAL seconds prevents the server-side
-        idle timer from firing.
-        """
-        if not self._should_run:
-            return
-        try:
-            if self.ws:
-                self.ws.send("[]")
-        except Exception as e:
-            logger.debug("Market data heartbeat send failed: %s", e)
-        if not self._should_run:
-            return
-        self._heartbeat_timer = threading.Timer(
-            self.HEARTBEAT_INTERVAL, self._start_heartbeat
-        )
-        self._heartbeat_timer.daemon = True
-        self._heartbeat_timer.start()
-
-    def _stop_heartbeat(self):
-        """Cancel the proactive heartbeat timer if scheduled."""
-        if self._heartbeat_timer:
-            try:
-                self._heartbeat_timer.cancel()
-            except Exception:
-                pass
-            self._heartbeat_timer = None
 
     # How long to wait for first quote before declaring stream dead
     NO_DATA_TIMEOUT = 60  # seconds
@@ -1207,9 +1177,6 @@ class MarketDataStream:
                 logger.info("Market data WebSocket authenticated")
                 self._reconnect_count = 0
                 self._connected.set()
-                # Begin proactive heartbeat — prevents server-side idle close
-                self._stop_heartbeat()
-                self._start_heartbeat()
                 continue
 
             # Auth failure — trigger reconnect with fresh token
@@ -1289,9 +1256,6 @@ class MarketDataStream:
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
-        # Stop the heartbeat for the dead connection — a fresh one will start
-        # after the next authenticated reconnect.
-        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
         is_graceful = close_status_code == 1000
@@ -1300,10 +1264,6 @@ class MarketDataStream:
         else:
             logger.warning("Market data WebSocket closed: %s %s", close_status_code, close_msg)
             self._consecutive_failures += 1
-
-        # Feed the circuit-breaker window (graceful closes count too —
-        # frequent "clean" reconnects are still a flapping stream).
-        self._record_disconnect(time.time())
 
         if not self._should_run:
             return
@@ -1405,52 +1365,6 @@ class MarketDataStream:
                 self.ws.send(msg)
             except Exception as e:
                 logger.warning("WebSocket send failed for %s: %s", endpoint, e)
-
-    # ─────────────────────────────────────────
-    # Circuit-breaker
-    # ─────────────────────────────────────────
-
-    def _record_disconnect(self, now: float):
-        """Append a disconnect timestamp and open the circuit if we blew
-        through CIRCUIT_DISCONNECT_THRESHOLD inside CIRCUIT_WINDOW_SECONDS.
-        """
-        self._disconnect_times.append(now)
-        # Trim entries older than the rolling window
-        cutoff = now - self.CIRCUIT_WINDOW_SECONDS
-        while self._disconnect_times and self._disconnect_times[0] < cutoff:
-            self._disconnect_times.popleft()
-
-        if len(self._disconnect_times) >= self.CIRCUIT_DISCONNECT_THRESHOLD:
-            if self._circuit_open_until <= now:
-                # Was closed — opening now
-                self._circuit_open_until = now + self.CIRCUIT_COOLDOWN_SECONDS
-                logger.warning(
-                    "MARKET DATA CIRCUIT: opened (%d disconnects in %ds). "
-                    "Blocking new entries until %s.",
-                    len(self._disconnect_times),
-                    self.CIRCUIT_WINDOW_SECONDS,
-                    datetime.fromtimestamp(self._circuit_open_until, timezone.utc).isoformat(),
-                )
-                alerts.send(
-                    "WARNING",
-                    "Market data circuit opened",
-                    f"{len(self._disconnect_times)} disconnects in "
-                    f"{self.CIRCUIT_WINDOW_SECONDS}s — new entries blocked "
-                    f"for {self.CIRCUIT_COOLDOWN_SECONDS // 60}m",
-                )
-            else:
-                # Already open — just refresh the deadline
-                self._circuit_open_until = now + self.CIRCUIT_COOLDOWN_SECONDS
-
-    def market_data_healthy(self, now: Optional[float] = None) -> bool:
-        """False while the circuit is open.
-
-        The caller should use this to short-circuit new signal
-        generation. Existing brackets on the server are not affected.
-        """
-        if now is None:
-            now = time.time()
-        return now >= self._circuit_open_until
 
 
 # ─────────────────────────────────────────────
