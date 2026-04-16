@@ -505,80 +505,93 @@ class VWAPStrategy:
         signal = None
 
         # Detect crossover above VWAP
-        if self._prev_price <= self.vwap and price > self.vwap:
-            self._cross_above_count += 1
+        crossed_above = self._prev_price <= self.vwap and price > self.vwap
+        if crossed_above:
+            # Initial cross — start confirmation count
+            self._cross_above_count = 1
             self._cross_below_count = 0
-
-            if (
-                self._cross_above_count >= self.confirmation_candles
-                and self._long_allowed()
-            ):
-                stop = self.vwap - self.stop_points
-                tp = price + self.tp_points
-                self.long_count += 1
-                self.last_long_time = self._current_time
-                self.last_any_trade_time = self._current_time
-                self._cross_above_count = 0  # reset for potential next trade
-
-                logger.info(
-                    "VWAP %s LONG #%d at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
-                    self.symbol,
-                    self.long_count,
-                    price,
-                    self.vwap,
-                    stop,
-                    tp,
-                )
-                signal = TradeSignal(
-                    symbol=self.symbol,
-                    direction=Direction.LONG,
-                    entry_price=None,
-                    stop_loss=stop,
-                    take_profit=tp,
-                    qty=0,
-                    reason=(
-                        f"VWAP long #{self.long_count} at {price:.4f} "
-                        f"(VWAP={self.vwap:.4f})"
-                    ),
-                )
-
-        # Detect crossover below VWAP
-        elif self._prev_price >= self.vwap and price < self.vwap:
-            self._cross_below_count += 1
+        elif price > self.vwap and self._cross_above_count > 0:
+            # Price staying above VWAP — count as confirmation tick
+            self._cross_above_count += 1
+        else:
+            # Price dropped back or is below — reset
             self._cross_above_count = 0
 
-            if (
-                self._cross_below_count >= self.confirmation_candles
-                and self._short_allowed()
-            ):
-                stop = self.vwap + self.stop_points
-                tp = price - self.tp_points
-                self.short_count += 1
-                self.last_short_time = self._current_time
-                self.last_any_trade_time = self._current_time
-                self._cross_below_count = 0
+        if (
+            self._cross_above_count >= self.confirmation_candles
+            and self._long_allowed()
+        ):
+            stop = self.vwap - self.stop_points
+            tp = price + self.tp_points
+            self.long_count += 1
+            self.last_long_time = self._current_time
+            self.last_any_trade_time = self._current_time
+            self._cross_above_count = 0
 
-                logger.info(
-                    "VWAP %s SHORT #%d at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
-                    self.symbol,
-                    self.short_count,
-                    price,
-                    self.vwap,
-                    stop,
-                    tp,
-                )
-                signal = TradeSignal(
-                    symbol=self.symbol,
-                    direction=Direction.SHORT,
-                    entry_price=None,
-                    stop_loss=stop,
-                    take_profit=tp,
-                    qty=0,
-                    reason=(
-                        f"VWAP short #{self.short_count} at {price:.4f} "
-                        f"(VWAP={self.vwap:.4f})"
-                    ),
-                )
+            logger.info(
+                "VWAP %s LONG #%d at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
+                self.symbol,
+                self.long_count,
+                price,
+                self.vwap,
+                stop,
+                tp,
+            )
+            signal = TradeSignal(
+                symbol=self.symbol,
+                direction=Direction.LONG,
+                entry_price=None,
+                stop_loss=stop,
+                take_profit=tp,
+                qty=0,
+                reason=(
+                    f"VWAP long #{self.long_count} at {price:.4f} "
+                    f"(VWAP={self.vwap:.4f})"
+                ),
+            )
+
+        # Detect crossover below VWAP
+        crossed_below = self._prev_price >= self.vwap and price < self.vwap
+        if crossed_below:
+            self._cross_below_count = 1
+            self._cross_above_count = 0
+        elif price < self.vwap and self._cross_below_count > 0:
+            self._cross_below_count += 1
+        elif not crossed_above:
+            self._cross_below_count = 0
+
+        if (
+            self._cross_below_count >= self.confirmation_candles
+            and self._short_allowed()
+        ):
+            stop = self.vwap + self.stop_points
+            tp = price - self.tp_points
+            self.short_count += 1
+            self.last_short_time = self._current_time
+            self.last_any_trade_time = self._current_time
+            self._cross_below_count = 0
+
+            logger.info(
+                "VWAP %s SHORT #%d at %.4f | VWAP=%.4f | SL=%.4f TP=%.4f",
+                self.symbol,
+                self.short_count,
+                price,
+                self.vwap,
+                stop,
+                tp,
+            )
+            signal = TradeSignal(
+                symbol=self.symbol,
+                direction=Direction.SHORT,
+                entry_price=None,
+                stop_loss=stop,
+                take_profit=tp,
+                qty=0,
+                reason=(
+                    f"VWAP short #{self.short_count} at {price:.4f} "
+                    f"(VWAP={self.vwap:.4f})"
+                ),
+            )
         else:
             if price > self.vwap:
                 self._cross_below_count = 0
