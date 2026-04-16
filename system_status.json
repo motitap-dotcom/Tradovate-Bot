@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-16T14:41:07Z",
+  "timestamp": "2026-04-16T15:00:04Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -20,15 +20,15 @@
   "server": {
     "bot_dir": "/root/tradovate-bot",
     "bot_active": true,
-    "bot_pid": "3964523",
-    "uptime_since": "Wed 2026-04-15 20:03:39 UTC",
+    "bot_pid": "23415",
+    "uptime_since": "Thu 2026-04-16 14:42:02 UTC",
     "disk": "19%",
-    "memory": "1178MB/7941MB (15%)",
+    "memory": "1157MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "6c195b0 status: 2026-04-16 12:43 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "2d28f60 Auto-merge claude/debug-trading-bot-l5eMX \u2192 main",
     "live_status": {
-      "timestamp": "2026-04-16T14:41:01.748087+00:00",
-      "timestamp_et": "2026-04-16T10:41:01.748106-04:00",
+      "timestamp": "2026-04-16T14:59:56.818736+00:00",
+      "timestamp_et": "2026-04-16T10:59:56.818758-04:00",
       "balance": 52286.41,
       "equity": 52286.41,
       "day_pnl": 0.0,
@@ -60,17 +60,17 @@
       "suppressed_by_news": {
         "symbol": "MNG",
         "event": "EIA Natural Gas Storage",
-        "until": "2026-04-16T10:40:59.453445-04:00"
+        "until": "2026-04-16T10:44:54.099975-04:00"
       }
     },
-    "journal_tail": "2026-04-16 14:19:13,103 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.25 MES=7051.75 MGC=4817.00 MNG=2.64 MNQ=26330.00 SIL=78.76\n2026-04-16 14:19:43,451 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.22 MES=7050.00 MGC=4817.70 MNG=2.64 MNQ=26320.00 SIL=78.80\n2026-04-16 14:20:13,799 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.19 MES=7050.25 MGC=4817.30 MNG=2.64 MNQ=26323.50 SIL=78.79\n2026-04-16 14:20:44,130 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.22 MES=7049.75 MGC=4817.50 MNG=2.64 MNQ=26319.00 SIL=78.80\n2026-04-16 14:21:14,467 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.22 MES=7052.25 MGC=4817.50 MNG=2.64 MNQ=26338.25 SIL=78.81\n2026-04-16 14:21:44,807 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.27 MES=7051.25 MGC=4818.80 MNG=2.64 MNQ=26336.00 SIL=78.79\n2026-04-16 14:22:15,135 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.35 MES=7051.00 MGC=4818.40 MNG=2.64 MNQ=26335.00 SIL=78.78\n2026-04-16 14:22:45,479 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.42 MES=7050.50 MGC=4814.90 MNG=2.64 MNQ=26329.25 SIL=78.64\n2026-04-16 14:23:16,662 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.52 MES=7049.75 MGC=4814.50 MNG=2.65 MNQ=26325.00 SIL=78.60\n2026-04-16 14:23:47,018 [INFO] bot: St",
-    "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 2s)\n  Balance: $52286.41\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 19% | Memory: 14.8%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Apr 16 14:40:03 UTC 2026] Status: bot_active=true, pid=3964523\n[Thu Apr 16 14:40:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "journal_tail": "2026-04-16 14:58:23,541 [INFO] tradovate_api: Re-subscribed to: MGCM6\n2026-04-16 14:58:23,541 [INFO] tradovate_api: Re-subscribed to: MCLM6\n2026-04-16 14:58:23,541 [INFO] tradovate_api: Re-subscribed to: SILK6\n2026-04-16 14:58:23,541 [INFO] tradovate_api: Re-subscribed to: MNGK6\n2026-04-16 14:58:25,813 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.50 MES=7059.25 MGC=4807.70 MNG=2.66 MNQ=26397.00 SIL=78.53\n2026-04-16 14:58:53,656 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-04-16 14:58:53,656 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-04-16 14:58:53,656 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-16 14:58:53,656 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-04-16 14:58:55,657 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-16 14:58:55,835 [INFO] websocket: Websocket connected\n2026-04-16 14:58:55,835 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-16 14:58:55,947 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-16 14:58:55,948 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-16 14:58:55,948 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-16 14:58:55,949 [INFO] tradovate_api: Re-subscribed to: MGCM6\n2026-04-16 14:58:55,949 [INFO] tradovate_api: Re-subscribed to: MCLM6\n2026-04-16 14:58:55,949 [INFO] tradovate_api: Re-subscribed to: SILK6\n2026-04-16 14:58:55,949 [INFO] tradovate_api: Re-subscribed to: MNGK6\n2026-04-16 14:58:56,154 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.45 MES=7060.50 MGC=4810.10 MNG=2.66 MNQ=26404.25 SIL=78.62\n2026-04-16 14:59:26,061 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-04-16 14:59:26,061 [ERROR] websocket: C",
+    "bot_log_tail": "2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: MGCM6\n2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: MCLM6\n2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: SILK6\n2026-04-16 14:59:28,342 [INFO] tradovate_api: Re-subscribed to: MNGK6\n2026-04-16 14:59:56,817 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.35 MES=7060.75 MGC=4810.70 MNG=2.66 MNQ=26406.00 SIL=78.62\n2026-04-16 14:59:58,456 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-04-16 14:59:58,456 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye\n2026-04-16 14:59:58,456 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-16 14:59:58,456 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-04-16 15:00:00,457 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-16 15:00:00,630 [INFO] websocket: Websocket connected\n2026-04-16 15:00:00,631 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-16 15:00:00,745 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MGCM6\n2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MCLM6\n2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: SILK6\n2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MNGK6",
+    "cron_log_tail": "\n[5/5] Live Status & System\n  live_status.json: exists (age: 9s)\n  Balance: $52286.41\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL', 'MNG']\n  Disk: 19% | Memory: 14.5%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: FRESH\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Apr 16 14:55:03 UTC 2026] Status: bot_active=true, pid=23415\n[Thu Apr 16 14:55:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat\n[Thu Apr 16 15:00:02 UTC 2026] Checking for updates on main...\n[Thu Apr 16 15:00:03 UTC 2026] No changes."
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-16T14:41:01.748087+00:00",
-      "timestamp_et": "2026-04-16T10:41:01.748106-04:00",
+      "timestamp": "2026-04-16T14:59:56.818736+00:00",
+      "timestamp_et": "2026-04-16T10:59:56.818758-04:00",
       "balance": 52286.41,
       "equity": 52286.41,
       "day_pnl": 0.0,
@@ -102,15 +102,44 @@
       "suppressed_by_news": {
         "symbol": "MNG",
         "event": "EIA Natural Gas Storage",
-        "until": "2026-04-16T10:40:59.453445-04:00"
+        "until": "2026-04-16T10:44:54.099975-04:00"
       }
     },
     "token_status": "valid",
-    "token_expiry": "2026-04-16T15:51:22.915000+00:00",
+    "token_expiry": "2026-04-16T16:02:03.340000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      ""
+      "2026-04-16 14:59:26,061 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-04-16 14:59:26,061 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-04-16 14:59:26,061 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+      "2026-04-16 14:59:26,061 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
+      "2026-04-16 14:59:26,483 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.39 MES=7060.50 MGC=4812.00 MNG=2.66 MNQ=26403.25 SIL=78.64",
+      "2026-04-16 14:59:28,062 [INFO] tradovate_api: Refreshed market data token for reconnection",
+      "2026-04-16 14:59:28,225 [INFO] websocket: Websocket connected",
+      "2026-04-16 14:59:28,226 [INFO] tradovate_api: Market data WebSocket connected",
+      "2026-04-16 14:59:28,340 [INFO] tradovate_api: Market data WebSocket authenticated",
+      "2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: MNQM6",
+      "2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: MESM6",
+      "2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: MGCM6",
+      "2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: MCLM6",
+      "2026-04-16 14:59:28,341 [INFO] tradovate_api: Re-subscribed to: SILK6",
+      "2026-04-16 14:59:28,342 [INFO] tradovate_api: Re-subscribed to: MNGK6",
+      "2026-04-16 14:59:56,817 [INFO] bot: Status | balance=52286.41 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/20 | trades=0/25 | locked=False | prices: MCL=90.35 MES=7060.75 MGC=4810.70 MNG=2.66 MNQ=26406.00 SIL=78.62",
+      "2026-04-16 14:59:58,456 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+      "2026-04-16 14:59:58,456 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye",
+      "2026-04-16 14:59:58,456 [WARNING] tradovate_api: Market data WebSocket closed: None None",
+      "2026-04-16 14:59:58,456 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...",
+      "2026-04-16 15:00:00,457 [INFO] tradovate_api: Refreshed market data token for reconnection",
+      "2026-04-16 15:00:00,630 [INFO] websocket: Websocket connected",
+      "2026-04-16 15:00:00,631 [INFO] tradovate_api: Market data WebSocket connected",
+      "2026-04-16 15:00:00,745 [INFO] tradovate_api: Market data WebSocket authenticated",
+      "2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MNQM6",
+      "2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MESM6",
+      "2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MGCM6",
+      "2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MCLM6",
+      "2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: SILK6",
+      "2026-04-16 15:00:00,746 [INFO] tradovate_api: Re-subscribed to: MNGK6"
     ],
     "journal_summary": {
       "total_trades": 12,
@@ -131,9 +160,20 @@
       "consistency_adjusted": false,
       "trades_today": 0
     },
-    "trading_active": false,
+    "trading_active": true,
     "websocket_connected": true,
-    "errors_in_log": [],
+    "errors_in_log": [
+      "2026-04-16 14:57:48,852 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-04-16 14:57:48,852 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-04-16 14:58:21,249 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-04-16 14:58:21,250 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-04-16 14:58:53,656 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-04-16 14:58:53,656 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-04-16 14:59:26,061 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.",
+      "2026-04-16 14:59:26,061 [ERROR] websocket: Connection to remote host was lost. - goodbye",
+      "2026-04-16 14:59:58,456 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'",
+      "2026-04-16 14:59:58,456 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye"
+    ],
     "market_data_source": "websocket",
     "today_trades": [],
     "today_fills": []
@@ -142,7 +182,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 6383,
+    "ssh_output_len": 11954,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
