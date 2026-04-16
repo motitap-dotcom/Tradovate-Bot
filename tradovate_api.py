@@ -21,7 +21,7 @@ import os
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -76,6 +76,7 @@ class TradovateAPI:
         self.user_id: Optional[int] = None
         self.account_id: Optional[int] = None
         self.account_spec: Optional[str] = None
+        self._auth_cooldown_until: Optional[datetime] = None  # Rate-limit guard
 
     # ─────────────────────────────────────────
     # Authentication
@@ -585,6 +586,13 @@ class TradovateAPI:
         if self.token_expiry is None:
             return
         now = datetime.now(timezone.utc)
+        # Rate-limit guard: don't hammer auth endpoint after repeated failures.
+        # Tradovate returns "Incorrect password" when rate-limited, which causes
+        # a death-spiral of retries that never recover.
+        if self._auth_cooldown_until and now < self._auth_cooldown_until:
+            remaining_cd = (self._auth_cooldown_until - now).total_seconds()
+            logger.debug("Auth cooldown active (%.0fs remaining). Skipping.", remaining_cd)
+            return
         remaining = (self.token_expiry - now).total_seconds()
         # Renew if less than 15 minutes remain (proactive — avoids expiry during slow API calls)
         if remaining < 900:
@@ -601,6 +609,12 @@ class TradovateAPI:
                     # Do NOT restore expired token — it will cause 401 loops.
                     # Leave token as None so next API call triggers re-auth via 401 handler.
                     logger.error("Full re-authentication also failed! Token is now None.")
+                    # Back off for 5 minutes to avoid rate-limit death spiral.
+                    self._auth_cooldown_until = now + timedelta(seconds=300)
+                    logger.warning("Auth cooldown set — next attempt in 5 minutes.")
+                else:
+                    # Auth succeeded — clear any cooldown
+                    self._auth_cooldown_until = None
 
     def _headers(self) -> dict:
         return {
@@ -948,10 +962,21 @@ class TradovateAPI:
 
     def _re_authenticate(self) -> bool:
         """Clear expired token and do full re-authentication."""
+        # Respect cooldown to avoid rate-limit death spiral
+        now = datetime.now(timezone.utc)
+        if self._auth_cooldown_until and now < self._auth_cooldown_until:
+            logger.debug("Auth cooldown active — skipping re-auth.")
+            return False
         self.access_token = None
         self.md_access_token = None
         self.token_expiry = None
-        return self.authenticate()
+        result = self.authenticate()
+        if not result:
+            self._auth_cooldown_until = now + timedelta(seconds=300)
+            logger.warning("Re-auth failed — cooldown set for 5 minutes.")
+        else:
+            self._auth_cooldown_until = None
+        return result
 
 
 # ─────────────────────────────────────────────
