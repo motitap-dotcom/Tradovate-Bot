@@ -193,8 +193,8 @@ CONTRACT_SPECS = {
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 2,   # require 2 bars of cross confirmation
         "max_vwap_trades_per_direction": 4,
-        "vwap_cooldown_minutes": 30,
-        "min_trade_gap_minutes": 5,
+        "vwap_cooldown_minutes": 15,
+        "min_trade_gap_minutes": 3,
         "max_vwap_distance_pct": 0.005,   # skip signal if price > 0.5% away from VWAP
     },
     "MCL": {
@@ -210,8 +210,8 @@ CONTRACT_SPECS = {
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 2,
         "max_vwap_trades_per_direction": 4,
-        "vwap_cooldown_minutes": 30,
-        "min_trade_gap_minutes": 5,
+        "vwap_cooldown_minutes": 15,
+        "min_trade_gap_minutes": 3,
         "max_vwap_distance_pct": 0.005,
     },
     "SIL": {
@@ -227,8 +227,8 @@ CONTRACT_SPECS = {
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 2,
         "max_vwap_trades_per_direction": 3,
-        "vwap_cooldown_minutes": 30,
-        "min_trade_gap_minutes": 5,
+        "vwap_cooldown_minutes": 15,
+        "min_trade_gap_minutes": 3,
         "max_vwap_distance_pct": 0.006,
     },
     "MNG": {
@@ -244,8 +244,8 @@ CONTRACT_SPECS = {
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 2,
         "max_vwap_trades_per_direction": 3,
-        "vwap_cooldown_minutes": 30,
-        "min_trade_gap_minutes": 5,
+        "vwap_cooldown_minutes": 15,
+        "min_trade_gap_minutes": 3,
         "max_vwap_distance_pct": 0.008,
     },
     # ─── Mini Contracts (disabled — switched to micros) ──────

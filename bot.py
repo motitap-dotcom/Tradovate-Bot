@@ -791,7 +791,7 @@ class TradovateBot:
             ("entries", "TotalTradeVolume", "size"),
             ("trade", "size"),
             ("volume",),
-        ) or 0
+        ) or 1  # WebSocket ticks often lack volume — default to 1 so VWAP updates
 
         # Track latest live price per symbol for the periodic status log.
         self._last_prices[symbol] = price

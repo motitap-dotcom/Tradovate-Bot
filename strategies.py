@@ -458,9 +458,9 @@ class VWAPStrategy:
                 return False
         return True
 
-    # Minimum candles of data before generating signals — raised so VWAP
-    # stabilises before we start reacting to crossovers.
-    MIN_CANDLES_FOR_SIGNAL = 10
+    # Minimum ticks before generating signals. Warmup already builds VWAP
+    # from historical data, so we only need a few live ticks to confirm.
+    MIN_CANDLES_FOR_SIGNAL = 3
 
     def on_price(
         self, price: float, high: float, low: float, volume: float
