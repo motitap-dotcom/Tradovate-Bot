@@ -157,6 +157,24 @@ jobs:
               journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep "\[ERROR\]" | tail -3
             fi
 
+            # ── Check 7b: WebSocket stability ──
+            WS_DISCONNECTS=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "Connection to remote host was lost\|WebSocket closed" || echo "0")
+            if [ "$WS_DISCONNECTS" -le 2 ]; then
+              echo "[PASS] WebSocket disconnects (30min): $WS_DISCONNECTS"
+            else
+              echo "[FAIL] WebSocket flapping: $WS_DISCONNECTS disconnects in 30min"
+              FAILURES="${FAILURES}WebSocket disconnected ${WS_DISCONNECTS} times in 30min — check SockJS heartbeat\n"
+            fi
+
+            # ── Check 7c: Auth cooldown loop ──
+            AUTH_COOLDOWNS=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "Auth cooldown set" || echo "0")
+            if [ "$AUTH_COOLDOWNS" -eq 0 ]; then
+              echo "[PASS] Auth: no cooldown events"
+            else
+              echo "[WARN] Auth cooldown triggered $AUTH_COOLDOWNS times"
+              WARNINGS="${WARNINGS}Auth cooldown triggered ${AUTH_COOLDOWNS} times — token renewal may be failing\n"
+            fi
+
             # ── Check 8: Recent signals (Phase 2+) ──
             if [ "$PHASE" -ge 2 ]; then
               SIGNALS=$(journalctl -u tradovate-bot --since "60 min ago" --no-pager 2>/dev/null | grep -c "SIGNAL:" || echo "0")
@@ -165,6 +183,31 @@ jobs:
               else
                 echo "[WARN] No signals in last hour"
                 WARNINGS="${WARNINGS}No signals generated in 60+ minutes since open\n"
+              fi
+
+              # Check ORB ranges built
+              ORB_RANGES=$(journalctl -u tradovate-bot --since "60 min ago" --no-pager 2>/dev/null | grep -c "ORB.*range:" || echo "0")
+              if [ "$ORB_RANGES" -gt 0 ]; then
+                echo "[PASS] ORB ranges built: $ORB_RANGES"
+              else
+                echo "[WARN] No ORB ranges built"
+                WARNINGS="${WARNINGS}No ORB ranges detected — warmup may have failed\n"
+              fi
+
+              # Check ORB range-too-wide rejections
+              ORB_SKIPPED=$(journalctl -u tradovate-bot --since "60 min ago" --no-pager 2>/dev/null | grep -c "skipped: range.*> max" || echo "0")
+              if [ "$ORB_SKIPPED" -gt 0 ]; then
+                echo "[WARN] ORB ranges rejected (too wide): $ORB_SKIPPED"
+                WARNINGS="${WARNINGS}${ORB_SKIPPED} ORB ranges rejected as too wide — check max_range_points\n"
+              fi
+
+              # Check VWAP is updating (not stale)
+              VWAP_STALE=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "VWAP.*stale\|stale_bars" || echo "0")
+              if [ "$VWAP_STALE" -eq 0 ]; then
+                echo "[PASS] VWAP: not stale"
+              else
+                echo "[WARN] VWAP stale warnings: $VWAP_STALE"
+                WARNINGS="${WARNINGS}VWAP stale warnings detected — volume data may be missing\n"
               fi
             fi
 
