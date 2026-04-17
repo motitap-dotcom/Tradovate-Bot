@@ -238,7 +238,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.25,
         "point_value": 250.00,
         "strategy": "VWAP",
-        "enabled": True,
+        "enabled": False,  # DISABLED: FundedNext Rule #3255 — account limit is 0 for MNG (orders rejected)
         "stop_loss_points": 0.060,        # $15 risk/contract — safe
         "take_profit_points": 0.120,
         "risk_reward_ratio": 2.0,
