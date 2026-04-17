@@ -1414,6 +1414,7 @@ def main():
         _shutdown_requested = True
         try:
             if bot is not None:
+                bot._save_bot_state()
                 bot.running = False
         except Exception:
             pass

@@ -1,18 +1,22 @@
 name: Morning Trading Check
 
 # Runs at market open and verifies the bot is healthy AND trading.
-# Phase 1 (09:45 ET): Health check — process, auth, balance, data
-# Phase 2 (10:15 ET): Trading check — signals generated, no errors
+# Phase 1 (09:45 ET): Health check + auto-fix — process, auth, WebSocket
+# Phase 2 (10:15 ET): Trading check — signals generated, strategies active
 # Phase 3 (11:00 ET): Final check — confirm actual trades executed
-# Creates a GitHub issue if any check fails.
+#
+# Auto-fix logic: tries restart ONCE per phase if fixable issue found.
+# Only restarts for clear failures (bot down, WS flapping, warmup failed).
+# Never restarts for "no trades" — could be normal market conditions.
+# Creates GitHub issue only if auto-fix fails or problem persists.
 
 on:
   schedule:
-    # 09:45 ET = 13:45 UTC (Phase 1 — bot should be running and warmed up)
+    # 09:45 ET = 13:45 UTC (Phase 1)
     - cron: '45 13 * * 1-5'
-    # 10:15 ET = 14:15 UTC (Phase 2 — bot should have generated signals)
+    # 10:15 ET = 14:15 UTC (Phase 2)
     - cron: '15 14 * * 1-5'
-    # 11:00 ET = 15:00 UTC (Phase 3 — confirm trades or flag concern)
+    # 11:00 ET = 15:00 UTC (Phase 3)
     - cron: '0 15 * * 1-5'
   workflow_dispatch:
 
@@ -36,8 +40,6 @@ jobs:
         id: phase
         run: |
           HOUR_UTC=$(date -u +%H)
-          MIN_UTC=$(date -u +%M)
-          # 13:xx = Phase 1, 14:xx = Phase 2, 15:xx+ = Phase 3
           if [ "$HOUR_UTC" -le 13 ]; then
             echo "phase=1" >> $GITHUB_OUTPUT
             echo "phase_name=Health Check (09:45 ET)" >> $GITHUB_OUTPUT
@@ -49,7 +51,7 @@ jobs:
             echo "phase_name=Trading Check (11:00 ET)" >> $GITHUB_OUTPUT
           fi
 
-      - name: SSH health & trading check
+      - name: SSH health check + auto-fix
         if: vars.SERVER_HOST != '' || secrets.VPS_HOST != ''
         id: check
         uses: appleboy/ssh-action@v1
@@ -63,6 +65,9 @@ jobs:
             set -euo pipefail
             BOT_DIR="${{ env.BOT_DIR }}"
             PHASE="${{ steps.phase.outputs.phase }}"
+            SERVICE="tradovate-bot"
+            RESTART_FLAG="$BOT_DIR/.morning_restart_$(date +%Y%m%d)"
+            LIVE_STATUS="$BOT_DIR/live_status.json"
 
             echo "=== Morning Trading Check — Phase $PHASE ==="
             echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')"
@@ -70,41 +75,69 @@ jobs:
 
             FAILURES=""
             WARNINGS=""
+            NEED_RESTART=false
+            RESTART_REASON=""
 
-            # ── Check 1: Bot process ──
-            SERVICE="tradovate-bot"
+            # ── Helper: safe restart (max 2 per day) ──
+            do_restart() {
+              local reason="$1"
+              RESTARTS_TODAY=$(cat "$RESTART_FLAG" 2>/dev/null || echo "0")
+              if [ "$RESTARTS_TODAY" -ge 2 ]; then
+                echo "[SKIP] Restart skipped — already restarted $RESTARTS_TODAY times today"
+                echo "  Reason was: $reason"
+                FAILURES="${FAILURES}Wanted to restart ($reason) but hit daily limit ($RESTARTS_TODAY restarts)\n"
+                return 1
+              fi
+              echo "[FIX] Restarting bot: $reason"
+              systemctl restart "$SERVICE"
+              sleep 10
+              if systemctl is-active --quiet "$SERVICE"; then
+                echo "[FIX] Restart SUCCESS"
+                echo "$((RESTARTS_TODAY + 1))" > "$RESTART_FLAG"
+                # Wait for warmup to complete
+                echo "  Waiting 45s for warmup..."
+                sleep 45
+                WARNINGS="${WARNINGS}Auto-restarted: $reason\n"
+                return 0
+              else
+                echo "[FAIL] Restart FAILED"
+                FAILURES="${FAILURES}Auto-restart failed ($reason)\n"
+                return 1
+              fi
+            }
+
+            # ══════════════════════════════════════
+            # CHECK 1: Bot process running
+            # ══════════════════════════════════════
             if systemctl is-active --quiet "$SERVICE"; then
-              echo "[PASS] Bot process: RUNNING"
               UPTIME=$(systemctl show "$SERVICE" --property=ActiveEnterTimestamp --value)
-              echo "  Uptime since: $UPTIME"
+              echo "[PASS] Bot process: RUNNING (since $UPTIME)"
             else
               echo "[FAIL] Bot process: DOWN"
-              FAILURES="${FAILURES}Bot process is DOWN\n"
-              # Auto-restart
-              echo "  Attempting restart..."
-              systemctl restart "$SERVICE"
-              sleep 5
-              if systemctl is-active --quiet "$SERVICE"; then
-                echo "  Restart: SUCCESS"
-                WARNINGS="${WARNINGS}Bot was down and auto-restarted\n"
-              else
-                echo "  Restart: FAILED"
-                FAILURES="${FAILURES}Auto-restart FAILED\n"
+              do_restart "process was down"
+              # Re-check after restart
+              if ! systemctl is-active --quiet "$SERVICE"; then
+                FAILURES="${FAILURES}Bot process is DOWN and restart failed\n"
               fi
             fi
 
-            # ── Check 2: Live status file freshness ──
-            LIVE_STATUS="$BOT_DIR/live_status.json"
+            # ══════════════════════════════════════
+            # CHECK 2: Live status freshness
+            # ══════════════════════════════════════
             if [ -f "$LIVE_STATUS" ]; then
               AGE=$(($(date +%s) - $(stat -c %Y "$LIVE_STATUS")))
               if [ "$AGE" -lt 120 ]; then
                 echo "[PASS] Live status: fresh (${AGE}s old)"
-              else
+              elif [ "$AGE" -lt 600 ]; then
                 echo "[WARN] Live status: stale (${AGE}s old)"
                 WARNINGS="${WARNINGS}Live status is ${AGE}s old\n"
+              else
+                echo "[FAIL] Live status: very stale (${AGE}s old) — bot may be frozen"
+                NEED_RESTART=true
+                RESTART_REASON="live_status frozen (${AGE}s old)"
               fi
 
-              # Parse live_status.json
+              # Parse status fields
               BALANCE=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('balance', 0))" 2>/dev/null || echo "0")
               LOCKED=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('locked', False))" 2>/dev/null || echo "Unknown")
               INITIALIZED=$(python3 -c "import json; d=json.load(open('$LIVE_STATUS')); print(d.get('balance_initialized', False))" 2>/dev/null || echo "Unknown")
@@ -115,10 +148,11 @@ jobs:
 
               # ── Check 3: Balance initialized ──
               if [ "$INITIALIZED" = "True" ]; then
-                echo "[PASS] Balance initialized: $BALANCE"
+                echo "[PASS] Balance initialized: \$$BALANCE"
               else
                 echo "[FAIL] Balance NOT initialized"
-                FAILURES="${FAILURES}Balance not initialized — day_pnl will be wrong\n"
+                NEED_RESTART=true
+                RESTART_REASON="balance not initialized"
               fi
 
               # ── Check 4: Not locked ──
@@ -138,90 +172,58 @@ jobs:
                 WARNINGS="${WARNINGS}Expected MNQ,MGC in symbols but got: $SYMBOLS\n"
               fi
 
-              # ── Check 6: Market data ──
               echo "[INFO] Market data source: $DATA_SRC"
-
             else
               echo "[FAIL] Live status file not found"
-              FAILURES="${FAILURES}live_status.json not found\n"
+              NEED_RESTART=true
+              RESTART_REASON="live_status.json missing"
             fi
 
-            # ── Check 7: Recent log errors ──
-            RECENT_ERRORS=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "\[ERROR\]" || echo "0")
-            if [ "$RECENT_ERRORS" -eq 0 ]; then
-              echo "[PASS] Log errors (30min): 0"
+            # ══════════════════════════════════════
+            # CHECK 6: WebSocket stability
+            # ══════════════════════════════════════
+            WS_DISCONNECTS=$(journalctl -u "$SERVICE" --since "30 min ago" --no-pager 2>/dev/null | grep -c "Connection to remote host was lost\|WebSocket closed" || echo "0")
+            if [ "$WS_DISCONNECTS" -le 2 ]; then
+              echo "[PASS] WebSocket disconnects (30min): $WS_DISCONNECTS"
+            elif [ "$WS_DISCONNECTS" -le 5 ]; then
+              echo "[WARN] WebSocket unstable: $WS_DISCONNECTS disconnects in 30min"
+              WARNINGS="${WARNINGS}WebSocket disconnected ${WS_DISCONNECTS} times in 30min\n"
+            else
+              echo "[FAIL] WebSocket flapping: $WS_DISCONNECTS disconnects in 30min"
+              NEED_RESTART=true
+              RESTART_REASON="WebSocket flapping (${WS_DISCONNECTS} disconnects in 30min)"
+            fi
+
+            # ══════════════════════════════════════
+            # CHECK 7: Auth health
+            # ══════════════════════════════════════
+            AUTH_COOLDOWNS=$(journalctl -u "$SERVICE" --since "30 min ago" --no-pager 2>/dev/null | grep -c "Auth cooldown set" || echo "0")
+            if [ "$AUTH_COOLDOWNS" -eq 0 ]; then
+              echo "[PASS] Auth: no cooldown events"
+            elif [ "$AUTH_COOLDOWNS" -le 2 ]; then
+              echo "[WARN] Auth cooldown triggered $AUTH_COOLDOWNS times"
+              WARNINGS="${WARNINGS}Auth cooldown triggered ${AUTH_COOLDOWNS} times\n"
+            else
+              echo "[FAIL] Auth stuck in cooldown loop ($AUTH_COOLDOWNS events)"
+              NEED_RESTART=true
+              RESTART_REASON="auth stuck in cooldown loop"
+            fi
+
+            # ══════════════════════════════════════
+            # CHECK 8: Log errors
+            # ══════════════════════════════════════
+            RECENT_ERRORS=$(journalctl -u "$SERVICE" --since "30 min ago" --no-pager 2>/dev/null | grep -c "\[ERROR\]" || echo "0")
+            if [ "$RECENT_ERRORS" -le 3 ]; then
+              echo "[PASS] Log errors (30min): $RECENT_ERRORS"
             else
               echo "[WARN] Log errors (30min): $RECENT_ERRORS"
               WARNINGS="${WARNINGS}${RECENT_ERRORS} errors in last 30 minutes\n"
-              # Show last few errors
-              journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep "\[ERROR\]" | tail -3
+              journalctl -u "$SERVICE" --since "30 min ago" --no-pager 2>/dev/null | grep "\[ERROR\]" | tail -3
             fi
 
-            # ── Check 7b: WebSocket stability ──
-            WS_DISCONNECTS=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "Connection to remote host was lost\|WebSocket closed" || echo "0")
-            if [ "$WS_DISCONNECTS" -le 2 ]; then
-              echo "[PASS] WebSocket disconnects (30min): $WS_DISCONNECTS"
-            else
-              echo "[FAIL] WebSocket flapping: $WS_DISCONNECTS disconnects in 30min"
-              FAILURES="${FAILURES}WebSocket disconnected ${WS_DISCONNECTS} times in 30min — check SockJS heartbeat\n"
-            fi
-
-            # ── Check 7c: Auth cooldown loop ──
-            AUTH_COOLDOWNS=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "Auth cooldown set" || echo "0")
-            if [ "$AUTH_COOLDOWNS" -eq 0 ]; then
-              echo "[PASS] Auth: no cooldown events"
-            else
-              echo "[WARN] Auth cooldown triggered $AUTH_COOLDOWNS times"
-              WARNINGS="${WARNINGS}Auth cooldown triggered ${AUTH_COOLDOWNS} times — token renewal may be failing\n"
-            fi
-
-            # ── Check 8: Recent signals (Phase 2+) ──
-            if [ "$PHASE" -ge 2 ]; then
-              SIGNALS=$(journalctl -u tradovate-bot --since "60 min ago" --no-pager 2>/dev/null | grep -c "SIGNAL:" || echo "0")
-              if [ "$SIGNALS" -gt 0 ]; then
-                echo "[PASS] Signals in last hour: $SIGNALS"
-              else
-                echo "[WARN] No signals in last hour"
-                WARNINGS="${WARNINGS}No signals generated in 60+ minutes since open\n"
-              fi
-
-              # Check ORB ranges built
-              ORB_RANGES=$(journalctl -u tradovate-bot --since "60 min ago" --no-pager 2>/dev/null | grep -c "ORB.*range:" || echo "0")
-              if [ "$ORB_RANGES" -gt 0 ]; then
-                echo "[PASS] ORB ranges built: $ORB_RANGES"
-              else
-                echo "[WARN] No ORB ranges built"
-                WARNINGS="${WARNINGS}No ORB ranges detected — warmup may have failed\n"
-              fi
-
-              # Check ORB range-too-wide rejections
-              ORB_SKIPPED=$(journalctl -u tradovate-bot --since "60 min ago" --no-pager 2>/dev/null | grep -c "skipped: range.*> max" || echo "0")
-              if [ "$ORB_SKIPPED" -gt 0 ]; then
-                echo "[WARN] ORB ranges rejected (too wide): $ORB_SKIPPED"
-                WARNINGS="${WARNINGS}${ORB_SKIPPED} ORB ranges rejected as too wide — check max_range_points\n"
-              fi
-
-              # Check VWAP is updating (not stale)
-              VWAP_STALE=$(journalctl -u tradovate-bot --since "30 min ago" --no-pager 2>/dev/null | grep -c "VWAP.*stale\|stale_bars" || echo "0")
-              if [ "$VWAP_STALE" -eq 0 ]; then
-                echo "[PASS] VWAP: not stale"
-              else
-                echo "[WARN] VWAP stale warnings: $VWAP_STALE"
-                WARNINGS="${WARNINGS}VWAP stale warnings detected — volume data may be missing\n"
-              fi
-            fi
-
-            # ── Check 9: Actual trades (Phase 3) ──
-            if [ "$PHASE" -ge 3 ]; then
-              if [ "$TRADES" -gt 0 ]; then
-                echo "[PASS] Trades today: $TRADES (P&L: $DAY_PNL)"
-              else
-                echo "[WARN] No trades yet (90+ min since open)"
-                WARNINGS="${WARNINGS}No trades executed 90+ minutes after market open\n"
-              fi
-            fi
-
-            # ── Check 10: Token valid ──
+            # ══════════════════════════════════════
+            # CHECK 9: Token valid
+            # ══════════════════════════════════════
             TOKEN_FILE="$BOT_DIR/.tradovate_token.json"
             if [ -f "$TOKEN_FILE" ]; then
               TOKEN_AGE=$(($(date +%s) - $(stat -c %Y "$TOKEN_FILE")))
@@ -233,24 +235,82 @@ jobs:
               fi
             fi
 
+            # ══════════════════════════════════════
+            # PHASE 2+: Strategy checks
+            # ══════════════════════════════════════
+            if [ "$PHASE" -ge 2 ]; then
+              SIGNALS=$(journalctl -u "$SERVICE" --since "60 min ago" --no-pager 2>/dev/null | grep -c "SIGNAL:" || echo "0")
+              if [ "$SIGNALS" -gt 0 ]; then
+                echo "[PASS] Signals in last hour: $SIGNALS"
+              else
+                echo "[WARN] No signals in last hour"
+                WARNINGS="${WARNINGS}No signals generated in 60+ minutes since open\n"
+              fi
+
+              # ORB ranges
+              ORB_RANGES=$(journalctl -u "$SERVICE" --since "60 min ago" --no-pager 2>/dev/null | grep -c "ORB.*range:" || echo "0")
+              if [ "$ORB_RANGES" -gt 0 ]; then
+                echo "[PASS] ORB ranges built: $ORB_RANGES"
+              else
+                echo "[WARN] No ORB ranges built — warmup may have failed"
+                WARNINGS="${WARNINGS}No ORB ranges detected\n"
+                NEED_RESTART=true
+                RESTART_REASON="ORB warmup failed (no ranges built)"
+              fi
+
+              # ORB range rejections
+              ORB_SKIPPED=$(journalctl -u "$SERVICE" --since "60 min ago" --no-pager 2>/dev/null | grep -c "skipped: range.*> max" || echo "0")
+              if [ "$ORB_SKIPPED" -gt 0 ]; then
+                echo "[WARN] ORB ranges rejected (too wide): $ORB_SKIPPED"
+                WARNINGS="${WARNINGS}${ORB_SKIPPED} ORB ranges rejected as too wide\n"
+              fi
+
+              # VWAP stale
+              VWAP_STALE=$(journalctl -u "$SERVICE" --since "30 min ago" --no-pager 2>/dev/null | grep -c "VWAP.*stale\|stale_bars" || echo "0")
+              if [ "$VWAP_STALE" -eq 0 ]; then
+                echo "[PASS] VWAP: not stale"
+              else
+                echo "[WARN] VWAP stale warnings: $VWAP_STALE"
+                WARNINGS="${WARNINGS}VWAP stale warnings detected\n"
+              fi
+            fi
+
+            # ══════════════════════════════════════
+            # PHASE 3: Trade execution check
+            # ══════════════════════════════════════
+            if [ "$PHASE" -ge 3 ]; then
+              if [ "$TRADES" -gt 0 ]; then
+                echo "[PASS] Trades today: $TRADES (P&L: \$$DAY_PNL)"
+              else
+                echo "[WARN] No trades yet (90+ min since open)"
+                WARNINGS="${WARNINGS}No trades executed 90+ minutes after market open\n"
+              fi
+            fi
+
+            # ══════════════════════════════════════
+            # AUTO-FIX: Restart if needed
+            # ══════════════════════════════════════
+            if [ "$NEED_RESTART" = true ]; then
+              echo ""
+              echo "=== AUTO-FIX: Restart needed ==="
+              do_restart "$RESTART_REASON"
+            fi
+
+            # ══════════════════════════════════════
+            # VERDICT
+            # ══════════════════════════════════════
             echo ""
             echo "================================"
-
-            # ── Verdict ──
             if [ -n "$FAILURES" ]; then
               echo "VERDICT: FAILED"
               echo "Failures:"
               echo -e "$FAILURES"
-              if [ -n "$WARNINGS" ]; then
-                echo "Warnings:"
-                echo -e "$WARNINGS"
-              fi
+              [ -n "$WARNINGS" ] && echo "Warnings:" && echo -e "$WARNINGS"
               exit 1
             elif [ -n "$WARNINGS" ]; then
-              echo "VERDICT: WARNING"
+              echo "VERDICT: WARNING (auto-fixed or non-critical)"
               echo "Warnings:"
               echo -e "$WARNINGS"
-              # Exit 0 — warnings don't block, but we log them
             else
               echo "VERDICT: HEALTHY"
             fi
@@ -262,9 +322,8 @@ jobs:
           script: |
             const phase = '${{ steps.phase.outputs.phase_name }}';
             const today = new Date().toISOString().split('T')[0];
-            const title = `BOT ALERT: Morning check failed — ${phase} (${today})`;
+            const title = `🚨 BOT ALERT: ${phase} FAILED (${today})`;
 
-            // Check if an alert issue already exists for today
             const existing = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -273,32 +332,30 @@ jobs:
               per_page: 5,
             });
             const todayIssue = existing.data.find(i => i.title.includes(today));
+            const body = `## Morning Trading Check Failed\n\n**Phase:** ${phase}\n**Date:** ${today}\n\nAuto-fix was attempted but the problem persists.\nSee [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.\n\nThis issue was created automatically.`;
+
             if (todayIssue) {
-              // Add comment to existing issue
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: todayIssue.number,
-                body: `## ${phase}\n\nCheck failed. See [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.`,
+                body: `## ${phase}\n\n${body}`,
               });
-              console.log(`Updated existing issue #${todayIssue.number}`);
             } else {
-              // Create new issue
               try {
                 await github.rest.issues.create({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   title: title,
-                  body: `## Morning Trading Check Failed\n\n**Phase:** ${phase}\n**Date:** ${today}\n\nSee [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.\n\nThis issue was created automatically by the morning trading check workflow.`,
+                  body: body,
                   labels: ['bot-alert'],
                 });
               } catch (e) {
-                // Label might not exist — create without it
                 await github.rest.issues.create({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   title: title,
-                  body: `## Morning Trading Check Failed\n\n**Phase:** ${phase}\n**Date:** ${today}\n\nSee [workflow run](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}) for details.\n\nThis issue was created automatically by the morning trading check workflow.`,
+                  body: body,
                 });
               }
             }
@@ -306,20 +363,18 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          PHASE="${{ steps.phase.outputs.phase }}"
           PHASE_NAME="${{ steps.phase.outputs.phase_name }}"
           echo "## Morning Trading Check — $PHASE_NAME" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" = "success" ]; then
             echo "### Result: PASSED" >> $GITHUB_STEP_SUMMARY
           else
             echo "### Result: FAILED — GitHub Issue created" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Phase | Time (ET) | Checks |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 1 — Health | 09:45 | Process, auth, balance, locked, symbols |" >> $GITHUB_STEP_SUMMARY
-          echo "| 2 — Signals | 10:15 | All Phase 1 + signal generation |" >> $GITHUB_STEP_SUMMARY
-          echo "| 3 — Trading | 11:00 | All Phase 2 + actual trades executed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Phase | Time (ET) | Checks | Auto-Fix |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----------|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 1 | 09:45 | Process, auth, balance, WebSocket, token | Restart if down/frozen/flapping |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2 | 10:15 | + ORB ranges, VWAP health, signals | Restart if warmup failed |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3 | 11:00 | + actual trades executed | Alert only (no restart) |" >> $GITHUB_STEP_SUMMARY
