@@ -97,6 +97,11 @@ class TradovateBot:
         self._min_order_gap_seconds: int = 30
         self._last_order_time: float = 0
 
+        # Symbols auto-blocked at runtime after prop-firm rejections (e.g. "Limit: 0")
+        # Prevents wasting signals on contracts the account isn't authorized to trade.
+        # Cleared on restart — user must fix config or dashboard to permanently enable.
+        self._runtime_blocked_symbols: set[str] = set()
+
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
@@ -599,6 +604,13 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
+        if signal.symbol in self._runtime_blocked_symbols:
+            logger.warning(
+                "Signal for %s discarded: symbol was auto-blocked after prior prop-firm rejection",
+                signal.symbol,
+            )
+            return
+
         # Global cooldown: prevent rapid-fire orders across all symbols
         elapsed = time.time() - self._last_order_time
         if elapsed < self._min_order_gap_seconds:
@@ -695,6 +707,14 @@ class TradovateBot:
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
+            reject_text = (getattr(self.api, "last_reject_text", "") or "").lower()
+            if "limit: 0" in reject_text or "rule #3255" in reject_text:
+                self._runtime_blocked_symbols.add(signal.symbol)
+                logger.error(
+                    "Auto-blocking %s for this session — prop-firm reports per-symbol Limit=0. "
+                    "Set enabled=False in config.py or enable the symbol in the FundedNext dashboard.",
+                    signal.symbol,
+                )
 
     def _save_bot_state(self):
         """Persist strategy state to disk for restart recovery."""

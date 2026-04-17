@@ -76,6 +76,8 @@ class TradovateAPI:
         self.user_id: Optional[int] = None
         self.account_id: Optional[int] = None
         self.account_spec: Optional[str] = None
+        # Last rejection text from prop firm (used by bot.py auto-block logic)
+        self.last_reject_text: str = ""
 
     # ─────────────────────────────────────────
     # Authentication
@@ -767,6 +769,7 @@ class TradovateAPI:
         # Check if order was rejected
         if entry_status == "Rejected":
             reject_reason = entry_result.get("rejectReason", entry_result.get("text", "unknown"))
+            self.last_reject_text = str(reject_reason) + " | " + str(entry_result)
             logger.error("Entry order REJECTED: %s", reject_reason)
             return None
 
@@ -783,6 +786,13 @@ class TradovateAPI:
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
                 if detail_status == "Rejected":
+                    self.last_reject_text = (
+                        str(order_detail.get("rejectReason", ""))
+                        + " | "
+                        + str(order_detail.get("text", ""))
+                        + " | "
+                        + str(order_detail)
+                    )
                     logger.error(
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
                         order_detail.get("rejectReason"),
@@ -793,6 +803,7 @@ class TradovateAPI:
                     try:
                         cmd_report = self._get(f"/commandReport/deps?masterid={entry_order_id}")
                         if cmd_report:
+                            self.last_reject_text += " | cmdReport=" + str(cmd_report)
                             logger.error("CommandReport for rejected order: %s", cmd_report)
                     except Exception:
                         pass
