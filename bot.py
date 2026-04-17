@@ -21,7 +21,6 @@ import signal
 import sys
 import time
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -35,7 +34,6 @@ from trade_journal import TradeJournal
 from auto_tuner import AutoTuner
 from bot_commands import read_pending_command, execute_command
 import bot_state
-import news_calendar
 
 # ─────────────────────────────────────────────
 # Logging setup
@@ -96,31 +94,20 @@ class TradovateBot:
         self.trades_today: list[dict] = []
 
         # Global cooldown: minimum seconds between any two order placements
-        # Global cooldown: prevent rapid-fire orders across all symbols.
-        # Reduced from 30s to 3s — the longer gap was meant to dampen
-        # debug-era duplicate fires, but it also DROPS legitimate cross-
-        # symbol signals that arrive within seconds of each other (e.g.
-        # MNQ + MES both firing at the post-blackout reopen at 13:30 ET).
-        self._min_order_gap_seconds: int = 3
+        self._min_order_gap_seconds: int = 30
         self._last_order_time: float = 0
+
+        # Symbols auto-blocked at runtime after prop-firm rejections (e.g. "Limit: 0")
+        # Prevents wasting signals on contracts the account isn't authorized to trade.
+        # Cleared on restart — user must fix config or dashboard to permanently enable.
+        self._runtime_blocked_symbols: set[str] = set()
 
         # Last candle timestamp per contract from warmup (to avoid replaying in poller)
         self._warmup_last_ts: dict[str, int] = {}
 
-        # Track most recent live price per symbol for diagnostic logging.
-        self._last_prices: dict[str, float] = {}
-
         # Contract rollover: check every 10 minutes (not every 30s loop)
         self._last_rollover_check: float = 0
         self._rollover_check_interval: int = 600  # seconds
-
-        # Trading-day tracking (ET) — used to detect rollover at midnight ET
-        # and reset strategy state (ORB ranges, VWAP, breakout flags, trade
-        # counters) + re-run warmup so the bot trades the new day fresh.
-        self._trading_day = None  # set after _warm_up_strategies() runs
-
-        # News-blackout debug — last suppressed signal (for live_status)
-        self._last_news_block: Optional[dict] = None
 
     # ─────────────────────────────────────────
     # Lifecycle
@@ -164,7 +151,6 @@ class TradovateBot:
 
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
-        self._trading_day = now_et().date()
 
         # Restore trade counts and cooldowns from saved state (layered on top of warmup)
         saved = bot_state.load_state()
@@ -232,18 +218,7 @@ class TradovateBot:
     # ─────────────────────────────────────────
 
     def _resolve_contracts(self):
-        """Find the front-month contract for each enabled symbol.
-
-        We compute the expected front-month locally from a calendar
-        (config.get_front_month_contract) and fetch it by name. This avoids
-        two failure modes of Tradovate's /contract/suggest endpoint:
-          1. Returning illiquid "serial" months (e.g. GCH6 March gold).
-          2. Failing to roll off a contract after First Notice Day passes,
-             so the bot ends up trading an in-delivery contract.
-        We still fall back to suggest_contract if the calendar lookup or
-        find_contract call fails for any reason.
-        """
-        today = now_et().date()
+        """Find the front-month contract for each enabled symbol."""
         for symbol, spec in config.CONTRACT_SPECS.items():
             if not spec["enabled"]:
                 logger.info("Skipping %s (disabled)", symbol)
@@ -255,29 +230,7 @@ class TradovateBot:
                 logger.info("Dry run: %s -> %s", symbol, self.contract_map[symbol])
                 continue
 
-            contract = None
-            expected_name = config.get_front_month_contract(symbol, today)
-            if expected_name:
-                contract = self.api.find_contract(expected_name)
-                if contract:
-                    logger.info(
-                        "Front-month for %s resolved via calendar: %s",
-                        symbol, expected_name,
-                    )
-                else:
-                    logger.warning(
-                        "Calendar front-month %s not found on Tradovate; "
-                        "falling back to suggest API", expected_name,
-                    )
-
-            if not contract:
-                contract = self.api.suggest_contract(symbol)
-                if contract:
-                    logger.info(
-                        "Front-month for %s resolved via suggest API: %s",
-                        symbol, contract.get("name"),
-                    )
-
+            contract = self.api.suggest_contract(symbol)
             if contract:
                 contract_name = contract.get("name", symbol)
                 self.contract_map[symbol] = contract_name
@@ -339,73 +292,19 @@ class TradovateBot:
         next_year = (current_year + 1) % 10
         return f"{base_symbol}{liquid_months[0]}{next_year}"
 
-    # ─────────────────────────────────────────
-    # Daily rollover (midnight ET)
-    # ─────────────────────────────────────────
-
-    def _check_new_trading_day(self):
-        """
-        If the ET calendar date has changed since the last warmup, reset
-        per-day strategy state (ORB ranges, breakout flags, VWAP cumulative,
-        trade counters, cooldowns) and re-run warmup so the bot starts the
-        new day with fresh ranges built from today's historical candles.
-
-        Without this, a bot that has been running for >1 day keeps yesterday's
-        ORB range and breakout_fired flags — which blocks all trades today.
-        risk_manager._check_new_day() already resets the daily loss/P&L
-        counters, but strategy state was being leaked across days.
-        """
-        today = now_et().date()
-        if self._trading_day is None:
-            self._trading_day = today
-            return
-        if today == self._trading_day:
-            return
-
-        logger.warning(
-            "NEW TRADING DAY (%s -> %s): resetting strategy state and re-running warmup",
-            self._trading_day, today,
-        )
-        # 1. Reset each strategy to a clean slate
-        for symbol, strategy in self.strategies.items():
-            try:
-                if hasattr(strategy, "reset"):
-                    strategy.reset()
-            except Exception as e:
-                logger.warning("Error resetting strategy for %s: %s", symbol, e)
-
-        # 2. Clear warmup timestamps so the REST poller doesn't skip today's bars
-        self._warmup_last_ts.clear()
-
-        # 3. Re-run warmup — rebuilds today's ORB ranges + VWAP from Yahoo 1-min
-        try:
-            self._warm_up_strategies()
-        except Exception as e:
-            logger.error("Re-warmup failed on new day: %s", e, exc_info=True)
-
-        # 4. risk_manager._check_new_day() already resets trades_today/day_pnl,
-        #    and the next save_state() call after a trade will overwrite any
-        #    stale persisted snapshot.
-
-        self._trading_day = today
-        logger.info("New trading day setup complete. Ready for %s.", today)
-
     def _check_contract_rollover(self):
         """
         Check if any active contracts need to roll to the next front-month.
 
-        Primary mechanism (calendar-driven):
-          Ask config.get_front_month_contract() what the correct liquid
-          front month is for `today`. If it differs from the active
-          contract, roll. This handles First Notice Day for gold/metals
-          and the last-trading-day rule for CL, neither of which can be
-          derived correctly from Tradovate's `expirationDate` alone.
+        Two-phase approach:
+        1. DATE-BASED (proactive): If the current contract expires within
+           ROLLOVER_DAYS_BEFORE_EXPIRY days, compute the next liquid contract
+           from the schedule and switch immediately.
+        2. SUGGEST-BASED (fallback): If Tradovate's suggest API returns a
+           different contract, follow it.
 
-        Fallback (suggest API):
-          If the calendar says to stay put but Tradovate's suggest API
-          has already rolled to a new contract, follow it — but only if
-          the new contract's month is in CONTRACT_LIQUID_MONTHS, so the
-          bot never switches to an illiquid serial month.
+        This ensures we roll early enough to avoid low-liquidity contracts
+        near expiration, even when the suggest API hasn't updated yet.
         """
         if self.dry_run:
             return
@@ -418,27 +317,37 @@ class TradovateBot:
             new_contract_data = None
             rollover_reason = ""
 
-            # ── Phase 1: Calendar-driven rollover ──
+            # ── Phase 1: Date-based early rollover ──
             try:
-                expected = config.get_front_month_contract(symbol, today)
-                if expected and expected != old_contract:
-                    verified = self.api.find_contract(expected)
-                    if verified:
-                        new_contract = expected
-                        new_contract_data = verified
-                        rollover_reason = (
-                            f"calendar-driven: {old_contract} past roll-out date, "
-                            f"front month is now {expected}"
-                        )
+                maturity = self.api.get_contract_maturity(old_contract)
+                if maturity:
+                    from datetime import date as date_type
+                    if isinstance(maturity, str):
+                        expiry_date = date_type.fromisoformat(maturity)
                     else:
-                        logger.warning(
-                            "Calendar rollover: computed %s but contract not "
-                            "found on Tradovate", expected,
-                        )
+                        expiry_date = maturity
+
+                    days_to_expiry = (expiry_date - today).days
+
+                    if days_to_expiry <= config.ROLLOVER_DAYS_BEFORE_EXPIRY:
+                        next_name = self._next_liquid_contract(symbol, old_contract)
+                        if next_name and next_name != old_contract:
+                            # Verify the next contract exists on Tradovate
+                            verified = self.api.find_contract(next_name)
+                            if verified:
+                                new_contract = next_name
+                                new_contract_data = verified
+                                rollover_reason = (
+                                    f"expiry-based: {old_contract} expires {maturity} "
+                                    f"({days_to_expiry}d away, threshold={config.ROLLOVER_DAYS_BEFORE_EXPIRY}d)"
+                                )
+                            else:
+                                logger.warning(
+                                    "Early rollover: computed %s but contract not found on Tradovate",
+                                    next_name,
+                                )
             except Exception as e:
-                logger.warning(
-                    "Calendar rollover check failed for %s: %s", symbol, e,
-                )
+                logger.warning("Date-based rollover check failed for %s: %s", symbol, e)
 
             # ── Phase 2: Suggest API fallback ──
             if not new_contract:
@@ -447,74 +356,9 @@ class TradovateBot:
                     if suggested:
                         suggested_name = suggested.get("name", "")
                         if suggested_name and suggested_name != old_contract:
-                            # Only follow suggest if the new contract is in the
-                            # liquid-month schedule — otherwise Tradovate may be
-                            # pointing us at an illiquid serial month.
-                            liquid = config.CONTRACT_LIQUID_MONTHS.get(symbol, [])
-                            suffix = suggested_name[len(symbol):]
-                            if len(suffix) >= 2 and suffix[0] in liquid:
-                                # Forward-only guard: reject suggestions whose
-                                # maturity is on/before the current contract's
-                                # maturity. Tradovate's suggest-api occasionally
-                                # returns a NEAR contract that is still tradeable
-                                # but is *behind* the front month we're already
-                                # on (e.g. MGCM6 -> MGCJ6). Without this guard,
-                                # the bot ping-pongs between months every 10 min
-                                # because Phase 1 then immediately rolls forward
-                                # again — costing us VWAP continuity and quote
-                                # subscriptions on each flip.
-                                accept = True
-                                # Forward-only guard: parse (year, month)
-                                # directly from the contract names. No API
-                                # call is needed — the contract name itself
-                                # carries the month code and year digit
-                                # (e.g. "MGCM6" -> month=M=June, year=6).
-                                # The previous attempts at this guard relied
-                                # on get_contract_maturity which silently
-                                # returned None for at least one side and
-                                # left the guard disabled.
-                                try:
-                                    old_suffix = old_contract[len(symbol):]
-                                    new_suffix = suggested_name[len(symbol):]
-                                    if (
-                                        len(old_suffix) >= 2
-                                        and len(new_suffix) >= 2
-                                        and old_suffix[0] in config.MONTH_CODES
-                                        and new_suffix[0] in config.MONTH_CODES
-                                        and old_suffix[1].isdigit()
-                                        and new_suffix[1].isdigit()
-                                    ):
-                                        old_key = (int(old_suffix[1]),
-                                                   config.MONTH_CODES[old_suffix[0]])
-                                        new_key = (int(new_suffix[1]),
-                                                   config.MONTH_CODES[new_suffix[0]])
-                                        if new_key <= old_key:
-                                            accept = False
-                                            logger.warning(
-                                                "Suggest API returned %s (year=%d month=%d) "
-                                                "which is not after %s (year=%d month=%d) — "
-                                                "ignoring backward rollover",
-                                                suggested_name, new_key[0], new_key[1],
-                                                old_contract, old_key[0], old_key[1],
-                                            )
-                                except Exception as e:
-                                    logger.warning(
-                                        "Forward-only rollover guard failed "
-                                        "to parse %s / %s: %s — accepting",
-                                        old_contract, suggested_name, e,
-                                    )
-
-                                if accept:
-                                    new_contract = suggested_name
-                                    new_contract_data = suggested
-                                    rollover_reason = (
-                                        f"suggest-api: Tradovate returned {suggested_name}"
-                                    )
-                            else:
-                                logger.debug(
-                                    "Suggest API returned non-liquid month %s "
-                                    "for %s — ignoring", suggested_name, symbol,
-                                )
+                            new_contract = suggested_name
+                            new_contract_data = suggested
+                            rollover_reason = f"suggest-api: Tradovate returned {suggested_name}"
                 except Exception as e:
                     logger.warning("Suggest-based rollover check failed for %s: %s", symbol, e)
 
@@ -536,9 +380,6 @@ class TradovateBot:
 
             # Update mapping
             self.contract_map[symbol] = new_contract
-            new_contract_id = new_contract_data.get("id") if new_contract_data else None
-            if new_contract_id is not None:
-                self.contract_id_map[symbol] = new_contract_id
 
             # Clear cached contract ID mapping so _sync_fills rebuilds it
             if hasattr(self, "_contract_id_to_symbol"):
@@ -547,30 +388,16 @@ class TradovateBot:
                     if v != symbol
                 }
 
-            # Drop stale contractId→symbol entries on the md_stream itself,
-            # otherwise quotes from the retired contract could still dispatch
-            # to this symbol (and the new contractId never gets registered
-            # if the subscribe response omits contractId — leading to quotes
-            # being silently dropped by the contractId-based dispatcher).
-            if self.md_stream and hasattr(self.md_stream, "_contract_id_to_symbol"):
-                self.md_stream._contract_id_to_symbol = {
-                    k: v for k, v in self.md_stream._contract_id_to_symbol.items()
-                    if v != symbol
-                }
-
-            # Subscribe to new contract — pass contract_id so the md_stream
-            # can route quotes immediately without relying on auto-learning
-            # from the subscribe response (which sometimes lacks contractId).
+            # Subscribe to new contract
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
-                    contract_id=new_contract_id,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_contract_id if new_contract_id is not None else "?",
+                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
             )
 
     # ─────────────────────────────────────────
@@ -656,19 +483,9 @@ class TradovateBot:
                                 if window.breakout_fired:
                                     window.breakout_fired = False
                             else:
-                                # Range is set — track _last_price ONLY if the
-                                # close is inside the range.  If it's outside,
-                                # CLEAR _last_price (set to None) so the next live
-                                # tick can immediately fire a late-entry breakout.
-                                # Without this, the fresh-cross guard in
-                                # _ORBWindow.feed() would permanently block
-                                # entries on late starts (common after any mid-
-                                # session restart) because prev would always be
-                                # outside the range.
-                                if window.range_low <= c <= window.range_high:
-                                    window._last_price = c
-                                else:
-                                    window._last_price = None  # arm late entry
+                                # Range is set — just track _last_price so
+                                # feed() can detect fresh crosses on live ticks.
+                                window._last_price = c
 
                     fed += 1
 
@@ -684,14 +501,10 @@ class TradovateBot:
                 # Log built ranges / VWAP
                 for w in getattr(strategy, "windows", []):
                     if w.range_set:
-                        if w._last_price is None:
-                            arm_state = "LATE-ENTRY ARMED (last close outside range)"
-                        else:
-                            arm_state = f"waiting for fresh cross (_last_price={w._last_price:.2f}, inside range)"
                         logger.info(
-                            "  ORB %d-min range: %.2f - %.2f (size=%.2f) — %s",
+                            "  ORB %d-min range: %.2f - %.2f (size=%.2f)",
                             w.window_minutes, w.range_low, w.range_high,
-                            w.range_high - w.range_low, arm_state,
+                            w.range_high - w.range_low,
                         )
                 if hasattr(strategy, "vwap") and strategy.vwap:
                     logger.info("  VWAP: %.4f", strategy.vwap)
@@ -738,63 +551,16 @@ class TradovateBot:
                 logger.info("Mapped contractId %s -> %s for quote routing", contract_id, contract_name)
 
     def _on_quote(self, symbol: str, data: dict):
-        """Handle incoming quote data from WebSocket.
-
-        Tradovate market-data quotes nest the actual price levels under
-        'entries' with capitalized keys: {Trade, Bid, Offer, OpeningPrice, ...}.
-        The _dig helper walks multiple candidate paths for forward/backward
-        compatibility with other formats.
-        """
-        def _dig(obj, *paths):
-            for path in paths:
-                cur = obj
-                ok = True
-                for key in path:
-                    if isinstance(cur, dict) and key in cur:
-                        cur = cur[key]
-                    else:
-                        ok = False
-                        break
-                if ok and isinstance(cur, (int, float)):
-                    return cur
-            return None
-
-        price = _dig(
-            data,
-            ("entries", "Trade", "price"),
-            ("entries", "Bid", "price"),
-            ("entries", "Offer", "price"),
-            ("trade", "price"),
-            ("Trade", "price"),
-            ("last", "price"),
-            ("lastPrice",),
-            ("price",),
-        )
+        """Handle incoming quote data from WebSocket."""
+        # Extract price from quote data
+        # Tradovate quote structure includes bid/ask/last
+        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
         if price is None:
             return
 
-        high = _dig(
-            data,
-            ("entries", "HighPrice", "price"),
-            ("entries", "High", "price"),
-            ("high", "price"),
-        ) or price
-        low = _dig(
-            data,
-            ("entries", "LowPrice", "price"),
-            ("entries", "Low", "price"),
-            ("low", "price"),
-        ) or price
-        volume = _dig(
-            data,
-            ("entries", "Trade", "size"),
-            ("entries", "TotalTradeVolume", "size"),
-            ("trade", "size"),
-            ("volume",),
-        ) or 1  # WebSocket ticks often lack volume — default to 1 so VWAP updates
-
-        # Track latest live price per symbol for the periodic status log.
-        self._last_prices[symbol] = price
+        high = data.get("high", {}).get("price", price)
+        low = data.get("low", {}).get("price", price)
+        volume = data.get("trade", {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
 
@@ -811,28 +577,11 @@ class TradovateBot:
         if not ok:
             return
 
-        # Market-data circuit-breaker: if the WS has been flapping, don't
-        # open new entries on possibly-stale ticks. Existing brackets on
-        # the server continue to manage themselves.
-        if self.md_stream is not None and hasattr(self.md_stream, "market_data_healthy"):
-            if not self.md_stream.market_data_healthy():
-                return
-
         # Check time constraints — only trade within the configured window
         current = now_et()
         start = parse_time_et(config.TRADING_START_ET)
         cutoff = parse_time_et(config.TRADING_CUTOFF_ET)
         if current < start or current >= cutoff:
-            return
-
-        # News blackout: skip new entries inside scheduled high-impact windows.
-        blocked, event = news_calendar.in_blackout(symbol, current)
-        if blocked:
-            self._last_news_block = {
-                "symbol": symbol,
-                "event": event.get("name") if event else None,
-                "until": current.isoformat(),
-            }
             return
 
         # Feed price to strategy
@@ -847,9 +596,6 @@ class TradovateBot:
                 signal = strategy.on_price(price, current, high, low)
 
         if signal is not None:
-            # Stash the observed tick price on the signal so _execute_signal
-            # can pass it through as expected_fill (for slippage tracking).
-            signal._observed_price = price
             self._execute_signal(signal)
 
     # ─────────────────────────────────────────
@@ -858,28 +604,23 @@ class TradovateBot:
 
     def _execute_signal(self, signal: TradeSignal):
         """Validate signal through risk manager and place bracket order."""
-        # Global cooldown: prevent rapid-fire orders across all symbols.
-        # Previously this DROPPED the signal when the cooldown wasn't yet
-        # elapsed, which was catastrophic at the post-blackout reopen
-        # (13:30 ET): MNQ + MES both fire within ~2s of each other, the
-        # second one was dropped, and because the strategy already mutated
-        # its window state (breakout_fired=True, trades_taken++,
-        # last_trade_time=now), the symbol was permanently locked for the
-        # rest of the day. Now we BLOCK-WAIT for the cooldown to clear and
-        # then proceed, so the signal is delayed by a few seconds at worst
-        # instead of being silently lost.
+        if signal.symbol in self._runtime_blocked_symbols:
+            logger.warning(
+                "Signal for %s discarded: symbol was auto-blocked after prior prop-firm rejection",
+                signal.symbol,
+            )
+            return
+
+        # Global cooldown: prevent rapid-fire orders across all symbols
         elapsed = time.time() - self._last_order_time
         if elapsed < self._min_order_gap_seconds:
-            wait_s = self._min_order_gap_seconds - elapsed
             logger.info(
-                "Signal for %s waiting %.2fs for global cooldown to clear",
-                signal.symbol, wait_s,
+                "Signal for %s deferred: global cooldown (%ds remaining)",
+                signal.symbol, int(self._min_order_gap_seconds - elapsed),
             )
-            time.sleep(wait_s)
+            return
 
-        ok, reason = self.risk.can_trade(
-            symbol=signal.symbol, direction=signal.direction.value,
-        )
+        ok, reason = self.risk.can_trade()
         if not ok:
             logger.warning("Signal rejected by risk manager: %s", reason)
             return
@@ -935,26 +676,16 @@ class TradovateBot:
 
         if result:
             self._last_order_time = time.time()
-            self.risk.register_open(
-                signal.qty,
-                symbol=signal.symbol,
-                direction=signal.direction.value,
-            )
-            expected_fill = (
-                getattr(signal, "_observed_price", None)
-                or signal.entry_price
-                or 0
-            )
+            self.risk.register_open(signal.qty)
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=expected_fill,
+                entry_price=signal.entry_price or 0,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
                 stop_loss=signal.stop_loss,
                 take_profit=signal.take_profit,
-                expected_fill=expected_fill,
             )
             self.trades_today.append(
                 {
@@ -976,6 +707,14 @@ class TradovateBot:
                 "Order placement FAILED for %s %s %d — signal discarded (risk manager NOT updated)",
                 signal.direction.value, signal.symbol, signal.qty,
             )
+            reject_text = (getattr(self.api, "last_reject_text", "") or "").lower()
+            if "limit: 0" in reject_text or "rule #3255" in reject_text:
+                self._runtime_blocked_symbols.add(signal.symbol)
+                logger.error(
+                    "Auto-blocking %s for this session — prop-firm reports per-symbol Limit=0. "
+                    "Set enabled=False in config.py or enable the symbol in the FundedNext dashboard.",
+                    signal.symbol,
+                )
 
     def _save_bot_state(self):
         """Persist strategy state to disk for restart recovery."""
@@ -1109,13 +848,6 @@ class TradovateBot:
                             except Exception as e:
                                 logger.warning("WebSocket recovery attempt failed: %s", e)
 
-                # Detect ET calendar day change and reset per-day strategy
-                # state + re-run warmup. Cheap (date comparison) so runs every loop.
-                try:
-                    self._check_new_trading_day()
-                except Exception as e:
-                    logger.error("New-day check error: %s", e, exc_info=True)
-
                 # Periodic contract rollover check (every 10 min)
                 if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
                     try:
@@ -1126,11 +858,8 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
-                prices_str = " ".join(
-                    f"{s}={p:.2f}" for s, p in sorted(self._last_prices.items())
-                ) or "(no quotes)"
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s | prices: %s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -1140,7 +869,6 @@ class TradovateBot:
                     status["max_daily_trades"],
                     status["locked"],
                     "" if api_ok else " | API-ERROR",
-                    prices_str,
                 )
 
                 # Write live status file for external monitoring
@@ -1191,24 +919,6 @@ class TradovateBot:
                     base_sym = self._contract_id_to_symbol.get(cid)
                     if base_sym:
                         open_base_symbols.add(base_sym)
-                        # First time we see a position for this symbol, stamp
-                        # the actual average fill price on the journal entry
-                        # so slippage can be computed later.
-                        avg_price = p.get("netPrice") or p.get("avgPrice")
-                        if avg_price:
-                            for trade_info in self.trades_today:
-                                if (
-                                    trade_info.get("symbol") == base_sym
-                                    and not trade_info.get("_fill_stamped")
-                                ):
-                                    try:
-                                        self.journal.set_actual_fill(
-                                            trade_info["journal_id"], float(avg_price),
-                                        )
-                                        trade_info["_fill_stamped"] = True
-                                    except Exception as e:
-                                        logger.debug("set_actual_fill failed: %s", e)
-                                    break
 
             self.risk.open_contracts = total_open
 
@@ -1224,9 +934,7 @@ class TradovateBot:
                     self.journal.record_exit_by_symbol(
                         sym, 0, 0, exit_reason="bracket_fill"
                     )
-                    self.risk.register_close(
-                        trade_info.get("qty", 1), symbol=sym,
-                    )
+                    self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
                     logger.info("Position closed for %s (flat)", sym)
 
@@ -1311,22 +1019,6 @@ class TradovateBot:
                     "websocket" if isinstance(self.md_stream, MarketDataStream)
                     else "rest" if self.md_stream else "none"
                 ),
-                "market_data_healthy": (
-                    self.md_stream.market_data_healthy()
-                    if self.md_stream and hasattr(self.md_stream, "market_data_healthy")
-                    else True
-                ),
-                "circuit_open_until": (
-                    datetime.fromtimestamp(
-                        self.md_stream._circuit_open_until, timezone.utc
-                    ).isoformat()
-                    if (
-                        self.md_stream
-                        and getattr(self.md_stream, "_circuit_open_until", 0) > time.time()
-                    )
-                    else None
-                ),
-                "suppressed_by_news": self._last_news_block,
             }
             tmp = self._STATUS_FILE.with_suffix(".tmp")
             tmp.write_text(json.dumps(payload, indent=2))
@@ -1414,7 +1106,6 @@ def main():
         _shutdown_requested = True
         try:
             if bot is not None:
-                bot._save_bot_state()
                 bot.running = False
         except Exception:
             pass

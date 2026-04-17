@@ -238,8 +238,8 @@ CONTRACT_SPECS = {
         "tick_value": 1.25,
         "point_value": 250.00,
         "strategy": "VWAP",
-        "enabled": True,
-        "stop_loss_points": 0.060,        # $15 risk/contract — safe
+        "enabled": False,  # FundedNext account has per-symbol Limit=0 for MNG (Rule #3255) — symbol not enabled in prop firm dashboard
+        "stop_loss_points": 0.060,
         "take_profit_points": 0.120,
         "risk_reward_ratio": 2.0,
         "vwap_confirmation_candles": 2,

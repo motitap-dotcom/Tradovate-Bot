@@ -21,7 +21,7 @@ import os
 import threading
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -76,7 +76,8 @@ class TradovateAPI:
         self.user_id: Optional[int] = None
         self.account_id: Optional[int] = None
         self.account_spec: Optional[str] = None
-        self._auth_cooldown_until: Optional[datetime] = None  # Rate-limit guard
+        # Last rejection text from prop firm (used by bot.py auto-block logic)
+        self.last_reject_text: str = ""
 
     # ─────────────────────────────────────────
     # Authentication
@@ -586,13 +587,6 @@ class TradovateAPI:
         if self.token_expiry is None:
             return
         now = datetime.now(timezone.utc)
-        # Rate-limit guard: don't hammer auth endpoint after repeated failures.
-        # Tradovate returns "Incorrect password" when rate-limited, which causes
-        # a death-spiral of retries that never recover.
-        if self._auth_cooldown_until and now < self._auth_cooldown_until:
-            remaining_cd = (self._auth_cooldown_until - now).total_seconds()
-            logger.debug("Auth cooldown active (%.0fs remaining). Skipping.", remaining_cd)
-            return
         remaining = (self.token_expiry - now).total_seconds()
         # Renew if less than 15 minutes remain (proactive — avoids expiry during slow API calls)
         if remaining < 900:
@@ -609,12 +603,6 @@ class TradovateAPI:
                     # Do NOT restore expired token — it will cause 401 loops.
                     # Leave token as None so next API call triggers re-auth via 401 handler.
                     logger.error("Full re-authentication also failed! Token is now None.")
-                    # Back off for 5 minutes to avoid rate-limit death spiral.
-                    self._auth_cooldown_until = now + timedelta(seconds=300)
-                    logger.warning("Auth cooldown set — next attempt in 5 minutes.")
-                else:
-                    # Auth succeeded — clear any cooldown
-                    self._auth_cooldown_until = None
 
     def _headers(self) -> dict:
         return {
@@ -781,6 +769,7 @@ class TradovateAPI:
         # Check if order was rejected
         if entry_status == "Rejected":
             reject_reason = entry_result.get("rejectReason", entry_result.get("text", "unknown"))
+            self.last_reject_text = str(reject_reason) + " | " + str(entry_result)
             logger.error("Entry order REJECTED: %s", reject_reason)
             return None
 
@@ -797,6 +786,13 @@ class TradovateAPI:
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
                 if detail_status == "Rejected":
+                    self.last_reject_text = (
+                        str(order_detail.get("rejectReason", ""))
+                        + " | "
+                        + str(order_detail.get("text", ""))
+                        + " | "
+                        + str(order_detail)
+                    )
                     logger.error(
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
                         order_detail.get("rejectReason"),
@@ -807,6 +803,7 @@ class TradovateAPI:
                     try:
                         cmd_report = self._get(f"/commandReport/deps?masterid={entry_order_id}")
                         if cmd_report:
+                            self.last_reject_text += " | cmdReport=" + str(cmd_report)
                             logger.error("CommandReport for rejected order: %s", cmd_report)
                     except Exception:
                         pass
@@ -962,21 +959,10 @@ class TradovateAPI:
 
     def _re_authenticate(self) -> bool:
         """Clear expired token and do full re-authentication."""
-        # Respect cooldown to avoid rate-limit death spiral
-        now = datetime.now(timezone.utc)
-        if self._auth_cooldown_until and now < self._auth_cooldown_until:
-            logger.debug("Auth cooldown active — skipping re-auth.")
-            return False
         self.access_token = None
         self.md_access_token = None
         self.token_expiry = None
-        result = self.authenticate()
-        if not result:
-            self._auth_cooldown_until = now + timedelta(seconds=300)
-            logger.warning("Re-auth failed — cooldown set for 5 minutes.")
-        else:
-            self._auth_cooldown_until = None
-        return result
+        return self.authenticate()
 
 
 # ─────────────────────────────────────────────
@@ -1025,7 +1011,6 @@ class MarketDataStream:
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
-        self._heartbeat_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
     def start(self):
@@ -1043,11 +1028,6 @@ class MarketDataStream:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
-        # Reset request_id for clean subscription tracking on new connections.
-        # Start at 1 because auth uses hardcoded id=1 in the "o" handler.
-        self._request_id = 1
-        self._pending_subscriptions.clear()
-
         self.ws = websocket.WebSocketApp(
             config.WS_MARKET_URL,
             on_open=self._on_open,
@@ -1055,12 +1035,14 @@ class MarketDataStream:
             on_error=self._on_error,
             on_close=self._on_close,
         )
+        # Detect proxy for WebSocket connections
         proxy_kwargs = self._get_proxy_kwargs()
-        # NOTE: Do NOT set ping_interval/ping_timeout here.
-        # Tradovate uses SockJS over WebSocket. SockJS servers don't respond to
-        # WebSocket-level PING frames — they respond with a close frame ("Bye"),
-        # causing a disconnect every ~30s. Keepalive is handled by the SockJS
-        # heartbeat ("h" → "[]") and our proactive _heartbeat_loop.
+        # Send WebSocket-level pings every 25s to keep the TCP connection alive
+        # through load balancers, NAT, and server idle timeouts.
+        # Without this, the server closes the connection after ~30s of
+        # transport-level "silence" (application-level SockJS heartbeats don't count).
+        proxy_kwargs["ping_interval"] = 25
+        proxy_kwargs["ping_timeout"] = 10
         self._thread = threading.Thread(
             target=self.ws.run_forever, kwargs=proxy_kwargs, daemon=True
         )
@@ -1084,28 +1066,10 @@ class MarketDataStream:
     # No data for 2 minutes means the connection is stale
     DATA_TIMEOUT = 120
 
-    def _start_heartbeat(self):
-        """Start proactive SockJS heartbeat: send '[]' every 15s."""
-        self._stop_heartbeat()
-        def _loop():
-            while self._should_run and self._connected.is_set():
-                time.sleep(15)
-                if self.ws and self._connected.is_set():
-                    try:
-                        self.ws.send("[]")
-                    except Exception:
-                        break
-        self._heartbeat_timer = threading.Thread(target=_loop, daemon=True)
-        self._heartbeat_timer.start()
-
-    def _stop_heartbeat(self):
-        """Stop the proactive heartbeat thread."""
-        self._heartbeat_timer = None
-
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
-        self._stop_heartbeat()
+        # Cancel pending reconnect timer
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
             self._reconnect_timer = None
@@ -1114,6 +1078,7 @@ class MarketDataStream:
                 self.ws.close()
             except Exception:
                 pass
+        # Wait briefly for the thread to finish
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
@@ -1145,10 +1110,11 @@ class MarketDataStream:
             self._callbacks.setdefault(symbol, []).append(callback)
         if contract_id is not None:
             self._contract_id_to_symbol[contract_id] = symbol
-        rid = self._send("md/subscribeQuote", {"symbol": symbol})
-        if rid is not None:
-            self._pending_subscriptions[rid] = symbol
-        logger.info("Subscribed to quotes: %s (contractId=%s, rid=%s)", symbol, contract_id, rid)
+        # Track request_id for auto-learning contractId from response
+        next_req_id = self._request_id + 1
+        self._pending_subscriptions[next_req_id] = symbol
+        self._send("md/subscribeQuote", {"symbol": symbol})
+        logger.info("Subscribed to quotes: %s (contractId=%s)", symbol, contract_id)
 
     def unsubscribe_quote(self, symbol: str):
         """Unsubscribe from quotes."""
@@ -1192,36 +1158,35 @@ class MarketDataStream:
             if not isinstance(item, dict):
                 continue
 
-            # Auth response (id=1 and not yet connected — distinguish from subscriptions)
-            if item.get("i") == 1 and not self._connected.is_set():
-                if item.get("s") == 200:
-                    logger.info("Market data WebSocket authenticated")
-                    self._reconnect_count = 0
-                    self._connected.set()
-                    self._start_heartbeat()
-                else:
-                    logger.error("Market data auth failed (status=%s): %s", item.get("s"), item)
-                    self._got_403 = True
-                    if self.ws:
-                        try:
-                            self.ws.close()
-                        except Exception:
-                            pass
+            # Auth response
+            if item.get("i") == 1 and item.get("s") == 200:
+                logger.info("Market data WebSocket authenticated")
+                self._reconnect_count = 0
+                self._connected.set()
+                continue
+
+            # Auth failure — trigger reconnect with fresh token
+            if item.get("i") == 1 and item.get("s") != 200:
+                logger.error("Market data auth failed (status=%s): %s", item.get("s"), item)
+                self._got_403 = True  # Force full re-auth on reconnect
+                if self.ws:
+                    try:
+                        self.ws.close()  # Trigger _on_close -> reconnect with fresh token
+                    except Exception:
+                        pass
                 continue
 
             # Subscription response — auto-learn contractId mapping
             req_id = item.get("i")
-            if req_id and req_id in self._pending_subscriptions:
+            if req_id and req_id in self._pending_subscriptions and item.get("s") == 200:
                 sym = self._pending_subscriptions.pop(req_id)
-                if item.get("s") == 200:
-                    body = item.get("d", {})
-                    if isinstance(body, dict):
-                        cid = body.get("contractId")
-                        if cid is not None and cid not in self._contract_id_to_symbol:
-                            self._contract_id_to_symbol[cid] = sym
-                            logger.info("Auto-mapped contractId %s -> %s from subscription response", cid, sym)
-                else:
-                    logger.warning("Subscription failed for %s (status=%s): %s", sym, item.get("s"), item)
+                # Extract contractId from response body if available
+                body = item.get("d", {})
+                if isinstance(body, dict):
+                    cid = body.get("contractId")
+                    if cid is not None and cid not in self._contract_id_to_symbol:
+                        self._contract_id_to_symbol[cid] = sym
+                        logger.info("Auto-mapped contractId %s -> %s from subscription response", cid, sym)
                 continue
 
             # Quote data — dispatched by symbol from the "d" field
@@ -1277,7 +1242,6 @@ class MarketDataStream:
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
-        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
         is_graceful = close_status_code == 1000
@@ -1350,9 +1314,19 @@ class MarketDataStream:
 
         self._connect()
         if self._connected.wait(timeout=15):
+            # Connection succeeded — reset consecutive failures counter so we
+            # don't accumulate stale failure counts from previous disconnect cycles.
             self._consecutive_failures = 0
-            self._resubscribe_all()
+            with self._callbacks_lock:
+                symbols = list(self._callbacks.keys())
+            for symbol in symbols:
+                # Track re-subscription for auto-learning contractId
+                next_req_id = self._request_id + 1
+                self._pending_subscriptions[next_req_id] = symbol
+                self._send("md/subscribeQuote", {"symbol": symbol})
+                logger.info("Re-subscribed to: %s", symbol)
         elif self._should_run and self._api:
+            # Connection failed even with fresh token — try full re-auth
             logger.warning("WebSocket reconnect failed. Attempting full re-authentication...")
             if self._api._re_authenticate() and self._api.md_access_token:
                 self.md_token = self._api.md_access_token
@@ -1360,30 +1334,23 @@ class MarketDataStream:
                 self._connect()
                 if self._connected.wait(timeout=15):
                     self._consecutive_failures = 0
-                    self._resubscribe_all()
+                    with self._callbacks_lock:
+                        symbols = list(self._callbacks.keys())
+                    for symbol in symbols:
+                        next_req_id = self._request_id + 1
+                        self._pending_subscriptions[next_req_id] = symbol
+                        self._send("md/subscribeQuote", {"symbol": symbol})
+                        logger.info("Re-subscribed to: %s", symbol)
 
-    def _send(self, endpoint: str, body: dict) -> Optional[int]:
-        """Send a message using the Tradovate WebSocket protocol. Returns the request_id used."""
+    def _send(self, endpoint: str, body: dict):
+        """Send a message using the Tradovate WebSocket protocol."""
         self._request_id += 1
-        rid = self._request_id
-        msg = f"{endpoint}\n{rid}\n\n{json.dumps(body)}"
+        msg = f"{endpoint}\n{self._request_id}\n\n{json.dumps(body)}"
         if self.ws:
             try:
                 self.ws.send(msg)
-                return rid
             except Exception as e:
                 logger.warning("WebSocket send failed for %s: %s", endpoint, e)
-        return None
-
-    def _resubscribe_all(self):
-        """Re-subscribe to all tracked symbols after reconnect."""
-        with self._callbacks_lock:
-            symbols = list(self._callbacks.keys())
-        for symbol in symbols:
-            rid = self._send("md/subscribeQuote", {"symbol": symbol})
-            if rid is not None:
-                self._pending_subscriptions[rid] = symbol
-            logger.info("Re-subscribed to: %s (rid=%s)", symbol, rid)
 
 
 # ─────────────────────────────────────────────
