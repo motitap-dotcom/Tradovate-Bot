@@ -90,7 +90,7 @@ CHALLENGE_SETTINGS = {
         "max_trailing_drawdown": 2_500,
         "daily_loss_limit": 1_000,        # FundedNext Futures daily limit (actual)
         "profit_target": 12_359,          # Consistency-adjusted: $4,943.36 highest day / 40% = $12,358.40
-        "max_contracts": 20,              # micros — raised from 10 (user approved 2026-04-13 audit)
+        "max_contracts": 9,               # FundedNext account cap = 9 micros total (user confirmed 2026-04-17)
         "close_by_et": "16:59",           # 4:59 PM ET
         "drawdown_trails_unrealized": True,
         "organization": "",               # FundedNext uses empty string (NOT "funded-next")
@@ -238,7 +238,7 @@ CONTRACT_SPECS = {
         "tick_value": 1.25,
         "point_value": 250.00,
         "strategy": "VWAP",
-        "enabled": False,  # DISABLED: FundedNext Rule #3255 — account limit is 0 for MNG (orders rejected)
+        "enabled": True,
         "stop_loss_points": 0.060,        # $15 risk/contract — safe
         "take_profit_points": 0.120,
         "risk_reward_ratio": 2.0,
