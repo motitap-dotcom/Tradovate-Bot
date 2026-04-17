@@ -273,16 +273,18 @@ jobs:
           HAS_SECRET: ${{ secrets.SERVER_HOST != '' }}
           HAS_VAR: ${{ vars.SERVER_HOST != '' }}
           HAS_KEY: ${{ secrets.SERVER_SSH_KEY != '' }}
+          SSH_STDOUT: ${{ steps.ssh_status.outputs.stdout }}
         run: |
           echo "SSH check available: ${{ steps.ssh_check.outputs.available }}"
           echo "SSH status outcome: ${{ steps.ssh_status.outcome }}"
           echo "Has SERVER_HOST secret: $HAS_SECRET"
           echo "Has SERVER_HOST var: $HAS_VAR"
           echo "Has SSH_KEY secret: $HAS_KEY"
-          echo "SSH stdout lines: $(echo '${{ steps.ssh_status.outputs.stdout }}' | wc -l)"
+          echo "SSH stdout lines: $(printf '%s' "$SSH_STDOUT" | wc -l)"
 
       # ── Step C: Check system status (API + optional SSH token) ──
       - name: Check system status
+        if: always()
         env:
           TRADOVATE_ACCESS_TOKEN: ${{ secrets.TRADOVATE_ACCESS_TOKEN }}
           TRADOVATE_USERNAME: ${{ secrets.TRADOVATE_USERNAME }}
