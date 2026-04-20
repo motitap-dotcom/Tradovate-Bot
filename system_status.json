@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-20T06:24:39Z",
+  "timestamp": "2026-04-20T08:34:57Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "366249",
     "uptime_since": "Fri 2026-04-17 15:59:38 UTC",
     "disk": "18%",
-    "memory": "1210MB/7941MB (15%)",
+    "memory": "1202MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "59add50 status: 2026-04-20 03:58 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "adcf8ab status: 2026-04-20 06:24 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-04-17T20:58:54.636498+00:00",
       "timestamp_et": "2026-04-17T16:58:54.636519-04:00",
@@ -47,7 +47,7 @@
     },
     "journal_tail": "2026-04-17 20:58:52,604 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-17 20:58:52,793 [INFO] websocket: Websocket connected\n2026-04-17 20:58:52,793 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-17 20:58:52,910 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-17 20:58:52,910 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-17 20:58:54,635 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-17 20:59:23,027 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-04-17 20:59:23,027 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye\n2026-04-17 20:59:23,027 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-17 20:59:23,027 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-04-17 20:59:24,637 [WARNING] bot: Force close time reached. Closing all positions.\n2026-04-17 20:59:24,800 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-17 20:59:24,960 [INFO] auto_tuner: Auto-tuner: only 12 trades (need 20). Skipping.\n2026-04-17 20:59:24,961 [INFO] bot: Shutting down bot...\n2026-04-17 20:59:25,028 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-17 20:59:25,126 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-17 20:59:25,202 [INFO] websocket: Websocket connected\n2026-04-17 20:59:25,203 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-17 20:59:25,316 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-17 20:59:25,393 [INFO] bot: ============================================================\n2026",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 206470s)\n  Balance: $51950.86\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 18% | Memory: 14.7%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 20 06:20:04 UTC 2026] Status: bot_active=true, pid=366249\n[Mon Apr 20 06:20:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 214269s)\n  Balance: $51950.86\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 18% | Memory: 14.9%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 20 08:30:03 UTC 2026] Status: bot_active=true, pid=366249\n[Mon Apr 20 08:30:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
