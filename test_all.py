@@ -440,6 +440,115 @@ test_ws_request_id()
 
 
 # ─────────────────────────────────────────────
+# 3b. _ON_QUOTE FORMAT TESTS
+# ─────────────────────────────────────────────
+
+print("\n" + "=" * 60)
+print("3b. _ON_QUOTE FORMAT TESTS")
+print("=" * 60)
+
+
+@test("_on_quote: parses Tradovate WebSocket entries format")
+def test_on_quote_websocket_format():
+    """Verify _on_quote correctly handles Tradovate WS format: entries.Trade.price"""
+    from unittest.mock import MagicMock, patch
+    import bot as bot_module
+
+    bot_instance = MagicMock(spec=bot_module.TradovateBot)
+    bot_instance._process_price = MagicMock()
+
+    ws_quote = {
+        "contractId": 12345,
+        "entries": {
+            "Trade": {"price": 19050.25, "size": 3},
+            "Bid": {"price": 19050.0, "size": 10},
+            "Ask": {"price": 19050.5, "size": 5},
+            "HighPrice": {"price": 19100.0},
+            "LowPrice": {"price": 18990.0},
+        },
+    }
+
+    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", ws_quote)
+
+    bot_instance._process_price.assert_called_once()
+    args = bot_instance._process_price.call_args[0]
+    assert args[0] == "MNQ", f"symbol should be MNQ, got {args[0]}"
+    assert args[1] == 19050.25, f"price should be 19050.25, got {args[1]}"
+    assert args[2] == 19100.0, f"high should be 19100.0, got {args[2]}"
+    assert args[3] == 18990.0, f"low should be 18990.0, got {args[3]}"
+    assert args[4] == 3, f"volume should be 3, got {args[4]}"
+
+
+@test("_on_quote: falls back to bid price when no Trade entry")
+def test_on_quote_no_trade_entry():
+    from unittest.mock import MagicMock
+    import bot as bot_module
+
+    bot_instance = MagicMock(spec=bot_module.TradovateBot)
+    bot_instance._process_price = MagicMock()
+
+    ws_quote = {
+        "contractId": 12345,
+        "entries": {
+            "Bid": {"price": 19049.75, "size": 8},
+            "Ask": {"price": 19050.25, "size": 4},
+        },
+    }
+
+    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", ws_quote)
+
+    bot_instance._process_price.assert_called_once()
+    args = bot_instance._process_price.call_args[0]
+    assert args[1] == 19049.75, f"should fall back to bid price, got {args[1]}"
+
+
+@test("_on_quote: REST poller format still works")
+def test_on_quote_rest_format():
+    from unittest.mock import MagicMock
+    import bot as bot_module
+
+    bot_instance = MagicMock(spec=bot_module.TradovateBot)
+    bot_instance._process_price = MagicMock()
+
+    rest_quote = {
+        "trade": {"price": 2950.5, "size": 10},
+        "bid": {"price": 2950.0},
+        "high": {"price": 2960.0},
+        "low": {"price": 2940.0},
+    }
+
+    bot_module.TradovateBot._on_quote(bot_instance, "MGC", rest_quote)
+
+    bot_instance._process_price.assert_called_once()
+    args = bot_instance._process_price.call_args[0]
+    assert args[1] == 2950.5, f"price should be 2950.5, got {args[1]}"
+    assert args[2] == 2960.0, f"high should be 2960.0, got {args[2]}"
+    assert args[3] == 2940.0, f"low should be 2940.0, got {args[3]}"
+
+
+@test("_on_quote: returns immediately when no price available")
+def test_on_quote_no_price():
+    from unittest.mock import MagicMock
+    import bot as bot_module
+
+    bot_instance = MagicMock(spec=bot_module.TradovateBot)
+    bot_instance._process_price = MagicMock()
+
+    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", {"contractId": 123})
+    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", {})
+    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", {"entries": {}})
+
+    assert bot_instance._process_price.call_count == 0, \
+        f"_process_price should not be called with no price, was called {bot_instance._process_price.call_count} times"
+
+
+test_on_quote_websocket_format()
+test_on_quote_no_trade_entry()
+test_on_quote_rest_format()
+test_on_quote_no_price()
+
+
+# ─────────────────────────────────────────────
 # 4. STRATEGY TESTS
 # ─────────────────────────────────────────────
 
