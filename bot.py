@@ -551,16 +551,26 @@ class TradovateBot:
                 logger.info("Mapped contractId %s -> %s for quote routing", contract_id, contract_name)
 
     def _on_quote(self, symbol: str, data: dict):
-        """Handle incoming quote data from WebSocket."""
-        # Extract price from quote data
-        # Tradovate quote structure includes bid/ask/last
-        price = data.get("trade", {}).get("price") or data.get("bid", {}).get("price")
-        if price is None:
-            return
-
-        high = data.get("high", {}).get("price", price)
-        low = data.get("low", {}).get("price", price)
-        volume = data.get("trade", {}).get("size", 0)
+        """Handle incoming quote data from WebSocket or REST poller."""
+        entries = data.get("entries")
+        if entries:
+            # Tradovate WebSocket format: {"entries": {"Trade": {...}, "Bid": {...}, ...}}
+            trade = entries.get("Trade") or {}
+            bid = entries.get("Bid") or {}
+            price = trade.get("price") or bid.get("price")
+            if price is None:
+                return
+            high = (entries.get("HighPrice") or {}).get("price", price)
+            low = (entries.get("LowPrice") or {}).get("price", price)
+            volume = trade.get("size", 0)
+        else:
+            # REST poller format: {"trade": {...}, "bid": {...}, "high": {...}, "low": {...}}
+            price = (data.get("trade") or {}).get("price") or (data.get("bid") or {}).get("price")
+            if price is None:
+                return
+            high = (data.get("high") or {}).get("price", price)
+            low = (data.get("low") or {}).get("price", price)
+            volume = (data.get("trade") or {}).get("size", 0)
 
         self._process_price(symbol, price, high, low, volume)
 
