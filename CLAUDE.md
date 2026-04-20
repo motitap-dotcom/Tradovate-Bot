@@ -12,19 +12,7 @@
 
 ---
 
-## כלל ברזל #1 — תיקון מידי לכל תקלה שפוגעת בפעילות הבוט
-
-**אם זוהתה תקלה שעלולה לפגוע במסחר — לתקן אותה מיד, בלי לחכות לבקשה מהמשתמש.**
-
-- תקלות שנכללות: בוט למטה, workflow שבור, סטטוס לא מתעדכן, SSH נכשל, טוקן פג, journal לא נרשם, פקודות נדחות, SL/TP לא נצמדים, rate limit, circuit breaker תקוע, deploy נכשל, cron לא רץ, GH_PAT חסר
-- תקלות שלא נכללות: שיפורי קוד כלליים, refactoring, features חדשים — אלה דורשים אישור
-- הגישה: לזהות → לתקן → `git commit` → `push` ל-`claude/*` → לאמת דרך `system_status.json`
-- במהלך חקירה של בעיה אחת, אם מתגלה בעיה שנייה — לתעד אותה ולטפל גם בה באותה session (לא להשאיר "למשתמש לבדוק")
-- לדווח למשתמש אחרי התיקון, לא לפניו (חוץ ממקרים שבהם התיקון עצמו מסוכן, למשל שינוי שמשפיע על risk management)
-
----
-
-## כלל ברזל #2 — Workflow Only (אין גישה ישירה לשרת)
+## כלל ברזל #1 — Workflow Only (אין גישה ישירה לשרת)
 
 **אין SSH, אין ping, אין curl לשרת, אין `gh` CLI.**
 הדרך היחידה לנהל את הבוט: **Git Push → GitHub Actions → VPS**.
@@ -270,16 +258,18 @@ WebFetch: https://api.github.com/repos/motitap-dotcom/Tradovate-Bot/contents/sys
 - **Daily loss limit**: $1,000
 - **Daily profit cap**: $2,400 (כלל עקביות — מקסימום 40% מהרווח המצטבר ביום אחד)
 - **Profit target**: $3,000
-- **Max contracts**: 10 לכל טרייד (מיני ומיקרו — שניהם מותרים)
+- **Max contracts**: 10 (מיני **ומיקרו** — FundedNext מאשר שניהם)
 - **סגירת פוזיציות**: עד 16:59 ET
 
 ## חוזים פעילים
 | חוזה | אסטרטגיה | Stop | TP | $/pt | כמות |
 |-------|----------|------|-----|------|------|
-| **MNQ** (Micro Nasdaq) | ORB | 25pt | 50pt | $2 | 2 |
-| **MES** (Micro S&P) | ORB | 6pt | 12pt | $5 | 2 |
-| **MGC** (Micro Gold) | VWAP | 5pt | 10pt | $10 | 2 |
-| **MCL** (Micro Crude Oil) | VWAP | 0.20pt | 0.40pt | $100 | 2 |
+| **MNQ** (Micro E-mini Nasdaq) | ORB | 25pt | 50pt | $2 | 1 |
+| **MES** (Micro E-mini S&P) | ORB | 6pt | 12pt | $5 | 1 |
+| **MGC** (Micro Gold) | VWAP | 5pt | 10pt | $10 | 1 |
+| **MCL** (Micro WTI Crude Oil) | VWAP | 0.20pt | 0.40pt | $100 | 1 |
+
+> FundedNext מאשר **גם מיקרו וגם מיני** חוזים.
 
 ---
 
