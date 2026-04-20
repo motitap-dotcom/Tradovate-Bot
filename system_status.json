@@ -1,10 +1,20 @@
 {
-  "timestamp": "2026-04-20T12:09:43Z",
+  "timestamp": "2026-04-20T14:19:52Z",
   "api_reachable": true,
-  "authenticated": false,
-  "auth_method": null,
-  "account": {},
-  "balance": {},
+  "authenticated": true,
+  "auth_method": "server_token",
+  "account": {
+    "name": "FNFTCHMOTITAPIRO67510",
+    "id": 39996695,
+    "active": true
+  },
+  "balance": {
+    "realizedPnl": null,
+    "unrealizedPnl": null,
+    "totalCashValue": 51950.86,
+    "initialMargin": 0.0,
+    "netLiq": 51950.86
+  },
   "positions": [],
   "orders": [],
   "server": {
@@ -13,12 +23,12 @@
     "bot_pid": "366249",
     "uptime_since": "Fri 2026-04-17 15:59:38 UTC",
     "disk": "18%",
-    "memory": "1198MB/7941MB (15%)",
+    "memory": "1190MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "74bb663 status: 2026-04-20 10:56 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "6d5b576 status: 2026-04-20 12:09 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-04-17T20:58:54.636498+00:00",
-      "timestamp_et": "2026-04-17T16:58:54.636519-04:00",
+      "timestamp": "2026-04-20T14:19:48.022556+00:00",
+      "timestamp_et": "2026-04-20T10:19:48.022577-04:00",
       "balance": 51950.86,
       "equity": 51950.86,
       "day_pnl": 0.0,
@@ -45,14 +55,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-04-17 20:58:52,604 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-17 20:58:52,793 [INFO] websocket: Websocket connected\n2026-04-17 20:58:52,793 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-17 20:58:52,910 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-17 20:58:52,910 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-17 20:58:52,911 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-17 20:58:54,635 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-17 20:59:23,027 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-04-17 20:59:23,027 [ERROR] websocket: fin=1 opcode=8 data=b'\\x03\\xe8Bye' - goodbye\n2026-04-17 20:59:23,027 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-17 20:59:23,027 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-04-17 20:59:24,637 [WARNING] bot: Force close time reached. Closing all positions.\n2026-04-17 20:59:24,800 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-17 20:59:24,960 [INFO] auto_tuner: Auto-tuner: only 12 trades (need 20). Skipping.\n2026-04-17 20:59:24,961 [INFO] bot: Shutting down bot...\n2026-04-17 20:59:25,028 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-17 20:59:25,126 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-17 20:59:25,202 [INFO] websocket: Websocket connected\n2026-04-17 20:59:25,203 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-17 20:59:25,316 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-17 20:59:25,393 [INFO] bot: ============================================================\n2026",
+    "journal_tail": "2026-04-20 14:17:49,215 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-20 14:17:49,331 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-20 14:17:49,332 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-20 14:17:49,332 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-20 14:17:49,333 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-20 14:17:49,333 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-20 14:17:49,333 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-20 14:18:16,974 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-20 14:18:19,448 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-04-20 14:18:19,448 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-04-20 14:18:19,448 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-20 14:18:19,449 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-04-20 14:18:21,449 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-20 14:18:21,629 [INFO] websocket: Websocket connected\n2026-04-20 14:18:21,629 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-20 14:18:21,744 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-20 14:18:21,746 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-20 14:18:47,325 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-20 14:18:51,861 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-04-20 14:18:51,861 [ERROR] websock",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 227168s)\n  Balance: $51950.86\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 18% | Memory: 15.0%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 20 12:05:03 UTC 2026] Status: bot_active=true, pid=366249\n[Mon Apr 20 12:05:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 21s)\n  Balance: $51950.86\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 18% | Memory: 15.2%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 20 14:15:04 UTC 2026] Status: bot_active=true, pid=366249\n[Mon Apr 20 14:15:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-17T20:58:54.636498+00:00",
-      "timestamp_et": "2026-04-17T16:58:54.636519-04:00",
+      "timestamp": "2026-04-20T14:19:48.022556+00:00",
+      "timestamp_et": "2026-04-20T10:19:48.022577-04:00",
       "balance": 51950.86,
       "equity": 51950.86,
       "day_pnl": 0.0,
@@ -79,8 +89,8 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "token_status": "expired",
-    "token_expiry": "2026-04-17T21:40:31.993000+00:00",
+    "token_status": "valid",
+    "token_expiry": "2026-04-20T14:45:55.133000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
@@ -109,15 +119,14 @@
     "websocket_connected": true,
     "errors_in_log": [],
     "market_data_source": "websocket",
-    "today_trades": []
+    "today_trades": [],
+    "today_fills": []
   },
-  "errors": [
-    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
-  ],
+  "errors": [],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 6011,
+    "ssh_output_len": 6014,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
