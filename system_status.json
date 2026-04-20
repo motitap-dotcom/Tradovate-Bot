@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-20T14:19:52Z",
+  "timestamp": "2026-04-20T15:53:47Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "366249",
     "uptime_since": "Fri 2026-04-17 15:59:38 UTC",
     "disk": "18%",
-    "memory": "1190MB/7941MB (15%)",
+    "memory": "1250MB/7941MB (16%)",
     "hostname": "vmi3096165",
-    "git_commit": "6d5b576 status: 2026-04-20 12:09 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "24f99a6 status: 2026-04-20 14:19 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-04-20T14:19:48.022556+00:00",
-      "timestamp_et": "2026-04-20T10:19:48.022577-04:00",
+      "timestamp": "2026-04-20T15:53:38.567051+00:00",
+      "timestamp_et": "2026-04-20T11:53:38.567070-04:00",
       "balance": 51950.86,
       "equity": 51950.86,
       "day_pnl": 0.0,
@@ -55,14 +55,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-04-20 14:17:49,215 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-20 14:17:49,331 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-20 14:17:49,332 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-20 14:17:49,332 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-20 14:17:49,333 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-20 14:17:49,333 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-20 14:17:49,333 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-20 14:18:16,974 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-20 14:18:19,448 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-04-20 14:18:19,448 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-04-20 14:18:19,448 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-20 14:18:19,449 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-04-20 14:18:21,449 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-20 14:18:21,629 [INFO] websocket: Websocket connected\n2026-04-20 14:18:21,629 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-20 14:18:21,744 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-20 14:18:21,745 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-20 14:18:21,746 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-20 14:18:47,325 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-20 14:18:51,861 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-04-20 14:18:51,861 [ERROR] websock",
+    "journal_tail": "2026-04-20 15:51:48,340 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-20 15:51:48,454 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-20 15:51:48,455 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-20 15:51:48,455 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-20 15:51:48,455 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-20 15:51:48,455 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-20 15:51:48,455 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-20 15:52:07,424 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-20 15:52:18,569 [ERROR] tradovate_api: Market data WebSocket error: Connection to remote host was lost.\n2026-04-20 15:52:18,569 [ERROR] websocket: Connection to remote host was lost. - goodbye\n2026-04-20 15:52:18,569 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-20 15:52:18,569 [INFO] tradovate_api: Reconnecting in 2s (attempt 1, consecutive failures: 1)...\n2026-04-20 15:52:20,570 [INFO] tradovate_api: Refreshed market data token for reconnection\n2026-04-20 15:52:20,739 [INFO] websocket: Websocket connected\n2026-04-20 15:52:20,740 [INFO] tradovate_api: Market data WebSocket connected\n2026-04-20 15:52:20,855 [INFO] tradovate_api: Market data WebSocket authenticated\n2026-04-20 15:52:20,856 [INFO] tradovate_api: Re-subscribed to: MNQM6\n2026-04-20 15:52:20,856 [INFO] tradovate_api: Re-subscribed to: MESM6\n2026-04-20 15:52:20,856 [INFO] tradovate_api: Re-subscribed to: MGCJ6\n2026-04-20 15:52:20,856 [INFO] tradovate_api: Re-subscribed to: MCLK6\n2026-04-20 15:52:20,857 [INFO] tradovate_api: Re-subscribed to: SILJ6\n2026-04-20 15:52:37,749 [INFO] bot: Status | balance=51950.86 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False\n2026-04-20 15:52:50,970 [ERROR] tradovate_api: Market data WebSocket error: fin=1 opcode=8 data=b'\\x03\\xe8Bye'\n2026-04-20 15:52:50,970 [ERROR] websock",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 21s)\n  Balance: $51950.86\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 18% | Memory: 15.2%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 20 14:15:04 UTC 2026] Status: bot_active=true, pid=366249\n[Mon Apr 20 14:15:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 27s)\n  Balance: $51950.86\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 18% | Memory: 15.4%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 20 15:50:03 UTC 2026] Status: bot_active=true, pid=366249\n[Mon Apr 20 15:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-20T14:19:48.022556+00:00",
-      "timestamp_et": "2026-04-20T10:19:48.022577-04:00",
+      "timestamp": "2026-04-20T15:53:38.567051+00:00",
+      "timestamp_et": "2026-04-20T11:53:38.567070-04:00",
       "balance": 51950.86,
       "equity": 51950.86,
       "day_pnl": 0.0,
@@ -90,7 +90,7 @@
       "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-04-20T14:45:55.133000+00:00",
+    "token_expiry": "2026-04-20T16:56:08.352000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
@@ -126,7 +126,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 6014,
+    "ssh_output_len": 6023,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
