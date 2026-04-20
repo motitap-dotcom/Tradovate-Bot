@@ -552,6 +552,9 @@ class TradovateBot:
 
     def _on_quote(self, symbol: str, data: dict):
         """Handle incoming quote data from WebSocket or REST poller."""
+        if not getattr(self, '_on_quote_logged', False):
+            self._on_quote_logged = True
+            logger.info("DIAG _on_quote first call: symbol=%s keys=%s has_entries=%s", symbol, list(data.keys()), bool(data.get("entries")))
         entries = data.get("entries")
         if entries:
             # Tradovate WebSocket format: {"entries": {"Trade": {...}, "Bid": {...}, ...}}
