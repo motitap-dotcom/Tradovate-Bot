@@ -1141,6 +1141,11 @@ class MarketDataStream:
                 pass
             return
 
+        # Diagnostic: catch unknown/unexpected message formats
+        if not getattr(self, '_unknown_msg_logged', False):
+            self._unknown_msg_logged = True
+            logger.info("DIAG unknown WS message format: %r", message[:300])
+
     def _handle_payload(self, payload: list):
         """Process incoming data frames."""
         for item in payload:
@@ -1183,6 +1188,9 @@ class MarketDataStream:
                 self._last_data_time = time.time()
                 self._quotes_received += 1
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
+                # Diagnostic: log first MD event received to confirm format
+                if self._quotes_received == 1:
+                    logger.info("DIAG first MD event: keys=%s cid_map=%s", list(item["d"].keys()) if isinstance(item["d"], dict) else type(item["d"]).__name__, dict(self._contract_id_to_symbol))
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
                 # Snapshot callbacks under lock to avoid race with subscribe/unsubscribe
@@ -1202,10 +1210,8 @@ class MarketDataStream:
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif contract_id is not None and not target_sym:
-                        # Unknown contractId with no mapping — try to auto-map from
-                        # subscription response.  Only dispatch to the single symbol
-                        # whose contract name matches, to avoid cross-contamination.
-                        logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
+                        # Unknown contractId with no mapping
+                        logger.warning("DIAG unmapped contractId=%s quote_keys=%s mapped=%s", contract_id, list(quote.keys()), dict(self._contract_id_to_symbol))
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
                         for sym, cbs in cb_snapshot.items():
@@ -1215,8 +1221,15 @@ class MarketDataStream:
                                 except Exception as e:
                                     logger.error("Quote callback error for %s: %s", sym, e)
                     else:
-                        # No contractId and multiple symbols — cannot safely route, skip
-                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
+                        # No contractId and multiple symbols — log once for diagnosis
+                        if not getattr(self, '_no_cid_logged', False):
+                            self._no_cid_logged = True
+                            logger.warning("DIAG quote without contractId, %d symbols registered, quote_keys=%s", len(cb_snapshot), list(quote.keys()))
+            elif "e" in item:
+                # Unknown event type — log once to detect format differences
+                if not getattr(self, '_unknown_event_logged', False):
+                    self._unknown_event_logged = True
+                    logger.info("DIAG unknown event type: e=%s keys=%s", item.get("e"), list(item.keys()))
 
     def _on_error(self, ws, error):
         error_str = str(error)
