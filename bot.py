@@ -355,10 +355,18 @@ class TradovateBot:
                     suggested = self.api.suggest_contract(symbol)
                     if suggested:
                         suggested_name = suggested.get("name", "")
+                        # Validate root matches — reject if suggest returns wrong product
+                        # e.g. MCL query must not return SIL (Micro Silver)
                         if suggested_name and suggested_name != old_contract:
-                            new_contract = suggested_name
-                            new_contract_data = suggested
-                            rollover_reason = f"suggest-api: Tradovate returned {suggested_name}"
+                            if not suggested_name.startswith(symbol):
+                                logger.warning(
+                                    "Rollover rejected: suggest('%s') returned '%s' — root mismatch",
+                                    symbol, suggested_name,
+                                )
+                            else:
+                                new_contract = suggested_name
+                                new_contract_data = suggested
+                                rollover_reason = f"suggest-api: Tradovate returned {suggested_name}"
                 except Exception as e:
                     logger.warning("Suggest-based rollover check failed for %s: %s", symbol, e)
 
@@ -871,8 +879,10 @@ class TradovateBot:
 
                 # Periodic status update (now reflects real balance)
                 status = self.risk.status()
+                quotes_rx = getattr(self.md_stream, "_quotes_received", 0) if self.md_stream else 0
+                cid_mapped = len(getattr(self.md_stream, "_contract_id_to_symbol", {})) if self.md_stream else 0
                 logger.info(
-                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s%s",
+                    "Status | balance=%.2f | day_pnl=%.2f | to_floor=%.2f | contracts=%d/%d | trades=%d/%d | locked=%s | quotes=%d cids=%d%s",
                     status["balance"],
                     status["day_pnl"],
                     status["distance_to_floor"],
@@ -881,6 +891,8 @@ class TradovateBot:
                     status["trades_today"],
                     status["max_daily_trades"],
                     status["locked"],
+                    quotes_rx,
+                    cid_mapped,
                     "" if api_ok else " | API-ERROR",
                 )
 
