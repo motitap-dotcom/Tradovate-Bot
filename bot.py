@@ -495,23 +495,31 @@ class TradovateBot:
             # Update mapping
             self.contract_map[symbol] = new_contract
 
-            # Clear cached contract ID mapping so _sync_fills rebuilds it
+            # Extract new contract ID for mapping
+            new_id = new_contract_data.get("id") if new_contract_data else None
+
+            # Clear cached contract ID mapping for old contract
             if hasattr(self, "_contract_id_to_symbol"):
                 self._contract_id_to_symbol = {
                     k: v for k, v in self._contract_id_to_symbol.items()
                     if v != symbol
                 }
 
-            # Subscribe to new contract
+            # Register new contract ID in bot-level map immediately
+            if new_id is not None:
+                self.contract_id_map[symbol] = new_id
+
+            # Subscribe to new contract (pass contract_id so stream maps it immediately)
             if self.md_stream:
                 self.md_stream.subscribe_quote(
                     new_contract,
                     lambda sym, data, s=symbol: self._on_quote(s, data),
+                    contract_id=new_id,
                 )
 
             logger.info(
                 "Rollover complete: %s now trading %s (id=%s)",
-                symbol, new_contract, new_contract_data.get("id") if new_contract_data else "?",
+                symbol, new_contract, new_id if new_id else "?",
             )
 
     # ─────────────────────────────────────────
