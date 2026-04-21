@@ -999,6 +999,10 @@ class MarketDataStream:
         self._last_data_time: float = 0  # Track when we last received real data
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
+        # Tracks contractIds that arrived with no symbol mapping — polled by bot main loop
+        # to trigger a rollover check when an expired contract is replaced mid-session.
+        self.unknown_contract_ids: set = set()
+        self._warned_unknown_ids: set = set()  # Suppress repeat warnings per ID
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
@@ -1202,10 +1206,18 @@ class MarketDataStream:
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif contract_id is not None and not target_sym:
-                        # Unknown contractId with no mapping — try to auto-map from
-                        # subscription response.  Only dispatch to the single symbol
-                        # whose contract name matches, to avoid cross-contamination.
-                        logger.debug("Unmapped contractId %s — skipping (no broadcast)", contract_id)
+                        # Unknown contractId — likely a rolled contract the bot hasn't
+                        # re-subscribed to yet.  Track it so the main loop can trigger a
+                        # rollover check.  Warn only once per unseen ID.
+                        self.unknown_contract_ids.add(contract_id)
+                        if contract_id not in self._warned_unknown_ids:
+                            self._warned_unknown_ids.add(contract_id)
+                            logger.warning(
+                                "Unmapped contractId=%s in market data "
+                                "(known: %s) — possible missed rollover, triggering check",
+                                contract_id,
+                                {v: k for k, v in self._contract_id_to_symbol.items()},
+                            )
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
                         for sym, cbs in cb_snapshot.items():
