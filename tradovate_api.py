@@ -1098,9 +1098,13 @@ class MarketDataStream:
         return False
 
     def subscribe_quote(self, symbol: str, callback: Callable, contract_id: int = None):
-        """Subscribe to real-time quotes for a symbol."""
+        """Subscribe to real-time quotes for a symbol.
+        Only one active callback per contract is kept — repeated calls replace
+        the previous callback rather than stacking, preventing duplicate data
+        delivery after rollovers or reconnects.
+        """
         with self._callbacks_lock:
-            self._callbacks.setdefault(symbol, []).append(callback)
+            self._callbacks[symbol] = [callback]
         if contract_id is not None:
             self._contract_id_to_symbol[contract_id] = symbol
         # Track request_id for auto-learning contractId from response

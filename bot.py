@@ -341,9 +341,9 @@ class TradovateBot:
                 exp_y = delivery_year if month_num > 1 else delivery_year - 1
                 return _date(exp_y, exp_m, 15)
             if base_symbol in ("GC", "MGC"):
-                exp_m = month_num - 1 if month_num > 1 else 12
-                exp_y = delivery_year if month_num > 1 else delivery_year - 1
-                return _date(exp_y, exp_m, 20)
+                # Gold/Silver expire near end of DELIVERY month (4th-to-last bd).
+                # Conservative estimate: 25th of the delivery month itself.
+                return _date(delivery_year, month_num, 25)
             if base_symbol in ("NQ", "ES", "MNQ", "MES"):
                 return _date(delivery_year, month_num, 15)
         except (ValueError, IndexError, TypeError):
@@ -379,10 +379,17 @@ class TradovateBot:
             new_contract = None
             new_contract_data = None
             rollover_reason = ""
+            # Track whether each API phase actually succeeded (vs threw an exception).
+            # Phase 3 only runs when BOTH phases failed — not when they ran and
+            # found no change needed.  Without this guard, Phase 3 would aggressively
+            # roll contracts that the suggest API deliberately kept on the current month.
+            _phase1_succeeded = False
+            _phase2_succeeded = False
 
             # ── Phase 1: Date-based early rollover ──
             try:
                 maturity = self.api.get_contract_maturity(old_contract)
+                _phase1_succeeded = True
                 if maturity:
                     from datetime import date as date_type
                     if isinstance(maturity, str):
@@ -420,6 +427,7 @@ class TradovateBot:
             if not new_contract:
                 try:
                     suggested = self.api.suggest_contract(symbol)
+                    _phase2_succeeded = True
                     if suggested:
                         suggested_name = suggested.get("name", "")
                         if suggested_name and suggested_name != old_contract:
@@ -430,7 +438,11 @@ class TradovateBot:
                     logger.warning("Suggest-based rollover check failed for %s: %s", symbol, e)
 
             # ── Phase 3: Arithmetic fallback (no API required) ──
-            if not new_contract:
+            # Only runs when BOTH Phase 1 and Phase 2 threw exceptions (API down).
+            # If either phase ran successfully (even if no change was needed),
+            # we trust the API result and skip the arithmetic estimate to avoid
+            # rolling contracts that the suggest API is deliberately holding.
+            if not new_contract and not _phase1_succeeded and not _phase2_succeeded:
                 try:
                     est_expiry = self._estimate_expiry(symbol, old_contract)
                     if est_expiry is not None:
