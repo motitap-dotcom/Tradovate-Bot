@@ -76,8 +76,6 @@ class TradovateAPI:
         self.user_id: Optional[int] = None
         self.account_id: Optional[int] = None
         self.account_spec: Optional[str] = None
-        # Last rejection text from prop firm (used by bot.py auto-block logic)
-        self.last_reject_text: str = ""
 
     # ─────────────────────────────────────────
     # Authentication
@@ -769,7 +767,6 @@ class TradovateAPI:
         # Check if order was rejected
         if entry_status == "Rejected":
             reject_reason = entry_result.get("rejectReason", entry_result.get("text", "unknown"))
-            self.last_reject_text = str(reject_reason) + " | " + str(entry_result)
             logger.error("Entry order REJECTED: %s", reject_reason)
             return None
 
@@ -786,13 +783,6 @@ class TradovateAPI:
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
                 )
                 if detail_status == "Rejected":
-                    self.last_reject_text = (
-                        str(order_detail.get("rejectReason", ""))
-                        + " | "
-                        + str(order_detail.get("text", ""))
-                        + " | "
-                        + str(order_detail)
-                    )
                     logger.error(
                         "Entry order REJECTED after submit: reason=%s text=%s | full=%s",
                         order_detail.get("rejectReason"),
@@ -803,7 +793,6 @@ class TradovateAPI:
                     try:
                         cmd_report = self._get(f"/commandReport/deps?masterid={entry_order_id}")
                         if cmd_report:
-                            self.last_reject_text += " | cmdReport=" + str(cmd_report)
                             logger.error("CommandReport for rejected order: %s", cmd_report)
                     except Exception:
                         pass
@@ -1010,6 +999,10 @@ class MarketDataStream:
         self._last_data_time: float = 0  # Track when we last received real data
         self._quotes_received: int = 0  # Count of actual market data events received
         self._start_time: float = 0  # When this stream was started
+        # Tracks contractIds that arrived with no symbol mapping — polled by bot main loop
+        # to trigger a rollover check when an expired contract is replaced mid-session.
+        self.unknown_contract_ids: set = set()
+        self._warned_unknown_ids: set = set()  # Suppress repeat warnings per ID
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
 
@@ -1152,11 +1145,6 @@ class MarketDataStream:
                 pass
             return
 
-        # Diagnostic: catch unknown/unexpected message formats
-        if not getattr(self, '_unknown_msg_logged', False):
-            self._unknown_msg_logged = True
-            logger.info("DIAG unknown WS message format: %r", message[:300])
-
     def _handle_payload(self, payload: list):
         """Process incoming data frames."""
         for item in payload:
@@ -1199,9 +1187,6 @@ class MarketDataStream:
                 self._last_data_time = time.time()
                 self._quotes_received += 1
                 self._consecutive_failures = 0  # Real data flowing — connection is healthy
-                # Diagnostic: log first MD event received to confirm format
-                if self._quotes_received == 1:
-                    logger.info("DIAG first MD event: keys=%s cid_map=%s", list(item["d"].keys()) if isinstance(item["d"], dict) else type(item["d"]).__name__, dict(self._contract_id_to_symbol))
                 data = item["d"]
                 quotes = data.get("quotes", [data]) if isinstance(data, dict) else [data]
                 # Snapshot callbacks under lock to avoid race with subscribe/unsubscribe
@@ -1221,8 +1206,18 @@ class MarketDataStream:
                             except Exception as e:
                                 logger.error("Quote callback error for %s: %s", target_sym, e)
                     elif contract_id is not None and not target_sym:
-                        # Unknown contractId with no mapping
-                        logger.warning("DIAG unmapped contractId=%s quote_keys=%s mapped=%s", contract_id, list(quote.keys()), dict(self._contract_id_to_symbol))
+                        # Unknown contractId — likely a rolled contract the bot hasn't
+                        # re-subscribed to yet.  Track it so the main loop can trigger a
+                        # rollover check.  Warn only once per unseen ID.
+                        self.unknown_contract_ids.add(contract_id)
+                        if contract_id not in self._warned_unknown_ids:
+                            self._warned_unknown_ids.add(contract_id)
+                            logger.warning(
+                                "Unmapped contractId=%s in market data "
+                                "(known: %s) — possible missed rollover, triggering check",
+                                contract_id,
+                                {v: k for k, v in self._contract_id_to_symbol.items()},
+                            )
                     elif contract_id is None and len(cb_snapshot) == 1:
                         # No contractId in quote and only one symbol subscribed — safe to dispatch
                         for sym, cbs in cb_snapshot.items():
@@ -1232,15 +1227,8 @@ class MarketDataStream:
                                 except Exception as e:
                                     logger.error("Quote callback error for %s: %s", sym, e)
                     else:
-                        # No contractId and multiple symbols — log once for diagnosis
-                        if not getattr(self, '_no_cid_logged', False):
-                            self._no_cid_logged = True
-                            logger.warning("DIAG quote without contractId, %d symbols registered, quote_keys=%s", len(cb_snapshot), list(quote.keys()))
-            elif "e" in item:
-                # Unknown event type — log once to detect format differences
-                if not getattr(self, '_unknown_event_logged', False):
-                    self._unknown_event_logged = True
-                    logger.info("DIAG unknown event type: e=%s keys=%s", item.get("e"), list(item.keys()))
+                        # No contractId and multiple symbols — cannot safely route, skip
+                        logger.debug("Quote without contractId and %d symbols — skipping", len(cb_snapshot))
 
     def _on_error(self, ws, error):
         error_str = str(error)

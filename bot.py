@@ -133,8 +133,7 @@ class TradovateBot:
                 )
                 time.sleep(wait)
             if not auth_ok:
-                logger.error("Authentication failed after 3 attempts. Exiting.")
-                sys.exit(1)
+                raise RuntimeError("Authentication failed after 3 attempts")
             logger.info("Authenticated successfully")
         else:
             logger.info("DRY RUN mode — no orders will be sent")
@@ -233,16 +232,42 @@ class TradovateBot:
             contract = self.api.suggest_contract(symbol)
             if contract:
                 contract_name = contract.get("name", symbol)
-                self.contract_map[symbol] = contract_name
                 contract_id = contract.get("id")
+                logger.info("Resolved %s -> %s (id=%s)", symbol, contract_name, contract_id)
+
+                # Immediately check if the resolved contract is already near/past
+                # expiry.  This guards against Tradovate's suggest API returning a
+                # stale front-month right after rollover (e.g. MCLK6 on April 20
+                # when MCLK6 expired April 17).  Use arithmetic estimate as a
+                # safety net even when the API call below fails.
+                from datetime import date as _date_type
+                _today = now_et().date()
+                _est = self._estimate_expiry(symbol, contract_name)
+                if _est is not None and (_est - _today).days <= config.ROLLOVER_DAYS_BEFORE_EXPIRY:
+                    logger.warning(
+                        "Resolved %s -> %s but estimated expiry %s is within %dd threshold. "
+                        "Attempting immediate rollover at startup.",
+                        symbol, contract_name, _est, config.ROLLOVER_DAYS_BEFORE_EXPIRY,
+                    )
+                    next_name = self._next_liquid_contract(symbol, contract_name)
+                    if next_name and next_name != contract_name:
+                        fresh = self.api.find_contract(next_name)
+                        if fresh:
+                            contract_name = fresh.get("name", next_name)
+                            contract_id = fresh.get("id", contract_id)
+                            logger.info("Startup rollover: %s -> %s (id=%s)", symbol, contract_name, contract_id)
+                        else:
+                            # API couldn't verify but arithmetic says roll — proceed by name
+                            contract_name = next_name
+                            contract_id = None
+                            logger.warning(
+                                "Startup rollover: proceeding to %s by name (find_contract failed)",
+                                next_name,
+                            )
+
+                self.contract_map[symbol] = contract_name
                 if contract_id is not None:
                     self.contract_id_map[symbol] = contract_id
-                logger.info(
-                    "Resolved %s -> %s (id=%s)",
-                    symbol,
-                    contract_name,
-                    contract_id,
-                )
             else:
                 logger.warning(
                     "Could not resolve front-month for %s. Skipping.", symbol
@@ -292,19 +317,62 @@ class TradovateBot:
         next_year = (current_year + 1) % 10
         return f"{base_symbol}{liquid_months[0]}{next_year}"
 
+    @staticmethod
+    def _estimate_expiry(base_symbol: str, contract_name: str):
+        """
+        Conservative estimate of a contract's expiry date from its name alone.
+        Used as a last-resort fallback when the Tradovate API is unreachable.
+
+        Estimates are intentionally early (conservative) so we never trade an
+        expired contract:
+          CL/MCL  — expire ~3 bd before the 25th of the month BEFORE delivery;
+                     estimate: the 15th of that prior month.
+          GC/MGC  — expire ~4 bd before end of month prior to delivery;
+                     estimate: the 20th of that prior month.
+          NQ/ES/MNQ/MES — expire 3rd Friday of the DELIVERY month (quarterly);
+                     estimate: the 15th of the delivery month.
+        Returns a date object or None if the name cannot be parsed.
+        """
+        from datetime import date as _date
+        try:
+            year_digit = int(contract_name[-1])
+            month_code = contract_name[-2].upper()
+            month_num = config.MONTH_CODES.get(month_code)
+            if month_num is None:
+                return None
+            delivery_year = 2020 + year_digit
+            if base_symbol in ("CL", "MCL"):
+                exp_m = month_num - 1 if month_num > 1 else 12
+                exp_y = delivery_year if month_num > 1 else delivery_year - 1
+                return _date(exp_y, exp_m, 15)
+            if base_symbol in ("GC", "MGC"):
+                exp_m = month_num - 1 if month_num > 1 else 12
+                exp_y = delivery_year if month_num > 1 else delivery_year - 1
+                return _date(exp_y, exp_m, 20)
+            if base_symbol in ("NQ", "ES", "MNQ", "MES"):
+                return _date(delivery_year, month_num, 15)
+        except (ValueError, IndexError, TypeError):
+            pass
+        return None
+
     def _check_contract_rollover(self):
         """
         Check if any active contracts need to roll to the next front-month.
 
-        Two-phase approach:
-        1. DATE-BASED (proactive): If the current contract expires within
-           ROLLOVER_DAYS_BEFORE_EXPIRY days, compute the next liquid contract
-           from the schedule and switch immediately.
-        2. SUGGEST-BASED (fallback): If Tradovate's suggest API returns a
-           different contract, follow it.
+        Three-phase approach — each phase is independent; the first that finds a
+        new contract wins:
 
-        This ensures we roll early enough to avoid low-liquidity contracts
-        near expiration, even when the suggest API hasn't updated yet.
+        1. DATE-BASED (proactive): API returns exact expiry date → roll when
+           within ROLLOVER_DAYS_BEFORE_EXPIRY days (or already expired).
+        2. SUGGEST-BASED (fallback): Tradovate's suggest API returns a different
+           front-month → follow it.
+        3. ARITHMETIC (last resort): Both API calls failed (e.g. auth down).
+           Estimate expiry from the contract name using known expiry conventions
+           and roll when the estimate is within the threshold.
+
+        Phase 3 is intentionally conservative (estimates slightly early) so the
+        bot never keeps trading an expired contract just because the API was
+        temporarily unavailable.
         """
         if self.dry_run:
             return
@@ -332,18 +400,22 @@ class TradovateBot:
                     if days_to_expiry <= config.ROLLOVER_DAYS_BEFORE_EXPIRY:
                         next_name = self._next_liquid_contract(symbol, old_contract)
                         if next_name and next_name != old_contract:
-                            # Verify the next contract exists on Tradovate
-                            verified = self.api.find_contract(next_name)
-                            if verified:
-                                new_contract = next_name
-                                new_contract_data = verified
-                                rollover_reason = (
-                                    f"expiry-based: {old_contract} expires {maturity} "
-                                    f"({days_to_expiry}d away, threshold={config.ROLLOVER_DAYS_BEFORE_EXPIRY}d)"
-                                )
-                            else:
+                            rollover_reason = (
+                                f"expiry-based: {old_contract} expires {maturity} "
+                                f"({days_to_expiry}d away, threshold={config.ROLLOVER_DAYS_BEFORE_EXPIRY}d)"
+                            )
+                            new_contract = next_name
+                            # Best-effort: fetch contract data for ID mapping.
+                            # Do NOT block the rollover if this call fails —
+                            # we can subscribe by name and learn the ID later.
+                            try:
+                                new_contract_data = self.api.find_contract(next_name)
+                            except Exception:
+                                pass
+                            if not new_contract_data:
                                 logger.warning(
-                                    "Early rollover: computed %s but contract not found on Tradovate",
+                                    "Rollover: could not verify %s via API "
+                                    "(proceeding by name — ID will be learned from subscription)",
                                     next_name,
                                 )
             except Exception as e:
@@ -369,6 +441,28 @@ class TradovateBot:
                                 rollover_reason = f"suggest-api: Tradovate returned {suggested_name}"
                 except Exception as e:
                     logger.warning("Suggest-based rollover check failed for %s: %s", symbol, e)
+
+            # ── Phase 3: Arithmetic fallback (no API required) ──
+            if not new_contract:
+                try:
+                    est_expiry = self._estimate_expiry(symbol, old_contract)
+                    if est_expiry is not None:
+                        days_to_est = (est_expiry - today).days
+                        if days_to_est <= config.ROLLOVER_DAYS_BEFORE_EXPIRY:
+                            next_name = self._next_liquid_contract(symbol, old_contract)
+                            if next_name and next_name != old_contract:
+                                new_contract = next_name
+                                rollover_reason = (
+                                    f"arithmetic-fallback: {old_contract} estimated expiry "
+                                    f"{est_expiry} ({days_to_est}d away — API unavailable)"
+                                )
+                                logger.warning(
+                                    "Phase-3 rollover triggered for %s: "
+                                    "estimated expiry %s → %s (API was unreachable)",
+                                    old_contract, est_expiry, next_name,
+                                )
+                except Exception as e:
+                    logger.warning("Arithmetic rollover fallback failed for %s: %s", symbol, e)
 
             if not new_contract:
                 continue
@@ -869,8 +963,29 @@ class TradovateBot:
                             except Exception as e:
                                 logger.warning("WebSocket recovery attempt failed: %s", e)
 
+                # Immediate rollover if the WebSocket received quotes for an
+                # unknown contractId — this is the real-time signal that a contract
+                # rolled while we were subscribed to the old one.
+                _unknown = (
+                    getattr(self.md_stream, "unknown_contract_ids", set())
+                    if self.md_stream else set()
+                )
+                if _unknown:
+                    logger.warning(
+                        "Unknown contractId(s) %s detected in market data — "
+                        "running immediate rollover check",
+                        _unknown,
+                    )
+                    try:
+                        self._check_contract_rollover()
+                    except Exception as e:
+                        logger.warning("Rollover check error: %s", e)
+                    self._last_rollover_check = time.time()
+                    self.md_stream.unknown_contract_ids.clear()
+                    self.md_stream._warned_unknown_ids.clear()
+
                 # Periodic contract rollover check (every 10 min)
-                if not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
+                elif not self.dry_run and time.time() - self._last_rollover_check >= self._rollover_check_interval:
                     try:
                         self._check_contract_rollover()
                     except Exception as e:
