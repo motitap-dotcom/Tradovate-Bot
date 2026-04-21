@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-21T06:06:06Z",
+  "timestamp": "2026-04-21T08:18:09Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "1368928",
     "uptime_since": "Mon 2026-04-20 18:26:31 UTC",
     "disk": "19%",
-    "memory": "1212MB/7941MB (15%)",
+    "memory": "1221MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "bcfb9a3 status: 2026-04-21 03:52 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "01f7271 status: 2026-04-21 06:06 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-04-20T20:58:47.894920+00:00",
       "timestamp_et": "2026-04-20T16:58:47.894940-04:00",
@@ -47,7 +47,7 @@
     },
     "journal_tail": "2026-04-20 20:59:15,799 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:15,869 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:16,208 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:16,239 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:16,313 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:16,724 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:17,543 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:17,574 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp', 'contractId', 'entries'] mapped={4327110: 'MNQM6', 4327108: 'MESM6', 3924410: 'MGCJ6', 3643469: 'MCLK6', 4856056: 'SILJ6'}\n2026-04-20 20:59:17,594 [WARNING] tradovate_api: DIAG unmapped contractId=3643471 quote_keys=['id', 'timestamp',",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 32775s)\n  Balance: $51690.91\n  Day P&L: $8.0\n  Trades today: 4\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 15.2%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr 21 06:05:03 UTC 2026] Status: bot_active=true, pid=1368928\n[Tue Apr 21 06:05:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 40574s)\n  Balance: $51690.91\n  Day P&L: $8.0\n  Trades today: 4\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.9%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr 21 08:15:02 UTC 2026] Status: bot_active=true, pid=1368928\n[Tue Apr 21 08:15:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
