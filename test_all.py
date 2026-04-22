@@ -2612,6 +2612,449 @@ test_tuner_mfe_targets()
 
 
 # ─────────────────────────────────────────────
+# WebSocket Resilience Tests
+# ─────────────────────────────────────────────
+
+print("\n--- WebSocket Resilience ---")
+
+
+def _make_stream(api=None):
+    """Build a MarketDataStream without opening a real socket."""
+    from tradovate_api import MarketDataStream
+    s = MarketDataStream("fake-md-token", api=api)
+    s._should_run = True
+    # Prevent real reconnect from running network code
+    s._connect = lambda: None
+    return s
+
+
+@test("WS: graceful close (1000) reconnects quickly without incrementing failures")
+def test_ws_graceful_close_delay():
+    import threading as _th
+    s = _make_stream()
+    captured = {}
+
+    def fake_timer(delay, fn):
+        captured["delay"] = delay
+        t = MagicMock()
+        t.daemon = False
+        return t
+
+    with patch.object(_th, "Timer", side_effect=fake_timer):
+        s._on_close(None, 1000, "Bye")
+
+    assert captured["delay"] == 1, f"graceful close should schedule 1s reconnect, got {captured['delay']}"
+    assert s._consecutive_failures == 0, "graceful close must not count as a failure"
+
+
+@test("WS: abnormal close triggers exponential backoff")
+def test_ws_backoff_exponential():
+    import threading as _th
+    s = _make_stream()
+    s._reconnect_count = 2  # next attempt will be #3 -> 2*2^(3-1)=8
+
+    captured = {}
+
+    def fake_timer(delay, fn):
+        captured["delay"] = delay
+        t = MagicMock()
+        t.daemon = False
+        return t
+
+    with patch.object(_th, "Timer", side_effect=fake_timer):
+        s._on_close(None, 1006, "abnormal")
+
+    assert captured["delay"] == 8, f"expected backoff 8s, got {captured['delay']}"
+    assert s._consecutive_failures == 1
+
+
+@test("WS: backoff capped at 60s for many consecutive failures")
+def test_ws_backoff_cap():
+    import threading as _th
+    s = _make_stream()
+    s._reconnect_count = 20  # would otherwise be astronomically large
+
+    captured = {}
+
+    def fake_timer(delay, fn):
+        captured["delay"] = delay
+        t = MagicMock()
+        t.daemon = False
+        return t
+
+    with patch.object(_th, "Timer", side_effect=fake_timer):
+        s._on_close(None, 1006, "boom")
+
+    assert captured["delay"] == 60, f"backoff must cap at 60s, got {captured['delay']}"
+
+
+@test("WS: fallback to REST after FALLBACK_THRESHOLD failures")
+def test_ws_fallback_threshold():
+    s = _make_stream()
+    s._consecutive_failures = s.FALLBACK_THRESHOLD - 1
+    s._on_close(None, 1006, "boom")
+    assert s.fell_back.is_set(), "should have signaled fallback"
+    assert s._should_run is False
+
+
+@test("WS: _on_error with 403 sets _got_403 for full re-auth")
+def test_ws_403_triggers_reauth_flag():
+    s = _make_stream()
+    s._on_error(None, Exception("HTTP 403 Forbidden"))
+    assert s._got_403 is True, "403 error must set _got_403 for full re-auth on reconnect"
+
+
+@test("WS: _on_close does nothing if stream is stopping")
+def test_ws_close_respects_should_run():
+    s = _make_stream()
+    s._should_run = False
+    s._on_close(None, 1006, "boom")
+    # No timer should have been scheduled
+    assert s._reconnect_timer is None
+
+
+# ─────────────────────────────────────────────
+# Force-Close & EOD Tests
+# ─────────────────────────────────────────────
+
+print("\n--- Force Close & EOD ---")
+
+
+@test("RiskManager: end_of_day_update advances peak & drawdown floor")
+def test_risk_eod_advances_floor():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    # Force Topstep-style EOD trailing behavior
+    rm.trails_unrealized = False
+    start_peak = rm.peak_balance
+    start_floor = rm.drawdown_floor
+    # Simulate profitable day
+    rm.end_of_day_update(start_peak + 1000)
+    assert rm.peak_balance == start_peak + 1000
+    assert rm.drawdown_floor == rm.peak_balance - rm.max_trailing_drawdown
+    assert rm.drawdown_floor > start_floor
+
+
+@test("RiskManager: end_of_day_update does NOT lower floor on losing day")
+def test_risk_eod_no_lower_floor():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    rm.trails_unrealized = False
+    # Manually raise peak first
+    rm.peak_balance = rm.account_size + 2000
+    rm.drawdown_floor = rm.peak_balance - rm.max_trailing_drawdown
+    high_peak = rm.peak_balance
+    high_floor = rm.drawdown_floor
+    # Losing day: balance below peak should NOT lower the floor
+    rm.end_of_day_update(rm.account_size)
+    assert rm.peak_balance == high_peak
+    assert rm.drawdown_floor == high_floor
+
+
+@test("RiskManager: end_of_day_update is a no-op when drawdown trails unrealized (Apex)")
+def test_risk_eod_apex_noop():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    rm.trails_unrealized = True  # Apex-style: intraday
+    start_peak = rm.peak_balance
+    rm.end_of_day_update(start_peak + 5000)
+    assert rm.peak_balance == start_peak, "Apex EOD should not modify peak"
+
+
+@test("Bot: _sync_balance seeds balance via set_initial_balance on first success")
+def test_sync_balance_seeds_initial():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_cash_balance.return_value = {"netLiq": 50750.0, "openPnL": 0.0}
+    # Simulate: initial _init_balance_from_api failed (token was expired)
+    assert bot.risk._balance_initialized is False
+    bot._sync_balance()
+    assert bot.risk._balance_initialized is True
+    assert abs(bot.risk.current_balance - 50750.0) < 0.01
+    assert abs(bot.risk.day_start_balance - 50750.0) < 0.01
+    # day_pnl should be 0 now (balance - day_start = 0)
+    assert abs(bot.risk.day_pnl) < 0.01
+
+
+@test("Bot: _sync_balance skips when API returns errorText")
+def test_sync_balance_handles_error():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_cash_balance.return_value = {"errorText": "rate limited"}
+    initial = bot.risk.current_balance
+    bot._sync_balance()
+    assert bot.risk.current_balance == initial, "Balance must not change on API error"
+    assert bot.risk._balance_initialized is False
+
+
+@test("Bot: _sync_balance prefers netLiq over totalCashValue")
+def test_sync_balance_netliq_priority():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_cash_balance.return_value = {
+        "netLiq": 51234.0,
+        "totalCashValue": 99999.0,  # Should be ignored
+        "openPnL": 500.0,
+    }
+    bot.risk.set_initial_balance(50000.0)
+    bot._sync_balance()
+    # netLiq already includes openPnL, so current_balance should be 51234
+    assert abs(bot.risk.current_balance - 51234.0) < 0.01
+
+
+# ─────────────────────────────────────────────
+# Strategy Edge-Case Tests
+# ─────────────────────────────────────────────
+
+print("\n--- Strategy Edge Cases ---")
+
+
+@test("ORB: stale price above range (post-restart warmup) does NOT fire breakout")
+def test_orb_gap_open_rejected():
+    from strategies import _ORBWindow
+    from datetime import time as dtime
+
+    # Simulate: bot restarted after market open; warmup seeded the range
+    # from historical bars AND set _last_price to the last historical close,
+    # which is already ABOVE the range_high (price drifted up in the gap).
+    window = _ORBWindow(window_minutes=5, open_time=dtime(9, 30))
+    window.range_high = 100.5
+    window.range_low = 99.5
+    window.range_set = True
+    window.breakout_fired = False
+    window._last_price = 105.0  # Last historical close was already above range
+
+    # First real-time tick at 105.1 — still above range_high, prev was above range.
+    # This is a STALE breakout (bot missed the actual cross); must not fire.
+    result = window.feed(105.1, 105.1, 105.0, dtime(9, 40, 0))
+    assert result is None, "Post-restart price already above range must not fire (no fresh cross)"
+
+    # Another tick, still above: still must not fire
+    result = window.feed(106.0, 106.0, 105.5, dtime(9, 41, 0))
+    assert result is None, "Sustained above-range price after restart must not fire"
+
+
+@test("ORB: fresh cross from inside range to above fires long breakout")
+def test_orb_fresh_cross_fires():
+    from strategies import _ORBWindow
+    from datetime import time as dtime
+
+    window = _ORBWindow(window_minutes=5, open_time=dtime(9, 30))
+    # Build range
+    for m in range(5):
+        window.feed(100.0, 100.5, 99.5, dtime(9, 30 + m, 0))
+
+    # Tick INSIDE the range first (prev will be 100.0)
+    inside = window.feed(100.0, 100.2, 99.8, dtime(9, 36, 0))
+    assert inside is None
+
+    # Now cross above -> should fire
+    fired = window.feed(101.0, 101.0, 100.9, dtime(9, 37, 0))
+    assert fired == "long", f"Expected long breakout, got {fired}"
+
+
+@test("VWAP: reversed OHLC (high<low) is auto-swapped without corruption")
+def test_vwap_reversed_ohlc_guard():
+    from strategies import VWAPStrategy
+    vwap = VWAPStrategy("GC")
+    # Feed a reversed bar: high=99, low=101 (typo in data feed)
+    vwap.update_vwap(high=99.0, low=101.0, close=100.0, volume=10.0)
+    # After swap: high=101, low=99, typical = (101+99+100)/3 = 100
+    assert vwap.vwap is not None
+    assert abs(vwap.vwap - 100.0) < 1e-6, f"VWAP corrupted by reversed OHLC: {vwap.vwap}"
+
+
+@test("VWAP: zero-volume bar skipped, does not update VWAP")
+def test_vwap_zero_volume_skip():
+    from strategies import VWAPStrategy
+    vwap = VWAPStrategy("GC")
+    vwap.update_vwap(high=101.0, low=99.0, close=100.0, volume=10.0)
+    first = vwap.vwap
+    vwap.update_vwap(high=200.0, low=180.0, close=190.0, volume=0.0)
+    assert vwap.vwap == first, "Zero-volume bar must not change VWAP"
+    assert vwap._vwap_stale_bars >= 1
+
+
+@test("Strategy reset: ORB reset clears range and trade counters")
+def test_orb_reset_clears_state():
+    from strategies import ORBStrategy
+    from datetime import datetime as _dt
+    orb = ORBStrategy("NQ")
+    orb.trades_taken = 1
+    orb.last_trade_time = _dt.now()
+    for w in orb.windows:
+        w.range_high = 100.0
+        w.range_low = 90.0
+        w.range_set = True
+        w.breakout_fired = True
+        w.prices = [1, 2, 3]
+    orb.reset()
+    assert orb.trades_taken == 0
+    assert orb.last_trade_time is None
+    for w in orb.windows:
+        assert w.range_set is False
+        assert w.breakout_fired is False
+        assert w.prices == []
+        assert w.range_high is None
+
+
+@test("Strategy reset: VWAP reset clears accumulator and cooldown state")
+def test_vwap_reset_clears_state():
+    from strategies import VWAPStrategy
+    from datetime import datetime as _dt
+    vwap = VWAPStrategy("GC")
+    vwap.update_vwap(101, 99, 100, 10)
+    vwap.long_count = 2
+    vwap.last_any_trade_time = _dt.now()
+    vwap.reset()
+    assert vwap.vwap is None
+    assert vwap._cum_vol == 0.0
+    assert vwap.long_count == 0
+    assert vwap.short_count == 0
+    assert vwap.last_any_trade_time is None
+
+
+# ─────────────────────────────────────────────
+# bot_commands.py Tests
+# ─────────────────────────────────────────────
+
+print("\n--- Bot Commands ---")
+
+
+@test("Commands: send_command roundtrip writes readable file")
+def test_commands_roundtrip():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    result_file = Path(tmpdir) / "bot_commands_result.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", result_file):
+        ok = bot_commands.send_command("close_all", source="test")
+        assert ok is True
+        assert cmd_file.exists()
+        cmd = bot_commands.read_pending_command()
+        assert cmd is not None
+        assert cmd["command"] == "close_all"
+        assert cmd["source"] == "test"
+        # File should be consumed after read
+        assert not cmd_file.exists(), "Command file must be deleted after read"
+
+
+@test("Commands: stale command (>5min) discarded")
+def test_commands_stale_discard():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    result_file = Path(tmpdir) / "bot_commands_result.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", result_file):
+        stale_ts = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        cmd_file.write_text(json.dumps({
+            "command": "close_all",
+            "timestamp": stale_ts,
+        }))
+        cmd = bot_commands.read_pending_command()
+        assert cmd is None, "Stale command must be discarded"
+
+
+@test("Commands: invalid JSON handled gracefully (no crash)")
+def test_commands_invalid_json():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", Path(tmpdir) / "r.json"):
+        cmd_file.write_text("{not valid json")
+        cmd = bot_commands.read_pending_command()
+        assert cmd is None
+        assert not cmd_file.exists(), "Corrupt command file must be cleaned up"
+
+
+@test("Commands: missing 'command' key rejected")
+def test_commands_missing_key():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", Path(tmpdir) / "r.json"):
+        cmd_file.write_text(json.dumps({"foo": "bar"}))
+        cmd = bot_commands.read_pending_command()
+        assert cmd is None
+
+
+@test("Commands: execute_command close_all in dry-run does not call API")
+def test_commands_execute_dry_run():
+    import bot_commands
+    bot = MagicMock()
+    bot.dry_run = True
+    with patch.object(bot_commands, "_write_result"):
+        ok = bot_commands.execute_command({"command": "close_all"}, bot)
+    assert ok is True
+    bot.api.cancel_all_orders.assert_not_called()
+    bot.api.close_all_positions.assert_not_called()
+
+
+@test("Commands: execute_command close_all in live mode calls API")
+def test_commands_execute_live():
+    import bot_commands
+    bot = MagicMock()
+    bot.dry_run = False
+    with patch.object(bot_commands, "_write_result"):
+        ok = bot_commands.execute_command({"command": "close_all"}, bot)
+    assert ok is True
+    bot.api.cancel_all_orders.assert_called_once()
+    bot.api.close_all_positions.assert_called_once()
+
+
+@test("Commands: execute_command unknown action returns False")
+def test_commands_execute_unknown():
+    import bot_commands
+    bot = MagicMock()
+    bot.dry_run = True
+    with patch.object(bot_commands, "_write_result"):
+        ok = bot_commands.execute_command({"command": "nuke_everything"}, bot)
+    assert ok is False
+
+
+test_ws_graceful_close_delay()
+test_ws_backoff_exponential()
+test_ws_backoff_cap()
+test_ws_fallback_threshold()
+test_ws_403_triggers_reauth_flag()
+test_ws_close_respects_should_run()
+test_risk_eod_advances_floor()
+test_risk_eod_no_lower_floor()
+test_risk_eod_apex_noop()
+test_sync_balance_seeds_initial()
+test_sync_balance_handles_error()
+test_sync_balance_netliq_priority()
+test_orb_gap_open_rejected()
+test_orb_fresh_cross_fires()
+test_vwap_reversed_ohlc_guard()
+test_vwap_zero_volume_skip()
+test_orb_reset_clears_state()
+test_vwap_reset_clears_state()
+test_commands_roundtrip()
+test_commands_stale_discard()
+test_commands_invalid_json()
+test_commands_missing_key()
+test_commands_execute_dry_run()
+test_commands_execute_live()
+test_commands_execute_unknown()
+
+
+# ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
 
