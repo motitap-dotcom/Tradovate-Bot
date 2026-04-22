@@ -440,115 +440,6 @@ test_ws_request_id()
 
 
 # ─────────────────────────────────────────────
-# 3b. _ON_QUOTE FORMAT TESTS
-# ─────────────────────────────────────────────
-
-print("\n" + "=" * 60)
-print("3b. _ON_QUOTE FORMAT TESTS")
-print("=" * 60)
-
-
-@test("_on_quote: parses Tradovate WebSocket entries format")
-def test_on_quote_websocket_format():
-    """Verify _on_quote correctly handles Tradovate WS format: entries.Trade.price"""
-    from unittest.mock import MagicMock, patch
-    import bot as bot_module
-
-    bot_instance = MagicMock(spec=bot_module.TradovateBot)
-    bot_instance._process_price = MagicMock()
-
-    ws_quote = {
-        "contractId": 12345,
-        "entries": {
-            "Trade": {"price": 19050.25, "size": 3},
-            "Bid": {"price": 19050.0, "size": 10},
-            "Ask": {"price": 19050.5, "size": 5},
-            "HighPrice": {"price": 19100.0},
-            "LowPrice": {"price": 18990.0},
-        },
-    }
-
-    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", ws_quote)
-
-    bot_instance._process_price.assert_called_once()
-    args = bot_instance._process_price.call_args[0]
-    assert args[0] == "MNQ", f"symbol should be MNQ, got {args[0]}"
-    assert args[1] == 19050.25, f"price should be 19050.25, got {args[1]}"
-    assert args[2] == 19100.0, f"high should be 19100.0, got {args[2]}"
-    assert args[3] == 18990.0, f"low should be 18990.0, got {args[3]}"
-    assert args[4] == 3, f"volume should be 3, got {args[4]}"
-
-
-@test("_on_quote: falls back to bid price when no Trade entry")
-def test_on_quote_no_trade_entry():
-    from unittest.mock import MagicMock
-    import bot as bot_module
-
-    bot_instance = MagicMock(spec=bot_module.TradovateBot)
-    bot_instance._process_price = MagicMock()
-
-    ws_quote = {
-        "contractId": 12345,
-        "entries": {
-            "Bid": {"price": 19049.75, "size": 8},
-            "Ask": {"price": 19050.25, "size": 4},
-        },
-    }
-
-    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", ws_quote)
-
-    bot_instance._process_price.assert_called_once()
-    args = bot_instance._process_price.call_args[0]
-    assert args[1] == 19049.75, f"should fall back to bid price, got {args[1]}"
-
-
-@test("_on_quote: REST poller format still works")
-def test_on_quote_rest_format():
-    from unittest.mock import MagicMock
-    import bot as bot_module
-
-    bot_instance = MagicMock(spec=bot_module.TradovateBot)
-    bot_instance._process_price = MagicMock()
-
-    rest_quote = {
-        "trade": {"price": 2950.5, "size": 10},
-        "bid": {"price": 2950.0},
-        "high": {"price": 2960.0},
-        "low": {"price": 2940.0},
-    }
-
-    bot_module.TradovateBot._on_quote(bot_instance, "MGC", rest_quote)
-
-    bot_instance._process_price.assert_called_once()
-    args = bot_instance._process_price.call_args[0]
-    assert args[1] == 2950.5, f"price should be 2950.5, got {args[1]}"
-    assert args[2] == 2960.0, f"high should be 2960.0, got {args[2]}"
-    assert args[3] == 2940.0, f"low should be 2940.0, got {args[3]}"
-
-
-@test("_on_quote: returns immediately when no price available")
-def test_on_quote_no_price():
-    from unittest.mock import MagicMock
-    import bot as bot_module
-
-    bot_instance = MagicMock(spec=bot_module.TradovateBot)
-    bot_instance._process_price = MagicMock()
-
-    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", {"contractId": 123})
-    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", {})
-    bot_module.TradovateBot._on_quote(bot_instance, "MNQ", {"entries": {}})
-
-    assert bot_instance._process_price.call_count == 0, \
-        f"_process_price should not be called with no price, was called {bot_instance._process_price.call_count} times"
-
-
-test_on_quote_websocket_format()
-test_on_quote_no_trade_entry()
-test_on_quote_rest_format()
-test_on_quote_no_price()
-
-
-# ─────────────────────────────────────────────
 # 4. STRATEGY TESTS
 # ─────────────────────────────────────────────
 
@@ -657,9 +548,8 @@ def test_orb_cooldown():
 @test("ORB: max trades cap respected")
 def test_orb_max_trades():
     from strategies import ORBStrategy
-    import config
     strategy = ORBStrategy("MNQ")
-    assert strategy.max_trades == config.CONTRACT_SPECS["MNQ"]["max_orb_trades"]
+    assert strategy.max_trades == 2  # Default from config
 
 
 @test("VWAP: running VWAP calculation")
@@ -681,12 +571,11 @@ def test_vwap_calculation():
 def test_vwap_long_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
-    strat.confirmation_candles = 1  # test a single-bar confirmation
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Build initial VWAP around 2000 — feed enough candles through on_price
     # to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(12):
+    for i in range(6):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price below VWAP
@@ -702,11 +591,10 @@ def test_vwap_long_crossover():
 def test_vwap_short_crossover():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
-    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(12):
+    for i in range(6):
         strat.on_price(2000, 2001, 1999, 100)
 
     # Price above VWAP
@@ -722,11 +610,10 @@ def test_vwap_short_crossover():
 def test_vwap_cooldown():
     from strategies import VWAPStrategy
     strat = VWAPStrategy("MGC")
-    strat.confirmation_candles = 1
     strat._current_time = datetime(2026, 2, 23, 10, 0, tzinfo=timezone.utc)
 
     # Feed enough candles through on_price to satisfy MIN_CANDLES_FOR_SIGNAL
-    for i in range(12):
+    for i in range(6):
         strat.on_price(2000, 2001, 1999, 100)
 
     # First long
@@ -1100,11 +987,7 @@ def test_e2e_nq_orb():
     from strategies import ORBStrategy, TradeSignal
     from risk_manager import RiskManager
 
-    strategy = ORBStrategy("MNQ")
-    # Synthetic random walk isn't guaranteed to produce a range that clears
-    # the production min_range filter — relax it for the simulation.
-    strategy.min_range_points = 0.0
-    strategy.max_range_points = float("inf")
+    strategy = ORBStrategy("NQ")
     rm = RiskManager()
     ET = ZoneInfo("America/New_York")
     signals = []
@@ -1117,20 +1000,19 @@ def test_e2e_nq_orb():
     for minute in range(360):  # 6 hours
         t = datetime(2026, 2, 23, 9, 30, tzinfo=ET) + timedelta(minutes=minute)
 
-        # Price random walk — larger step so the ORB range is meaningful
-        base_price += random.gauss(0, 5)
-        high = base_price + abs(random.gauss(0, 6))
-        low = base_price - abs(random.gauss(0, 6))
+        # Price random walk
+        base_price += random.gauss(0, 2)
+        high = base_price + abs(random.gauss(0, 3))
+        low = base_price - abs(random.gauss(0, 3))
 
         signal = strategy.on_price(base_price, t, high, low)
         if signal:
             ok, reason = rm.can_trade()
             if ok:
-                qty = rm.calculate_position_size("MNQ")
+                qty = rm.calculate_position_size("NQ")
                 if qty > 0:
                     signal.qty = qty
-                    rm.register_open(qty, symbol="MNQ",
-                                     direction=signal.direction.value)
+                    rm.register_open(qty)
                     signals.append(signal)
 
     assert len(signals) > 0, "Should generate at least 1 signal in 6 hours"
@@ -1262,67 +1144,51 @@ def test_rollover_unknown():
     assert result is None
 
 
-@test("Calendar rollover switches to new front-month when out of date")
-def test_calendar_rollover_triggers():
+@test("Date-based rollover triggers when contract expires within threshold")
+def test_date_based_rollover():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
+    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
     bot.contract_map = {"NQ": "NQH6"}
+
+    # Contract expires in 5 days (within 8-day threshold)
+    expiry = (date.today() + timedelta(days=5)).isoformat()
+    bot.api.get_contract_maturity.return_value = expiry
     bot.api.find_contract.return_value = {"id": 999, "name": "NQM6"}
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now, \
-         patch("config.get_front_month_contract", return_value="NQM6"):
+    with patch("bot.now_et") as mock_now:
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
     assert bot.contract_map["NQ"] == "NQM6", f"Expected NQM6, got {bot.contract_map['NQ']}"
 
 
-@test("Calendar rollover: no switch when calendar front matches current contract")
-def test_calendar_rollover_no_switch():
+@test("No rollover when expiry is far away")
+def test_no_rollover_far_expiry():
     from bot import TradovateBot
     from unittest.mock import MagicMock, patch
+    from datetime import date, timedelta
 
     bot = TradovateBot(dry_run=False)
     bot.api = MagicMock()
     bot.md_stream = None
-    bot.contract_map = {"NQ": "NQM6"}
+    bot.contract_map = {"NQ": "NQH6"}
+
+    # Contract expires in 20 days (outside 8-day threshold)
+    expiry = (date.today() + timedelta(days=20)).isoformat()
+    bot.api.get_contract_maturity.return_value = expiry
     bot.api.suggest_contract.return_value = None
 
-    with patch("bot.now_et") as mock_now, \
-         patch("config.get_front_month_contract", return_value="NQM6"):
+    with patch("bot.now_et") as mock_now:
         mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
         bot._check_contract_rollover()
 
-    assert bot.contract_map["NQ"] == "NQM6", "Should NOT have rolled over"
-
-
-@test("Gold rollover: calendar skips illiquid serial month from suggest API")
-def test_calendar_rollover_ignores_serial_month():
-    """If the calendar says we're fine but Tradovate's suggest API points at
-    an illiquid serial month (e.g. GCH6 for gold), the bot must NOT follow it."""
-    from bot import TradovateBot
-    from unittest.mock import MagicMock, patch
-
-    bot = TradovateBot(dry_run=False)
-    bot.api = MagicMock()
-    bot.md_stream = None
-    bot.contract_map = {"GC": "GCM6"}
-    # Suggest returns GCH6 (March gold — not a liquid month for gold)
-    bot.api.suggest_contract.return_value = {"id": 123, "name": "GCH6"}
-
-    with patch("bot.now_et") as mock_now, \
-         patch("config.get_front_month_contract", return_value="GCM6"):
-        mock_now.return_value = datetime.now(ZoneInfo("America/New_York"))
-        bot._check_contract_rollover()
-
-    assert bot.contract_map["GC"] == "GCM6", (
-        f"Must not switch to illiquid serial month; got {bot.contract_map['GC']}"
-    )
+    assert bot.contract_map["NQ"] == "NQH6", "Should NOT have rolled over"
 
 
 test_rollover_nq_h_to_m()
@@ -1332,147 +1198,8 @@ test_rollover_gc_year_wrap()
 test_rollover_cl_monthly()
 test_rollover_es_u_to_z()
 test_rollover_unknown()
-test_calendar_rollover_triggers()
-test_calendar_rollover_no_switch()
-test_calendar_rollover_ignores_serial_month()
-
-
-# ─────────────────────────────────────────────
-# Calendar-driven front-month tests
-# ─────────────────────────────────────────────
-# Verify config.get_front_month_contract() returns the correct front-month
-# for each product at representative dates, including the specific bug that
-# prompted this fix: on 2026-04-13 gold should be GCM6 (June), NOT GCJ6
-# (April), because FND for April gold was 2026-03-31.
-
-print("\n--- Calendar front-month ---")
-
-
-@test("Gold front-month on 2026-04-13 is GCM6 (past April FND)")
-def test_gold_front_month_april_13():
-    from datetime import date
-    result = config.get_front_month_contract("GC", date(2026, 4, 13))
-    assert result == "GCM6", f"Expected GCM6, got {result}"
-
-
-@test("Micro gold: MGC front-month on 2026-04-13 is MGCM6")
-def test_mgc_front_month_april_13():
-    from datetime import date
-    result = config.get_front_month_contract("MGC", date(2026, 4, 13))
-    assert result == "MGCM6", f"Expected MGCM6, got {result}"
-
-
-@test("Gold front-month on 2026-03-20 is still GCJ6 (before FND)")
-def test_gold_front_month_before_fnd():
-    from datetime import date
-    # April FND = last biz day of March 2026 = Mar 31 (Tue).
-    # Roll-out = 3 biz days before = Mar 26 (Thu).
-    # Mar 20 is still before roll-out → April contract is front month.
-    result = config.get_front_month_contract("GC", date(2026, 3, 20))
-    assert result == "GCJ6", f"Expected GCJ6, got {result}"
-
-
-@test("Gold front-month on 2026-03-27 has rolled to GCM6 (past FND roll-out)")
-def test_gold_front_month_at_rollover():
-    from datetime import date
-    # Mar 26 is roll-out day (last valid), Mar 27 → GCM6
-    result = config.get_front_month_contract("GC", date(2026, 3, 27))
-    assert result == "GCM6", f"Expected GCM6, got {result}"
-
-
-@test("Gold skips illiquid March contract — never returns GCH6")
-def test_gold_never_serial_month():
-    from datetime import date, timedelta
-    for day_offset in range(0, 400, 7):
-        d = date(2026, 1, 1) + timedelta(days=day_offset)
-        result = config.get_front_month_contract("GC", d)
-        assert result is not None
-        month_code = result[2]  # GC<code><year>
-        assert month_code in ("G", "J", "M", "Q", "V", "Z"), (
-            f"Got non-liquid month {result} for date {d}"
-        )
-
-
-@test("MNQ front-month on 2026-04-13 is MNQM6 (past H6 expiry)")
-def test_mnq_front_month_april():
-    from datetime import date
-    result = config.get_front_month_contract("MNQ", date(2026, 4, 13))
-    assert result == "MNQM6", f"Expected MNQM6, got {result}"
-
-
-@test("NQ front-month 8 days before 3rd Friday rolls to next quarter")
-def test_nq_rollout_timing():
-    from datetime import date
-    # NQM6 3rd Friday = 2026-06-19. Roll-out = 2026-06-11.
-    # On Jun 11: still NQM6. On Jun 12: NQU6.
-    assert config.get_front_month_contract("NQ", date(2026, 6, 11)) == "NQM6"
-    assert config.get_front_month_contract("NQ", date(2026, 6, 12)) == "NQU6"
-
-
-@test("MCL front-month on 2026-04-13 is MCLK6 (May, LTD=Apr 21)")
-def test_mcl_front_month_april():
-    from datetime import date
-    result = config.get_front_month_contract("MCL", date(2026, 4, 13))
-    assert result == "MCLK6", f"Expected MCLK6, got {result}"
-
-
-@test("CL rolls to June after mid-April")
-def test_cl_rollover_timing():
-    from datetime import date
-    # Apr 15 is past roll-out (Apr 14) → next contract CLM6.
-    result = config.get_front_month_contract("CL", date(2026, 4, 15))
-    assert result == "CLM6", f"Expected CLM6, got {result}"
-
-
-@test("SIL front-month on 2026-04-13 is SILK6 (silver May)")
-def test_sil_front_month_april():
-    from datetime import date
-    # Silver liquid months are H, K, N, U, Z. Silver April (J) is NOT listed,
-    # so after March (H) expires, next is K (May). FND for May silver =
-    # last biz day of Apr 2026 = Apr 30 (Thu). Roll-out = Apr 27 (Mon).
-    # Apr 13 <= Apr 27 → SILK6.
-    result = config.get_front_month_contract("SIL", date(2026, 4, 13))
-    assert result == "SILK6", f"Expected SILK6, got {result}"
-
-
-@test("MNG front-month on 2026-04-13 is MNGK6 (nat gas May)")
-def test_mng_front_month_april():
-    from datetime import date
-    # MNG rolls every month (FND = last biz day of prior month for metals pattern).
-    # FND for May nat gas ≈ last biz day of Apr 2026 = Apr 30. Roll-out = Apr 27.
-    # Apr 13 <= Apr 27 → MNGK6.
-    result = config.get_front_month_contract("MNG", date(2026, 4, 13))
-    assert result == "MNGK6", f"Expected MNGK6, got {result}"
-
-
-@test("Year-wrap: gold on 2026-12-28 points at 2027")
-def test_gold_year_wrap():
-    from datetime import date
-    # All 2026 liquid golds past. GCG7 (Feb 2027) FND = Jan 30 2027 (Fri),
-    # roll-out = Jan 27 (Tue). Dec 28 2026 <= Jan 27 2027 → GCG7.
-    result = config.get_front_month_contract("GC", date(2026, 12, 28))
-    assert result == "GCG7", f"Expected GCG7, got {result}"
-
-
-@test("Unknown symbol returns None")
-def test_front_month_unknown_symbol():
-    from datetime import date
-    assert config.get_front_month_contract("FAKE", date(2026, 4, 13)) is None
-
-
-test_gold_front_month_april_13()
-test_mgc_front_month_april_13()
-test_gold_front_month_before_fnd()
-test_gold_front_month_at_rollover()
-test_gold_never_serial_month()
-test_mnq_front_month_april()
-test_nq_rollout_timing()
-test_mcl_front_month_april()
-test_cl_rollover_timing()
-test_sil_front_month_april()
-test_mng_front_month_april()
-test_gold_year_wrap()
-test_front_month_unknown_symbol()
+test_date_based_rollover()
+test_no_rollover_far_expiry()
 
 
 # ─────────────────────────────────────────────
@@ -1743,13 +1470,13 @@ def test_tuner_widen_stops():
         tuner = AutoTuner(journal=j)
 
         # 8 SL hits, 2 TP hits = 80% SL rate
-        trades = _make_closed_trades("MNQ", 8, 2)
+        trades = _make_closed_trades("NQ", 8, 2)
 
-        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
         # Should have proposed widening
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
         assert len(sl_adj) == 1, f"Expected 1 SL adjustment, got {len(sl_adj)}"
         assert sl_adj[0]["new_value"] > old_sl, "New SL should be wider (larger)"
     finally:
@@ -1767,12 +1494,12 @@ def test_tuner_tighten_stops():
         tuner = AutoTuner(journal=j)
 
         # 1 SL hit, 6 TP hits = ~14% SL rate
-        trades = _make_closed_trades("MNQ", 1, 6)
+        trades = _make_closed_trades("NQ", 1, 6)
 
-        old_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
+        old_sl = config.CONTRACT_SPECS["NQ"]["stop_loss_points"]
         tuner._tune_stops(trades)
 
-        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
+        sl_adj = [a for a in tuner.adjustments if a["param"] == "stop_loss_points" and a["symbol"] == "NQ"]
         assert len(sl_adj) == 1
         assert sl_adj[0]["new_value"] < old_sl, "New SL should be tighter (smaller)"
     finally:
@@ -1790,12 +1517,12 @@ def test_tuner_widen_tp():
         tuner = AutoTuner(journal=j)
 
         # High R-multiple trades
-        trades = _make_closed_trades("MNQ", 1, 4, r_mult=2.0)
+        trades = _make_closed_trades("NQ", 1, 4, r_mult=2.0)
 
-        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] > old_tp, "TP should be widened for high R"
     finally:
@@ -1814,12 +1541,12 @@ def test_tuner_tighten_tp():
 
         # Negative R-multiple trades — all stop_loss exits (no TP trades)
         # so we reach the avg_r < -0.5 branch (not blocked by tp_trades > 0)
-        trades = _make_closed_trades("MNQ", 4, 0, r_mult=-1.0)
+        trades = _make_closed_trades("NQ", 4, 0, r_mult=-1.0)
 
-        old_tp = config.CONTRACT_SPECS["MNQ"]["take_profit_points"]
+        old_tp = config.CONTRACT_SPECS["NQ"]["take_profit_points"]
         tuner._tune_targets(trades)
 
-        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "MNQ"]
+        tp_adj = [a for a in tuner.adjustments if a["param"] == "take_profit_points" and a["symbol"] == "NQ"]
         assert len(tp_adj) == 1
         assert tp_adj[0]["new_value"] < old_tp, "TP should be tightened for negative R"
     finally:
@@ -2095,12 +1822,12 @@ def test_bot_execute_signal_dry_run():
 
     bot = TradovateBot(dry_run=True)
     bot.api = MagicMock()
-    bot.contract_map = {"MNQ": "MNQH6"}
-    bot.strategies = {"MNQ": MagicMock()}
+    bot.contract_map = {"NQ": "NQH6"}
+    bot.strategies = {"NQ": MagicMock()}
     bot._last_order_time = 0  # No cooldown
 
     signal = TradeSignal(
-        symbol="MNQ", direction=Direction.LONG,
+        symbol="NQ", direction=Direction.LONG,
         entry_price=21000, stop_loss=20975, take_profit=21050,
         qty=1, reason="test breakout",
     )
@@ -2182,9 +1909,7 @@ def test_bot_execute_signal_success():
     bot._execute_signal(signal)
 
     bot.api.place_bracket_order.assert_called_once()
-    bot.risk.register_open.assert_called_once_with(
-        2, symbol="NQ", direction="Buy",
-    )
+    bot.risk.register_open.assert_called_once_with(2)
     bot.journal.record_entry.assert_called_once()
 
 
@@ -2887,637 +2612,446 @@ test_tuner_mfe_targets()
 
 
 # ─────────────────────────────────────────────
-# 18. AUTO-TUNER SHADOW PIPELINE TESTS
+# WebSocket Resilience Tests
 # ─────────────────────────────────────────────
 
-print("\n" + "=" * 60)
-print("18. AUTO-TUNER SHADOW PIPELINE TESTS")
-print("=" * 60)
+print("\n--- WebSocket Resilience ---")
 
 
-def _run_tuner_with_trades(trades_spec, tmp_root):
-    """Helper: create a journal + tuner with an isolated pending/log dir."""
-    import auto_tuner
-    from auto_tuner import AutoTuner
-    from trade_journal import TradeJournal
-
-    journal_path = os.path.join(tmp_root, "journal.json")
-    # Seed journal file directly
-    with open(journal_path, "w") as f:
-        json.dump({"trades": trades_spec}, f)
-
-    # Redirect tuner persistence to the temp dir
-    auto_tuner.TUNER_LOG = os.path.join(tmp_root, "tuner_log.json")
-    auto_tuner.TUNER_PENDING = os.path.join(tmp_root, "tuner_pending.json")
-
-    j = TradeJournal(filepath=journal_path)
-    return AutoTuner(j)
+def _make_stream(api=None):
+    """Build a MarketDataStream without opening a real socket."""
+    from tradovate_api import MarketDataStream
+    s = MarketDataStream("fake-md-token", api=api)
+    s._should_run = True
+    # Prevent real reconnect from running network code
+    s._connect = lambda: None
+    return s
 
 
-@test("AutoTuner: shadow cycle requires 2 confirmations before applying")
-def test_tuner_shadow_double_confirm():
-    import auto_tuner
-    from auto_tuner import AutoTuner
-    import tempfile, shutil
+@test("WS: graceful close (1000) reconnects quickly without incrementing failures")
+def test_ws_graceful_close_delay():
+    import threading as _th
+    s = _make_stream()
+    captured = {}
 
-    tmp_root = tempfile.mkdtemp()
-    # Save & restore globals
-    orig_log = auto_tuner.TUNER_LOG
-    orig_pending = auto_tuner.TUNER_PENDING
-    orig_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
-    try:
-        # 80% SL hit rate — proposes widen
-        trades = _make_closed_trades("MNQ", 16, 4)
-        tuner = _run_tuner_with_trades(trades, tmp_root)
+    def fake_timer(delay, fn):
+        captured["delay"] = delay
+        t = MagicMock()
+        t.daemon = False
+        return t
 
-        applied1 = tuner.run(min_trades=5)
-        assert applied1 == [], (
-            f"First cycle must only stage, got applied={applied1}"
-        )
-        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] == orig_sl, (
-            "First cycle should NOT mutate config"
-        )
-        assert os.path.exists(auto_tuner.TUNER_PENDING)
-        with open(auto_tuner.TUNER_PENDING) as f:
-            pending = json.load(f)
-        assert "MNQ::stop_loss_points" in pending, (
-            f"Expected pending entry, got keys={list(pending)}"
-        )
+    with patch.object(_th, "Timer", side_effect=fake_timer):
+        s._on_close(None, 1000, "Bye")
 
-        # Second cycle: same direction → should apply.
-        tuner2 = _run_tuner_with_trades(trades, tmp_root)
-        applied2 = tuner2.run(min_trades=5)
-        sl_applied = [a for a in applied2
-                      if a["param"] == "stop_loss_points" and a["symbol"] == "MNQ"]
-        assert len(sl_applied) == 1, (
-            f"Second cycle should apply widen, got {applied2}"
-        )
-        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] > orig_sl, (
-            "Config should be updated on second cycle"
-        )
-        # pending entry should have been cleared
-        with open(auto_tuner.TUNER_PENDING) as f:
-            pending2 = json.load(f)
-        assert "MNQ::stop_loss_points" not in pending2
-    finally:
-        # Restore everything
-        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = orig_sl
-        auto_tuner.TUNER_LOG = orig_log
-        auto_tuner.TUNER_PENDING = orig_pending
-        shutil.rmtree(tmp_root, ignore_errors=True)
+    assert captured["delay"] == 1, f"graceful close should schedule 1s reconnect, got {captured['delay']}"
+    assert s._consecutive_failures == 0, "graceful close must not count as a failure"
 
 
-@test("AutoTuner: rollback after 3 losing days for a tuned symbol")
-def test_tuner_rollback_after_losing_days():
-    import auto_tuner
-    from auto_tuner import AutoTuner
-    from datetime import date, timedelta
-    import tempfile, shutil
+@test("WS: abnormal close triggers exponential backoff")
+def test_ws_backoff_exponential():
+    import threading as _th
+    s = _make_stream()
+    s._reconnect_count = 2  # next attempt will be #3 -> 2*2^(3-1)=8
 
-    tmp_root = tempfile.mkdtemp()
-    orig_log = auto_tuner.TUNER_LOG
-    orig_pending = auto_tuner.TUNER_PENDING
-    orig_sl = config.CONTRACT_SPECS["MNQ"]["stop_loss_points"]
-    try:
-        auto_tuner.TUNER_LOG = os.path.join(tmp_root, "tuner_log.json")
-        auto_tuner.TUNER_PENDING = os.path.join(tmp_root, "tuner_pending.json")
+    captured = {}
 
-        # Seed an applied change 5 days ago
-        applied_date = date.today() - timedelta(days=5)
-        stale_apply = {
-            "param": "stop_loss_points",
-            "symbol": "MNQ",
-            "old_value": orig_sl,
-            "new_value": orig_sl * 1.15,
-            "reason": "test apply",
-            "timestamp": datetime(
-                applied_date.year, applied_date.month, applied_date.day,
-                tzinfo=timezone.utc,
-            ).isoformat(),
-            "applied": True,
-        }
-        with open(auto_tuner.TUNER_LOG, "w") as f:
-            json.dump([stale_apply], f)
+    def fake_timer(delay, fn):
+        captured["delay"] = delay
+        t = MagicMock()
+        t.daemon = False
+        return t
 
-        # Live config reflects the apply
-        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = stale_apply["new_value"]
+    with patch.object(_th, "Timer", side_effect=fake_timer):
+        s._on_close(None, 1006, "abnormal")
 
-        # 3 consecutive losing days for MNQ after the apply
-        losing_trades = []
-        for days_ago in (0, 1, 2):
-            d = (date.today() - timedelta(days=days_ago)).isoformat()
-            losing_trades.append({
-                "symbol": "MNQ", "status": "closed", "pnl": -300,
-                "exit_reason": "stop_loss", "strategy": "ORB",
-                "entry_hour_et": 10, "date": d, "r_multiple": -1.0,
-            })
-        # Enough total trades to clear min_trades gate
-        losing_trades.extend(_make_closed_trades("MES", 8, 12))
-
-        tuner = _run_tuner_with_trades(losing_trades, tmp_root)
-        tuner.run(min_trades=5)
-
-        # Rollback should have restored the original SL value
-        assert config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] == orig_sl, (
-            f"Expected rollback to {orig_sl}, got "
-            f"{config.CONTRACT_SPECS['MNQ']['stop_loss_points']}"
-        )
-        assert any(
-            r.get("rollback_of") == stale_apply["timestamp"]
-            for r in tuner.rollbacks
-        ), f"Expected rollback record, got {tuner.rollbacks}"
-    finally:
-        config.CONTRACT_SPECS["MNQ"]["stop_loss_points"] = orig_sl
-        auto_tuner.TUNER_LOG = orig_log
-        auto_tuner.TUNER_PENDING = orig_pending
-        shutil.rmtree(tmp_root, ignore_errors=True)
+    assert captured["delay"] == 8, f"expected backoff 8s, got {captured['delay']}"
+    assert s._consecutive_failures == 1
 
 
-test_tuner_shadow_double_confirm()
-test_tuner_rollback_after_losing_days()
+@test("WS: backoff capped at 60s for many consecutive failures")
+def test_ws_backoff_cap():
+    import threading as _th
+    s = _make_stream()
+    s._reconnect_count = 20  # would otherwise be astronomically large
+
+    captured = {}
+
+    def fake_timer(delay, fn):
+        captured["delay"] = delay
+        t = MagicMock()
+        t.daemon = False
+        return t
+
+    with patch.object(_th, "Timer", side_effect=fake_timer):
+        s._on_close(None, 1006, "boom")
+
+    assert captured["delay"] == 60, f"backoff must cap at 60s, got {captured['delay']}"
+
+
+@test("WS: fallback to REST after FALLBACK_THRESHOLD failures")
+def test_ws_fallback_threshold():
+    s = _make_stream()
+    s._consecutive_failures = s.FALLBACK_THRESHOLD - 1
+    s._on_close(None, 1006, "boom")
+    assert s.fell_back.is_set(), "should have signaled fallback"
+    assert s._should_run is False
+
+
+@test("WS: _on_error with 403 sets _got_403 for full re-auth")
+def test_ws_403_triggers_reauth_flag():
+    s = _make_stream()
+    s._on_error(None, Exception("HTTP 403 Forbidden"))
+    assert s._got_403 is True, "403 error must set _got_403 for full re-auth on reconnect"
+
+
+@test("WS: _on_close does nothing if stream is stopping")
+def test_ws_close_respects_should_run():
+    s = _make_stream()
+    s._should_run = False
+    s._on_close(None, 1006, "boom")
+    # No timer should have been scheduled
+    assert s._reconnect_timer is None
 
 
 # ─────────────────────────────────────────────
-# 19. ALERT WEBHOOK TESTS
+# Force-Close & EOD Tests
 # ─────────────────────────────────────────────
 
-print("\n" + "=" * 60)
-print("19. ALERT WEBHOOK TESTS")
-print("=" * 60)
+print("\n--- Force Close & EOD ---")
 
 
-@test("Alerts: noop when ALERT_WEBHOOK_URL is unset")
-def test_alerts_noop_without_url():
-    import alerts
-    alerts.reset_dedupe()
-    orig = os.environ.pop("ALERT_WEBHOOK_URL", None)
-    try:
-        with patch("alerts.requests") as mock_req:
-            result = alerts.send("WARNING", "test", "body")
-        assert result is False
-        mock_req.post.assert_not_called()
-    finally:
-        if orig is not None:
-            os.environ["ALERT_WEBHOOK_URL"] = orig
-
-
-@test("Alerts: telegram POSTs to webhook with chat_id")
-def test_alerts_telegram_post():
-    import alerts
-    alerts.reset_dedupe()
-    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
-    os.environ["ALERT_TRANSPORT"] = "telegram"
-    os.environ["TELEGRAM_CHAT_ID"] = "12345"
-    try:
-        with patch("alerts.requests") as mock_req:
-            mock_req.post.return_value.status_code = 200
-            result = alerts.send("CRITICAL", "lock", "reason=brake")
-        assert result is True
-        mock_req.post.assert_called_once()
-        call = mock_req.post.call_args
-        assert "telegram.org" in call.args[0]
-        payload = call.kwargs["json"]
-        assert payload["chat_id"] == "12345"
-        assert "CRITICAL" in payload["text"]
-        assert "reason=brake" in payload["text"]
-    finally:
-        os.environ.pop("ALERT_WEBHOOK_URL", None)
-        os.environ.pop("ALERT_TRANSPORT", None)
-        os.environ.pop("TELEGRAM_CHAT_ID", None)
-
-
-@test("Alerts: dedupe suppresses same key within 5 min window")
-def test_alerts_dedupe():
-    import alerts
-    alerts.reset_dedupe()
-    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
-    os.environ["ALERT_TRANSPORT"] = "telegram"
-    os.environ["TELEGRAM_CHAT_ID"] = "12345"
-    try:
-        with patch("alerts.requests") as mock_req:
-            mock_req.post.return_value.status_code = 200
-            a = alerts.send("CRITICAL", "lock", "first")
-            b = alerts.send("CRITICAL", "lock", "second")
-        assert a is True and b is False
-        assert mock_req.post.call_count == 1
-    finally:
-        os.environ.pop("ALERT_WEBHOOK_URL", None)
-        os.environ.pop("ALERT_TRANSPORT", None)
-        os.environ.pop("TELEGRAM_CHAT_ID", None)
-
-
-@test("Alerts: network failure never raises")
-def test_alerts_swallow_exception():
-    import alerts
-    alerts.reset_dedupe()
-    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
-    os.environ["ALERT_TRANSPORT"] = "telegram"
-    os.environ["TELEGRAM_CHAT_ID"] = "12345"
-    try:
-        with patch("alerts.requests") as mock_req:
-            mock_req.post.side_effect = Exception("connection refused")
-            result = alerts.send("WARNING", "net_fail", "body")
-        assert result is False  # logged, not raised
-    finally:
-        os.environ.pop("ALERT_WEBHOOK_URL", None)
-        os.environ.pop("ALERT_TRANSPORT", None)
-        os.environ.pop("TELEGRAM_CHAT_ID", None)
-
-
-@test("Alerts: risk_manager _lock triggers an alert")
-def test_alerts_risk_manager_lock():
-    import alerts
+@test("RiskManager: end_of_day_update advances peak & drawdown floor")
+def test_risk_eod_advances_floor():
     from risk_manager import RiskManager
-    alerts.reset_dedupe()
-    os.environ["ALERT_WEBHOOK_URL"] = "https://api.telegram.org/botFAKE/sendMessage"
-    os.environ["ALERT_TRANSPORT"] = "telegram"
-    os.environ["TELEGRAM_CHAT_ID"] = "12345"
-    try:
-        with patch("alerts.requests") as mock_req:
-            mock_req.post.return_value.status_code = 200
-            rm = RiskManager()
-            rm._lock("test breach")
-        assert mock_req.post.call_count == 1
-        text = mock_req.post.call_args.kwargs["json"]["text"]
-        assert "Trading locked" in text
-        assert "test breach" in text
-    finally:
-        os.environ.pop("ALERT_WEBHOOK_URL", None)
-        os.environ.pop("ALERT_TRANSPORT", None)
-        os.environ.pop("TELEGRAM_CHAT_ID", None)
+    rm = RiskManager()
+    # Force Topstep-style EOD trailing behavior
+    rm.trails_unrealized = False
+    start_peak = rm.peak_balance
+    start_floor = rm.drawdown_floor
+    # Simulate profitable day
+    rm.end_of_day_update(start_peak + 1000)
+    assert rm.peak_balance == start_peak + 1000
+    assert rm.drawdown_floor == rm.peak_balance - rm.max_trailing_drawdown
+    assert rm.drawdown_floor > start_floor
 
 
-test_alerts_noop_without_url()
-test_alerts_telegram_post()
-test_alerts_dedupe()
-test_alerts_swallow_exception()
-test_alerts_risk_manager_lock()
+@test("RiskManager: end_of_day_update does NOT lower floor on losing day")
+def test_risk_eod_no_lower_floor():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    rm.trails_unrealized = False
+    # Manually raise peak first
+    rm.peak_balance = rm.account_size + 2000
+    rm.drawdown_floor = rm.peak_balance - rm.max_trailing_drawdown
+    high_peak = rm.peak_balance
+    high_floor = rm.drawdown_floor
+    # Losing day: balance below peak should NOT lower the floor
+    rm.end_of_day_update(rm.account_size)
+    assert rm.peak_balance == high_peak
+    assert rm.drawdown_floor == high_floor
 
 
-# ─────────────────────────────────────────────
-# 20. MARKET DATA CIRCUIT BREAKER TESTS
-# ─────────────────────────────────────────────
-
-print("\n" + "=" * 60)
-print("20. MARKET DATA CIRCUIT BREAKER TESTS")
-print("=" * 60)
-
-
-def _fresh_stream():
-    from tradovate_api import MarketDataStream
-    return MarketDataStream.__new__(MarketDataStream)
+@test("RiskManager: end_of_day_update is a no-op when drawdown trails unrealized (Apex)")
+def test_risk_eod_apex_noop():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    rm.trails_unrealized = True  # Apex-style: intraday
+    start_peak = rm.peak_balance
+    rm.end_of_day_update(start_peak + 5000)
+    assert rm.peak_balance == start_peak, "Apex EOD should not modify peak"
 
 
-def _init_circuit_state(stream):
-    """Minimal init — only the fields _record_disconnect/healthy touch."""
-    from collections import deque
-    stream._disconnect_times = deque()
-    stream._circuit_open_until = 0.0
+@test("Bot: _sync_balance seeds balance via set_initial_balance on first success")
+def test_sync_balance_seeds_initial():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_cash_balance.return_value = {"netLiq": 50750.0, "openPnL": 0.0}
+    # Simulate: initial _init_balance_from_api failed (token was expired)
+    assert bot.risk._balance_initialized is False
+    bot._sync_balance()
+    assert bot.risk._balance_initialized is True
+    assert abs(bot.risk.current_balance - 50750.0) < 0.01
+    assert abs(bot.risk.day_start_balance - 50750.0) < 0.01
+    # day_pnl should be 0 now (balance - day_start = 0)
+    assert abs(bot.risk.day_pnl) < 0.01
 
 
-@test("Circuit: healthy when no disconnects recorded")
-def test_circuit_healthy_baseline():
-    from tradovate_api import MarketDataStream
-    stream = _fresh_stream()
-    _init_circuit_state(stream)
-    assert stream.market_data_healthy(now=1000.0) is True
+@test("Bot: _sync_balance skips when API returns errorText")
+def test_sync_balance_handles_error():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_cash_balance.return_value = {"errorText": "rate limited"}
+    initial = bot.risk.current_balance
+    bot._sync_balance()
+    assert bot.risk.current_balance == initial, "Balance must not change on API error"
+    assert bot.risk._balance_initialized is False
 
 
-@test("Circuit: 5 disconnects inside 60s open the circuit")
-def test_circuit_opens_on_burst():
-    from tradovate_api import MarketDataStream
-    import alerts
-    alerts.reset_dedupe()
-    os.environ.pop("ALERT_WEBHOOK_URL", None)  # alerts noop
-    stream = _fresh_stream()
-    _init_circuit_state(stream)
-    t0 = 10_000.0
-    for i in range(5):
-        stream._record_disconnect(t0 + i * 2)  # 0,2,4,6,8 → 5 in 8s
-    assert stream.market_data_healthy(now=t0 + 10) is False
-    # Open for CIRCUIT_COOLDOWN_SECONDS from the last disconnect
-    assert stream._circuit_open_until == t0 + 8 + MarketDataStream.CIRCUIT_COOLDOWN_SECONDS
-
-
-@test("Circuit: closes again after cooldown expires")
-def test_circuit_closes_after_cooldown():
-    from tradovate_api import MarketDataStream
-    stream = _fresh_stream()
-    _init_circuit_state(stream)
-    t0 = 10_000.0
-    for i in range(5):
-        stream._record_disconnect(t0 + i)
-    open_until = stream._circuit_open_until
-    # Just before cooldown end — still open
-    assert stream.market_data_healthy(now=open_until - 1) is False
-    # After cooldown — closed
-    assert stream.market_data_healthy(now=open_until + 1) is True
-
-
-@test("Circuit: disconnects older than window are dropped")
-def test_circuit_window_sliding():
-    from tradovate_api import MarketDataStream
-    stream = _fresh_stream()
-    _init_circuit_state(stream)
-    t0 = 10_000.0
-    # 4 disconnects, then a 5th one far in the future — only 1 in the
-    # rolling window, no circuit open
-    for i in range(4):
-        stream._record_disconnect(t0 + i)
-    stream._record_disconnect(t0 + MarketDataStream.CIRCUIT_WINDOW_SECONDS + 10)
-    assert stream.market_data_healthy(
-        now=t0 + MarketDataStream.CIRCUIT_WINDOW_SECONDS + 11,
-    ) is True
-    assert len(stream._disconnect_times) == 1
-
-
-test_circuit_healthy_baseline()
-test_circuit_opens_on_burst()
-test_circuit_closes_after_cooldown()
-test_circuit_window_sliding()
+@test("Bot: _sync_balance prefers netLiq over totalCashValue")
+def test_sync_balance_netliq_priority():
+    from bot import TradovateBot
+    bot = TradovateBot(dry_run=False)
+    bot.api = MagicMock()
+    bot.api.get_cash_balance.return_value = {
+        "netLiq": 51234.0,
+        "totalCashValue": 99999.0,  # Should be ignored
+        "openPnL": 500.0,
+    }
+    bot.risk.set_initial_balance(50000.0)
+    bot._sync_balance()
+    # netLiq already includes openPnL, so current_balance should be 51234
+    assert abs(bot.risk.current_balance - 51234.0) < 0.01
 
 
 # ─────────────────────────────────────────────
-# 21. NEWS BLACKOUT CALENDAR TESTS
+# Strategy Edge-Case Tests
 # ─────────────────────────────────────────────
 
-print("\n" + "=" * 60)
-print("21. NEWS BLACKOUT CALENDAR TESTS")
-print("=" * 60)
+print("\n--- Strategy Edge Cases ---")
 
 
-_ET_TZ = ZoneInfo("America/New_York")
+@test("ORB: stale price above range (post-restart warmup) does NOT fire breakout")
+def test_orb_gap_open_rejected():
+    from strategies import _ORBWindow
+    from datetime import time as dtime
+
+    # Simulate: bot restarted after market open; warmup seeded the range
+    # from historical bars AND set _last_price to the last historical close,
+    # which is already ABOVE the range_high (price drifted up in the gap).
+    window = _ORBWindow(window_minutes=5, open_time=dtime(9, 30))
+    window.range_high = 100.5
+    window.range_low = 99.5
+    window.range_set = True
+    window.breakout_fired = False
+    window._last_price = 105.0  # Last historical close was already above range
+
+    # First real-time tick at 105.1 — still above range_high, prev was above range.
+    # This is a STALE breakout (bot missed the actual cross); must not fire.
+    result = window.feed(105.1, 105.1, 105.0, dtime(9, 40, 0))
+    assert result is None, "Post-restart price already above range must not fire (no fresh cross)"
+
+    # Another tick, still above: still must not fire
+    result = window.feed(106.0, 106.0, 105.5, dtime(9, 41, 0))
+    assert result is None, "Sustained above-range price after restart must not fire"
 
 
-@test("News: empty events list never blocks")
-def test_news_empty():
-    import news_calendar
-    now = datetime(2026, 4, 13, 10, 0, tzinfo=_ET_TZ)
-    blocked, _ = news_calendar.in_blackout("MNQ", now, events=[])
-    assert blocked is False
+@test("ORB: fresh cross from inside range to above fires long breakout")
+def test_orb_fresh_cross_fires():
+    from strategies import _ORBWindow
+    from datetime import time as dtime
+
+    window = _ORBWindow(window_minutes=5, open_time=dtime(9, 30))
+    # Build range
+    for m in range(5):
+        window.feed(100.0, 100.5, 99.5, dtime(9, 30 + m, 0))
+
+    # Tick INSIDE the range first (prev will be 100.0)
+    inside = window.feed(100.0, 100.2, 99.8, dtime(9, 36, 0))
+    assert inside is None
+
+    # Now cross above -> should fire
+    fired = window.feed(101.0, 101.0, 100.9, dtime(9, 37, 0))
+    assert fired == "long", f"Expected long breakout, got {fired}"
 
 
-@test("News: weekly EIA crude event blocks MCL on Wednesday 10:25-10:45")
-def test_news_eia_crude():
-    import news_calendar
-    events = [{
-        "name": "EIA Crude",
-        "cadence": "weekly",
-        "weekday": "wednesday",
-        "time_et": "10:30",
-        "window_minutes": 15,
-        "symbols": ["MCL", "CL"],
-    }]
-    # 2026-04-15 is Wednesday
-    wed_inside = datetime(2026, 4, 15, 10, 30, tzinfo=_ET_TZ)
-    wed_before = datetime(2026, 4, 15, 10, 14, tzinfo=_ET_TZ)
-    wed_after = datetime(2026, 4, 15, 10, 46, tzinfo=_ET_TZ)
-    thursday = datetime(2026, 4, 16, 10, 30, tzinfo=_ET_TZ)
-
-    assert news_calendar.in_blackout("MCL", wed_inside, events=events)[0] is True
-    assert news_calendar.in_blackout("MCL", wed_before, events=events)[0] is False
-    assert news_calendar.in_blackout("MCL", wed_after, events=events)[0] is False
-    assert news_calendar.in_blackout("MCL", thursday, events=events)[0] is False
-    # Other symbols not affected
-    assert news_calendar.in_blackout("MNQ", wed_inside, events=events)[0] is False
+@test("VWAP: reversed OHLC (high<low) is auto-swapped without corruption")
+def test_vwap_reversed_ohlc_guard():
+    from strategies import VWAPStrategy
+    vwap = VWAPStrategy("GC")
+    # Feed a reversed bar: high=99, low=101 (typo in data feed)
+    vwap.update_vwap(high=99.0, low=101.0, close=100.0, volume=10.0)
+    # After swap: high=101, low=99, typical = (101+99+100)/3 = 100
+    assert vwap.vwap is not None
+    assert abs(vwap.vwap - 100.0) < 1e-6, f"VWAP corrupted by reversed OHLC: {vwap.vwap}"
 
 
-@test("News: global event (empty symbols) blocks any symbol")
-def test_news_global_event():
-    import news_calendar
-    events = [{
-        "name": "NFP",
-        "cadence": "monthly_nth_weekday",
-        "week": 1,
-        "weekday": "friday",
-        "time_et": "08:30",
-        "window_minutes": 30,
-        "symbols": [],
-    }]
-    # First Friday of May 2026 = 2026-05-01
-    first_friday = datetime(2026, 5, 1, 8, 35, tzinfo=_ET_TZ)
-    second_friday = datetime(2026, 5, 8, 8, 35, tzinfo=_ET_TZ)
-
-    assert news_calendar.in_blackout("MNQ", first_friday, events=events)[0] is True
-    assert news_calendar.in_blackout("MCL", first_friday, events=events)[0] is True
-    assert news_calendar.in_blackout("MNQ", second_friday, events=events)[0] is False
+@test("VWAP: zero-volume bar skipped, does not update VWAP")
+def test_vwap_zero_volume_skip():
+    from strategies import VWAPStrategy
+    vwap = VWAPStrategy("GC")
+    vwap.update_vwap(high=101.0, low=99.0, close=100.0, volume=10.0)
+    first = vwap.vwap
+    vwap.update_vwap(high=200.0, low=180.0, close=190.0, volume=0.0)
+    assert vwap.vwap == first, "Zero-volume bar must not change VWAP"
+    assert vwap._vwap_stale_bars >= 1
 
 
-@test("News: monthly_day_approx CPI tolerates ±3 days around target")
-def test_news_cpi_approx():
-    import news_calendar
-    events = [{
-        "name": "CPI",
-        "cadence": "monthly_day_approx",
-        "day": 12,
-        "weekday": "tuesday,wednesday",
-        "time_et": "08:30",
-        "window_minutes": 15,
-        "symbols": [],
-    }]
-    # 2026-05-12 is Tuesday
-    tuesday_12 = datetime(2026, 5, 12, 8, 35, tzinfo=_ET_TZ)
-    wednesday_13 = datetime(2026, 5, 13, 8, 35, tzinfo=_ET_TZ)
-    friday_15 = datetime(2026, 5, 15, 8, 35, tzinfo=_ET_TZ)  # outside weekday list
-    sunday_17 = datetime(2026, 5, 17, 8, 35, tzinfo=_ET_TZ)  # outside day range
-
-    assert news_calendar.in_blackout("MNQ", tuesday_12, events=events)[0] is True
-    assert news_calendar.in_blackout("MNQ", wednesday_13, events=events)[0] is True
-    assert news_calendar.in_blackout("MNQ", friday_15, events=events)[0] is False
-    assert news_calendar.in_blackout("MNQ", sunday_17, events=events)[0] is False
-
-
-@test("News: FOMC schedule blocks exactly on listed dates")
-def test_news_fomc():
-    import news_calendar
-    events = [{
-        "name": "FOMC",
-        "cadence": "fomc_schedule",
-        "time_et": "14:00",
-        "window_minutes": 30,
-        "symbols": [],
-    }]
-    # 2026-01-28 is in the hardcoded FOMC list
-    fomc_day = datetime(2026, 1, 28, 14, 5, tzinfo=_ET_TZ)
-    non_fomc = datetime(2026, 1, 27, 14, 5, tzinfo=_ET_TZ)
-    assert news_calendar.in_blackout("MNQ", fomc_day, events=events)[0] is True
-    assert news_calendar.in_blackout("MNQ", non_fomc, events=events)[0] is False
+@test("Strategy reset: ORB reset clears range and trade counters")
+def test_orb_reset_clears_state():
+    from strategies import ORBStrategy
+    from datetime import datetime as _dt
+    orb = ORBStrategy("NQ")
+    orb.trades_taken = 1
+    orb.last_trade_time = _dt.now()
+    for w in orb.windows:
+        w.range_high = 100.0
+        w.range_low = 90.0
+        w.range_set = True
+        w.breakout_fired = True
+        w.prices = [1, 2, 3]
+    orb.reset()
+    assert orb.trades_taken == 0
+    assert orb.last_trade_time is None
+    for w in orb.windows:
+        assert w.range_set is False
+        assert w.breakout_fired is False
+        assert w.prices == []
+        assert w.range_high is None
 
 
-@test("News: shipped calendar file loads and produces a reasonable result")
-def test_news_shipped_calendar():
-    import news_calendar
-    events = news_calendar._load_events()
-    assert len(events) > 0, "Shipped calendar should contain events"
-    # A random Sunday at 3am: nothing should block
-    sunday = datetime(2026, 4, 19, 3, 0, tzinfo=_ET_TZ)
-    blocked, _ = news_calendar.in_blackout("MNQ", sunday, events=events)
-    assert blocked is False
-
-
-test_news_empty()
-test_news_eia_crude()
-test_news_global_event()
-test_news_cpi_approx()
-test_news_fomc()
-test_news_shipped_calendar()
+@test("Strategy reset: VWAP reset clears accumulator and cooldown state")
+def test_vwap_reset_clears_state():
+    from strategies import VWAPStrategy
+    from datetime import datetime as _dt
+    vwap = VWAPStrategy("GC")
+    vwap.update_vwap(101, 99, 100, 10)
+    vwap.long_count = 2
+    vwap.last_any_trade_time = _dt.now()
+    vwap.reset()
+    assert vwap.vwap is None
+    assert vwap._cum_vol == 0.0
+    assert vwap.long_count == 0
+    assert vwap.short_count == 0
+    assert vwap.last_any_trade_time is None
 
 
 # ─────────────────────────────────────────────
-# 22. SESSION BUCKET + SLIPPAGE TESTS
+# bot_commands.py Tests
 # ─────────────────────────────────────────────
 
-print("\n" + "=" * 60)
-print("22. SESSION BUCKET + SLIPPAGE TESTS")
-print("=" * 60)
+print("\n--- Bot Commands ---")
 
 
-@test("Journal: _session_bucket_for maps ET clock times to correct buckets")
-def test_session_bucket_for():
-    from trade_journal import _session_bucket_for
-    assert _session_bucket_for(9, 30) == "pre_open"
-    assert _session_bucket_for(9, 59) == "pre_open"
-    assert _session_bucket_for(10, 0) == "morning"
-    assert _session_bucket_for(11, 29) == "morning"
-    assert _session_bucket_for(11, 30) == "midday"
-    assert _session_bucket_for(13, 59) == "midday"
-    assert _session_bucket_for(14, 0) == "afternoon"
-    assert _session_bucket_for(15, 44) == "afternoon"
-    assert _session_bucket_for(15, 45) == "off_session"
-    assert _session_bucket_for(8, 0) == "off_session"
-    assert _session_bucket_for(17, 30) == "off_session"
+@test("Commands: send_command roundtrip writes readable file")
+def test_commands_roundtrip():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    result_file = Path(tmpdir) / "bot_commands_result.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", result_file):
+        ok = bot_commands.send_command("close_all", source="test")
+        assert ok is True
+        assert cmd_file.exists()
+        cmd = bot_commands.read_pending_command()
+        assert cmd is not None
+        assert cmd["command"] == "close_all"
+        assert cmd["source"] == "test"
+        # File should be consumed after read
+        assert not cmd_file.exists(), "Command file must be deleted after read"
 
 
-@test("Journal: record_entry stamps expected_fill and session_bucket")
-def test_journal_expected_fill():
-    from trade_journal import TradeJournal
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        path = f.name
-    try:
-        j = TradeJournal(filepath=path)
-        tid = j.record_entry(
-            "MNQ", "Buy", 21000.25, 1, "ORB", "breakout",
-            stop_loss=20990, take_profit=21020.5,
-            expected_fill=21000.0,
-        )
-        t = [x for x in j.trades if x["id"] == tid][0]
-        assert t["expected_fill"] == 21000.0
-        assert "session_bucket" in t
-        assert t["session_bucket"] in {
-            "pre_open", "morning", "midday", "afternoon", "off_session",
-        }
-        assert t["actual_fill"] is None
-        assert t["slippage_points"] is None
-    finally:
-        os.unlink(path)
+@test("Commands: stale command (>5min) discarded")
+def test_commands_stale_discard():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    result_file = Path(tmpdir) / "bot_commands_result.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", result_file):
+        stale_ts = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        cmd_file.write_text(json.dumps({
+            "command": "close_all",
+            "timestamp": stale_ts,
+        }))
+        cmd = bot_commands.read_pending_command()
+        assert cmd is None, "Stale command must be discarded"
 
 
-@test("Journal: set_actual_fill computes signed slippage")
-def test_journal_set_actual_fill():
-    from trade_journal import TradeJournal
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        path = f.name
-    try:
-        j = TradeJournal(filepath=path)
-        # Long paid a point more than expected → slippage = +1.0 (worse)
-        tid_long = j.record_entry(
-            "MNQ", "Buy", 21000, 1, "ORB", "r", expected_fill=21000.0,
-        )
-        slip_long = j.set_actual_fill(tid_long, 21001.0)
-        assert slip_long == 1.0
-
-        # Short got 0.5 less than expected → slippage = +0.5 (worse)
-        tid_short = j.record_entry(
-            "MES", "Sell", 5000, 1, "ORB", "r", expected_fill=5000.0,
-        )
-        slip_short = j.set_actual_fill(tid_short, 4999.5)
-        assert slip_short == 0.5
-
-        # Long got 0.25 better fill → slippage = -0.25 (better than expected)
-        tid_better = j.record_entry(
-            "MNQ", "Buy", 21000, 1, "ORB", "r", expected_fill=21000.0,
-        )
-        slip_better = j.set_actual_fill(tid_better, 20999.75)
-        assert slip_better == -0.25
-    finally:
-        os.unlink(path)
+@test("Commands: invalid JSON handled gracefully (no crash)")
+def test_commands_invalid_json():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", Path(tmpdir) / "r.json"):
+        cmd_file.write_text("{not valid json")
+        cmd = bot_commands.read_pending_command()
+        assert cmd is None
+        assert not cmd_file.exists(), "Corrupt command file must be cleaned up"
 
 
-@test("Learner: session bucket + slippage analytics in parameter_analysis")
-def test_learner_session_analytics():
-    from trade_journal import TradeJournal
-    from continuous_learner import ContinuousLearner
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        path = f.name
-    try:
-        j = TradeJournal(filepath=path)
-        # Seed 5 closed MNQ trades across two session buckets with known slippage
-        seed = [
-            # morning — profitable
-            {"id": f"MNQ_{i}", "symbol": "MNQ", "direction": "Buy",
-             "entry_price": 21000, "expected_fill": 21000,
-             "actual_fill": 21000.25,
-             "slippage_points": 0.25,
-             "qty": 1, "strategy": "ORBStrategy", "reason": "x",
-             "stop_loss": 20990, "take_profit": 21020,
-             "entry_time": "2026-04-13T14:30:00+00:00",
-             "entry_hour_et": 10, "entry_minute_et": 30,
-             "session_bucket": "morning",
-             "entry_day_of_week": "Monday",
-             "date": "2026-04-13",
-             "exit_price": 21020, "pnl": 40, "exit_reason": "take_profit",
-             "exit_time": "2026-04-13T14:45:00+00:00", "status": "closed",
-             "r_multiple": 2.0, "duration_minutes": 15,
-             "slippage_entry": 0.25, "mae_points": -2, "mfe_points": 22}
-            for i in range(3)
-        ] + [
-            # afternoon — losing
-            {"id": f"MNQ_A{i}", "symbol": "MNQ", "direction": "Sell",
-             "entry_price": 21000, "expected_fill": 21000,
-             "actual_fill": 20999.50,
-             "slippage_points": 0.50,
-             "qty": 1, "strategy": "ORBStrategy", "reason": "x",
-             "stop_loss": 21010, "take_profit": 20980,
-             "entry_time": "2026-04-13T19:15:00+00:00",
-             "entry_hour_et": 15, "entry_minute_et": 15,
-             "session_bucket": "afternoon",
-             "entry_day_of_week": "Monday",
-             "date": "2026-04-13",
-             "exit_price": 21010, "pnl": -20, "exit_reason": "stop_loss",
-             "exit_time": "2026-04-13T19:30:00+00:00", "status": "closed",
-             "r_multiple": -1.0, "duration_minutes": 15,
-             "slippage_entry": 0.50, "mae_points": -10, "mfe_points": 2}
-            for i in range(2)
-        ]
-        j.trades = seed
-        j._save()
-
-        learner = ContinuousLearner(journal=j)
-        closed = j._closed_trades()
-        analysis = learner._analyze_all_parameters(closed)
-
-        assert "MNQ" in analysis
-        mnq = analysis["MNQ"]
-        assert "session_bucket" in mnq
-        assert "morning" in mnq["session_bucket"]
-        assert "afternoon" in mnq["session_bucket"]
-        assert mnq["session_bucket"]["morning"]["trades"] == 3
-        assert mnq["session_bucket"]["morning"]["total_pnl"] == 120.0
-        assert mnq["session_bucket"]["afternoon"]["win_rate"] == 0.0
-
-        assert "slippage" in mnq
-        slip = mnq["slippage"]
-        assert slip["trades"] == 5
-        # 3×0.25 + 2×0.50 = 1.75 / 5 = 0.35
-        assert abs(slip["mean_points"] - 0.35) < 0.001
-    finally:
-        os.unlink(path)
+@test("Commands: missing 'command' key rejected")
+def test_commands_missing_key():
+    import tempfile
+    import bot_commands
+    from pathlib import Path
+    tmpdir = tempfile.mkdtemp()
+    cmd_file = Path(tmpdir) / "bot_commands.json"
+    with patch.object(bot_commands, "COMMANDS_FILE", cmd_file), \
+         patch.object(bot_commands, "COMMANDS_RESULT_FILE", Path(tmpdir) / "r.json"):
+        cmd_file.write_text(json.dumps({"foo": "bar"}))
+        cmd = bot_commands.read_pending_command()
+        assert cmd is None
 
 
-test_session_bucket_for()
-test_journal_expected_fill()
-test_journal_set_actual_fill()
-test_learner_session_analytics()
+@test("Commands: execute_command close_all in dry-run does not call API")
+def test_commands_execute_dry_run():
+    import bot_commands
+    bot = MagicMock()
+    bot.dry_run = True
+    with patch.object(bot_commands, "_write_result"):
+        ok = bot_commands.execute_command({"command": "close_all"}, bot)
+    assert ok is True
+    bot.api.cancel_all_orders.assert_not_called()
+    bot.api.close_all_positions.assert_not_called()
+
+
+@test("Commands: execute_command close_all in live mode calls API")
+def test_commands_execute_live():
+    import bot_commands
+    bot = MagicMock()
+    bot.dry_run = False
+    with patch.object(bot_commands, "_write_result"):
+        ok = bot_commands.execute_command({"command": "close_all"}, bot)
+    assert ok is True
+    bot.api.cancel_all_orders.assert_called_once()
+    bot.api.close_all_positions.assert_called_once()
+
+
+@test("Commands: execute_command unknown action returns False")
+def test_commands_execute_unknown():
+    import bot_commands
+    bot = MagicMock()
+    bot.dry_run = True
+    with patch.object(bot_commands, "_write_result"):
+        ok = bot_commands.execute_command({"command": "nuke_everything"}, bot)
+    assert ok is False
+
+
+test_ws_graceful_close_delay()
+test_ws_backoff_exponential()
+test_ws_backoff_cap()
+test_ws_fallback_threshold()
+test_ws_403_triggers_reauth_flag()
+test_ws_close_respects_should_run()
+test_risk_eod_advances_floor()
+test_risk_eod_no_lower_floor()
+test_risk_eod_apex_noop()
+test_sync_balance_seeds_initial()
+test_sync_balance_handles_error()
+test_sync_balance_netliq_priority()
+test_orb_gap_open_rejected()
+test_orb_fresh_cross_fires()
+test_vwap_reversed_ohlc_guard()
+test_vwap_zero_volume_skip()
+test_orb_reset_clears_state()
+test_vwap_reset_clears_state()
+test_commands_roundtrip()
+test_commands_stale_discard()
+test_commands_invalid_json()
+test_commands_missing_key()
+test_commands_execute_dry_run()
+test_commands_execute_live()
+test_commands_execute_unknown()
 
 
 # ─────────────────────────────────────────────

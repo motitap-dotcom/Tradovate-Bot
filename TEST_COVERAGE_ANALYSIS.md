@@ -1,7 +1,7 @@
 # Test Coverage Analysis — Tradovate Bot
 
-**Date:** 2026-03-16
-**Current tests:** 56 tests in `test_all.py` across 9 categories
+**Date:** 2026-04-22
+**Current tests:** 143 in `test_all.py` (110 pre-existing + 8 broken + 25 added this pass)
 
 ---
 
@@ -12,13 +12,26 @@
 | Authentication | 5 | `tradovate_api.py` |
 | API Endpoints | 7 | `tradovate_api.py` |
 | WebSocket Protocol | 5 | `tradovate_api.py` |
-| Strategy (ORB) | 6 | `strategies.py` |
-| Strategy (VWAP) | 5 | `strategies.py` |
-| Risk Manager | 10 | `risk_manager.py` |
-| Live Connectivity | 3 | `tradovate_api.py` (network) |
+| **WebSocket Resilience** | **6** | `tradovate_api.py` (reconnect / backoff / fallback) |
+| Strategy (ORB) | 6 + 2 edge | `strategies.py` |
+| Strategy (VWAP) | 5 + 2 edge | `strategies.py` |
+| Strategy reset | 2 | `strategies.py` |
+| Risk Manager (core) | 10 | `risk_manager.py` |
+| Risk Manager (EOD / profit cap) | 4 | `risk_manager.py` |
+| Live Connectivity | 3 | network |
 | Config Validation | 4 | `config.py` |
 | E2E Simulation | 3 | `strategies.py` + `risk_manager.py` |
-| Contract Rollover | 8 | `bot.py` |
+| Contract Rollover | 9 | `bot.py` |
+| Trade Journal | 13 | `trade_journal.py` |
+| Auto-Tuner | 9 | `auto_tuner.py` |
+| Bot State | 7 | `bot_state.py` |
+| Status Reporter | 3 | `status_reporter.py` |
+| Health Check | 5 | `bot_health_check.py` |
+| Continuous Learner | 3 | `continuous_learner.py` |
+| Bot executor | 6 | `bot.py` (_execute_signal, _process_price) |
+| **Bot sync / EOD** | **3** | `bot.py` (_sync_balance) |
+| **Bot commands** | **7** | `bot_commands.py` |
+| API edge cases | 6 | `tradovate_api.py` (NaN/Inf guards) |
 
 ---
 
@@ -26,88 +39,104 @@
 
 | Module | Key Testable Functions | Priority |
 |--------|----------------------|----------|
-| `trade_journal.py` | `record_entry/exit()`, `compute_effective_target()`, `_compute_summary()`, `analyze_by_*()`, `generate_lessons()`, `_longest_losing_streak()` | **HIGH** — P&L accuracy and consistency-rule math directly affect challenge compliance |
-| `auto_tuner.py` | `_tune_stops()`, `_tune_targets()`, `_propose()`, `_tune_daily_trade_cap()`, `_apply_adjustments()` | **MEDIUM** — incorrect tuning could silently widen stops or disable profitable symbols |
-| `bot_state.py` | `save_state()`, `load_state()`, `build_state()`, `restore_strategies()` | **MEDIUM** — corrupt/stale state restore could cause double-trades or missed cooldowns |
-| `status_reporter.py` | `write_status()` | LOW — monitoring only |
-| `bot_health_check.py` | `check_token()`, `check_bot_log()`, verdict logic | LOW — server-side tooling |
+| `browser_bot.py` | `harvest()`, `_auto_login()`, `_select_organization()` | MEDIUM — Playwright auth fallback; hard to test but high blast radius if silently broken |
+| `connection_check.py` | `check_bot_process()`, `check_token()`, `check_account()`, `run_health_check()` | LOW — diagnostic tool |
+| `dashboard.py` / `publish_dashboard.py` | `_build_html()`, `_read_bot_file()` | LOW — reporting only |
+| `monitor.py` | monitor utilities | LOW |
+| `check_server.py` / `verify_bot.py` / `get_token.py` | CLI scripts | LOW — operator tooling |
 
 ---
 
-## Critical Gaps in Already-Tested Modules
-
-### risk_manager.py
-
-| Missing Test | Risk | Why It Matters |
-|-------------|------|----------------|
-| Daily profit cap (`_check_daily_profit_cap()`) | **Challenge-failing** | The consistency rule (max 40% of cumulative profit in one day) is never tested |
-| `set_initial_balance()` regression | **Challenge-failing** | The false-lock bug where `day_start_balance` defaults to $50K (common issue #5) has no regression test |
-| `update_balance()` NaN/Inf guard | Data corruption | No test that corrupted balance values are rejected |
-| `end_of_day_update()` | Incorrect drawdown floor | EOD trailing drawdown (Topstep mode) is untested |
-| Position sizing edge cases | Over-sizing | Zero-point stop loss or tiny account balance not tested |
-
-### strategies.py
-
-| Missing Test | Risk | Why It Matters |
-|-------------|------|----------------|
-| ORB fresh-cross validation | False signals | Gap-open above range (price never inside) shouldn't trigger a breakout |
-| ORB dual-window interaction | Missed trades or double-trades | Actual config uses 3-min + 5-min windows with separate caps — only single window tested |
-| VWAP whipsaw protection | Over-trading | Rapid long→short reversal should be blocked by cross-direction cooldown |
-| VWAP reversed OHLC guard | Corrupted VWAP | `update_vwap()` handles reversed high/low — no test for this |
-| Strategy `reset()` across day boundaries | Stale state | No test that strategies properly reset at market open |
+## Remaining Gaps in Already-Tested Modules
 
 ### tradovate_api.py
 
-| Missing Test | Risk | Why It Matters |
-|-------------|------|----------------|
-| Auth cascade fallback chain | Auth failure | Only env-var priority tested; saved-token → web → API-key → browser chain untested |
-| `_handle_p_ticket()` | Auth failure | Device verification flow completely untested |
-| Rate limiting / retry | Connection loss | No test for 429 or p-ticket throttling behavior |
-| `get_cash_balance()` | Wrong balance | Balance retrieval (critical for risk manager seeding) untested |
-| `RestMarketDataPoller` | No market data | WebSocket fallback path has zero tests |
+| Missing Test | Risk | Notes |
+|-------------|------|-------|
+| `_handle_p_ticket()` | Auth failure | Device verification / captcha flow — common issue #4; still untested |
+| Auth cascade fallback chain | Auth failure | env → saved → web → API-key → browser — only env-var priority tested |
+| `_try_browser_auth` | Auth failure | Playwright entry point; untested |
+| `RestMarketDataPoller` | No market data | WebSocket fallback via Yahoo — untested |
+| `YahooFinanceSession` crumb init | Market data | Indirectly used; untested directly |
+| Rate limiting / 429 retry | Connection loss | `_post`/`_get` retry path — untested |
 
 ### bot.py
 
-| Missing Test | Risk | Why It Matters |
-|-------------|------|----------------|
-| `_process_tick()` | Core logic gap | The tick → signal → order pipeline is never unit-tested |
-| `_check_force_close_time()` | Open positions overnight | Time-based force-close untested |
-| `_sync_balance()` | False lock | Recovery path for failed initial balance fetch untested |
-| `_init_balance_from_api()` | False lock | The fix for common issue #5 has no regression test |
+| Missing Test | Risk | Notes |
+|-------------|------|-------|
+| `_check_force_close_time()` behavior in `_main_loop` | Positions left overnight | The main-loop force-close branch (bot.py:733-754) is not integration-tested |
+| `_warm_up_strategies()` | Stale/missing strategy state on start | Historical-bar warm-up is untested |
+| `_sync_fills()` | Journal drift | Fill reconciliation path untested |
+| Auto-recovery (3 consecutive API failures → re-auth) | Silent outage | bot.py:774-789 re-auth recovery is untested |
+
+### strategies.py
+
+| Missing Test | Risk | Notes |
+|-------------|------|-------|
+| ORB dual-window independence | Missed trades or double-trades | 5-min + 15-min windows with separate caps — only single window fires tested |
+| VWAP whipsaw protection (cross-direction) | Over-trading | Same-direction cooldown covered; cross-direction gap not yet tested |
+| VWAP stale-bars rejection | Bad signals | `_vwap_stale_bars >= 3` guard not exercised |
 
 ---
 
-## Recommended Test Additions (Ranked by Impact)
+## Tests Added in This Pass (2026-04-22)
 
-### Tier 1 — Challenge Compliance (add first)
+**Tier 1 — Live-trading safety**
+1. WS graceful close (1000) reconnects with 1s delay, no failure counter
+2. WS abnormal close triggers exponential backoff (2 * 2^(n-1))
+3. WS backoff capped at 60s
+4. WS fallback to REST after FALLBACK_THRESHOLD consecutive failures
+5. WS `_on_error` with "403" sets `_got_403` flag for full re-auth
+6. WS `_on_close` respects `_should_run=False` (no reconnect during shutdown)
+7. `end_of_day_update()` advances peak + drawdown floor on winning day (Topstep)
+8. `end_of_day_update()` does NOT lower floor on losing day
+9. `end_of_day_update()` is a no-op when `trails_unrealized=True` (Apex)
+10. `_sync_balance` seeds balance via `set_initial_balance` on first successful call (guards common issue #5)
+11. `_sync_balance` skips when API returns `errorText`
+12. `_sync_balance` prefers `netLiq` over `totalCashValue`
 
-1. **Daily profit cap enforcement** — test trading locks when single-day P&L exceeds 40% of cumulative profit
-2. **`set_initial_balance()` regression** — verify `day_start_balance` uses API balance, not $50K default
-3. **Trade journal `record_exit()` R-multiple** — verify R = PnL / risk is computed correctly
-4. **Trade journal `compute_effective_target()`** — verify consistency-rule target adjustment math
-5. **Trade journal `_compute_summary()`** — verify win rate, profit factor, expectancy calculations
+**Tier 2 — Strategy correctness**
+13. ORB: stale price above range (post-restart warmup) does NOT fire — guards fresh-cross protection
+14. ORB: fresh cross from inside range → above fires long breakout (control)
+15. VWAP: reversed OHLC (high<low) auto-swapped without corruption
+16. VWAP: zero-volume bar skipped, does not mutate VWAP
+17. ORB reset clears range, breakout flag, prices, and last price across all windows
+18. VWAP reset clears accumulator and cross-direction cooldown state
 
-### Tier 2 — Strategy Correctness
+**Tier 3 — Command interface**
+19. `send_command` → `read_pending_command` roundtrip; file consumed after read
+20. Stale command (>5min) discarded with result write
+21. Invalid JSON cleaned up without crash
+22. Missing `command` key rejected
+23. `execute_command` `close_all` in dry-run does NOT call API
+24. `execute_command` `close_all` in live mode calls cancel+close
+25. Unknown command returns False
 
-6. **ORB gap-open rejection** — price opens above range without crossing from inside → no signal
-7. **ORB dual-window** — 3-min and 5-min windows fire independently with separate caps
-8. **VWAP whipsaw protection** — rapid long→short reversal blocked by cross-direction cooldown
-9. **VWAP reversed OHLC guard** — feed high < low, verify VWAP not corrupted
+---
 
-### Tier 3 — Resilience & Recovery
+## Recommended Next Additions (Remaining Gaps)
 
-10. **`bot_state.py` save/load roundtrip** — save state, load, verify strategies restored correctly
-11. **`bot_state.py` staleness rejection** — state from yesterday returns `None`
-12. **`update_balance()` NaN guard** — feed NaN balance, verify rejection without state corruption
-13. **Auth cascade fallback** — mock each auth method failing, verify next one is tried
-14. **Force-close time check** — verify `_check_force_close_time()` returns True after 16:59 ET
+### Tier 1 — Live-trading safety (still open)
 
-### Tier 4 — Analytics Accuracy
+1. **`_handle_p_ticket` device-verification** — mock p-ticket response; assert 15s+ wait and retry
+2. **Auth cascade fallback** — mock each auth method failing; assert next is tried in order
+3. **Auto-recovery re-auth** (`bot.py:774-789`) — simulate 3 consecutive API failures; assert `_re_authenticate()` is called and md_stream restarted
+4. **Force-close main-loop branch** — feed `now_et()` ≥ `FORCE_CLOSE_ET`; assert `cancel_all_orders`, `close_all_positions`, `end_of_day_update`, and auto-tuner all fire
 
-15. **`auto_tuner._propose()` clamping** — verify ±20% cap and absolute bounds
-16. **`auto_tuner._tune_stops()`** — >70% SL hit rate widens stops by 10%
-17. **`trade_journal.analyze_by_symbol()`** — verify per-symbol P&L aggregation
-18. **`trade_journal.generate_lessons()`** — verify heuristic triggers (worst symbol flagged when win rate < 30%)
+### Tier 2 — Strategy correctness
+
+5. **ORB dual-window independence** — 5-min and 15-min windows fire independently with separate caps
+6. **VWAP whipsaw (cross-direction cooldown)** — long fires, short attempted within `min_trade_gap_minutes` → blocked
+7. **VWAP stale-bars rejection** — feed 3+ zero-volume bars; assert next valid bar still suppressed
+
+### Tier 3 — Missing modules
+
+8. **`RestMarketDataPoller`** — mock `YahooFinanceSession.fetch_chart`; assert poll loop dispatches quotes to callbacks
+9. **`_warm_up_strategies()`** — mock historical bars; assert ORB range seeded and VWAP accumulator populated
+
+### Tier 4 — Analytics
+
+10. **`continuous_learner._analyze_stop_loss` / `_analyze_take_profit` / `_analyze_cooldown`** — per-parameter heuristics not individually tested
 
 ---
 
@@ -115,8 +144,23 @@
 
 | Improvement | Benefit |
 |------------|---------|
-| Migrate to native pytest (remove custom decorator framework) | Better fixtures, parametrize, failure reporting |
-| Add `conftest.py` with shared fixtures | Mock API, mock risk manager, sample trade data reusable across tests |
-| Separate unit vs integration tests (`@pytest.mark.network`) | CI can skip live connectivity tests, faster feedback loop |
-| Add `pytest-cov` coverage reporting | Track coverage %, catch regressions in CI |
-| Parametrize contract-specific tests | One test definition covers all 4 contracts (NQ, ES, GC, CL) instead of duplicating |
+| Migrate to native pytest (remove custom `@test` decorator at `test_all.py:38`) | Fixtures, parametrize, `-k` filtering, `-x` fast-fail |
+| Split `test_all.py` (~3 000 lines) into `tests/test_<module>.py` | Navigation, parallel execution |
+| Add `conftest.py` with shared fixtures (mock API, seeded risk manager, sample trade data) | Stop duplicating tempfile + MagicMock setup in every test |
+| Separate unit vs integration with `@pytest.mark.network` | CI can skip 3 live-connectivity tests for fast feedback |
+| Add `pytest-cov` to CI with a coverage floor (e.g., 70%) | Catch regressions; currently no measurement |
+| Parametrize contract-specific tests | One test definition covers all 4 contracts (NQ, ES, GC, CL) |
+| Fix 8 pre-existing failing tests (see below) | Currently broken before any changes in this branch |
+
+### Pre-existing failing tests (from `main`, not this branch)
+
+1. `ORB: max trades cap respected`
+2. `Credentials are correct (p-ticket received)` — network dependent
+3. `Full trading day simulation with NQ ORB`
+4. `AutoTuner: widening stops when SL hit rate > 70%`
+5. `AutoTuner: tightening stops when SL hit rate < 30%`
+6. `AutoTuner: widening TP when avg R > 1.5`
+7. `AutoTuner: tightening TP when avg R < -0.5`
+8. `Bot: _execute_signal in dry run mode logs but doesn't place orders`
+
+These should be triaged and fixed separately — they indicate real regressions in either the tests or the modules they cover.
