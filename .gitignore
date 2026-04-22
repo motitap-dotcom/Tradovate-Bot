@@ -49,3 +49,9 @@ tuner_log.json
 # VPS generated files
 bot-ctl.sh
 venv/
+
+# Coverage reports
+.coverage
+.coverage.*
+coverage_html/
+htmlcov/
