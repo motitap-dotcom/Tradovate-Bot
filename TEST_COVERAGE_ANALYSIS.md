@@ -1,7 +1,27 @@
 # Test Coverage Analysis — Tradovate Bot
 
 **Date:** 2026-04-22
-**Current tests:** 143 in `test_all.py` (110 pre-existing + 8 broken + 25 added this pass)
+**Current tests:** 143 in `test_all.py` (all passing)
+**Coverage baseline:** 49% (enforced floor in CI: 48% no-regression)
+
+## Coverage by Module (2026-04-22)
+
+| Module | Coverage | Notes |
+|---|---|---|
+| `risk_manager.py` | 95% | Near-complete |
+| `strategies.py` | 91% | |
+| `status_reporter.py` | 90% | |
+| `config.py` | 83% | |
+| `bot_state.py` | 80% | |
+| `trade_journal.py` | 71% | |
+| `auto_tuner.py` | 61% | MAE/MFE paths partially covered |
+| `continuous_learner.py` | 58% | Per-parameter heuristics not individually tested |
+| `bot_commands.py` | 57% | Added in this pass |
+| `tradovate_api.py` | 40% | Biggest gap — p-ticket, auth cascade, REST poller, YahooFinance all untested |
+| `bot.py` | 31% | Biggest gap — main loop, warm-up, sync paths |
+| `bot_health_check.py` | 25% | Most branches untested |
+
+Excluded from coverage measurement (CLI/operator tools): `test_all.py`, `check_*.py`, `get_token.py`, `verify_bot.py`, `monitor.py`, `publish_dashboard.py`, `browser_bot.py`, `dashboard.py`, `connection_check.py`.
 
 ---
 
