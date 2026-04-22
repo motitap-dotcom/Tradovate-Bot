@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-22T22:53:01Z",
+  "timestamp": "2026-04-22T23:51:25Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "353509",
     "uptime_since": "Wed 2026-04-22 13:58:25 UTC",
     "disk": "19%",
-    "memory": "1092MB/7941MB (14%)",
+    "memory": "1090MB/7941MB (14%)",
     "hostname": "vmi3096165",
-    "git_commit": "3511d65 status: 2026-04-22 21:54 UTC | api=ok auth=None bot=running trading=active",
+    "git_commit": "b0eeb87 status: 2026-04-22 22:53 UTC | api=ok auth=None bot=running trading=active",
     "live_status": {
       "timestamp": "2026-04-22T20:58:43.979272+00:00",
       "timestamp_et": "2026-04-22T16:58:43.979294-04:00",
@@ -47,7 +47,7 @@
     },
     "journal_tail": "2026-04-22 20:57:12,973 [INFO] bot: Status | balance=51240.82 | day_pnl=-4.50 | to_floor=1529.70 | contracts=0/9 | trades=6/25 | locked=False | quotes=1919663 cids=6\n2026-04-22 20:57:43,316 [INFO] bot: Status | balance=51240.82 | day_pnl=-4.50 | to_floor=1529.70 | contracts=0/9 | trades=6/25 | locked=False | quotes=1920235 cids=6\n2026-04-22 20:58:13,661 [INFO] bot: Status | balance=51240.82 | day_pnl=-4.50 | to_floor=1529.70 | contracts=0/9 | trades=6/25 | locked=False | quotes=1920852 cids=6\n2026-04-22 20:58:43,978 [INFO] bot: Status | balance=51240.82 | day_pnl=-4.50 | to_floor=1529.70 | contracts=0/9 | trades=6/25 | locked=False | quotes=1921337 cids=6\n2026-04-22 20:59:13,980 [WARNING] bot: Force close time reached. Closing all positions.\n2026-04-22 20:59:14,144 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-22 20:59:14,303 [WARNING] trade_journal: Journal: no open trade found for MGC\n2026-04-22 20:59:14,304 [WARNING] trade_journal: Journal: no open trade found for MES\n2026-04-22 20:59:14,304 [WARNING] trade_journal: Journal: no open trade found for SIL\n2026-04-22 20:59:14,304 [WARNING] trade_journal: Journal: no open trade found for MNQ\n2026-04-22 20:59:14,304 [WARNING] trade_journal: Journal: no open trade found for MES\n2026-04-22 20:59:14,304 [WARNING] trade_journal: Journal: no open trade found for MNQ\n2026-04-22 20:59:14,304 [INFO] auto_tuner: Auto-tuner: only 18 trades (need 20). Skipping.\n2026-04-22 20:59:14,304 [INFO] bot: Shutting down bot...\n2026-04-22 20:59:14,468 [INFO] tradovate_api: Cancelled 0 working orders\n2026-04-22 20:59:14,710 [WARNING] tradovate_api: Market data WebSocket closed: None None\n2026-04-22 20:59:14,744 [INFO] bot: ============================================================\n2026-04-22 20:59:14,745 [INFO] bot: END OF DAY SUMMARY\n2026-04-22 20:59:14,745 [INFO] bot: ============================================================\n2026-04-22 20:59:14,745 [INFO] bot: Total trades: 6\n2026-04-22 20:59:14,745 [INFO] bot:   balance: 5",
     "bot_log_tail": "2026-04-22 20:59:14,745 [INFO] bot:   daily_profit_remaining: 2404.5\n2026-04-22 20:59:14,745 [INFO] bot:   open_contracts: 0\n2026-04-22 20:59:14,745 [INFO] bot:   max_contracts: 9\n2026-04-22 20:59:14,745 [INFO] bot:   trades_today: 6\n2026-04-22 20:59:14,745 [INFO] bot:   max_daily_trades: 25\n2026-04-22 20:59:14,745 [INFO] bot:   locked: False\n2026-04-22 20:59:14,745 [INFO] bot:   lock_reason: \n2026-04-22 20:59:14,745 [INFO] bot:   balance_initialized: True\n2026-04-22 20:59:14,745 [INFO] bot:   losing_streak: 0\n2026-04-22 20:59:14,745 [INFO] bot:   streak_pause_until: None\n2026-04-22 20:59:14,745 [INFO] bot:   open_directions: {}\n2026-04-22 20:59:14,745 [INFO] bot: Trades:\n2026-04-22 20:59:14,745 [INFO] bot:   2026-04-22T09:58:30.098410-04:00 | Sell MGC 5 | SL=4778.3243 TP=4763.2000 | VWAP short #1 at 4771.2000 (VWAP=4774.3243)\n2026-04-22 20:59:14,745 [INFO] bot:   2026-04-22T09:59:57.971249-04:00 | Buy MES 4 | SL=7147.5000 TP=7162.5000 | ORB-5m long breakout above 7152.25\n2026-04-22 20:59:14,745 [INFO] bot:   2026-04-22T10:05:08.418426-04:00 | Buy SIL 1 | SL=77.3163 TP=78.7800 | VWAP long #1 at 78.2800 (VWAP=77.5663)\n2026-04-22 20:59:14,745 [INFO] bot:   2026-04-22T10:07:20.555814-04:00 | Buy MNQ 5 | SL=26873.0000 TP=26938.0000 | ORB-5m long breakout above 26892.75\n2026-04-22 20:59:14,746 [INFO] bot:   2026-04-22T10:19:57.972108-04:00 | Buy MES 5 | SL=7157.5000 TP=7172.5000 | ORB-15m long breakout above 7152.25\n2026-04-22 20:59:14,746 [INFO] bot:   2026-04-22T10:27:23.203125-04:00 | Buy MNQ 3 | SL=26955.5000 TP=27020.5000 | ORB-15m long breakout above 26892.75\n2026-04-22 20:59:14,746 [INFO] bot: Bot stopped.\n2026-04-22 20:59:14,746 [INFO] bot: Session ended. Next trading session: 2026-04-23 09:25 ET (sleeping 986 minutes)",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 6679s)\n  Balance: $51240.82\n  Day P&L: $-4.5\n  Trades today: 6\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 13.6%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 22 22:50:03 UTC 2026] Status: bot_active=true, pid=353509\n[Wed Apr 22 22:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 10279s)\n  Balance: $51240.82\n  Day P&L: $-4.5\n  Trades today: 6\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 13.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 22 23:50:03 UTC 2026] Status: bot_active=true, pid=353509\n[Wed Apr 22 23:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -146,7 +146,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 10241,
+    "ssh_output_len": 10242,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
