@@ -968,7 +968,8 @@ class MarketDataStream:
       - On connect, server sends "o" (open frame)
       - Client sends: "authorize\\n<id>\\n\\n<token>" to authenticate
       - Server responds: 'a[{"i":<id>,"s":200,...}]' on success
-      - Heartbeat: server sends "h" periodically; client should reply with "[]"
+      - Heartbeat: client MUST proactively send "[]" every ~2.5s — not merely
+        reply to server "h" frames. Silence >30s → server closes with 1000 "Bye".
       - Data frames: 'a[{...},{...}]' — JSON array of event objects
       - Subscriptions: "md/subscribeQuote\\n<id>\\n\\n{\"symbol\":\"NQH6\"}"
     """
@@ -1001,6 +1002,11 @@ class MarketDataStream:
         self._start_time: float = 0  # When this stream was started
         self._reconnect_timer: Optional[threading.Timer] = None
         self._got_403: bool = False  # Set by _on_error when token expired
+        # Proactive application-level heartbeat.  Tradovate requires clients to
+        # send "[]" every ~2.5s; otherwise the server closes with code 1000 "Bye"
+        # (~30s cycle).  Merely replying to server "h" frames is not enough.
+        self._heartbeat_stop: Optional[threading.Event] = None
+        self._heartbeat_thread: Optional[threading.Thread] = None
 
     def start(self):
         """Connect and start listening in a background thread."""
@@ -1055,9 +1061,44 @@ class MarketDataStream:
     # No data for 2 minutes means the connection is stale
     DATA_TIMEOUT = 120
 
+    # Proactive app-level heartbeat interval. Tradovate closes with 1000 "Bye"
+    # if the client is silent for ~30s; docs say 2.5s.
+    HEARTBEAT_INTERVAL = 2.5
+
+    def _start_heartbeat(self):
+        """Spawn a daemon thread that sends "[]" every HEARTBEAT_INTERVAL seconds.
+        Safe to call repeatedly: stops any previous thread first.
+        """
+        self._stop_heartbeat()
+        stop_event = threading.Event()
+        self._heartbeat_stop = stop_event
+
+        def _loop():
+            while not stop_event.wait(self.HEARTBEAT_INTERVAL):
+                ws = self.ws
+                if ws is None:
+                    continue
+                try:
+                    ws.send("[]")
+                except Exception as e:
+                    logger.debug("Heartbeat send failed (will rely on reconnect): %s", e)
+                    return  # Stop; _on_close will trigger reconnect + new heartbeat
+
+        t = threading.Thread(target=_loop, daemon=True, name="md-heartbeat")
+        self._heartbeat_thread = t
+        t.start()
+
+    def _stop_heartbeat(self):
+        """Signal the heartbeat thread to exit and let it die naturally."""
+        if self._heartbeat_stop is not None:
+            self._heartbeat_stop.set()
+        self._heartbeat_stop = None
+        self._heartbeat_thread = None
+
     def stop(self):
         """Close the WebSocket and cancel any pending reconnect."""
         self._should_run = False
+        self._stop_heartbeat()
         # Cancel pending reconnect timer
         if self._reconnect_timer:
             self._reconnect_timer.cancel()
@@ -1152,6 +1193,8 @@ class MarketDataStream:
                 logger.info("Market data WebSocket authenticated")
                 self._reconnect_count = 0
                 self._connected.set()
+                # Start proactive heartbeat now that the session is authed
+                self._start_heartbeat()
                 continue
 
             # Auth failure — trigger reconnect with fresh token
@@ -1231,6 +1274,8 @@ class MarketDataStream:
 
     def _on_close(self, ws, close_status_code, close_msg):
         self._connected.clear()
+        # Stop proactive heartbeat; a fresh one starts after the next auth.
+        self._stop_heartbeat()
         # Graceful close (code 1000 "Bye") is normal server behavior — reconnect
         # quickly without counting it as a failure.
         is_graceful = close_status_code == 1000
