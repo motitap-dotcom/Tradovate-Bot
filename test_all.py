@@ -2737,6 +2737,59 @@ def test_ws_close_respects_should_run():
     assert s._reconnect_timer is None
 
 
+@test("WS: proactive heartbeat sends '[]' at HEARTBEAT_INTERVAL")
+def test_ws_heartbeat_sends():
+    s = _make_stream()
+    s.ws = MagicMock()
+    # Shrink interval so the test finishes fast (still tests the real loop)
+    s.HEARTBEAT_INTERVAL = 0.02
+    s._start_heartbeat()
+    time.sleep(0.12)  # enough for ~5 ticks
+    s._stop_heartbeat()
+    sends = [c for c in s.ws.send.call_args_list if c.args == ("[]",)]
+    assert len(sends) >= 3, f"Expected at least 3 heartbeats, got {len(sends)}"
+
+
+@test("WS: heartbeat stops after _stop_heartbeat is called")
+def test_ws_heartbeat_stops():
+    s = _make_stream()
+    s.ws = MagicMock()
+    s.HEARTBEAT_INTERVAL = 0.02
+    s._start_heartbeat()
+    time.sleep(0.05)
+    s._stop_heartbeat()
+    time.sleep(0.05)  # wait for thread to exit
+    count_before = s.ws.send.call_count
+    time.sleep(0.1)  # if thread still alive, it would keep sending
+    count_after = s.ws.send.call_count
+    assert count_after == count_before, \
+        f"Heartbeat kept firing after stop: {count_before} -> {count_after}"
+
+
+@test("WS: _on_close stops the heartbeat thread")
+def test_ws_close_stops_heartbeat():
+    s = _make_stream()
+    s.ws = MagicMock()
+    s.HEARTBEAT_INTERVAL = 0.02
+    s._start_heartbeat()
+    time.sleep(0.03)
+    assert s._heartbeat_stop is not None
+    s._on_close(None, 1006, "err")
+    assert s._heartbeat_stop is None, "_on_close must clear heartbeat state"
+
+
+@test("WS: stop() stops the heartbeat thread")
+def test_ws_stop_stops_heartbeat():
+    s = _make_stream()
+    s.ws = MagicMock()
+    s.HEARTBEAT_INTERVAL = 0.02
+    s._start_heartbeat()
+    time.sleep(0.03)
+    s.stop()
+    assert s._heartbeat_stop is None
+    assert s._should_run is False
+
+
 # ─────────────────────────────────────────────
 # Force-Close & EOD Tests
 # ─────────────────────────────────────────────
@@ -3057,6 +3110,10 @@ test_ws_backoff_cap()
 test_ws_fallback_threshold()
 test_ws_403_triggers_reauth_flag()
 test_ws_close_respects_should_run()
+test_ws_heartbeat_sends()
+test_ws_heartbeat_stops()
+test_ws_close_stops_heartbeat()
+test_ws_stop_stops_heartbeat()
 test_risk_eod_advances_floor()
 test_risk_eod_no_lower_floor()
 test_risk_eod_apex_noop()
