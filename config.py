@@ -160,8 +160,8 @@ CONTRACT_SPECS = {
         "stop_loss_points": 20,
         "take_profit_points": 45,
         "risk_reward_ratio": 2.25,
-        "min_range_points": 15,           # skip low-vol days
-        "max_range_points": 150,          # NQ regularly opens 50-120pts
+        "min_range_points": 2,            # was 15 — was skipping most mornings silently
+        "max_range_points": 200,          # was 150 — allow wider news-day ranges
     },
     "MES": {
         "name": "Micro E-mini S&P 500",
@@ -177,8 +177,8 @@ CONTRACT_SPECS = {
         "stop_loss_points": 5,
         "take_profit_points": 10,
         "risk_reward_ratio": 2.0,
-        "min_range_points": 3,
-        "max_range_points": 40,           # ES regularly opens 10-25pts
+        "min_range_points": 1,            # was 3 — was skipping tight-range mornings
+        "max_range_points": 60,           # was 40 — allow wider news-day ranges
     },
     "MGC": {
         "name": "Micro Gold (COMEX)",
@@ -191,11 +191,11 @@ CONTRACT_SPECS = {
         "stop_loss_points": 4.0,
         "take_profit_points": 8.0,
         "risk_reward_ratio": 2.0,
-        "vwap_confirmation_candles": 2,   # require 2 bars of cross confirmation
+        "vwap_confirmation_candles": 1,   # was 2 — 1 bar cross is enough on liquid gold
         "max_vwap_trades_per_direction": 4,
         "vwap_cooldown_minutes": 15,
         "min_trade_gap_minutes": 3,
-        "max_vwap_distance_pct": 0.005,   # skip signal if price > 0.5% away from VWAP
+        "max_vwap_distance_pct": 0.008,   # was 0.005 — allow normal intraday dispersion
     },
     "MCL": {
         "name": "Micro WTI Crude Oil",
@@ -208,11 +208,11 @@ CONTRACT_SPECS = {
         "stop_loss_points": 0.18,
         "take_profit_points": 0.36,
         "risk_reward_ratio": 2.0,
-        "vwap_confirmation_candles": 2,
+        "vwap_confirmation_candles": 1,   # was 2 — 1 bar cross is enough
         "max_vwap_trades_per_direction": 4,
         "vwap_cooldown_minutes": 15,
         "min_trade_gap_minutes": 3,
-        "max_vwap_distance_pct": 0.005,
+        "max_vwap_distance_pct": 0.010,   # was 0.005 — crude moves faster than this
     },
     "SIL": {
         "name": "Micro Silver (COMEX)",
@@ -225,11 +225,11 @@ CONTRACT_SPECS = {
         "stop_loss_points": 0.25,         # $250 risk per contract — sits inside $400 budget
         "take_profit_points": 0.50,
         "risk_reward_ratio": 2.0,
-        "vwap_confirmation_candles": 2,
+        "vwap_confirmation_candles": 1,   # was 2
         "max_vwap_trades_per_direction": 3,
         "vwap_cooldown_minutes": 15,
         "min_trade_gap_minutes": 3,
-        "max_vwap_distance_pct": 0.006,
+        "max_vwap_distance_pct": 0.012,   # was 0.006 — silver is volatile
     },
     "MNG": {
         "name": "Micro Henry Hub Natural Gas",
@@ -520,7 +520,9 @@ TRADING_CUTOFF_ET = "15:45"
 
 # "No-fly zone" for ORB breakouts — midday chop window in ET.
 # During this window ORB signals are suppressed (VWAP strategies still run).
-ORB_BLACKOUT_START_ET = "10:30"
+# Narrowed from 10:30-13:30 to 11:30-13:30 so the bot can still fire during
+# the 10:30-11:30 continuation hour (a prime US-session trend window).
+ORB_BLACKOUT_START_ET = "11:30"
 ORB_BLACKOUT_END_ET = "13:30"
 
 # Force-close everything before this time
