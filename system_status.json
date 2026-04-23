@@ -1,20 +1,10 @@
 {
-  "timestamp": "2026-04-23T20:32:25Z",
+  "timestamp": "2026-04-23T21:52:40Z",
   "api_reachable": true,
-  "authenticated": true,
-  "auth_method": "server_token",
-  "account": {
-    "name": "FNFTCHMOTITAPIRO67510",
-    "id": 39996695,
-    "active": true
-  },
-  "balance": {
-    "realizedPnl": null,
-    "unrealizedPnl": null,
-    "totalCashValue": 50232.18,
-    "initialMargin": 0.0,
-    "netLiq": 50232.18
-  },
+  "authenticated": false,
+  "auth_method": null,
+  "account": {},
+  "balance": {},
   "positions": [],
   "orders": [],
   "server": {
@@ -23,12 +13,12 @@
     "bot_pid": "353509",
     "uptime_since": "Wed 2026-04-22 13:58:25 UTC",
     "disk": "19%",
-    "memory": "1110MB/7941MB (14%)",
+    "memory": "1143MB/7941MB (14%)",
     "hostname": "vmi3096165",
-    "git_commit": "4a8ed11 status: 2026-04-23 19:20 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "7de85e1 status: 2026-04-23 20:32 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-04-23T20:31:56.527916+00:00",
-      "timestamp_et": "2026-04-23T16:31:56.527939-04:00",
+      "timestamp": "2026-04-23T20:58:52.052957+00:00",
+      "timestamp_et": "2026-04-23T16:58:52.052990-04:00",
       "balance": 50232.18,
       "equity": 50232.18,
       "day_pnl": -1008.6399999999994,
@@ -55,14 +45,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-04-23 20:07:04,311 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2495046 cids=6\n2026-04-23 20:07:34,655 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2496850 cids=6\n2026-04-23 20:08:04,993 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2498533 cids=6\n2026-04-23 20:08:35,404 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2500605 cids=6\n2026-04-23 20:09:05,906 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2502729 cids=6\n2026-04-23 20:09:36,311 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2504620 cids=6\n2026-04-23 20:10:06,709 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2506716 cids=6\n2026-04-23 20:10:37,076 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2508167 cids=6\n2026-04-23 20:11:07,419 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2509714 cids=6\n2026-04-23 20:11:37,756 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2511371 cids=6\n2026-04-23 20:12:08,216 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2513175 cids=6\n2026-04-23 20:12:40,492 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes",
+    "journal_tail": "2026-04-23 20:53:17,946 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2602200 cids=6\n2026-04-23 20:53:48,387 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2603089 cids=6\n2026-04-23 20:54:18,754 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2603958 cids=6\n2026-04-23 20:54:49,092 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2604947 cids=6\n2026-04-23 20:55:19,436 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2606214 cids=6\n2026-04-23 20:55:49,790 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2607012 cids=6\n2026-04-23 20:56:20,238 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2607735 cids=6\n2026-04-23 20:56:50,568 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2608460 cids=6\n2026-04-23 20:57:20,903 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2609222 cids=6\n2026-04-23 20:57:51,281 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2610226 cids=6\n2026-04-23 20:58:21,684 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2611195 cids=6\n2026-04-23 20:58:52,052 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 9s)\n  Balance: $50232.18\n  Day P&L: $-1008.6399999999994\n  Trades today: 2\n  Locked: True\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.1%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Apr 23 20:30:04 UTC 2026] Status: bot_active=true, pid=353509\n[Thu Apr 23 20:30:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 3071s)\n  Balance: $50232.18\n  Day P&L: $-1008.6399999999994\n  Trades today: 2\n  Locked: True\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.2%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Apr 23 21:50:03 UTC 2026] Status: bot_active=true, pid=353509\n[Thu Apr 23 21:50:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-23T20:31:56.527916+00:00",
-      "timestamp_et": "2026-04-23T16:31:56.527939-04:00",
+      "timestamp": "2026-04-23T20:58:52.052957+00:00",
+      "timestamp_et": "2026-04-23T16:58:52.052990-04:00",
       "balance": 50232.18,
       "equity": 50232.18,
       "day_pnl": -1008.6399999999994,
@@ -89,7 +79,7 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "token_status": "valid",
+    "token_status": "expired",
     "token_expiry": "2026-04-23T21:16:23.693000+00:00",
     "recent_signals": [],
     "recent_trades": [],
@@ -119,47 +109,15 @@
     "websocket_connected": true,
     "errors_in_log": [],
     "market_data_source": "websocket",
-    "today_trades": [],
-    "today_fills": [
-      {
-        "id": 466552921763,
-        "action": "Buy",
-        "contractId": 3924410,
-        "qty": 5,
-        "price": 4739.6,
-        "timestamp": "2026-04-23T13:52:04.636Z"
-      },
-      {
-        "id": 466552921732,
-        "action": "Sell",
-        "contractId": 3643471,
-        "qty": 4,
-        "price": 93.87,
-        "timestamp": "2026-04-23T13:33:02.636Z"
-      },
-      {
-        "id": 466552921716,
-        "action": "Sell",
-        "contractId": 3924410,
-        "qty": 5,
-        "price": 4721.2,
-        "timestamp": "2026-04-23T13:30:00.248Z"
-      },
-      {
-        "id": 466552921743,
-        "action": "Buy",
-        "contractId": 3643471,
-        "qty": 4,
-        "price": 94.05,
-        "timestamp": "2026-04-23T13:33:45.266Z"
-      }
-    ]
+    "today_trades": []
   },
-  "errors": [],
+  "errors": [
+    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+  ],
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 6741,
+    "ssh_output_len": 6217,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
@@ -168,5 +126,23 @@
     "password_len": 9,
     "has_access_token": false,
     "username_first3": "FNF"
+  },
+  "last_known": {
+    "timestamp": "2026-04-23T20:32:25Z",
+    "auth_method": "server_token",
+    "account": {
+      "name": "FNFTCHMOTITAPIRO67510",
+      "id": 39996695,
+      "active": true
+    },
+    "balance": {
+      "realizedPnl": null,
+      "unrealizedPnl": null,
+      "totalCashValue": 50232.18,
+      "initialMargin": 0.0,
+      "netLiq": 50232.18
+    },
+    "positions": [],
+    "orders": []
   }
 }
