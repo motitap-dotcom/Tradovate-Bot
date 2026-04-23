@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-23T16:02:01Z",
+  "timestamp": "2026-04-23T17:54:02Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -23,12 +23,12 @@
     "bot_pid": "353509",
     "uptime_since": "Wed 2026-04-22 13:58:25 UTC",
     "disk": "19%",
-    "memory": "1132MB/7941MB (14%)",
+    "memory": "1143MB/7941MB (14%)",
     "hostname": "vmi3096165",
-    "git_commit": "cbc7e7d status: 2026-04-23 13:58 UTC | api=ok auth=server_token bot=running trading=inactive",
+    "git_commit": "6149d33 status: 2026-04-23 16:02 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-04-23T16:01:38.396575+00:00",
-      "timestamp_et": "2026-04-23T12:01:38.396598-04:00",
+      "timestamp": "2026-04-23T17:53:58.083997+00:00",
+      "timestamp_et": "2026-04-23T13:53:58.084074-04:00",
       "balance": 50232.18,
       "equity": 50232.18,
       "day_pnl": -1008.6399999999994,
@@ -55,14 +55,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-04-23 15:36:44,216 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=855931 cids=6\n2026-04-23 15:37:14,580 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=858276 cids=6\n2026-04-23 15:37:44,938 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=860817 cids=6\n2026-04-23 15:38:17,111 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=863459 cids=6\n2026-04-23 15:38:47,456 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=865743 cids=6\n2026-04-23 15:39:17,825 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=868636 cids=6\n2026-04-23 15:39:48,162 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=871536 cids=6\n2026-04-23 15:40:18,510 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=874273 cids=6\n2026-04-23 15:40:48,885 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=876851 cids=6\n2026-04-23 15:41:19,222 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=879744 cids=6\n2026-04-23 15:41:49,599 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=882654 cids=6\n2026-04-23 15:42:19,957 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=884939 cid",
+    "journal_tail": "2026-04-23 17:30:05,151 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1536224 cids=6\n2026-04-23 17:30:35,515 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1540461 cids=6\n2026-04-23 17:31:05,891 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1544180 cids=6\n2026-04-23 17:31:36,259 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1548777 cids=6\n2026-04-23 17:32:06,660 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1552755 cids=6\n2026-04-23 17:32:37,089 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1556959 cids=6\n2026-04-23 17:33:07,745 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1560533 cids=6\n2026-04-23 17:33:38,083 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1563745 cids=6\n2026-04-23 17:34:08,428 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1567277 cids=6\n2026-04-23 17:34:38,829 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1571021 cids=6\n2026-04-23 17:35:09,321 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=1575223 cids=6\n2026-04-23 17:35:39,929 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 29s)\n  Balance: $50232.18\n  Day P&L: $-1008.6399999999994\n  Trades today: 2\n  Locked: True\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.5%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Apr 23 16:00:06 UTC 2026] Status: bot_active=true, pid=353509\n[Thu Apr 23 16:00:06 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 11s)\n  Balance: $50232.18\n  Day P&L: $-1008.6399999999994\n  Trades today: 2\n  Locked: True\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.3%\n\n============================================================\n  VERDICT: HEALTHY\n  Bot: ALIVE | Token: OK | Balance: OK | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Thu Apr 23 17:50:04 UTC 2026] Status: bot_active=true, pid=353509\n[Thu Apr 23 17:50:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-23T16:01:38.396575+00:00",
-      "timestamp_et": "2026-04-23T12:01:38.396598-04:00",
+      "timestamp": "2026-04-23T17:53:58.083997+00:00",
+      "timestamp_et": "2026-04-23T13:53:58.084074-04:00",
       "balance": 50232.18,
       "equity": 50232.18,
       "day_pnl": -1008.6399999999994,
@@ -90,7 +90,7 @@
       "market_data_source": "websocket"
     },
     "token_status": "valid",
-    "token_expiry": "2026-04-23T16:56:13.419000+00:00",
+    "token_expiry": "2026-04-23T19:06:20.087000+00:00",
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
@@ -159,7 +159,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 6746,
+    "ssh_output_len": 6742,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
