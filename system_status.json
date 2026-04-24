@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-24T05:55:11Z",
+  "timestamp": "2026-04-24T08:12:42Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "353509",
     "uptime_since": "Wed 2026-04-22 13:58:25 UTC",
     "disk": "19%",
-    "memory": "1135MB/7941MB (14%)",
+    "memory": "1131MB/7941MB (14%)",
     "hostname": "vmi3096165",
-    "git_commit": "25b70f1 status: 2026-04-24 03:27 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "f685d59 status: 2026-04-24 05:55 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-04-23T20:58:52.052957+00:00",
       "timestamp_et": "2026-04-23T16:58:52.052990-04:00",
@@ -47,7 +47,7 @@
     },
     "journal_tail": "2026-04-23 20:53:17,946 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2602200 cids=6\n2026-04-23 20:53:48,387 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2603089 cids=6\n2026-04-23 20:54:18,754 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2603958 cids=6\n2026-04-23 20:54:49,092 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2604947 cids=6\n2026-04-23 20:55:19,436 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2606214 cids=6\n2026-04-23 20:55:49,790 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2607012 cids=6\n2026-04-23 20:56:20,238 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2607735 cids=6\n2026-04-23 20:56:50,568 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2608460 cids=6\n2026-04-23 20:57:20,903 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2609222 cids=6\n2026-04-23 20:57:51,281 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2610226 cids=6\n2026-04-23 20:58:21,684 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes=2611195 cids=6\n2026-04-23 20:58:52,052 [INFO] bot: Status | balance=50232.18 | day_pnl=-1008.64 | to_floor=1491.36 | contracts=0/9 | trades=2/25 | locked=True | quotes",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 32171s)\n  Balance: $50232.18\n  Day P&L: $-1008.6399999999994\n  Trades today: 2\n  Locked: True\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.2%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Apr 24 05:55:03 UTC 2026] Status: bot_active=true, pid=353509\n[Fri Apr 24 05:55:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 40271s)\n  Balance: $50232.18\n  Day P&L: $-1008.6399999999994\n  Trades today: 2\n  Locked: True\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.2%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Fri Apr 24 08:10:03 UTC 2026] Status: bot_active=true, pid=353509\n[Fri Apr 24 08:10:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
