@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-27T14:07:57Z",
+  "timestamp": "2026-04-27T14:17:08Z",
   "api_reachable": true,
   "authenticated": true,
   "auth_method": "server_token",
@@ -19,12 +19,12 @@
     "bot_pid": "1031918",
     "uptime_since": "Fri 2026-04-24 13:44:56 UTC",
     "disk": "19%",
-    "memory": "1177MB/7941MB (15%)",
+    "memory": "1152MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "57c71d7 status: 2026-04-27 11:48 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "412e5f6 status: 2026-04-27 14:07 UTC | api=ok auth=server_token bot=running trading=inactive",
     "live_status": {
-      "timestamp": "2026-04-27T14:07:52.840943+00:00",
-      "timestamp_et": "2026-04-27T10:07:52.840964-04:00",
+      "timestamp": "2026-04-27T14:17:01.079254+00:00",
+      "timestamp_et": "2026-04-27T10:17:01.079274-04:00",
       "balance": 50000,
       "equity": 50000.0,
       "day_pnl": 0.0,
@@ -51,14 +51,14 @@
       "websocket_connected": true,
       "market_data_source": "websocket"
     },
-    "journal_tail": "2026-04-27 13:57:13,615 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 13:57:13,815 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=223757 cids=6\n2026-04-27 13:57:43,977 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 13:57:44,146 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=227104 cids=6\n2026-04-27 13:58:14,305 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 13:58:14,471 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=230348 cids=6\n2026-04-27 13:58:42,564 [INFO] strategies: VWAP MCL SHORT #2 at 95.9200 | VWAP=95.9362 | SL=96.1162 TP=95.5600\n2026-04-27 13:58:42,564 [INFO] risk_manager: Position size for MCL: 5 contracts | budget=400.00 | risk/contract=18.00\n2026-04-27 13:58:42,564 [INFO] bot: SIGNAL: Sell MCL 5 @ market | SL=96.1162 TP=95.5600 | VWAP short #2 at 95.9200 (VWAP=95.9362)\n2026-04-27 13:58:42,564 [INFO] tradovate_api: Placing bracket Sell 5 MCLM6 @ Market | SL=96.12 TP=95.56 | payload={'accountSpec': 'FNFTMOTITAPWnBks', 'accountId': 39996695, 'action': 'Sell', 'symbol': 'MCLM6', 'orderQty': 5, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}\n2026-04-27 13:58:42,749 [ERROR] tradovate_api: Entry order failed: {'failureReason': 'UnknownReason', 'failureText': 'Access is denied'}\n2026-04-27 13:58:42,749 [ERROR] bot: Order placement FAILED for Sell MCL 5 \u2014 signal discarded (risk manager NOT updated)\n2026-04-27 13:58:44,640 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 13:58:44,804 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=233746 cids=6\n2026-04-27 13:59:14,968 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 13:59:15,131 [INFO] bot: Status | balanc",
+    "journal_tail": "2026-04-27 14:07:52,665 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 14:07:52,840 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=301612 cids=6\n2026-04-27 14:08:23,058 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 14:08:23,222 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=305226 cids=6\n2026-04-27 14:08:53,391 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 14:08:53,570 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=308534 cids=6\n2026-04-27 14:09:23,735 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 14:09:23,895 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=311976 cids=6\n2026-04-27 14:09:54,059 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 14:09:54,253 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=315438 cids=6\n2026-04-27 14:10:22,167 [INFO] strategies: VWAP MCL LONG #1 at 95.9200 | VWAP=95.9118 | SL=95.7318 TP=96.2800\n2026-04-27 14:10:22,168 [INFO] risk_manager: Position size for MCL: 5 contracts | budget=400.00 | risk/contract=18.00\n2026-04-27 14:10:22,169 [INFO] bot: SIGNAL: Buy MCL 5 @ market | SL=95.7318 TP=96.2800 | VWAP long #1 at 95.9200 (VWAP=95.9118)\n2026-04-27 14:10:22,169 [INFO] tradovate_api: Placing bracket Buy 5 MCLM6 @ Market | SL=95.73 TP=96.28 | payload={'accountSpec': 'FNFTMOTITAPWnBks', 'accountId': 39996695, 'action': 'Buy', 'symbol': 'MCLM6', 'orderQty': 5, 'orderType': 'Market', 'timeInForce': 'Day', 'isAutomated': True}\n2026-04-27 14:10:22,393 [ERROR] tradovate_api: Entry order failed: {'failureReason': 'UnknownReason', 'failureText': 'Access is denied'}\n2026-04-27 14",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 15s)\n  Balance: $50000\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.7%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 27 14:05:04 UTC 2026] Status: bot_active=true, pid=1031918\n[Mon Apr 27 14:05:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 6s)\n  Balance: $50000\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.6%\n\n============================================================\n  VERDICT: DEGRADED\n  Bot: ALIVE | Token: OK | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 27 14:15:04 UTC 2026] Status: bot_active=true, pid=1031918\n[Mon Apr 27 14:15:04 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
-      "timestamp": "2026-04-27T14:07:52.840943+00:00",
-      "timestamp_et": "2026-04-27T10:07:52.840964-04:00",
+      "timestamp": "2026-04-27T14:17:01.079254+00:00",
+      "timestamp_et": "2026-04-27T10:17:01.079274-04:00",
       "balance": 50000,
       "equity": 50000.0,
       "day_pnl": 0.0,
@@ -122,7 +122,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 5986,
+    "ssh_output_len": 5988,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
