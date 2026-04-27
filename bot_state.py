@@ -34,31 +34,34 @@ def save_state(state: dict):
 
 
 def load_state() -> Optional[dict]:
-    """
-    Load bot state from disk. Returns None if:
-      - File doesn't exist
-      - File is corrupt
-      - State is from a different date (stale)
+    """Load bot state from disk. Returns None if file is missing or corrupt.
+
+    Returns the full state regardless of date — callers must check the
+    `_date` field themselves. Strategy state is only valid for the current
+    day, but trailing-drawdown peak/floor must persist across days because
+    FundedNext tracks the all-time intraday peak server-side.
     """
     if not os.path.exists(STATE_FILE):
         return None
     try:
         with open(STATE_FILE) as f:
             state = json.load(f)
-        # Only return state from today
-        if state.get("_date") != date.today().isoformat():
-            logger.info("Bot state is from %s (not today). Starting fresh.", state.get("_date"))
-            return None
         return state
     except (json.JSONDecodeError, KeyError, TypeError) as e:
         logger.warning("Failed to load bot state: %s", e)
         return None
 
 
+def is_today(state: dict) -> bool:
+    """True if the saved state is from today's ET date."""
+    return state.get("_date") == date.today().isoformat()
+
+
 def build_state(
     strategies: dict,
     trades_today_count: int,
     trades_today_list: list,
+    risk=None,
 ) -> dict:
     """
     Build a state dict from current strategy instances.
@@ -69,6 +72,17 @@ def build_state(
         "trades_today_list": trades_today_list,
         "symbols": {},
     }
+
+    if risk is not None:
+        state["risk"] = {
+            "peak_balance": risk.peak_balance,
+            "drawdown_floor": risk.drawdown_floor,
+            "day_start_balance": risk.day_start_balance,
+            "day_start_date": risk.today.isoformat(),
+            "current_balance": risk.current_balance,
+            "trading_locked": risk.trading_locked,
+            "lock_reason": risk.lock_reason,
+        }
 
     for symbol, strategy in strategies.items():
         sym_state = {"type": type(strategy).__name__}

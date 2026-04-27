@@ -1728,8 +1728,11 @@ def test_bot_state_missing_file():
         bot_state.STATE_FILE = original_file
 
 
-@test("BotState: load returns None for stale date")
+@test("BotState: load returns state for stale date but is_today is False")
 def test_bot_state_stale_date():
+    # Note: load_state() now returns the full state regardless of date so the
+    # bot can restore drawdown peak/floor across days. is_today() is the
+    # gate for daily-only fields (strategy state, trade counts).
     import bot_state
     original_file = bot_state.STATE_FILE
     try:
@@ -1738,7 +1741,9 @@ def test_bot_state_stale_date():
             json.dump({"_date": "2020-01-01", "trades_today_count": 3}, f)
 
         result = bot_state.load_state()
-        assert result is None, "Should return None for stale date"
+        assert result is not None, "load_state should return saved state"
+        assert result.get("_date") == "2020-01-01"
+        assert bot_state.is_today(result) is False, "is_today must reject stale date"
     finally:
         if os.path.exists(bot_state.STATE_FILE):
             os.unlink(bot_state.STATE_FILE)
@@ -2418,10 +2423,158 @@ def test_risk_set_initial_balance():
     assert abs(rm.day_pnl) < 0.01, f"day_pnl should be ~0, got {rm.day_pnl}"
 
 
+@test("RiskManager: lock callback fires once on transition to locked")
+def test_risk_lock_callback():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    calls = []
+    rm.set_on_lock(lambda reason: calls.append(reason))
+    rm.set_initial_balance(50000.0)
+    # Force a drawdown breach
+    rm.update_balance(rm.drawdown_floor - 100, 0)
+    assert rm.trading_locked is True
+    assert len(calls) == 1, f"Expected 1 callback call, got {len(calls)}"
+    # Subsequent updates while still locked must NOT fire callback again
+    rm.update_balance(rm.drawdown_floor - 200, 0)
+    assert len(calls) == 1, "Callback should fire exactly once on lock transition"
+
+
+@test("RiskManager: peak never goes down on set_initial_balance")
+def test_risk_peak_never_resets_down():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    # Push peak up to $52,500 (a previous all-time high)
+    rm.set_initial_balance(50000.0)
+    rm.update_balance(52500.0, 0)
+    assert rm.peak_balance == 52500.0
+    floor_high = rm.drawdown_floor
+
+    # Restart with lower current balance — peak must NOT reset down
+    rm.set_initial_balance(50500.0)
+    assert rm.peak_balance == 52500.0, f"Peak reset to {rm.peak_balance}, must stay 52500"
+    assert rm.drawdown_floor == floor_high, "Floor must not regress"
+
+
+@test("RiskManager: persisted peak/floor are honored on restart")
+def test_risk_peak_persistence_restore():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    # Simulate restart: balance=$50,500, but disk had peak=$52,800
+    rm.set_initial_balance(
+        50500.0,
+        persisted_peak=52800.0,
+        persisted_floor=50300.0,
+    )
+    assert rm.peak_balance == 52800.0
+    # Floor: max(persisted_floor, peak - max_dd) = max(50300, 52800-2500=50300) = 50300
+    assert rm.drawdown_floor >= 50300.0
+
+
+@test("RiskManager: persisted day_start used only when from today")
+def test_risk_day_start_persistence():
+    from risk_manager import RiskManager
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    rm = RiskManager()
+    today_iso = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+
+    # From today: persisted day_start should be applied
+    rm.set_initial_balance(
+        50500.0,
+        persisted_day_start=51000.0,
+        persisted_day_start_date=today_iso,
+    )
+    assert rm.day_start_balance == 51000.0
+
+    # From a different day: persisted day_start should be ignored
+    rm2 = RiskManager()
+    rm2.set_initial_balance(
+        50500.0,
+        persisted_day_start=51000.0,
+        persisted_day_start_date="2020-01-01",
+    )
+    assert rm2.day_start_balance == 50500.0
+
+
+@test("RiskManager: pre-emptive breach locks before stops fire")
+def test_risk_pending_breach():
+    import config as cfg
+    from risk_manager import RiskManager
+    with patch("config.PROP_FIRM", "fundednext"):
+        with patch("config.ACTIVE_CHALLENGE", cfg.CHALLENGE_SETTINGS["fundednext"]):
+            rm = RiskManager()
+            rm.set_initial_balance(50000.0)
+            # day_pnl is at -$700; daily_loss_limit is $1,000
+            rm.update_balance(49300.0, 0)
+            assert rm.trading_locked is True or rm.day_pnl == -700  # brake might fire here
+            # Reset lock for the test
+            rm.trading_locked = False
+            rm.lock_reason = ""
+            # Open MES position with stop=6pts, qty=10. Worst-case loss = 6*5*10 = $300.
+            # Projected day_pnl = -700 - 300 = -1000 → must lock
+            positions = [{"symbol": "MES", "netPos": 10}]
+            rm.check_pending_breach(positions)
+            assert rm.trading_locked is True
+            assert "PRE-EMPTIVE" in rm.lock_reason
+
+
+@test("RiskManager: pending breach does nothing when safe")
+def test_risk_pending_breach_safe():
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    rm.set_initial_balance(50000.0)
+    # day_pnl = 0, plenty of headroom
+    positions = [{"symbol": "MES", "netPos": 1}]
+    rm.check_pending_breach(positions)
+    assert rm.trading_locked is False
+
+
+@test("bot_state: load_state returns state regardless of date; is_today filters")
+def test_bot_state_cross_day_load():
+    import bot_state
+    import tempfile
+    f = tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w")
+    f.write('{"_date": "2020-01-01", "trades_today_count": 7, "risk": {"peak_balance": 52500.0, "drawdown_floor": 50000.0}}')
+    f.close()
+    orig = bot_state.STATE_FILE
+    bot_state.STATE_FILE = f.name
+    try:
+        st = bot_state.load_state()
+        assert st is not None
+        assert st["risk"]["peak_balance"] == 52500.0
+        assert bot_state.is_today(st) is False
+    finally:
+        bot_state.STATE_FILE = orig
+        os.unlink(f.name)
+
+
+@test("bot_state: build_state with risk persists peak/floor/day_start")
+def test_bot_state_build_with_risk():
+    import bot_state
+    from risk_manager import RiskManager
+    rm = RiskManager()
+    rm.set_initial_balance(50500.0)
+    rm.update_balance(52000.0, 0)  # drive peak up
+    state = bot_state.build_state({}, 0, [], risk=rm)
+    assert "risk" in state
+    assert state["risk"]["peak_balance"] == 52000.0
+    assert state["risk"]["drawdown_floor"] == 52000.0 - rm.max_trailing_drawdown
+    assert state["risk"]["day_start_balance"] == 50500.0
+    assert state["risk"]["day_start_date"] == rm.today.isoformat()
+
+
 test_risk_daily_profit_cap()
 test_journal_effective_target()
 test_journal_consistency_no_trigger()
 test_risk_set_initial_balance()
+test_risk_lock_callback()
+test_risk_peak_never_resets_down()
+test_risk_peak_persistence_restore()
+test_risk_day_start_persistence()
+test_risk_pending_breach()
+test_risk_pending_breach_safe()
+test_bot_state_cross_day_load()
+test_bot_state_build_with_risk()
 
 
 # ─────────────────────────────────────────────

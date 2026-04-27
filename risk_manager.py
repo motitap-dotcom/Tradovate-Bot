@@ -11,11 +11,10 @@ Enforces prop firm challenge rules:
 
 import logging
 import math
-from datetime import datetime, date, timedelta
-from typing import Optional
+from datetime import datetime, date
+from typing import Callable, Optional
 from zoneinfo import ZoneInfo
 
-import alerts
 import config
 
 logger = logging.getLogger(__name__)
@@ -57,26 +56,16 @@ class RiskManager:
 
         # Open position tracking
         self.open_contracts: int = 0
-        # symbol -> direction ("Buy"/"Sell") for correlation guard
-        self.open_directions: dict[str, str] = {}
 
         # Daily trade counter (safety cap)
         self.max_daily_trades: int = config.MAX_DAILY_TRADES
         self.trades_today: int = 0
 
-        # Losing-streak kill-switch state
-        self.losing_streak: int = 0
-        self.streak_pause_until: Optional[datetime] = None
-        self.max_losing_streak: int = getattr(config, "MAX_LOSING_STREAK", 3)
-        self.streak_pause_minutes: int = getattr(config, "STREAK_PAUSE_MINUTES", 30)
-
-        # Defensive sizing thresholds
-        self.defensive_floor_distance: float = getattr(
-            config, "DEFENSIVE_FLOOR_DISTANCE", 800.0
-        )
-        self.max_contracts_per_trade: int = getattr(
-            config, "MAX_CONTRACTS_PER_TRADE", 5
-        )
+        # Callback fired once when trading transitions from unlocked to locked.
+        # Used by bot.py to flatten positions immediately on lock — without this,
+        # the lock only blocks new trades, allowing existing positions to drain
+        # past the daily loss limit (the bug that failed the 04-23 challenge).
+        self._on_lock_callback: Optional[Callable[[str], None]] = None
 
         logger.info(
             "RiskManager initialized | account=%s | max_dd=%s | daily_limit=%s | brake=%.0f%% | max_trades/day=%d | daily_profit_cap=%s",
@@ -88,29 +77,54 @@ class RiskManager:
             f"${self.daily_profit_cap}" if self.daily_profit_cap else "None",
         )
 
-    def set_initial_balance(self, balance: float):
+    def set_initial_balance(
+        self,
+        balance: float,
+        persisted_peak: Optional[float] = None,
+        persisted_floor: Optional[float] = None,
+        persisted_day_start: Optional[float] = None,
+        persisted_day_start_date: Optional[str] = None,
+    ):
         """Set the actual account balance from the API on startup.
 
-        This corrects day_start_balance so that day_pnl is calculated
-        relative to today's opening balance, not the original account_size.
-        Can be called at startup or later (via _sync_balance fallback).
+        Trailing drawdown peak NEVER goes down — this is the single most
+        important invariant. FundedNext tracks the all-time intraday peak
+        on their server. If we forget it on restart, we'll lock too late
+        and breach the floor without warning.
+
+        persisted_peak/persisted_floor: loaded from bot_state.json so the
+        peak survives restarts. day_start_balance is also persisted so
+        day_pnl doesn't reset to 0 mid-day.
         """
-        logger.info(
-            "Setting initial balance from API: $%.2f (was $%.2f from config)",
-            balance, self.day_start_balance,
-        )
         self.current_balance = balance
-        self.day_start_balance = balance
         self._balance_initialized = True
-        # Peak/floor must also reflect reality
-        if balance > self.peak_balance:
-            self.peak_balance = balance
-            self.drawdown_floor = self.peak_balance - self.max_trailing_drawdown
-        elif balance < self.drawdown_floor + self.max_trailing_drawdown:
-            # Balance is below where peak should be — set peak = balance
-            # so drawdown floor is correct
-            self.peak_balance = balance
-            self.drawdown_floor = balance - self.max_trailing_drawdown
+
+        # Peak: max of (current peak in memory, persisted peak from disk, current balance).
+        # Once set, peak only ever moves UP — see update_balance().
+        candidate_peak = max(self.peak_balance, balance)
+        if persisted_peak is not None and math.isfinite(persisted_peak):
+            candidate_peak = max(candidate_peak, persisted_peak)
+        self.peak_balance = candidate_peak
+
+        # Floor follows peak. Also clamp UP to any persisted floor (server-side
+        # FundedNext floor would be at least this high).
+        new_floor = self.peak_balance - self.max_trailing_drawdown
+        if persisted_floor is not None and math.isfinite(persisted_floor):
+            new_floor = max(new_floor, persisted_floor)
+        self.drawdown_floor = new_floor
+
+        # Day start balance: prefer persisted value if it's from today, so a
+        # restart mid-day doesn't reset day_pnl to 0.
+        today_iso = self.today.isoformat()
+        if (
+            persisted_day_start is not None
+            and persisted_day_start_date == today_iso
+            and math.isfinite(persisted_day_start)
+        ):
+            self.day_start_balance = persisted_day_start
+        else:
+            self.day_start_balance = balance
+
         logger.info(
             "Initial state: balance=$%.2f | peak=$%.2f | floor=$%.2f | day_start=$%.2f",
             self.current_balance, self.peak_balance, self.drawdown_floor, self.day_start_balance,
@@ -157,18 +171,6 @@ class RiskManager:
         self._check_drawdown(equity)
         self._check_daily_loss()
         self._check_daily_profit_cap()
-        self._check_drawdown_proximity(equity)
-
-    def _check_drawdown_proximity(self, equity: float):
-        """Fire a WARNING alert when equity gets within $1000 of the floor."""
-        distance = equity - self.drawdown_floor
-        if 0 < distance <= 1000.0:
-            alerts.send(
-                "WARNING",
-                "Drawdown floor proximity",
-                f"equity=${equity:.2f} floor=${self.drawdown_floor:.2f} "
-                f"distance=${distance:.2f}",
-            )
 
     def end_of_day_update(self, realized_balance: float):
         """Call at session close for EOD trailing drawdown (Topstep)."""
@@ -195,37 +197,6 @@ class RiskManager:
             )
             new_balance = 0
         self.current_balance = new_balance
-
-        # Update losing streak & arm pause if needed.
-        # pnl_change == 0 is treated as neutral (e.g. scratch) and ignored.
-        if pnl_change < 0:
-            self.losing_streak += 1
-            logger.info("Losing streak: %d consecutive", self.losing_streak)
-            if self.losing_streak >= self.max_losing_streak:
-                pause_end = datetime.now(_ET) + timedelta(
-                    minutes=self.streak_pause_minutes
-                )
-                self.streak_pause_until = pause_end
-                logger.warning(
-                    "LOSING STREAK KILL-SWITCH: %d losses in a row. "
-                    "Pausing new trades until %s ET.",
-                    self.losing_streak, pause_end.strftime("%H:%M"),
-                )
-                alerts.send(
-                    "WARNING",
-                    "Losing streak pause",
-                    f"{self.losing_streak} consecutive losses. "
-                    f"New trades paused until {pause_end.strftime('%H:%M')} ET. "
-                    f"day_pnl=${self.day_pnl:+.2f}",
-                )
-        elif pnl_change > 0:
-            if self.losing_streak > 0:
-                logger.info(
-                    "Losing streak broken at %d by +$%.2f fill",
-                    self.losing_streak, pnl_change,
-                )
-            self.losing_streak = 0
-
         self.update_balance(self.current_balance, self.unrealized_pnl)
 
     # ─────────────────────────────────────────
@@ -274,9 +245,6 @@ class RiskManager:
             self.trades_today = 0
             self.trading_locked = False
             self.lock_reason = ""
-            # Reset streak & pause — a new day is a clean slate.
-            self.losing_streak = 0
-            self.streak_pause_until = None
             # Keep _balance_initialized — current_balance is already real
             # (it was set by API in the previous day's loop)
 
@@ -286,46 +254,68 @@ class RiskManager:
             self.trading_locked = True
             self.lock_reason = reason
             logger.critical("TRADING LOCKED: %s", reason)
-            alerts.send(
-                "CRITICAL",
-                "Trading locked",
-                f"{reason}\n"
-                f"balance=${self.current_balance:.2f} "
-                f"day_pnl=${self.day_pnl:+.2f} "
-                f"floor=${self.drawdown_floor:.2f}",
+            if self._on_lock_callback is not None:
+                try:
+                    self._on_lock_callback(reason)
+                except Exception as e:
+                    logger.error("on_lock callback raised: %s", e)
+
+    def set_on_lock(self, callback: Callable[[str], None]):
+        """Register a callback to fire on transition to locked state.
+
+        The callback receives the lock reason string. Used by bot.py to
+        flatten all open positions and cancel working orders the moment
+        the brake fires, so that day_pnl can't drift further past limits.
+        """
+        self._on_lock_callback = callback
+
+    def check_pending_breach(self, positions: list[dict]):
+        """Lock pre-emptively if open positions could breach daily loss.
+
+        If every open position were to hit its stop simultaneously, would
+        day_pnl drop below -daily_loss_limit? If yes, lock and let the
+        on_lock callback flatten everything before the actual stops fire.
+
+        positions: list of dicts with keys 'symbol' (or 'contractId') and
+        'netPos' (signed quantity). Symbol is preferred for spec lookup.
+        """
+        if self.daily_loss_limit is None or self.trading_locked:
+            return
+
+        worst_case_loss = 0.0
+        for p in positions:
+            sym = p.get("symbol") or p.get("base_symbol")
+            if not sym:
+                continue
+            spec = config.CONTRACT_SPECS.get(sym)
+            if not spec:
+                continue
+            qty = abs(p.get("netPos", 0) or 0)
+            if qty == 0:
+                continue
+            stop_pts = spec.get("stop_loss_points", 0) or 0
+            pv = spec.get("point_value", 0) or 0
+            worst_case_loss += stop_pts * pv * qty
+
+        if worst_case_loss <= 0:
+            return
+
+        projected_pnl = self.day_pnl - worst_case_loss
+        if projected_pnl <= -self.daily_loss_limit:
+            self._lock(
+                f"PRE-EMPTIVE BREACH: open positions worst-case ${worst_case_loss:.2f} "
+                f"would push day_pnl from {self.day_pnl:.2f} to {projected_pnl:.2f} "
+                f"(limit -{self.daily_loss_limit:.2f})"
             )
 
     # ─────────────────────────────────────────
     # Pre-trade validation
     # ─────────────────────────────────────────
 
-    def can_trade(self, symbol: Optional[str] = None,
-                  direction: Optional[str] = None) -> tuple[bool, str]:
-        """Check whether a new trade is allowed right now.
-
-        Args:
-            symbol: optional symbol to check correlation guard against.
-            direction: "Buy" or "Sell" — used with symbol for correlation.
-        """
+    def can_trade(self) -> tuple[bool, str]:
+        """Check whether a new trade is allowed right now."""
         if self.trading_locked:
             return False, f"Trading locked: {self.lock_reason}"
-
-        # Losing-streak pause
-        if self.streak_pause_until is not None:
-            now = datetime.now(_ET)
-            if now < self.streak_pause_until:
-                remaining = int(
-                    (self.streak_pause_until - now).total_seconds() / 60
-                )
-                return False, (
-                    f"Losing streak pause: {remaining}m remaining "
-                    f"({self.losing_streak} losses)"
-                )
-            else:
-                # Pause expired — clear it and the streak counter
-                logger.info("Losing-streak pause expired; resuming trading")
-                self.streak_pause_until = None
-                self.losing_streak = 0
 
         if self.open_contracts >= self.max_contracts:
             return False, (
@@ -337,32 +327,7 @@ class RiskManager:
                 f"Daily trade cap reached: {self.trades_today}/{self.max_daily_trades}"
             )
 
-        # Correlation guard — only enforced if caller passes symbol+direction.
-        if symbol is not None and direction is not None:
-            blocked = self._correlation_conflict(symbol, direction)
-            if blocked is not None:
-                return False, (
-                    f"Correlation guard: {symbol} {direction} blocked by "
-                    f"open {blocked[0]} {blocked[1]}"
-                )
-
         return True, "OK"
-
-    def _correlation_conflict(
-        self, symbol: str, direction: str
-    ) -> Optional[tuple[str, str]]:
-        """Return (existing_symbol, existing_direction) if a correlated
-        position in the same direction is already open; else None."""
-        groups = getattr(config, "CORRELATED_GROUPS", [])
-        for group in groups:
-            if symbol not in group:
-                continue
-            for other_sym, other_dir in self.open_directions.items():
-                if other_sym == symbol:
-                    continue
-                if other_sym in group and other_dir == direction:
-                    return (other_sym, other_dir)
-        return None
 
     def calculate_position_size(self, symbol: str) -> int:
         """
@@ -412,22 +377,6 @@ class RiskManager:
         available = self.max_contracts - self.open_contracts
         contracts = min(contracts, available)
 
-        # Hard ceiling per single trade (defensive cap)
-        contracts = min(contracts, self.max_contracts_per_trade)
-
-        # Defensive sizing near the drawdown floor — halve the size.
-        equity = self.current_balance + self.unrealized_pnl
-        floor_distance = equity - self.drawdown_floor
-        if floor_distance < self.defensive_floor_distance and contracts >= 2:
-            halved = max(1, contracts // 2)
-            logger.warning(
-                "Defensive sizing for %s: %d -> %d contracts "
-                "(floor_distance=%.2f < %.2f)",
-                symbol, contracts, halved,
-                floor_distance, self.defensive_floor_distance,
-            )
-            contracts = halved
-
         # At least 1 if we have budget, at most max_contracts
         contracts = max(contracts, 0)
 
@@ -440,15 +389,12 @@ class RiskManager:
         )
         return contracts
 
-    def register_open(self, qty: int, symbol: Optional[str] = None,
-                      direction: Optional[str] = None):
+    def register_open(self, qty: int):
         """Track that we opened positions."""
         self.open_contracts += qty
         self.trades_today += 1
-        if symbol and direction:
-            self.open_directions[symbol] = direction
 
-    def register_close(self, qty: int, symbol: Optional[str] = None):
+    def register_close(self, qty: int):
         """Track that we closed positions."""
         if qty > self.open_contracts:
             logger.warning(
@@ -456,10 +402,6 @@ class RiskManager:
                 qty, self.open_contracts,
             )
         self.open_contracts = max(0, self.open_contracts - qty)
-        if self.open_contracts == 0:
-            self.open_directions.clear()
-        elif symbol is not None:
-            self.open_directions.pop(symbol, None)
 
     # ─────────────────────────────────────────
     # Status
@@ -495,10 +437,4 @@ class RiskManager:
             "locked": self.trading_locked,
             "lock_reason": self.lock_reason,
             "balance_initialized": self._balance_initialized,
-            "losing_streak": self.losing_streak,
-            "streak_pause_until": (
-                self.streak_pause_until.isoformat()
-                if self.streak_pause_until else None
-            ),
-            "open_directions": dict(self.open_directions),
         }
