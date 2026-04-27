@@ -78,6 +78,7 @@ class TradovateBot:
         self.dry_run = dry_run
         self.api = TradovateAPI()
         self.risk = RiskManager()
+        self.risk.set_on_lock(self._on_risk_lock)
         self.journal = TradeJournal()
         self.md_stream: MarketDataStream = None
         self.running = False
@@ -147,12 +148,17 @@ class TradovateBot:
         # Warm up strategies with today's historical candles (builds ORB ranges + VWAP)
         self._warm_up_strategies()
 
-        # Restore trade counts and cooldowns from saved state (layered on top of warmup)
+        # Restore trade counts and cooldowns from saved state (layered on top of warmup).
+        # Strategy state is only valid for today — risk state survives across days
+        # and is restored separately by _init_balance_from_api.
         saved = bot_state.load_state()
-        if saved:
+        if saved and bot_state.is_today(saved):
             bot_state.restore_strategies(saved, self.strategies)
             self.risk.trades_today = saved.get("trades_today_count", 0)
             logger.info("Restored bot state: trades_today=%d", self.risk.trades_today)
+        elif saved:
+            logger.info("Bot state is from %s (not today). Strategy state starts fresh.",
+                        saved.get("_date"))
 
         # Start market data stream (WebSocket preferred, REST polling fallback)
         if not self.dry_run:
@@ -186,7 +192,25 @@ class TradovateBot:
 
         Without this, day_start_balance defaults to config account_size ($50k)
         which causes day_pnl to include ALL accumulated profit, not just today's.
+
+        Also restores persisted peak/floor/day_start from bot_state.json so
+        the trailing drawdown peak survives restarts (FundedNext tracks
+        all-time intraday peak server-side — losing it locally means we
+        won't lock until well past the actual breach).
         """
+        persisted_peak = persisted_floor = persisted_day_start = persisted_day_date = None
+        saved = bot_state.load_state()
+        if saved and isinstance(saved.get("risk"), dict):
+            r = saved["risk"]
+            persisted_peak = r.get("peak_balance")
+            persisted_floor = r.get("drawdown_floor")
+            persisted_day_start = r.get("day_start_balance")
+            persisted_day_date = r.get("day_start_date")
+            logger.info(
+                "Restoring risk state from disk: peak=$%s floor=$%s day_start=$%s (date=%s)",
+                persisted_peak, persisted_floor, persisted_day_start, persisted_day_date,
+            )
+
         try:
             snapshot = self.api.get_cash_balance()
             if snapshot and not snapshot.get("errorText"):
@@ -197,7 +221,13 @@ class TradovateBot:
                 total_cash = snapshot.get("totalCashValue")
                 balance = net_liq or total_cash
                 if balance is not None:
-                    self.risk.set_initial_balance(balance)
+                    self.risk.set_initial_balance(
+                        balance,
+                        persisted_peak=persisted_peak,
+                        persisted_floor=persisted_floor,
+                        persisted_day_start=persisted_day_start,
+                        persisted_day_start_date=persisted_day_date,
+                    )
                     logger.info(
                         "Initial balance from API: $%.2f (netLiq=$%s, totalCash=$%s)",
                         balance, net_liq, total_cash,
@@ -207,6 +237,25 @@ class TradovateBot:
                           config.ACTIVE_CHALLENGE["account_size"])
         except Exception as e:
             logger.error("Failed to fetch initial balance: %s", e)
+
+    def _on_risk_lock(self, reason: str):
+        """Callback fired when risk manager locks trading.
+
+        Cancels working orders and flattens all open positions so that
+        existing exposure can't drift further past the daily loss limit
+        before the bot's normal force-close-at-16:59 ET runs.
+        """
+        logger.critical("RISK LOCK fired — flattening all positions: %s", reason)
+        if self.dry_run:
+            return
+        try:
+            self.api.cancel_all_orders()
+        except Exception as e:
+            logger.error("cancel_all_orders failed during lock flatten: %s", e)
+        try:
+            self.api.close_all_positions()
+        except Exception as e:
+            logger.error("close_all_positions failed during lock flatten: %s", e)
 
     # ─────────────────────────────────────────
     # Contract resolution
@@ -665,10 +714,11 @@ class TradovateBot:
         if result:
             self._last_order_time = time.time()
             self.risk.register_open(signal.qty)
+            entry_fill_price = float(result.get("avgPrice") or signal.entry_price or 0)
             trade_id = self.journal.record_entry(
                 symbol=signal.symbol,
                 direction=signal.direction.value,
-                entry_price=signal.entry_price or 0,
+                entry_price=entry_fill_price,
                 qty=signal.qty,
                 strategy=type(self.strategies.get(signal.symbol, "")).__name__,
                 reason=signal.reason,
@@ -686,6 +736,8 @@ class TradovateBot:
                     "reason": signal.reason,
                     "order_id": result.get("orderId"),
                     "journal_id": trade_id,
+                    "entry_price": entry_fill_price,
+                    "entry_time_iso": now_et().isoformat(),
                 }
             )
             logger.info("Order placed: orderId=%s (journal: %s)", result.get("orderId"), trade_id)
@@ -697,10 +749,11 @@ class TradovateBot:
             )
 
     def _save_bot_state(self):
-        """Persist strategy state to disk for restart recovery."""
+        """Persist strategy + risk state to disk for restart recovery."""
         try:
             state = bot_state.build_state(
-                self.strategies, len(self.trades_today), self.trades_today
+                self.strategies, len(self.trades_today), self.trades_today,
+                risk=self.risk,
             )
             bot_state.save_state(state)
         except Exception as e:
@@ -735,12 +788,19 @@ class TradovateBot:
                     if not self.dry_run:
                         self.api.cancel_all_orders()
                         self.api.close_all_positions()
-                    # Record force-close exits in journal
+                    # Record force-close exits in journal with real P&L from fills
+                    try:
+                        force_fills = self.api.get_fills() if not self.dry_run else []
+                    except Exception as e:
+                        logger.warning("get_fills failed at force_close: %s", e)
+                        force_fills = []
                     for t in self.trades_today:
-                        if t.get("journal_id"):
+                        if t.get("journal_id") and not t.get("_closed"):
+                            exit_price, pnl = self._compute_exit_pnl(t, force_fills)
                             self.journal.record_exit_by_symbol(
-                                t["symbol"], 0, 0, exit_reason="force_close"
+                                t["symbol"], exit_price, pnl, exit_reason="force_close"
                             )
+                            t["_closed"] = True
                     self.risk.end_of_day_update(self.risk.current_balance)
                     # Run auto-tuner at end of day
                     try:
@@ -891,6 +951,8 @@ class TradovateBot:
             total_open = 0
             # Track which base symbols have open positions
             open_base_symbols = set()
+            # Positions enriched with base symbol for risk pre-emptive check
+            sym_positions: list[dict] = []
             for p in positions:
                 net = abs(p.get("netPos", 0))
                 if net > 0:
@@ -899,10 +961,17 @@ class TradovateBot:
                     base_sym = self._contract_id_to_symbol.get(cid)
                     if base_sym:
                         open_base_symbols.add(base_sym)
+                        sym_positions.append({"symbol": base_sym, "netPos": p.get("netPos")})
 
             self.risk.open_contracts = total_open
 
+            # Pre-emptive breach check: if every open stop hit at once, would
+            # day_pnl breach the daily loss limit? If so, lock and the
+            # on_lock callback flattens before the actual stops fire.
+            self.risk.check_pending_breach(sym_positions)
+
             # Close journal trades where position is now flat
+            recent_fills = None  # lazy-fetch only if we have closures to record
             for trade_info in self.trades_today:
                 journal_id = trade_info.get("journal_id")
                 sym = trade_info.get("symbol")
@@ -910,16 +979,92 @@ class TradovateBot:
                     continue
 
                 if sym not in open_base_symbols:
-                    # Position is flat for this symbol — trade was closed (by SL/TP/manual)
+                    # Position is flat for this symbol — trade was closed (by SL/TP/manual).
+                    # Try to recover the actual exit price and realized P&L from the
+                    # recent fill stream so the journal records real numbers instead
+                    # of zeros (the bug that left auto-tuner blind).
+                    if recent_fills is None:
+                        try:
+                            recent_fills = self.api.get_fills() or []
+                        except Exception as e:
+                            logger.warning("get_fills failed during exit reconciliation: %s", e)
+                            recent_fills = []
+                    exit_price, real_pnl = self._compute_exit_pnl(trade_info, recent_fills)
                     self.journal.record_exit_by_symbol(
-                        sym, 0, 0, exit_reason="bracket_fill"
+                        sym, exit_price, real_pnl, exit_reason="bracket_fill"
                     )
                     self.risk.register_close(trade_info.get("qty", 1))
                     trade_info["_closed"] = True
-                    logger.info("Position closed for %s (flat)", sym)
+                    logger.info(
+                        "Position closed for %s: exit=%.4f pnl=$%.2f",
+                        sym, exit_price, real_pnl,
+                    )
 
         except Exception as e:
             logger.error("Fill sync error: %s", e)
+
+    def _compute_exit_pnl(self, trade_info: dict, recent_fills: list) -> tuple[float, float]:
+        """Estimate the exit price and realized P&L for a closed bracket trade.
+
+        Walks the recent-fills list looking for opposite-direction fills on
+        the same contractId after the entry time. Returns (exit_price, pnl)
+        as a weighted average; (0, 0) if nothing usable is found.
+        """
+        sym = trade_info.get("symbol")
+        if not sym:
+            return 0.0, 0.0
+        spec = config.CONTRACT_SPECS.get(sym, {})
+        point_value = spec.get("point_value", 0) or 0
+        if point_value <= 0:
+            return 0.0, 0.0
+
+        # contractId from cached map
+        target_cid = None
+        for cid, base in getattr(self, "_contract_id_to_symbol", {}).items():
+            if base == sym:
+                target_cid = cid
+                break
+        if target_cid is None:
+            return 0.0, 0.0
+
+        entry_price = float(trade_info.get("entry_price") or 0)
+        entry_qty = int(trade_info.get("qty") or 0)
+        direction = (trade_info.get("direction") or "").lower()
+        opposite = "sell" if direction == "buy" else "buy"
+        entry_iso = trade_info.get("entry_time_iso") or ""
+
+        total_qty = 0
+        weighted = 0.0
+        for f in recent_fills:
+            if f.get("contractId") != target_cid:
+                continue
+            if (f.get("action") or "").lower() != opposite:
+                continue
+            ts = f.get("timestamp") or ""
+            # Fills come back roughly time-sorted; if entry_iso is set and the
+            # fill is older, skip. String compare works for ISO-8601 in UTC.
+            if entry_iso and ts and ts < entry_iso:
+                continue
+            qty = int(f.get("qty") or 0)
+            price = float(f.get("price") or 0)
+            if qty <= 0 or price <= 0:
+                continue
+            weighted += price * qty
+            total_qty += qty
+            if total_qty >= entry_qty:
+                break
+
+        if total_qty <= 0 or entry_price <= 0:
+            return 0.0, 0.0
+
+        exit_price = weighted / total_qty
+        # Cap qty at the entry size — we don't want overlapping trades to bleed in.
+        applied_qty = min(total_qty, entry_qty)
+        if direction == "buy":
+            pnl = (exit_price - entry_price) * applied_qty * point_value
+        else:
+            pnl = (entry_price - exit_price) * applied_qty * point_value
+        return exit_price, pnl
 
     def _sync_balance(self):
         """Fetch latest balance from API and update risk manager."""
@@ -927,7 +1072,21 @@ class TradovateBot:
             snapshot = self.api.get_cash_balance()
             if snapshot:
                 if snapshot.get("errorText"):
-                    logger.warning("Cash balance error: %s", snapshot["errorText"])
+                    err = snapshot["errorText"]
+                    logger.warning("Cash balance error: %s", err)
+                    # "Account not found" / "Unauthorized" usually means our
+                    # auth or account_id is stale. Count as an API failure so
+                    # the consecutive-failures counter trips auto-recovery.
+                    err_low = err.lower()
+                    if "not found" in err_low or "unauthor" in err_low or "invalid" in err_low:
+                        self._consecutive_api_failures = (
+                            getattr(self, "_consecutive_api_failures", 0) + 1
+                        )
+                        logger.warning(
+                            "Auth/account error counted as API failure (%d). "
+                            "Auto-recovery will re-authenticate after 3.",
+                            self._consecutive_api_failures,
+                        )
                     return
                 # Use netLiq as primary balance (matches FundedNext dashboard).
                 # When using netLiq, openPnL is already baked in, so pass 0

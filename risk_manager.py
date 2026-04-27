@@ -12,7 +12,7 @@ Enforces prop firm challenge rules:
 import logging
 import math
 from datetime import datetime, date
-from typing import Optional
+from typing import Callable, Optional
 from zoneinfo import ZoneInfo
 
 import config
@@ -61,6 +61,12 @@ class RiskManager:
         self.max_daily_trades: int = config.MAX_DAILY_TRADES
         self.trades_today: int = 0
 
+        # Callback fired once when trading transitions from unlocked to locked.
+        # Used by bot.py to flatten positions immediately on lock — without this,
+        # the lock only blocks new trades, allowing existing positions to drain
+        # past the daily loss limit (the bug that failed the 04-23 challenge).
+        self._on_lock_callback: Optional[Callable[[str], None]] = None
+
         logger.info(
             "RiskManager initialized | account=%s | max_dd=%s | daily_limit=%s | brake=%.0f%% | max_trades/day=%d | daily_profit_cap=%s",
             self.account_size,
@@ -71,29 +77,54 @@ class RiskManager:
             f"${self.daily_profit_cap}" if self.daily_profit_cap else "None",
         )
 
-    def set_initial_balance(self, balance: float):
+    def set_initial_balance(
+        self,
+        balance: float,
+        persisted_peak: Optional[float] = None,
+        persisted_floor: Optional[float] = None,
+        persisted_day_start: Optional[float] = None,
+        persisted_day_start_date: Optional[str] = None,
+    ):
         """Set the actual account balance from the API on startup.
 
-        This corrects day_start_balance so that day_pnl is calculated
-        relative to today's opening balance, not the original account_size.
-        Can be called at startup or later (via _sync_balance fallback).
+        Trailing drawdown peak NEVER goes down — this is the single most
+        important invariant. FundedNext tracks the all-time intraday peak
+        on their server. If we forget it on restart, we'll lock too late
+        and breach the floor without warning.
+
+        persisted_peak/persisted_floor: loaded from bot_state.json so the
+        peak survives restarts. day_start_balance is also persisted so
+        day_pnl doesn't reset to 0 mid-day.
         """
-        logger.info(
-            "Setting initial balance from API: $%.2f (was $%.2f from config)",
-            balance, self.day_start_balance,
-        )
         self.current_balance = balance
-        self.day_start_balance = balance
         self._balance_initialized = True
-        # Peak/floor must also reflect reality
-        if balance > self.peak_balance:
-            self.peak_balance = balance
-            self.drawdown_floor = self.peak_balance - self.max_trailing_drawdown
-        elif balance < self.drawdown_floor + self.max_trailing_drawdown:
-            # Balance is below where peak should be — set peak = balance
-            # so drawdown floor is correct
-            self.peak_balance = balance
-            self.drawdown_floor = balance - self.max_trailing_drawdown
+
+        # Peak: max of (current peak in memory, persisted peak from disk, current balance).
+        # Once set, peak only ever moves UP — see update_balance().
+        candidate_peak = max(self.peak_balance, balance)
+        if persisted_peak is not None and math.isfinite(persisted_peak):
+            candidate_peak = max(candidate_peak, persisted_peak)
+        self.peak_balance = candidate_peak
+
+        # Floor follows peak. Also clamp UP to any persisted floor (server-side
+        # FundedNext floor would be at least this high).
+        new_floor = self.peak_balance - self.max_trailing_drawdown
+        if persisted_floor is not None and math.isfinite(persisted_floor):
+            new_floor = max(new_floor, persisted_floor)
+        self.drawdown_floor = new_floor
+
+        # Day start balance: prefer persisted value if it's from today, so a
+        # restart mid-day doesn't reset day_pnl to 0.
+        today_iso = self.today.isoformat()
+        if (
+            persisted_day_start is not None
+            and persisted_day_start_date == today_iso
+            and math.isfinite(persisted_day_start)
+        ):
+            self.day_start_balance = persisted_day_start
+        else:
+            self.day_start_balance = balance
+
         logger.info(
             "Initial state: balance=$%.2f | peak=$%.2f | floor=$%.2f | day_start=$%.2f",
             self.current_balance, self.peak_balance, self.drawdown_floor, self.day_start_balance,
@@ -223,6 +254,59 @@ class RiskManager:
             self.trading_locked = True
             self.lock_reason = reason
             logger.critical("TRADING LOCKED: %s", reason)
+            if self._on_lock_callback is not None:
+                try:
+                    self._on_lock_callback(reason)
+                except Exception as e:
+                    logger.error("on_lock callback raised: %s", e)
+
+    def set_on_lock(self, callback: Callable[[str], None]):
+        """Register a callback to fire on transition to locked state.
+
+        The callback receives the lock reason string. Used by bot.py to
+        flatten all open positions and cancel working orders the moment
+        the brake fires, so that day_pnl can't drift further past limits.
+        """
+        self._on_lock_callback = callback
+
+    def check_pending_breach(self, positions: list[dict]):
+        """Lock pre-emptively if open positions could breach daily loss.
+
+        If every open position were to hit its stop simultaneously, would
+        day_pnl drop below -daily_loss_limit? If yes, lock and let the
+        on_lock callback flatten everything before the actual stops fire.
+
+        positions: list of dicts with keys 'symbol' (or 'contractId') and
+        'netPos' (signed quantity). Symbol is preferred for spec lookup.
+        """
+        if self.daily_loss_limit is None or self.trading_locked:
+            return
+
+        worst_case_loss = 0.0
+        for p in positions:
+            sym = p.get("symbol") or p.get("base_symbol")
+            if not sym:
+                continue
+            spec = config.CONTRACT_SPECS.get(sym)
+            if not spec:
+                continue
+            qty = abs(p.get("netPos", 0) or 0)
+            if qty == 0:
+                continue
+            stop_pts = spec.get("stop_loss_points", 0) or 0
+            pv = spec.get("point_value", 0) or 0
+            worst_case_loss += stop_pts * pv * qty
+
+        if worst_case_loss <= 0:
+            return
+
+        projected_pnl = self.day_pnl - worst_case_loss
+        if projected_pnl <= -self.daily_loss_limit:
+            self._lock(
+                f"PRE-EMPTIVE BREACH: open positions worst-case ${worst_case_loss:.2f} "
+                f"would push day_pnl from {self.day_pnl:.2f} to {projected_pnl:.2f} "
+                f"(limit -{self.daily_loss_limit:.2f})"
+            )
 
     # ─────────────────────────────────────────
     # Pre-trade validation

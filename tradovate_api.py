@@ -770,6 +770,7 @@ class TradovateAPI:
             logger.error("Entry order REJECTED: %s", reject_reason)
             return None
 
+        entry_avg_price: float = 0.0
         # For market orders, verify fill after brief delay
         if order_type == "Market":
             time.sleep(1)
@@ -778,6 +779,7 @@ class TradovateAPI:
                 detail_status = order_detail.get("ordStatus", "Unknown")
                 filled_qty = order_detail.get("filledQty", 0)
                 avg_price = order_detail.get("avgPrice", 0)
+                entry_avg_price = float(avg_price or 0)
                 logger.info(
                     "Entry order check: orderId=%s status=%s filled=%s avgPrice=%s | detail=%s",
                     entry_order_id, detail_status, filled_qty, avg_price, order_detail,
@@ -838,6 +840,7 @@ class TradovateAPI:
             "orderId": entry_order_id,
             "slOrderId": oco_result.get("orderId") if oco_result else None,
             "tpOrderId": oco_result.get("ocoId") if oco_result else None,
+            "avgPrice": entry_avg_price,
         }
 
     def place_market_order(
