@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-27T23:29:24Z",
+  "timestamp": "2026-04-28T01:16:40Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "2050581",
     "uptime_since": "Mon 2026-04-27 14:18:32 UTC",
     "disk": "19%",
-    "memory": "1143MB/7941MB (14%)",
+    "memory": "1154MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "cbadcd2 status: 2026-04-27 22:27 UTC | api=ok auth=None bot=running trading=active",
+    "git_commit": "3ab5f10 status: 2026-04-27 23:29 UTC | api=ok auth=None bot=running trading=active",
     "live_status": {
       "timestamp": "2026-04-27T20:58:31.499485+00:00",
       "timestamp_et": "2026-04-27T16:58:31.499506-04:00",
@@ -46,8 +46,8 @@
       "market_data_source": "websocket"
     },
     "journal_tail": "2026-04-27 20:55:29,266 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-27 20:55:29,423 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=1596582 cids=6\n2026-04-27 20:55:59,588 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 20:55:59,589 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-27 20:55:59,749 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=1597005 cids=6\n2026-04-27 20:56:29,926 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 20:56:29,927 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-27 20:56:30,101 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=1597497 cids=6\n2026-04-27 20:57:00,282 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 20:57:00,282 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-27 20:57:00,450 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=1597983 cids=6\n2026-04-27 20:57:30,614 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 20:57:30,615 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-27 20:57:30,785 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=1598425 cids=6\n2026-04-27 20:58:00,955 [WARNING] bot: Cash balance error: Account not found\n2026-04-27 20:58:00,955 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-27",
-    "bot_log_tail": "2026-04-27 20:59:02,483 [INFO] bot:   balance: 50000\n2026-04-27 20:59:02,483 [INFO] bot:   equity: 50000.0\n2026-04-27 20:59:02,483 [INFO] bot:   day_pnl: 0.0\n2026-04-27 20:59:02,483 [INFO] bot:   unrealized_pnl: 0.0\n2026-04-27 20:59:02,483 [INFO] bot:   peak_balance: 50000\n2026-04-27 20:59:02,483 [INFO] bot:   drawdown_floor: 47500\n2026-04-27 20:59:02,483 [INFO] bot:   distance_to_floor: 2500.0\n2026-04-27 20:59:02,483 [INFO] bot:   daily_loss_limit: 1000\n2026-04-27 20:59:02,483 [INFO] bot:   daily_loss_remaining: 1000.0\n2026-04-27 20:59:02,483 [INFO] bot:   daily_profit_cap: 2400\n2026-04-27 20:59:02,483 [INFO] bot:   daily_profit_remaining: 2400.0\n2026-04-27 20:59:02,483 [INFO] bot:   open_contracts: 0\n2026-04-27 20:59:02,483 [INFO] bot:   max_contracts: 9\n2026-04-27 20:59:02,483 [INFO] bot:   trades_today: 0\n2026-04-27 20:59:02,483 [INFO] bot:   max_daily_trades: 25\n2026-04-27 20:59:02,484 [INFO] bot:   locked: False\n2026-04-27 20:59:02,484 [INFO] bot:   lock_reason: \n2026-04-27 20:59:02,484 [INFO] bot:   balance_initialized: False\n2026-04-27 20:59:02,484 [INFO] bot: Bot stopped.\n2026-04-27 20:59:02,484 [INFO] bot: Session ended. Next trading session: 2026-04-28 09:25 ET (sleeping 986 minutes)",
-    "cron_log_tail": "  Errors (1h): 0 | Warnings: 0\n  Signals today: 0\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 8791s)\n  Balance: $50000\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Mon Apr 27 23:25:02 UTC 2026] Status: bot_active=true, pid=2050581\n[Mon Apr 27 23:25:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "bot_log_tail": "",
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 15391s)\n  Balance: $50000\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.2%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Tue Apr 28 01:15:02 UTC 2026] Status: bot_active=true, pid=2050581\n[Tue Apr 28 01:15:02 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
@@ -84,36 +84,7 @@
     "recent_signals": [],
     "recent_trades": [],
     "bot_log_tail": [
-      "2026-04-27 20:59:01,504 [WARNING] bot: Force close time reached. Closing all positions.",
-      "2026-04-27 20:59:01,696 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-04-27 20:59:02,047 [INFO] auto_tuner: Auto-tuner: only 12 trades (need 20). Skipping.",
-      "2026-04-27 20:59:02,049 [INFO] bot: Shutting down bot...",
-      "2026-04-27 20:59:02,211 [INFO] tradovate_api: Cancelled 0 working orders",
-      "2026-04-27 20:59:02,434 [WARNING] tradovate_api: Market data WebSocket closed: None None",
-      "2026-04-27 20:59:02,483 [INFO] bot: ============================================================",
-      "2026-04-27 20:59:02,483 [INFO] bot: END OF DAY SUMMARY",
-      "2026-04-27 20:59:02,483 [INFO] bot: ============================================================",
-      "2026-04-27 20:59:02,483 [INFO] bot: Total trades: 0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   balance: 50000",
-      "2026-04-27 20:59:02,483 [INFO] bot:   equity: 50000.0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   day_pnl: 0.0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   unrealized_pnl: 0.0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   peak_balance: 50000",
-      "2026-04-27 20:59:02,483 [INFO] bot:   drawdown_floor: 47500",
-      "2026-04-27 20:59:02,483 [INFO] bot:   distance_to_floor: 2500.0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   daily_loss_limit: 1000",
-      "2026-04-27 20:59:02,483 [INFO] bot:   daily_loss_remaining: 1000.0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   daily_profit_cap: 2400",
-      "2026-04-27 20:59:02,483 [INFO] bot:   daily_profit_remaining: 2400.0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   open_contracts: 0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   max_contracts: 9",
-      "2026-04-27 20:59:02,483 [INFO] bot:   trades_today: 0",
-      "2026-04-27 20:59:02,483 [INFO] bot:   max_daily_trades: 25",
-      "2026-04-27 20:59:02,484 [INFO] bot:   locked: False",
-      "2026-04-27 20:59:02,484 [INFO] bot:   lock_reason: ",
-      "2026-04-27 20:59:02,484 [INFO] bot:   balance_initialized: False",
-      "2026-04-27 20:59:02,484 [INFO] bot: Bot stopped.",
-      "2026-04-27 20:59:02,484 [INFO] bot: Session ended. Next trading session: 2026-04-28 09:25 ET (sleeping 986 minutes)"
+      ""
     ],
     "journal_summary": {
       "total_trades": 12,
@@ -134,7 +105,7 @@
       "consistency_adjusted": false,
       "trades_today": 0
     },
-    "trading_active": true,
+    "trading_active": false,
     "websocket_connected": true,
     "errors_in_log": [],
     "market_data_source": "websocket",
@@ -146,7 +117,7 @@
   "debug": {
     "ssh_available": "true",
     "ssh_ok": "true",
-    "ssh_output_len": 9276,
+    "ssh_output_len": 5974,
     "has_server_host": "true",
     "has_ssh_key": "true",
     "has_username": true,
