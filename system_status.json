@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-29T09:35:48Z",
+  "timestamp": "2026-04-29T11:42:37Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -13,9 +13,9 @@
     "bot_pid": "2050581",
     "uptime_since": "Mon 2026-04-27 14:18:32 UTC",
     "disk": "19%",
-    "memory": "1167MB/7941MB (15%)",
+    "memory": "1177MB/7941MB (15%)",
     "hostname": "vmi3096165",
-    "git_commit": "31365cb status: 2026-04-29 07:28 UTC | api=ok auth=None bot=running trading=inactive",
+    "git_commit": "6d417d0 status: 2026-04-29 09:35 UTC | api=ok auth=None bot=running trading=inactive",
     "live_status": {
       "timestamp": "2026-04-28T20:58:46.864757+00:00",
       "timestamp_et": "2026-04-28T16:58:46.864778-04:00",
@@ -47,7 +47,7 @@
     },
     "journal_tail": "2026-04-28 20:55:44,432 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-28 20:55:44,698 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=2183383 cids=7\n2026-04-28 20:56:14,908 [WARNING] bot: Cash balance error: Account not found\n2026-04-28 20:56:14,909 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-28 20:56:15,091 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=2183996 cids=7\n2026-04-28 20:56:45,263 [WARNING] bot: Cash balance error: Account not found\n2026-04-28 20:56:45,264 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-28 20:56:45,427 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=2184469 cids=7\n2026-04-28 20:57:15,612 [WARNING] bot: Cash balance error: Account not found\n2026-04-28 20:57:15,613 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-28 20:57:15,785 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=2184920 cids=7\n2026-04-28 20:57:45,969 [WARNING] bot: Cash balance error: Account not found\n2026-04-28 20:57:45,969 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-28 20:57:46,150 [INFO] bot: Status | balance=50000.00 | day_pnl=0.00 | to_floor=2500.00 | contracts=0/9 | trades=0/25 | locked=False | quotes=2185672 cids=7\n2026-04-28 20:58:16,321 [WARNING] bot: Cash balance error: Account not found\n2026-04-28 20:58:16,322 [WARNING] bot: Auth/account error counted as API failure (1). Auto-recovery will re-authenticate after 3.\n2026-04-28",
     "bot_log_tail": "",
-    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 45376s)\n  Balance: $50000\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 29 09:35:03 UTC 2026] Status: bot_active=true, pid=2050581\n[Wed Apr 29 09:35:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
+    "cron_log_tail": "[4/5] Bot Activity\n  No status lines found in log\n\n[5/5] Live Status & System\n  live_status.json: exists (age: 52876s)\n  Balance: $50000\n  Day P&L: $0.0\n  Trades today: 0\n  Locked: False\n  Active symbols: ['MNQ', 'MES', 'MGC', 'MCL', 'SIL']\n  Disk: 19% | Memory: 14.5%\n\n============================================================\n  VERDICT: RUNNING_NO_DATA\n  Bot: ALIVE | Token: NO | Balance: NO | Log: STALE\n============================================================\n\nReport: /root/tradovate-bot/connection_status.json\n[Wed Apr 29 11:40:03 UTC 2026] Status: bot_active=true, pid=2050581\n[Wed Apr 29 11:40:03 UTC 2026] No GH_PAT set \u2014 status written locally only. To fix: echo 'export GH_PAT=ghp_...' > /root/tradovate-bot/.gh_pat"
   },
   "trading_activity": {
     "live_status": {
