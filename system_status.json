@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-18T01:35:29Z",
+  "timestamp": "2026-08-18T03:00:57Z",
   "api_reachable": true,
   "authenticated": false,
   "auth_method": null,
@@ -114,7 +114,7 @@
     "_stale": true
   },
   "errors": [
-    "Auth: Incorrect username or password. Please try again, noting that passwords are case-sensitive."
+    "Auth error: Expecting value: line 1 column 1 (char 0)"
   ],
   "debug": {
     "ssh_available": "true",
